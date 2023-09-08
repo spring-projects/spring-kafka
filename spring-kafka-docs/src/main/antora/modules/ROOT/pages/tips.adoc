@@ -1,4 +1,4 @@
-= Tips
+= Tips, Tricks and Examples
 
 [[tip-assign-all-parts]]
 == Manually Assigning All Partitions

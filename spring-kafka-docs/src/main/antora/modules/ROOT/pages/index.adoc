@@ -5,62 +5,9 @@
 :hide-uri-scheme:
 Gary Russell; Artem Bilan; Biju Kunjummen; Jay Bryant; Soby Chacko; Tomaz Fernandes
 
-ifdef::backend-html5[]
 *{project-version}*
-
-NOTE: This documentation is also available as https://docs.spring.io/spring-kafka/docs/{project-version}/reference/pdf/spring-kafka-reference.pdf[PDF].
-endif::[]
-
-ifdef::backend-pdf[]
-NOTE: This documentation is also available as https://docs.spring.io/spring-kafka/docs/{project-version}/reference/html/index.html[HTML].
-endif::[]
 
 (C) 2016 - 2023 VMware, Inc.
 
 Copies of this document may be made for your own use and for distribution to others, provided that you do not charge any fee for such copies and further provided that each copy contains this Copyright Notice, whether distributed in print or electronically.
 
-
-
-[[preface]]
-== Preface
-
-
-[[whats-new-part]]
-== What's new?
-
-[[spring-kafka-intro-new]]
-
-
-[[introduction]]
-== Introduction
-
-This first part of the reference documentation is a high-level overview of Spring for Apache Kafka and the underlying concepts and some code snippets that can help you get up and running as quickly as possible.
-
-
-[[reference]]
-== Reference
-
-This part of the reference documentation details the various components that comprise Spring for Apache Kafka.
-The xref:kafka.adoc[main chapter] covers the core classes to develop a Kafka application with Spring.
-
-
-
-
-
-[[tips-n-tricks]]
-== Tips, Tricks and Examples
-
-
-[[resources]]
-
-[[other-resources]]
-== Other Resources
-
-In addition to this reference documentation, we recommend a number of other resources that may help you learn about Spring and Apache Kafka.
-
-- https://kafka.apache.org/[Apache Kafka Project Home Page]
-- https://projects.spring.io/spring-kafka/[Spring for Apache Kafka Home Page]
-- https://github.com/spring-projects/spring-kafka[Spring for Apache Kafka GitHub Repository]
-- https://github.com/spring-projects/spring-integration[Spring Integration GitHub Repository (Apache Kafka Module)]
-
-[appendix]

@@ -10,7 +10,7 @@ ext:
       # See https://gitlab.com/antora/antora-collector-extension/-/blob/main/docs/modules/ROOT/pages/configuration-keys.adoc?ref_type=heads#collector-reference
       # HINT: Maven is typically something like:
       # ./mvnw validate process-resources -am -Pantora-process-resources
-      command: gradlew -q "-Dorg.gradle.jvmargs=-Xmx3g -XX:+HeapDumpOnOutOfMemoryError" :spring-kafka-docs:generateAntoraYml
+      command: gradlew -q "-Dorg.gradle.jvmargs=-Xmx3g -XX:+HeapDumpOnOutOfMemoryError" :spring-kafka-docs:generateAntoraResources
       local: true
     scan:
       # FIXME Change "dir" to the location that generated files are at

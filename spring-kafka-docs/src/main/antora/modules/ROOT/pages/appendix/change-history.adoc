@@ -1,5 +1,5 @@
-[[changes-since-1]]
-= Changes Since 1.0
+[[history]]
+= Change History
 
 [[migration]]
 == What's New in 3.0 Since 2.9
@@ -22,13 +22,13 @@ See xref:kafka/exactly-once.adoc[Exactly Once Semantics] and https://cwiki.apach
 === Observation
 
 Enabling observation for timers and tracing using Micrometer is now supported.
-See xref:changes-since-1.0.adoc#x30-obs[Observation] for more information.
+See xref:appendix/change-history.adoc#x30-obs[Observation] for more information.
 
 [[x30-Native]]
 === Native Images
 
 Support for creating native images is provided.
-See xref:changes-since-1.0.adoc#x30-Native[Native Images] for more information.
+See xref:appendix/change-history.adoc#x30-Native[Native Images] for more information.
 
 [[x30-global-embedded-kafka]]
 === Global Single Embedded Kafka
@@ -750,7 +750,7 @@ See xref:kafka/sending-messages.adoc#aggregating-request-reply[Aggregating Multi
 You can now override the producer factory's `transactionIdPrefix` on the `KafkaTemplate` and `KafkaTransactionManager`.
 See xref:kafka/transactions.adoc#transaction-id-prefix[`transactionIdPrefix`] for more information.
 
-[[cb-2-2-and-2-3-new-delegating-serializer/deserializer]]
+[[cb-2-2-and-2-3-new-delegating-serializerdeserializer]]
 === New Delegating Serializer/Deserializer
 
 The framework now provides a delegating `Serializer` and `Deserializer`, utilizing a header to enable producing and consuming records with multiple key/value types.
@@ -915,7 +915,7 @@ See xref:kafka/pause-resume.adoc[Pausing and Resuming Listener Containers] for m
 === Stateful Retry
 
 Starting with version 2.1.3, you can configure stateful retry.
-See xref:changes-since-1.0.adoc#cb-2-0-and-2-1-stateful-retry[Stateful Retry] for more information.
+See xref:appendix/change-history.adoc#cb-2-0-and-2-1-stateful-retry[Stateful Retry] for more information.
 
 [[cb-2-0-and-2-1-client-id]]
 === Client ID

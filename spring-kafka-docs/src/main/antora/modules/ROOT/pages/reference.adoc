@@ -1,0 +1,5 @@
+[[reference]]
+= Reference
+
+This part of the reference documentation details the various components that comprise Spring for Apache Kafka.
+The xref:kafka.adoc[main chapter] covers the core classes to develop a Kafka application with Spring.

@@ -1,0 +1,4 @@
+[[introduction]]
+= Introduction
+
+This first part of the reference documentation is a high-level overview of Spring for Apache Kafka and the underlying concepts and some code snippets that can help you get up and running as quickly as possible.

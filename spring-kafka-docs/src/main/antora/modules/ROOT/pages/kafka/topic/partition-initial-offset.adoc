@@ -1,4 +1,4 @@
-[[topic/partition-initial-offset]]
+[[topicpartition-initial-offset]]
 = Topic/Partition Initial Offset
 :page-section-summary-toc: 1
 

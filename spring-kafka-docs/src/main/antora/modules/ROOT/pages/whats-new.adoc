@@ -1,12 +1,14 @@
+= What's new?
+
 [[what-s-new-in-3-1-since-3-0]]
-= What's New in 3.1 Since 3.0
+== What's New in 3.1 Since 3.0
 :page-section-summary-toc: 1
 
 This section covers the changes made from version 3.0 to version 3.1.
-For changes in earlier version, see xref:appendix.adoc#history[Change History].
+For changes in earlier version, see xref:appendix/change-history.adoc[Change History].
 
 [[x30-kafka-client]]
-== Kafka Client Version
+=== Kafka Client Version
 
 This version requires the 3.5.1 `kafka-clients`.
 

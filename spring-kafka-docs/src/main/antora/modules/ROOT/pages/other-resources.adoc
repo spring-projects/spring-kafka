@@ -1,0 +1,9 @@
+[[other-resources]]
+= Other Resources
+
+In addition to this reference documentation, we recommend a number of other resources that may help you learn about Spring and Apache Kafka.
+
+- https://kafka.apache.org/[Apache Kafka Project Home Page]
+- https://projects.spring.io/spring-kafka/[Spring for Apache Kafka Home Page]
+- https://github.com/spring-projects/spring-kafka[Spring for Apache Kafka GitHub Repository]
+- https://github.com/spring-projects/spring-integration[Spring Integration GitHub Repository (Apache Kafka Module)]

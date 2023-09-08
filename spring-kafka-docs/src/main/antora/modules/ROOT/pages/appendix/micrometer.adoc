@@ -1,0 +1,10 @@
+[[observation-gen]]
+= Micrometer Observation Documentation
+
+include::partial$metrics.adoc[leveloffset=-1]
+
+include::partial$spans.adoc[leveloffset=-1]
+
+include::partial$conventions.adoc[leveloffset=-1]
+
+
