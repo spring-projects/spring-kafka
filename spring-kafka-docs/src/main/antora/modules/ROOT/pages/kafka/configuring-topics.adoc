@@ -12,14 +12,14 @@ Java::
 +
 [source, java, indent=0, role="primary"]
 ----
-include:../:{java-examples}/topics/Config.java[tag=topicBeans]
+include::{java-examples}/topics/Config.java[tag=topicBeans]
 ----
 
 Kotlin::
 +
 [source, kotlin, indent=0, role="secondary"]
 ----
-include:../:{kotlin-examples}/topics/Config.kt[tag=topicBeans]
+include::{kotlin-examples}/topics/Config.kt[tag=topicBeans]
 ----
 ======
 
@@ -32,14 +32,14 @@ Java::
 +
 [source, java, indent=0, role="primary"]
 ----
-include:../:{java-examples}/topics/Config.java[tag=brokerProps]
+include::{java-examples}/topics/Config.java[tag=brokerProps]
 ----
 
 Kotlin::
 +
 [source, kotlin, indent=0, role="secondary"]
 ----
-include:../:{kotlin-examples}/topics/Config.kt[tag=brokerProps]
+include::{kotlin-examples}/topics/Config.kt[tag=brokerProps]
 ----
 ======
 
@@ -51,14 +51,14 @@ Java::
 +
 [source, java, indent=0, role="primary"]
 ----
-include:../:{java-examples}/topics/Config.java[tag=newTopicsBean]
+include::{java-examples}/topics/Config.java[tag=newTopicsBean]
 ----
 
 Kotlin::
 +
 [source, kotlin, indent=0, role="secondary"]
 ----
-include:../:{kotlin-examples}/topics/Config.kt[tag=newTopicsBean]
+include::{kotlin-examples}/topics/Config.kt[tag=newTopicsBean]
 ----
 ======
 

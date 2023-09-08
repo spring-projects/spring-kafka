@@ -16,16 +16,16 @@ Java::
 +
 [source, java, role="primary", indent=0]
 ----
-include:../:{java-examples}/dynamic/MyListener.java[tag=listener]
-include:../:{java-examples}/dynamic/Application.java[tag=create]
+include::{java-examples}/dynamic/MyListener.java[tag=listener]
+include::{java-examples}/dynamic/Application.java[tag=create]
 ----
 
 Kotlin::
 +
 [source, kotlin, role="secondary",indent=0]
 ----
-include:../:{kotlin-examples}/dynamic/Application.kt[tag=listener]
-include:../:{kotlin-examples}/dynamic/Application.kt[tag=create]
+include::{kotlin-examples}/dynamic/Application.kt[tag=listener]
+include::{kotlin-examples}/dynamic/Application.kt[tag=create]
 ----
 ======
 
@@ -41,18 +41,18 @@ Java::
 +
 [source, java, role="primary", indent=0]
 ----
-include:../:{java-examples}/dynamic/MyPojo.java[tag=pojo]
-include:../:{java-examples}/dynamic/Application.java[tag=pojoBean]
-include:../:{java-examples}/dynamic/Application.java[tag=getBeans]
+include::{java-examples}/dynamic/MyPojo.java[tag=pojo]
+include::{java-examples}/dynamic/Application.java[tag=pojoBean]
+include::{java-examples}/dynamic/Application.java[tag=getBeans]
 ----
 
 Kotlin::
 +
 [source, kotlin, role="secondary",indent=0]
 ----
-include:../:{kotlin-examples}/dynamic/Application.kt[tag=pojo]
-include:../:{kotlin-examples}/dynamic/Application.kt[tag=pojoBean]
-include:../:{kotlin-examples}/dynamic/Application.kt[tag=getBeans]
+include::{kotlin-examples}/dynamic/Application.kt[tag=pojo]
+include::{kotlin-examples}/dynamic/Application.kt[tag=pojoBean]
+include::{kotlin-examples}/dynamic/Application.kt[tag=getBeans]
 ----
 ======
 

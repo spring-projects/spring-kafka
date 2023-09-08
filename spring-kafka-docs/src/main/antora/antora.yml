@@ -23,3 +23,5 @@ asciidoc:
   attributes:
     attribute-missing: 'warn'
     chomp: 'all'
+    java-examples: example$java-examples/org/springframework/kafka/jdocs
+    kotlin-examples: example$kotlin-examples/org/springframework/kafka/kdocs

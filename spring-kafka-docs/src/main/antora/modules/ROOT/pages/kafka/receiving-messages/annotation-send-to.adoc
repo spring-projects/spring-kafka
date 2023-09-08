@@ -6,8 +6,8 @@ Starting with version 2.0, if you also annotate a `@KafkaListener` with a `@Send
 The `@SendTo` value can have several forms:
 
 * `@SendTo("someTopic")` routes to the literal topic
-* `@SendTo("#{someExpression}")` routes to the topic determined by evaluating the expression once during application context initialization.
-* `@SendTo("!{someExpression}")` routes to the topic determined by evaluating the expression at runtime.
+* `+@SendTo("#{someExpression}")+` routes to the topic determined by evaluating the expression once during application context initialization.
+* `+@SendTo("!{someExpression}")+` routes to the topic determined by evaluating the expression at runtime.
 The `#root` object for the evaluation has three properties:
 ** `request`: The inbound `ConsumerRecord` (or `ConsumerRecords` object for a batch listener))
 ** `source`: The `org.springframework.messaging.Message<?>` converted from the `request`.

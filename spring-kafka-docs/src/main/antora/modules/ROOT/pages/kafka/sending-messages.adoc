@@ -579,14 +579,14 @@ Java::
 +
 [source, java, role="primary", indent=0]
 ----
-include:../:{java-examples}/requestreply/Application.java[tag=beans]
+include::{java-examples}/requestreply/Application.java[tag=beans]
 ----
 
 Kotlin::
 +
 [source, kotlin, role="secondary",indent=0]
 ----
-include:../:{kotlin-examples}/requestreply/Application.kt[tag=beans]
+include::{kotlin-examples}/requestreply/Application.kt[tag=beans]
 ----
 ======
 
@@ -597,14 +597,14 @@ Java::
 +
 [source, java, role="primary", indent=0]
 ----
-include:../:{java-examples}/requestreply/Application.java[tag=sendReceive]
+include::{java-examples}/requestreply/Application.java[tag=sendReceive]
 ----
 
 Kotlin::
 +
 [source, kotlin, role="secondary", indent=0]
 ----
-include:../:{kotlin-examples}/requestreply/Application.kt[tag=sendReceive]
+include::{kotlin-examples}/requestreply/Application.kt[tag=sendReceive]
 ----
 ======
 
