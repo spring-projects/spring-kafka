@@ -1,4 +1,4 @@
-3 == Sample 3
+== Sample 3
 
 This sample demonstrates the use of transactions, including container-managed transactions on the consumer side.
 The listener receives a batch of messages and sends them to another topic, all within one transaction.
@@ -6,6 +6,8 @@ The listener receives a batch of messages and sends them to another topic, all w
 Run the application and use curl to send some data:
 
 `$ curl -X POST http://localhost:8080/send/foos/a,b,c,d,e`
+
+Console:
 
 [source, bash]
 ----

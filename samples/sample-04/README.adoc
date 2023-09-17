@@ -8,6 +8,8 @@ Run the application and use curl to send some data:
 
 `$ curl -X POST http://localhost:8080/send/fail; curl -X POST http://localhost:8080/send/good`
 
+Console:
+
 [source, bash]
 ----
 

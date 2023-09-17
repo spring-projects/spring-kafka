@@ -18,6 +18,7 @@ The consumer is configured with a `SeekToCurrentErrorHandler` which replays fail
 
 A second `@KafkaListener` consumes the raw JSON from the message.
 
+Console:
 
 [source, bash]
 ----
