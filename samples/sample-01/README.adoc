@@ -18,11 +18,16 @@ The consumer is configured with a `SeekToCurrentErrorHandler` which replays fail
 
 A second `@KafkaListener` consumes the raw JSON from the message.
 
-`2018-11-05 10:12:32.552  INFO 41635 --- [ fooGroup-0-C-1] com.example.Application                  : Received: Foo2 [foo=fail]`
-`2018-11-05 10:12:32.561 ERROR 41635 --- [ fooGroup-0-C-1] essageListenerContainer$ListenerConsumer : Error handler threw an exception`
-`...`
-`2018-11-05 10:12:33.033  INFO 41635 --- [ fooGroup-0-C-1] com.example.Application                  : Received: Foo2 [foo=fail]`
-`2018-11-05 10:12:33.033 ERROR 41635 --- [ fooGroup-0-C-1] essageListenerContainer$ListenerConsumer : Error handler threw an exception`
-`...`
-`2018-11-05 10:12:33.537  INFO 41635 --- [ fooGroup-0-C-1] com.example.Application                  : Received: Foo2 [foo=fail]`
-`2018-11-05 10:12:43.359  INFO 41635 --- [ dltGroup-0-C-1] com.example.Application                  : Received from DLT: {"foo":"fail"}`
+
+[source, bash]
+----
+
+2018-11-05 10:12:32.552  INFO 41635 --- [ fooGroup-0-C-1] com.example.Application                  : Received: Foo2 [foo=fail]
+2018-11-05 10:12:32.561 ERROR 41635 --- [ fooGroup-0-C-1] essageListenerContainer$ListenerConsumer : Error handler threw an exception
+...
+2018-11-05 10:12:33.033  INFO 41635 --- [ fooGroup-0-C-1] com.example.Application                  : Received: Foo2 [foo=fail]
+2018-11-05 10:12:33.033 ERROR 41635 --- [ fooGroup-0-C-1] essageListenerContainer$ListenerConsumer : Error handler threw an exception
+...
+2018-11-05 10:12:33.537  INFO 41635 --- [ fooGroup-0-C-1] com.example.Application                  : Received: Foo2 [foo=fail]
+2018-11-05 10:12:43.359  INFO 41635 --- [ dltGroup-0-C-1] com.example.Application                  : Received from DLT: {"foo":"fail"}
+----
