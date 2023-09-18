@@ -83,11 +83,11 @@ jobs:
     #     category: "/language:${{matrix.language}}"
 
     - name: package_database
-      run: tar -czvf kafka_database.tar /home/runner/work/_temp/codeql_databases
+      run: tar -czvf database.tar /home/runner/work/_temp/codeql_databases
 
 
     - name: mv_database
       uses: actions/upload-artifact@v3
       with:
        name: tar_file
-       path: kafka_database.tar
+       path: database.tar
