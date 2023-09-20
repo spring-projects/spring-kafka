@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 the original author or authors.
+ * Copyright 2019-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,16 +87,16 @@ public class HeaderEnricherProcessor<K, V> extends ContextualProcessor<K, V, K, 
 
 		private final V value;
 
-		private final Record record;
+		private final Record<K, V> record;
 
-		Container(ProcessorContext<K, V> context, K key, V value, Record record) {
+		Container(ProcessorContext<K, V> context, K key, V value, Record<K, V> record) {
 			this.context = context;
 			this.key = key;
 			this.value = value;
 			this.record = record;
 		}
 
-		public ProcessorContext getContext() {
+		public ProcessorContext<K, V> getContext() {
 			return this.context;
 		}
 
@@ -108,7 +108,7 @@ public class HeaderEnricherProcessor<K, V> extends ContextualProcessor<K, V, K, 
 			return this.value;
 		}
 
-		public Record getRecord() {
+		public Record<K, V> getRecord() {
 			return this.record;
 		}
 

@@ -42,6 +42,7 @@ import org.springframework.core.log.LogAccessor;
  */
 public class SerializationUtilsTests {
 
+	@SuppressWarnings("unchecked")
 	@Test
 	void foreignDeserEx() {
 		RecordHeaders headers = new RecordHeaders(

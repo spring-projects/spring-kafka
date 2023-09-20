@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 the original author or authors.
+ * Copyright 2020-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,9 +33,9 @@ public class BatchListenerFailedException extends KafkaException {
 
 	private static final long serialVersionUID = 1L;
 
-	private final ConsumerRecord<?, ?> record;
-
 	private final int index;
+
+	private transient ConsumerRecord<?, ?> record;
 
 	/**
 	 * Construct an instance with the provided properties.

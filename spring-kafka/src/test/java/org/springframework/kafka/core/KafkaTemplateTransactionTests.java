@@ -674,7 +674,7 @@ public class KafkaTemplateTransactionTests {
 			return mockProducer;
 		}
 
-		@SuppressWarnings("rawtypes")
+		@SuppressWarnings({ "rawtypes", "unchecked" })
 		@Bean
 		public ProducerFactory pf(@Qualifier("producer1") Producer producer1, @Qualifier("producer2") Producer producer2) {
 			return new MockProducerFactory((tx, id) -> id.equals("default") ? producer1 : producer2, "default");
@@ -694,7 +694,7 @@ public class KafkaTemplateTransactionTests {
 			return tm;
 		}
 
-		@SuppressWarnings({ "unchecked" })
+		@SuppressWarnings({ "rawtypes", "unchecked" })
 		@Bean
 		public KafkaTemplate<String, String> template(ProducerFactory pf) {
 			return new KafkaTemplate<>(pf);

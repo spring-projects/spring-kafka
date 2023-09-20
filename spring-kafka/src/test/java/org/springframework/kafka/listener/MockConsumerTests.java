@@ -116,7 +116,7 @@ public class MockConsumerTests {
 						new ConsumerRecord<>("foo", 2, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "buz",
 								new RecordHeaders(), Optional.empty()));
 			});
-			return new MockConsumerFactory(() -> consumer);
+			return new MockConsumerFactory<>(() -> consumer);
 		}
 
 		@SuppressWarnings({ "rawtypes", "unchecked" })

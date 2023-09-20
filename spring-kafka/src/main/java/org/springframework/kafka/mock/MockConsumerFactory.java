@@ -39,13 +39,13 @@ import org.springframework.lang.Nullable;
  */
 public class MockConsumerFactory<K, V> implements ConsumerFactory<K, V> {
 
-	private final Supplier<MockConsumer> consumerProvider;
+	private final Supplier<MockConsumer<K, V>> consumerProvider;
 
 	/**
 	 * Create an instance with the supplied consumer provicer.
 	 * @param consumerProvider the consumer provider.
 	 */
-	public MockConsumerFactory(Supplier<MockConsumer> consumerProvider) {
+	public MockConsumerFactory(Supplier<MockConsumer<K, V>> consumerProvider) {
 		this.consumerProvider = consumerProvider;
 	}
 

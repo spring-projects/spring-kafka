@@ -919,7 +919,7 @@ public class DeadLetterPublishingRecovererTests {
 		assertThat(iterator.hasNext()).isFalse();
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Test
 	void nonCompliantProducerFactory() throws Exception {
 		KafkaOperations<?, ?> template = mock(KafkaOperations.class);

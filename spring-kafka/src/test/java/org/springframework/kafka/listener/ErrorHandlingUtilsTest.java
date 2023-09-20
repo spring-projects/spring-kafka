@@ -70,6 +70,7 @@ class ErrorHandlingUtilsTest {
 	);
 
 	@SafeVarargs
+	@SuppressWarnings("varargs")
 	private <K, V> ConsumerRecords<K, V> recordsOf(ConsumerRecord<K, V>... records) {
 		return new ConsumerRecords<>(
 				Arrays.stream(records).collect(Collectors.groupingBy(

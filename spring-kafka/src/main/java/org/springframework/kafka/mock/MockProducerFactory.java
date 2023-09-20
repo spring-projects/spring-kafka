@@ -48,7 +48,7 @@ public class MockProducerFactory<K, V> implements ProducerFactory<K, V> {
 	 * Create an instance that does not support transactional producers.
 	 * @param producerProvider a {@link Supplier} for a {@link MockProducer}.
 	 */
-	public MockProducerFactory(Supplier<MockProducer> producerProvider) {
+	public MockProducerFactory(Supplier<MockProducer<K, V>> producerProvider) {
 		this.producerProvider = (tx, id) -> producerProvider.get();
 		this.defaultTxId = null;
 		this.transactional = false;

@@ -87,6 +87,7 @@ public class TransactionSynchronizationTests {
 		verify(producer).close(any());
 	}
 
+	@SuppressWarnings("serial")
 	static class TM extends AbstractPlatformTransactionManager {
 
 		@Override

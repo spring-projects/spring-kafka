@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ public abstract class KafkaEvent extends ApplicationEvent {
 
 	private static final long serialVersionUID = 1L;
 
-	private final Object container;
+	private transient Object container;
 
 	public KafkaEvent(Object source, Object container) {
 		super(source);

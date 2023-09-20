@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,6 +79,7 @@ public class KafkaStreamsCustomizerTests {
 	@Autowired
 	private MeterRegistry meterRegistry;
 
+	@SuppressWarnings("deprecation")
 	@Test
 	public void testKafkaStreamsCustomizer(@Autowired KafkaStreamsConfiguration configuration,
 			@Autowired KafkaStreamsConfig config) {
@@ -154,6 +155,7 @@ public class KafkaStreamsCustomizerTests {
 			return streamsBuilderFactoryBean;
 		}
 
+		@SuppressWarnings("deprecation")
 		@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
 		public KafkaStreamsConfiguration kStreamsConfigs() {
 			Map<String, Object> props = new HashMap<>();

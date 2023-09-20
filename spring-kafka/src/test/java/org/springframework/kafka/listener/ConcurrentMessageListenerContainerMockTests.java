@@ -987,6 +987,10 @@ public class ConcurrentMessageListenerContainerMockTests {
 					rebal.get().onPartitionsAssigned(afterRevokeAssignments);
 					rebalLatch.countDown();
 					continueLatch.await(10, TimeUnit.SECONDS);
+					if (paused.get()) {
+						return ConsumerRecords.empty();
+					}
+					return afterRevokeRecords;
 				default:
 					if (paused.get()) {
 						return ConsumerRecords.empty();
@@ -1091,6 +1095,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 					rebal.get().onPartitionsAssigned(Collections.emptyList());
 					rebalLatch.countDown();
 					continueLatch.await(10, TimeUnit.SECONDS);
+					return ConsumerRecords.empty();
 				default:
 					return ConsumerRecords.empty();
 			}
@@ -1174,6 +1179,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 					rebal.get().onPartitionsAssigned(afterRevokeAssignments);
 					rebalLatch.countDown();
 					continueLatch.await(10, TimeUnit.SECONDS);
+					return ConsumerRecords.empty();
 				default:
 					return ConsumerRecords.empty();
 			}
@@ -1251,6 +1257,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 					rebal.get().onPartitionsAssigned(List.of(new TopicPartition("foo", 2)));
 					rebalLatch.countDown();
 					continueLatch.await(10, TimeUnit.SECONDS);
+					return ConsumerRecords.empty();
 				default:
 					return ConsumerRecords.empty();
 			}
