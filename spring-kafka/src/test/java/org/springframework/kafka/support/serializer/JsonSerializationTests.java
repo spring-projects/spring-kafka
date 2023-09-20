@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package org.springframework.kafka.support.serializer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 import java.io.IOException;
@@ -44,6 +43,7 @@ import org.springframework.kafka.support.mapping.DefaultJackson2JavaTypeMapper;
 import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper.TypePrecedence;
 import org.springframework.kafka.support.serializer.testentities.DummyEntity;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.messaging.converter.MessageConversionException;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
@@ -62,6 +62,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
  * @author Torsten Schleede
  * @author Gary Russell
  * @author Ivan Ponomarev
+ * @author Yanming Zhou
  */
 public class JsonSerializationTests {
 
@@ -153,10 +154,10 @@ public class JsonSerializationTests {
 
 		Headers headers = new RecordHeaders();
 		headers.add(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME, "com.malware.DummyEntity".getBytes());
-		assertThatIllegalArgumentException()
+		assertThatExceptionOfType(MessageConversionException.class)
 				.isThrownBy(() -> dummyEntityJsonDeserializer
 						.deserialize(topic, headers, jsonWriter.serialize(topic, entity)))
-				.withMessageContaining("not in the trusted packages");
+				.withMessageContaining("failed to resolve class name");
 	}
 
 	@Test
@@ -295,6 +296,14 @@ public class JsonSerializationTests {
 		deser.configure(props, false);
 		assertThat(KafkaTestUtils.getPropertyValue(deser, "typeMapper.trustedPackages", Set.class))
 				.contains("foo", "bar", "baz");
+	}
+
+	@Test
+	void testTrustRecordClass() {
+		JsonSerde<Person> serde = new JsonSerde<>(Person.class);
+		String topic = "test";
+		Person person = new Person("test", 23);
+		assertThat(serde.deserializer().deserialize(topic, serde.serializer().serialize(topic, person))).isEqualTo(person);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -518,5 +527,8 @@ public class JsonSerializationTests {
 		}
 	}
 
+	public record Person(String name, int age) {
+
+	}
 
 }

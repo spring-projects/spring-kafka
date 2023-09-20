@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2021 the original author or authors.
+ * Copyright 2017-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
  * @author Andreas Asplund
  * @author Artem Bilan
  * @author Gary Russell
+ * @author Yanming Zhou
  *
  * @since 2.1
  */
@@ -125,17 +126,17 @@ public class DefaultJackson2JavaTypeMapper extends AbstractJavaTypeMapper
 		}
 		else {
 			try {
-				if (!isTrustedPackage(classId)) {
+				Class<?> clazz = ClassUtils.forName(classId, getClassLoader());
+				if (!clazz.isRecord() && !isTrustedPackage(classId)) {
 					throw new IllegalArgumentException("The class '" + classId
 							+ "' is not in the trusted packages: "
 							+ this.trustedPackages + ". "
 							+ "If you believe this class is safe to deserialize, please provide its name. "
 							+ "If the serialization is only done by a trusted source, you can also enable "
-							+ "trust all (*).");
+							+ "trust all (*), you may also consider changing it to record class.");
 				}
 				else {
-					return TypeFactory.defaultInstance()
-							.constructType(ClassUtils.forName(classId, getClassLoader()));
+					return TypeFactory.defaultInstance().constructType(clazz);
 				}
 			}
 			catch (ClassNotFoundException e) {
