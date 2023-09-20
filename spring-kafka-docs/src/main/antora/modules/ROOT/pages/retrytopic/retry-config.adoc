@@ -101,7 +101,7 @@ public RetryTopicConfiguration myOtherRetryTopic(KafkaTemplate<String, MyOtherPo
 }
 ----
 
-NOTE: The retry topics' and dlt's consumers will be assigned to a consumer group with a group id that is the combination of the one with you provide in the `groupId` parameter of the `@KafkaListener` annotation with the topic's suffix.
+NOTE: The retry topics' and dlt's consumers will be assigned to a consumer group with a group id that is the combination of the one which you provide in the `groupId` parameter of the `@KafkaListener` annotation with the topic's suffix.
 If you don't provide any they'll all belong to the same group, and rebalance on a retry topic will cause an unnecessary rebalance on the main topic.
 
 IMPORTANT: If the consumer is configured with an xref:kafka/serdes.adoc#error-handling-deserializer[`ErrorHandlingDeserializer`], to handle deserilialization exceptions, it is important to configure the `KafkaTemplate` and its producer with a serializer that can handle normal objects as well as raw `byte[]` values, which result from deserialization exceptions.
