@@ -217,7 +217,7 @@ public class ToStringSerializationTests {
 	void nullValue() {
 		ParseStringDeserializer<Object> deserializer =
 				new ParseStringDeserializer<>(ToStringSerializationTests::parseWithHeaders);
-		assertThat(deserializer.deserialize("foo", new RecordHeaders(), null)).isNull();
+		assertThat(deserializer.deserialize("foo", new RecordHeaders(), (byte[]) null)).isNull();
 	}
 
 	@Test

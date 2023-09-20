@@ -19,8 +19,6 @@ package org.springframework.kafka.test;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
 import java.time.Duration;
@@ -53,7 +51,6 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
-import org.apache.kafka.common.utils.AppInfoParser;
 import org.apache.kafka.common.utils.Exit;
 import org.apache.kafka.common.utils.Time;
 import org.apache.kafka.common.utils.Utils;
@@ -70,7 +67,6 @@ import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
-import org.springframework.util.ReflectionUtils;
 
 import kafka.cluster.EndPoint;
 import kafka.server.KafkaConfig;
@@ -120,40 +116,6 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	public static final int DEFAULT_ZK_SESSION_TIMEOUT = 18000;
 
 	public static final int DEFAULT_ZK_CONNECTION_TIMEOUT = DEFAULT_ZK_SESSION_TIMEOUT;
-
-	private static final Method GET_BROKER_STATE_METHOD;
-
-	private static final Method BROKER_CONFIGS_METHOD;
-
-	static {
-		try {
-			Method method = KafkaServer.class.getDeclaredMethod("brokerState");
-			if (method.getReturnType().equals(AtomicReference.class)) {
-				GET_BROKER_STATE_METHOD = method;
-			}
-			else {
-				GET_BROKER_STATE_METHOD = null;
-			}
-		}
-		catch (NoSuchMethodException | SecurityException ex) {
-			throw new IllegalStateException("Failed to determine KafkaServer.brokerState() method; client version: "
-					+ AppInfoParser.getVersion(), ex);
-		}
-		try {
-			AtomicReference<Method> configsMethod = new AtomicReference<>();
-			ReflectionUtils.doWithMethods(TestUtils.class,
-					method -> configsMethod.set(method),
-					method -> method.getName().equals("createBrokerConfig"));
-			BROKER_CONFIGS_METHOD = configsMethod.get();
-			if (BROKER_CONFIGS_METHOD == null) {
-				throw new IllegalStateException();
-			}
-		}
-		catch (IllegalStateException ex) {
-			throw new IllegalStateException("Failed to obtain TestUtils.createBrokerConfig method; client version: "
-					+ AppInfoParser.getVersion(), ex);
-		}
-	}
 
 	private final int count;
 
@@ -414,29 +376,13 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	}
 
 	private Properties createBrokerProperties(int i) {
-		try {
-			if (BROKER_CONFIGS_METHOD.getParameterTypes().length == 21) { // 3.3.2
-				return (Properties) BROKER_CONFIGS_METHOD.invoke(null, i, this.zkConnect, this.controlledShutdown,
-					true, this.kafkaPorts[i],
-					scala.Option.apply(null),
-					scala.Option.apply(null),
-					scala.Option.apply(null),
-					true, false, 0, false, 0, false, 0, scala.Option.apply(null), 1, false,
-					this.partitionsPerTopic, (short) this.count, false);
-			}
-			else {
-				return (Properties) BROKER_CONFIGS_METHOD.invoke(null, i, this.zkConnect, this.controlledShutdown,
-						true, this.kafkaPorts[i],
-						scala.Option.apply(null),
-						scala.Option.apply(null),
-						scala.Option.apply(null),
-						true, false, 0, false, 0, false, 0, scala.Option.apply(null), 1, false,
-						this.partitionsPerTopic, (short) this.count);
-			}
-		}
-		catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-			throw new IllegalStateException(ex);
-		}
+		return TestUtils.createBrokerConfig(i, this.zkConnect, this.controlledShutdown,
+				true, this.kafkaPorts[i],
+				scala.Option.apply(null),
+				scala.Option.apply(null),
+				scala.Option.apply(null),
+				true, false, 0, false, 0, false, 0, scala.Option.apply(null), 1, false,
+				this.partitionsPerTopic, (short) this.count, false);
 	}
 
 	/**
@@ -628,24 +574,7 @@ public class EmbeddedKafkaBroker implements InitializingBean, DisposableBean {
 	}
 
 	private boolean brokerRunning(KafkaServer kafkaServer) {
-		try {
-			return !kafkaServer.brokerState().equals(BrokerState.NOT_RUNNING);
-		}
-		catch (NoSuchMethodError error) {
-			if (GET_BROKER_STATE_METHOD != null) {
-				try {
-					return !GET_BROKER_STATE_METHOD.invoke(kafkaServer).toString().equals("NOT_RUNNING");
-				}
-				catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException ex) {
-					logger.debug(ex, "Could not determine broker state during shutdown");
-					return true;
-				}
-			}
-			else {
-				logger.debug("Could not determine broker state during shutdown");
-				return true;
-			}
-		}
+		return !kafkaServer.brokerState().equals(BrokerState.NOT_RUNNING);
 	}
 
 	public Set<String> getTopics() {
