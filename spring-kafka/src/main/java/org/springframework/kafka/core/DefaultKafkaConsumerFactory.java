@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2022 the original author or authors.
+ * Copyright 2016-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.core;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -28,19 +29,13 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-import org.aopalliance.aop.Advice;
-import org.aopalliance.intercept.MethodInterceptor;
-import org.aopalliance.intercept.MethodInvocation;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.serialization.Deserializer;
 
-import org.springframework.aop.framework.ProxyFactory;
-import org.springframework.aop.support.NameMatchMethodPointcutAdvisor;
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.lang.Nullable;
@@ -445,27 +440,10 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 		}
 	}
 
-	@SuppressWarnings("resource")
 	protected Consumer<K, V> createKafkaConsumer(Map<String, Object> configProps) {
 		checkBootstrap(configProps);
 		Consumer<K, V> kafkaConsumer = createRawConsumer(configProps);
 
-		if (this.listeners.size() > 0) {
-			Map<MetricName, ? extends Metric> metrics = kafkaConsumer.metrics();
-			Iterator<MetricName> metricIterator = metrics.keySet().iterator();
-			String clientId;
-			if (metricIterator.hasNext()) {
-				clientId = metricIterator.next().tags().get("client-id");
-			}
-			else {
-				clientId = "unknown";
-			}
-			String id = this.beanName + "." + clientId;
-			kafkaConsumer = createProxy(kafkaConsumer, id);
-			for (Listener<K, V> listener : this.listeners) {
-				listener.consumerAdded(id, kafkaConsumer);
-			}
-		}
 		for (ConsumerPostProcessor<K, V> pp : this.postProcessors) {
 			kafkaConsumer = pp.apply(kafkaConsumer);
 		}
@@ -473,40 +451,57 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	}
 
 	/**
-	 * Create a Consumer.
+	 * Create a {@link Consumer}.
+	 * By default, this method returns an internal {@link ExtendedKafkaConsumer}
+	 * which is aware of provided into this {@link #listeners}, therefore it is recommended
+	 * to extend that class if {@link #listeners} are still involved for a custom {@link Consumer}.
 	 * @param configProps the configuration properties.
 	 * @return the consumer.
 	 * @since 2.5
 	 */
 	protected Consumer<K, V> createRawConsumer(Map<String, Object> configProps) {
-		return new KafkaConsumer<>(configProps, this.keyDeserializerSupplier.get(),
-				this.valueDeserializerSupplier.get());
-	}
-
-	@SuppressWarnings("unchecked")
-	private Consumer<K, V> createProxy(Consumer<K, V> kafkaConsumer, String id) {
-		ProxyFactory pf = new ProxyFactory(kafkaConsumer);
-		Advice advice = new MethodInterceptor() {
-
-			@Override
-			public Object invoke(MethodInvocation invocation) throws Throwable {
-				DefaultKafkaConsumerFactory.this.listeners.forEach(listener ->
-						listener.consumerRemoved(id, kafkaConsumer));
-				return invocation.proceed();
-			}
-
-		};
-		NameMatchMethodPointcutAdvisor advisor = new NameMatchMethodPointcutAdvisor(advice);
-		advisor.addMethodName("close");
-		pf.addAdvisor(advisor);
-		return (Consumer<K, V>) pf.getProxy();
+		return new ExtendedKafkaConsumer(configProps);
 	}
 
 	@Override
 	public boolean isAutoCommit() {
 		Object auto = this.configs.get(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG);
-		return auto instanceof Boolean ? (Boolean) auto
-				: auto instanceof String ? Boolean.valueOf((String) auto) : true;
+		return auto instanceof Boolean
+				? (Boolean) auto
+				: !(auto instanceof String) || Boolean.parseBoolean((String) auto);
+	}
+
+	protected class ExtendedKafkaConsumer extends KafkaConsumer<K, V> {
+
+		private String idForListeners;
+
+		protected ExtendedKafkaConsumer(Map<String, Object> configProps) {
+			super(configProps,
+					DefaultKafkaConsumerFactory.this.keyDeserializerSupplier.get(),
+					DefaultKafkaConsumerFactory.this.valueDeserializerSupplier.get());
+
+			if (!DefaultKafkaConsumerFactory.this.listeners.isEmpty()) {
+				Iterator<MetricName> metricIterator = metrics().keySet().iterator();
+				String clientId = "unknown";
+				if (metricIterator.hasNext()) {
+					clientId = metricIterator.next().tags().get("client-id");
+				}
+				this.idForListeners = DefaultKafkaConsumerFactory.this.beanName + "." + clientId;
+				for (Listener<K, V> listener : DefaultKafkaConsumerFactory.this.listeners) {
+					listener.consumerAdded(this.idForListeners, this);
+				}
+			}
+		}
+
+		@Override
+		public void close(Duration timeout) {
+			super.close(timeout);
+
+			for (Listener<K, V> listener : DefaultKafkaConsumerFactory.this.listeners) {
+				listener.consumerRemoved(this.idForListeners, this);
+			}
+		}
+
 	}
 
 }
