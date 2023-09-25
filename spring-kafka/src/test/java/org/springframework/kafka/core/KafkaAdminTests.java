@@ -58,7 +58,6 @@ import org.springframework.kafka.test.EmbeddedKafkaZKBroker;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.util.ReflectionUtils;
-import org.springframework.util.StringUtils;
 
 /**
  * @author Gary Russell
@@ -272,8 +271,7 @@ public class KafkaAdminTests {
 		public KafkaAdmin admin() {
 			Map<String, Object> configs = new HashMap<>();
 			KafkaAdmin admin = new KafkaAdmin(configs);
-			admin.setBootstrapServersSupplier(() ->
-					StringUtils.arrayToCommaDelimitedString(kafkaEmbedded().getBrokerAddresses()));
+			admin.setBootstrapServersSupplier(() -> kafkaEmbedded().getBrokersAsString());
 			admin.setCreateOrModifyTopic(nt -> !nt.name().equals("dontCreate"));
 			return admin;
 		}
@@ -281,8 +279,7 @@ public class KafkaAdminTests {
 		@Bean
 		public AdminClient adminClient() {
 			Map<String, Object> configs = new HashMap<>();
-			configs.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
-					StringUtils.arrayToCommaDelimitedString(kafkaEmbedded().getBrokerAddresses()));
+			configs.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, kafkaEmbedded().getBrokersAsString());
 			return AdminClient.create(configs);
 		}
 

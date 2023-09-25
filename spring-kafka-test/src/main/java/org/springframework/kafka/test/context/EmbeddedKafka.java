@@ -183,11 +183,11 @@ public @interface EmbeddedKafka {
 	int adminTimeout() default EmbeddedKafkaBroker.DEFAULT_ADMIN_TIMEOUT;
 
 	/**
-	 * Use KRaft instead of Zookeeper.
+	 * Use KRaft instead of Zookeeper; default true.
 	 * @return whether to use KRaft.
 	 * @since 3.6
 	 */
-	boolean kraft() default false;
+	boolean kraft() default true;
 
 }
 

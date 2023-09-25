@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 the original author or authors.
+ * Copyright 2021-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,11 +82,11 @@ public class ExistingRetryTopicIntegrationTests {
 
 	public final static String MAIN_TOPIC_WITH_NO_PARTITION_INFO = "main-topic-1";
 
-	public final static String RETRY_TOPIC_WITH_NO_PARTITION_INFO = "main-topic-1-retry-0";
+	public final static String RETRY_TOPIC_WITH_NO_PARTITION_INFO = "main-topic-1-retry-1";
 
 	public final static String MAIN_TOPIC_WITH_PARTITION_INFO = "main-topic-2";
 
-	public final static String RETRY_TOPIC_WITH_PARTITION_INFO = "main-topic-2-retry-0";
+	public final static String RETRY_TOPIC_WITH_PARTITION_INFO = "main-topic-2-retry-1";
 
 	private final static String MAIN_TOPIC_CONTAINER_FACTORY = "kafkaListenerContainerFactory";
 

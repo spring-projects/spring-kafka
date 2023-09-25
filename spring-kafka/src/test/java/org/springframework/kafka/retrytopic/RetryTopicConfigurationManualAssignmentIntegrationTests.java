@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 the original author or authors.
+ * Copyright 2021-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,9 @@
 package org.springframework.kafka.retrytopic;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -71,17 +73,24 @@ class RetryTopicConfigurationManualAssignmentIntegrationTests {
 			@Autowired KafkaTemplate<Integer, String> template, @Autowired Config config) throws InterruptedException {
 
 		Consumer<Integer, String> consumer = cf.createConsumer("grp2", "");
-		Map<String, List<PartitionInfo>> topics = consumer.listTopics();
-		assertThat(topics.keySet()).contains("RetryTopicConfigurationManualAssignmentIntegrationTests.1",
-				"RetryTopicConfigurationManualAssignmentIntegrationTests.1-dlt",
-				"RetryTopicConfigurationManualAssignmentIntegrationTests.1-retry-100",
-				"RetryTopicConfigurationManualAssignmentIntegrationTests.1-retry-110",
-				"RetryTopicConfigurationManualAssignmentIntegrationTests.2",
-				"RetryTopicConfigurationManualAssignmentIntegrationTests.2-dlt",
-				"RetryTopicConfigurationManualAssignmentIntegrationTests.2-retry-100",
-				"RetryTopicConfigurationManualAssignmentIntegrationTests.2-retry-110");
-		template.send(TOPIC1, "foo");
-		assertThat(config.latch.await(120, TimeUnit.SECONDS)).isTrue();
+		try {
+			await().untilAsserted(() -> {
+				Map<String, List<PartitionInfo>> topics = consumer.listTopics();
+				assertThat(topics.keySet()).contains("RetryTopicConfigurationManualAssignmentIntegrationTests.1",
+						"RetryTopicConfigurationManualAssignmentIntegrationTests.1-dlt",
+						"RetryTopicConfigurationManualAssignmentIntegrationTests.1-retry-100",
+						"RetryTopicConfigurationManualAssignmentIntegrationTests.1-retry-110",
+						"RetryTopicConfigurationManualAssignmentIntegrationTests.2",
+						"RetryTopicConfigurationManualAssignmentIntegrationTests.2-dlt",
+						"RetryTopicConfigurationManualAssignmentIntegrationTests.2-retry-100",
+						"RetryTopicConfigurationManualAssignmentIntegrationTests.2-retry-110");
+			});
+			template.send(TOPIC1, "foo");
+			assertThat(config.latch.await(120, TimeUnit.SECONDS)).isTrue();
+		}
+		finally {
+			consumer.close(Duration.ofSeconds(10));
+		}
 	}
 
 	@Configuration(proxyBeanMethods = false)

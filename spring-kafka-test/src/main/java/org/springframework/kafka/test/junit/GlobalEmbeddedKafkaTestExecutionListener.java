@@ -122,7 +122,7 @@ public class GlobalEmbeddedKafkaTestExecutionListener implements TestExecutionLi
 			int[] ports =
 					configurationParameters.get(PORTS_PROPERTY_NAME, this::ports)
 							.orElse(new int[count]);
-			boolean kraft = configurationParameters.getBoolean(KRAFT_PROPERTY_NAME).orElse(false);
+			boolean kraft = configurationParameters.getBoolean(KRAFT_PROPERTY_NAME).orElse(true);
 
 			if (kraft) {
 				this.embeddedKafkaBroker = new EmbeddedKafkaKraftBroker(count, partitions, topics)

@@ -179,7 +179,7 @@ import jakarta.validation.constraints.Max;
  */
 @SpringJUnitConfig
 @DirtiesContext
-@EmbeddedKafka(kraft = true, topics = { "annotated1", "annotated2", "annotated3",
+@EmbeddedKafka(topics = { "annotated1", "annotated2", "annotated3",
 		"annotated4", "annotated5", "annotated6", "annotated7", "annotated8", "annotated8reply",
 		"annotated9", "annotated10",
 		"annotated11", "annotated12", "annotated13", "annotated14", "annotated15", "annotated16", "annotated17",

@@ -7,12 +7,12 @@
 This section covers the changes made from version 3.0 to version 3.1.
 For changes in earlier version, see xref:appendix/change-history.adoc[Change History].
 
-[[x30-kafka-client]]
+[[x31-kafka-client]]
 === Kafka Client Version
 
 This version requires the 3.5.1 `kafka-clients`.
 
-[[x30-ekb]]
+[[x31-ekb]]
 === EmbeddedKafkaBroker
 
 An additional implementation is now provided to use `Kraft` instead of Zookeeper.

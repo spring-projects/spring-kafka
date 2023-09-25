@@ -59,8 +59,6 @@ import org.apache.zookeeper.client.ZKClientConfig;
 import org.apache.zookeeper.server.NIOServerCnxnFactory;
 import org.apache.zookeeper.server.ZooKeeperServer;
 
-import org.springframework.beans.factory.DisposableBean;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.test.core.BrokerAddress;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
@@ -91,7 +89,7 @@ import kafka.zookeeper.ZooKeeperClient;
  *
  * @since 2.2
  */
-public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker, InitializingBean, DisposableBean {
+public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker {
 
 	private static final LogAccessor logger = new LogAccessor(LogFactory.getLog(EmbeddedKafkaBroker.class)); // NOSONAR
 
@@ -242,7 +240,6 @@ public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker, InitializingB
 	 * @param zkPort the port.
 	 * @since 2.3
 	 */
-	@Override
 	public void setZkPort(int zkPort) {
 		this.zkPort = zkPort;
 	}
@@ -603,13 +600,11 @@ public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker, InitializingB
 		return this.zkConnect;
 	}
 
-	@Override
 	public BrokerAddress getBrokerAddress(int i) {
 		KafkaServer kafkaServer = this.kafkaServers.get(i);
 		return new BrokerAddress(LOOPBACK, kafkaServer.config().listeners().apply(0).port());
 	}
 
-	@Override
 	public BrokerAddress[] getBrokerAddresses() {
 		List<BrokerAddress> addresses = new ArrayList<BrokerAddress>();
 		for (int kafkaPort : this.kafkaPorts) {

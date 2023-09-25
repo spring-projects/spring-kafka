@@ -24,7 +24,6 @@ import org.apache.kafka.clients.consumer.Consumer;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.kafka.test.core.BrokerAddress;
 
 import kafka.server.KafkaConfig;
 
@@ -81,12 +80,6 @@ public interface EmbeddedKafkaBroker extends InitializingBean, DisposableBean {
 	 * @see KafkaConfig
 	 */
 	EmbeddedKafkaBroker brokerProperties(Map<String, String> properties);
-
-	/**
-	 * Set the port to run the embedded Zookeeper on (default random).
-	 * @param zkPort the port.
-	 */
-	void setZkPort(int zkPort);
 
 	/**
 	 * Set the system property with this name to the list of broker addresses.
@@ -179,19 +172,6 @@ public interface EmbeddedKafkaBroker extends InitializingBean, DisposableBean {
 	 * @param consumer the consumer.
 	 */
 	void consumeFromAllEmbeddedTopics(Consumer<?, ?> consumer);
-
-	/**
-	 * Get the broker addresses.
-	 * @return the addresses.
-	 */
-	BrokerAddress[] getBrokerAddresses();
-
-	/**
-	 * Get a broker address.
-	 * @param i the broker index.
-	 * @return the address.
-	 */
-	BrokerAddress getBrokerAddress(int i);
 
 	/**
 	 * Get the configured number of partitions per topic.

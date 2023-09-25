@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2020 the original author or authors.
+ * Copyright 2017-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -103,22 +103,22 @@ public class EmbeddedKafkaContextCustomizerTests {
 	}
 
 
-	@EmbeddedKafka
+	@EmbeddedKafka(kraft = false)
 	private class TestWithEmbeddedKafka {
 
 	}
 
-	@EmbeddedKafka
+	@EmbeddedKafka(kraft = false)
 	private class SecondTestWithEmbeddedKafka {
 
 	}
 
-	@EmbeddedKafka(ports = 8085, bootstrapServersProperty = "my.bss.prop")
+	@EmbeddedKafka(kraft = false, ports = 8085, bootstrapServersProperty = "my.bss.prop")
 	private class TestWithEmbeddedKafkaPorts {
 
 	}
 
-	@EmbeddedKafka(count = 2)
+	@EmbeddedKafka(kraft = false, count = 2)
 	private class TestWithEmbeddedKafkaMulti {
 
 	}

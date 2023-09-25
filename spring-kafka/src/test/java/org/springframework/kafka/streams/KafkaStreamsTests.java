@@ -68,12 +68,14 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.support.serializer.JsonSerde;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.EmbeddedKafkaZKBroker;
+import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+
+import kafka.server.BrokerServer;
 
 /**
  * @author Artem Bilan
@@ -112,7 +114,7 @@ public class KafkaStreamsTests {
 	private StreamsBuilderFactoryBean streamsBuilderFactoryBean;
 
 	@Autowired
-	private EmbeddedKafkaZKBroker embeddedKafka;
+	private EmbeddedKafkaKraftBroker embeddedKafka;
 
 	@Value("${streaming.topic.two}")
 	private String streamingTopic2;
@@ -123,9 +125,9 @@ public class KafkaStreamsTests {
 	@SuppressWarnings("deprecation")
 	@Test
 	public void testKStreams() throws Exception {
-		assertThat(this.embeddedKafka.getKafkaServer(0).config().autoCreateTopicsEnable()).isFalse();
-		assertThat(this.embeddedKafka.getKafkaServer(0).config().deleteTopicEnable()).isTrue();
-		assertThat(this.embeddedKafka.getKafkaServer(0).config().brokerId()).isEqualTo(2);
+		BrokerServer broker = this.embeddedKafka.getCluster().brokers().values().stream().findFirst().orElseThrow();
+		assertThat(broker.config().autoCreateTopicsEnable()).isFalse();
+		assertThat(broker.config().deleteTopicEnable()).isTrue();
 
 		this.streamsBuilderFactoryBean.stop();
 

@@ -16,8 +16,11 @@
 
 package org.springframework.kafka.test;
 
-import org.apache.commons.logging.LogFactory;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import org.junit.jupiter.api.Test;
+
+import org.springframework.util.StringUtils;
 
 /**
  * @author Gary Russell
@@ -28,11 +31,10 @@ public class EmbeddedKafkaKraftBrokerTests {
 
 	@Test
 	void testUpDown() {
-		LogFactory.getLog(getClass()).info("foo");
 		EmbeddedKafkaKraftBroker kafka = new EmbeddedKafkaKraftBroker(1, 1, "topic1");
 		kafka.afterPropertiesSet();
-		kafka.start();
-		kafka.stop();
+		assertThat(StringUtils.hasText(kafka.getBrokersAsString())).isTrue();
+		kafka.destroy();
 	}
 
 }

@@ -50,9 +50,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Exit;
 import org.apache.kafka.common.utils.Utils;
 
-import org.springframework.context.SmartLifecycle;
 import org.springframework.core.log.LogAccessor;
-import org.springframework.kafka.test.core.BrokerAddress;
 import org.springframework.util.Assert;
 
 import kafka.server.KafkaConfig;
@@ -74,7 +72,7 @@ import kafka.testkit.TestKitNodes;
  *
  * @since 3.1
  */
-public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker, SmartLifecycle {
+public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(EmbeddedKafkaKraftBroker.class));
 
@@ -100,9 +98,7 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker, SmartLifec
 
 	private Duration adminTimeout = Duration.ofSeconds(DEFAULT_ADMIN_TIMEOUT);
 
-	private String brokerListProperty;
-
-	private volatile boolean running;
+	private String brokerListProperty = "spring.kafka.bootstrap-servers";
 
 	/**
 	 * Create embedded Kafka brokers listening on random ports.
@@ -201,8 +197,7 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker, SmartLifec
 	}
 
 
-	@Override
-	public void start() {
+	private void start() {
 		if (this.cluster != null) {
 			return;
 		}
@@ -215,7 +210,6 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker, SmartLifec
 							.build());
 			this.brokerProperties.forEach((k, v) -> clusterBuilder.setConfigProp((String) k, (String) v));
 			this.cluster = clusterBuilder.build();
-//			cluster.nonFatalFaultHandler().setIgnore(true);
 		}
 		catch (Exception ex) {
 			throw new IllegalStateException("Failed to create embedded cluster", ex);
@@ -234,34 +228,27 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker, SmartLifec
 		if (this.brokerListProperty == null) {
 			this.brokerListProperty = System.getProperty(BROKER_LIST_PROPERTY);
 		}
-		if (this.brokerListProperty == null) {
-			this.brokerListProperty = SPRING_EMBEDDED_KAFKA_BROKERS;
+		if (this.brokerListProperty != null) {
+			System.setProperty(this.brokerListProperty, getBrokersAsString());
 		}
+		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
 		System.setProperty(this.brokerListProperty, getBrokersAsString());
-		this.running = true;
 	}
 
 	@Override
-	public void stop() {
+	public void destroy() {
 		AtomicReference<Throwable> shutdownFailure = new AtomicReference<>();
 		Utils.closeQuietly(cluster, "embedded Kafka cluster", shutdownFailure);
 		if (shutdownFailure.get() != null) {
 			throw new IllegalStateException("Failed to shut down embedded Kafka cluster", shutdownFailure.get());
 		}
-		this.running = false;
 		this.cluster = null;
-	}
-
-	@Override
-	public boolean isRunning() {
-		return this.running;
 	}
 
 	private void addDefaultBrokerPropsIfAbsent(Properties brokerConfig, int numBrokers) {
 		brokerConfig.putIfAbsent(KafkaConfig.DeleteTopicEnableProp(), "true");
 		brokerConfig.putIfAbsent(KafkaConfig.GroupInitialRebalanceDelayMsProp(), "0");
 		brokerConfig.putIfAbsent(KafkaConfig.OffsetsTopicReplicationFactorProp(), String.valueOf(numBrokers));
-		brokerConfig.putIfAbsent(KafkaConfig.AutoCreateTopicsEnableProp(), "false");
 	}
 
 	private void logDir(Properties brokerConfigProperties) {
@@ -465,6 +452,10 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker, SmartLifec
 		return (String) this.cluster.clientProperties().get(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG);
 	}
 
+	public KafkaClusterTestKit getCluster() {
+		return this.cluster;
+	}
+
 	/**
 	 * Subscribe a consumer to all the embedded topics.
 	 * @param consumer the consumer.
@@ -570,24 +561,6 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker, SmartLifec
 			throw new IllegalStateException("Failed to be assigned partitions from the embedded topics");
 		}
 		LOGGER.debug("Subscription Initiated");
-	}
-
-	@Override
-	public void setZkPort(int zkPort) {
-		// TODO Auto-generated method stub
-
-	}
-
-	@Override
-	public BrokerAddress[] getBrokerAddresses() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
-	public BrokerAddress getBrokerAddress(int i) {
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 }
