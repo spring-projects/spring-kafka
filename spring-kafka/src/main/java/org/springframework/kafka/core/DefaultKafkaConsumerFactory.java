@@ -443,6 +443,11 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	protected Consumer<K, V> createKafkaConsumer(Map<String, Object> configProps) {
 		checkBootstrap(configProps);
 		Consumer<K, V> kafkaConsumer = createRawConsumer(configProps);
+		if (!this.listeners.isEmpty() && !(kafkaConsumer instanceof ExtendedKafkaConsumer)) {
+			LOGGER.warn("The 'ConsumerFactory.Listener' configuration is ignored " +
+					"because the consumer is not an instance of 'ExtendedKafkaConsumer'." +
+					"Consider to extend 'ExtendedKafkaConsumer' or implement your own 'ConsumerFactory'.");
+		}
 
 		for (ConsumerPostProcessor<K, V> pp : this.postProcessors) {
 			kafkaConsumer = pp.apply(kafkaConsumer);
