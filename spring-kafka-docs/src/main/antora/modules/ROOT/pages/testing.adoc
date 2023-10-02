@@ -9,7 +9,7 @@ The `spring-kafka-test` jar contains some useful utilities to assist with testin
 Two implementations are provided:
 
 * `EmbeddedKafkaZKBroker` - legacy implementation which starts an embedded `Zookeeper` instance.
-* `EmbeddedKafkaKraftBroker` - (default) uses Kraft instead of `Zookeeper` in combind controller and broker modes (since 3.1)
+* `EmbeddedKafkaKraftBroker` - (default) uses Kraft instead of `Zookeeper` in combined controller and broker modes (since 3.1)
 
 There are several techniques to configure the broker as discussed in the following sections.
 
