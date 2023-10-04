@@ -446,7 +446,7 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 		if (!this.listeners.isEmpty() && !(kafkaConsumer instanceof ExtendedKafkaConsumer)) {
 			LOGGER.warn("The 'ConsumerFactory.Listener' configuration is ignored " +
 					"because the consumer is not an instance of 'ExtendedKafkaConsumer'." +
-					"Consider to extend 'ExtendedKafkaConsumer' or implement your own 'ConsumerFactory'.");
+					"Consider extending 'ExtendedKafkaConsumer' or implement your own 'ConsumerFactory'.");
 		}
 
 		for (ConsumerPostProcessor<K, V> pp : this.postProcessors) {
