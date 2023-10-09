@@ -9,8 +9,8 @@ Alternatively, you can access the group id in a method parameter.
 
 [source, java]
 ----
-@KafkaListener(id = "bar", topicPattern = "${topicTwo:annotated2}", exposeGroupId = "${always:true}")
-public void listener(@Payload String foo,
+@KafkaListener(id = "id", topicPattern = "someTopic")
+public void listener(@Payload String payload,
         @Header(KafkaHeaders.GROUP_ID) String groupId) {
 ...
 }
