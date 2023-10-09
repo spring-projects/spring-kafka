@@ -415,6 +415,10 @@ public class KafkaAdmin extends KafkaResourceFactory
 				if (topicOptional.isPresent() && topicOptional.get().configs() != null) {
 					for (Map.Entry<String, String> desiredConfigParameter : topicOptional.get().configs().entrySet()) {
 						ConfigEntry actualConfigParameter = topicConfig.getValue().get(desiredConfigParameter.getKey());
+						if (actualConfigParameter == null) {
+							throw new IllegalStateException("Topic property '" + desiredConfigParameter.getKey()
+									+ "' does not exist");
+						}
 						if (!desiredConfigParameter.getValue().equals(actualConfigParameter.value())) {
 							configMismatchesEntries.add(actualConfigParameter);
 						}

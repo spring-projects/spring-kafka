@@ -17,6 +17,7 @@
 package org.springframework.kafka.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.awaitility.Awaitility.await;
 
 import java.lang.reflect.Method;
@@ -176,6 +177,15 @@ public class KafkaAdminTests {
 					&& configResourceConfigMap.get(new ConfigResource(Type.TOPIC, "noConfigAddLater"))
 					.get("retention.ms").value().equals("1000");
 		});
+
+		assertThatIllegalStateException().isThrownBy(() -> this.admin.createOrModifyTopics(mismatchconfig,
+				TopicBuilder.name("noConfigAddLater")
+						.partitions(2)
+						.replicas(1)
+						.config("no.such.config.key", "1000")
+						.build()))
+				.withMessageContaining("no.such.config.key");
+
 	}
 
 	@Test
