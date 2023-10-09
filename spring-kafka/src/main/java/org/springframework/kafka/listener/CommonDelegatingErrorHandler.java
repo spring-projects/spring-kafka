@@ -70,15 +70,7 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 		Assert.notNull(delegates, "'delegates' cannot be null");
 		this.delegates.clear();
 		this.delegates.putAll(delegates);
-		checkDelegates();
-		updateClassifier(delegates);
-	}
-
-	private void updateClassifier(Map<Class<? extends Throwable>, CommonErrorHandler> delegates) {
-		Map<Class<? extends Throwable>, Boolean> classifications = delegates.keySet().stream()
-			.map(commonErrorHandler -> Map.entry(commonErrorHandler, true))
-			.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
-		this.classifier = new BinaryExceptionClassifier(classifications);
+		checkDelegatesAndUpdateClassifier();
 	}
 
 	/**
@@ -120,11 +112,11 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 	 */
 	public void addDelegate(Class<? extends Throwable> throwable, CommonErrorHandler handler) {
 		this.delegates.put(throwable, handler);
-		checkDelegates();
+		checkDelegatesAndUpdateClassifier();
 	}
 
 	@SuppressWarnings("deprecation")
-	private void checkDelegates() {
+	private void checkDelegatesAndUpdateClassifier() {
 		boolean ackAfterHandle = this.defaultErrorHandler.isAckAfterHandle();
 		boolean seeksAfterHandling = this.defaultErrorHandler.seeksAfterHandling();
 		this.delegates.values().forEach(handler -> {
@@ -133,6 +125,14 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 			Assert.isTrue(seeksAfterHandling == handler.seeksAfterHandling(),
 					"All delegates must return the same value when calling 'seeksAfterHandling()'");
 		});
+		updateClassifier(delegates);
+	}
+
+	private void updateClassifier(Map<Class<? extends Throwable>, CommonErrorHandler> delegates) {
+		Map<Class<? extends Throwable>, Boolean> classifications = delegates.keySet().stream()
+			.map(commonErrorHandler -> Map.entry(commonErrorHandler, true))
+			.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+		this.classifier = new BinaryExceptionClassifier(classifications);
 	}
 
 	@Override

@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -31,6 +32,7 @@ import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaProducerException;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 /**
  * Tests for {@link CommonDelegatingErrorHandler}.
@@ -134,7 +136,7 @@ public class CommonDelegatingErrorHandlerTests {
 	}
 
 	@Test
-	@SuppressWarnings("ConstantConditions")
+	@SuppressWarnings({ "ConstantConditions", "unchecked" })
 	void testDelegateForClassifiableThrowableCauseIsAppliedWhenCauseTraversingIsEnabled() {
 		var defaultHandler = mock(CommonErrorHandler.class);
 
@@ -147,6 +149,10 @@ public class CommonDelegatingErrorHandlerTests {
 		delegatingErrorHandler.setErrorHandlers(Map.of(
 			KafkaException.class, directCauseErrorHandler
 		));
+		delegatingErrorHandler.addDelegate(IllegalStateException.class, mock(CommonErrorHandler.class));
+		assertThat(KafkaTestUtils.getPropertyValue(delegatingErrorHandler, "classifier.classified", Map.class).keySet())
+				.contains(IllegalStateException.class);
+
 
 		delegatingErrorHandler.handleRemaining(exc, Collections.emptyList(), mock(Consumer.class),
 			mock(MessageListenerContainer.class));
