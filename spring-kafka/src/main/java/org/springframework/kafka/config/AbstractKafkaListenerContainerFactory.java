@@ -487,7 +487,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		if (this.containerCustomizer != null) {
 			this.containerCustomizer.configure(instance);
 		}
-		final ContainerPostProcessor<K, V, C> containerPostProcessor = (ContainerPostProcessor<K, V, C>) endpoint.getContainerPostProcessor();
+		final ContainerPostProcessor<K, V, C> containerPostProcessor = (ContainerPostProcessor<K, V, C>)
+				endpoint.getContainerPostProcessor();
 		if (containerPostProcessor != null) {
 			containerPostProcessor.postProcess(instance);
 		}

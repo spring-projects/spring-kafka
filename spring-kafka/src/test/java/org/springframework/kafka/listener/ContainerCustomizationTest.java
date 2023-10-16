@@ -56,17 +56,22 @@ class ContainerCustomizationTest {
 	private static final String CONTAINER_CUSTOMIZER = "container-customizer";
 	private static final String POST_PROCESSOR = "post-processor";
 	private static final String POST_PROCESSOR_MULTI_METHOD = "post-processor-multi-method";
-	private static final String CONTAINER_CUSTOMIZER_AND_POST_PROCESSOR = "container-customizer-and-post-processor";
+	private static final String CONTAINER_CUSTOMIZER_AND_POST_PROCESSOR = "container-customizer" +
+			"-and-post-processor";
+
 	@Autowired
 	private ListenerContainerRegistry listenerContainerRegistry;
 
 	private static Stream<Arguments> listenerIdsWithRelatedInfo() {
 		return Stream.of(
 				Arguments.of(DEFAULT_LISTENER, null),
-				Arguments.of(CONTAINER_CUSTOMIZER, CONTAINER_CUSTOMIZER.getBytes(StandardCharsets.UTF_8)),
+				Arguments.of(CONTAINER_CUSTOMIZER,
+						CONTAINER_CUSTOMIZER.getBytes(StandardCharsets.UTF_8)),
 				Arguments.of(POST_PROCESSOR, POST_PROCESSOR.getBytes(StandardCharsets.UTF_8)),
-				Arguments.of(POST_PROCESSOR_MULTI_METHOD, POST_PROCESSOR.getBytes(StandardCharsets.UTF_8)),
-				Arguments.of(CONTAINER_CUSTOMIZER_AND_POST_PROCESSOR, POST_PROCESSOR.getBytes(StandardCharsets.UTF_8)));
+				Arguments.of(POST_PROCESSOR_MULTI_METHOD,
+						POST_PROCESSOR.getBytes(StandardCharsets.UTF_8)),
+				Arguments.of(CONTAINER_CUSTOMIZER_AND_POST_PROCESSOR,
+						POST_PROCESSOR.getBytes(StandardCharsets.UTF_8)));
 	}
 
 	@ParameterizedTest
@@ -77,7 +82,10 @@ class ContainerCustomizationTest {
 		assertThat(listenerContainer.getListenerInfo()).isEqualTo(listenerInfo);
 	}
 
-	@KafkaListener(id = POST_PROCESSOR_MULTI_METHOD, topics = TOPIC, containerPostProcessor = "infoContainerPostProcessor")
+	@KafkaListener(id = POST_PROCESSOR_MULTI_METHOD,
+			topics = TOPIC,
+			containerPostProcessor = "infoContainerPostProcessor"
+	)
 	static class MultiMethodListener {
 
 		@KafkaHandler
@@ -127,7 +135,8 @@ class ContainerCustomizationTest {
 		}
 
 		@Bean
-		public ContainerPostProcessor<String, String, AbstractMessageListenerContainer<String, String>> infoContainerPostProcessor() {
+		public ContainerPostProcessor<String, String, AbstractMessageListenerContainer<String,
+				String>> infoContainerPostProcessor() {
 			return container -> container.setListenerInfo(POST_PROCESSOR.getBytes(StandardCharsets.UTF_8));
 		}
 
@@ -146,7 +155,9 @@ class ContainerCustomizationTest {
 		@Bean
 		public ConcurrentKafkaListenerContainerFactory<String, String> containerFactoryWithCustomizer() {
 			final var containerFactory = createKafkaListenerContainerFactory();
-			containerFactory.setContainerCustomizer(container -> container.setListenerInfo(CONTAINER_CUSTOMIZER.getBytes(StandardCharsets.UTF_8)));
+			containerFactory.setContainerCustomizer(container ->
+					container.setListenerInfo(CONTAINER_CUSTOMIZER.getBytes(StandardCharsets.UTF_8))
+			);
 			return containerFactory;
 		}
 

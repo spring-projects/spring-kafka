@@ -327,9 +327,12 @@ public @interface KafkaListener {
 	String info() default "";
 
 	/**
-	 * Set the bean name of a {@link org.springframework.kafka.config.ContainerPostProcessor} to allow customizing the
-	 * container after its creation and configuration. This post processor is only applied on the current listener container
-	 * in contrast to the {@link org.springframework.kafka.config.ContainerCustomizer} which is applied on all listener containers.
+	 * Set the bean name of a {@link org.springframework.kafka.config.ContainerPostProcessor}
+	 * to allow customizing the container after its creation and configuration. This post
+	 * processor is only applied on the current listener container in contrast to the
+	 * {@link org.springframework.kafka.config.ContainerCustomizer} which is applied on all
+	 * listener containers.
+	 *
 	 * @return the bean name of the container post processor.
 	 * @since 3.1.0
 	 */

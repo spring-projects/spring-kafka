@@ -20,10 +20,12 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 
 /**
- * Called by the container factory after the container is created and configured. This post processor is applied
- * on the listener through the {@link KafkaListener#containerPostProcessor()} attribute.
+ * Called by the container factory after the container is created and configured. This
+ * post processor is applied on the listener through the
+ * {@link KafkaListener#containerPostProcessor()} attribute.
  * <p>
- * A {@link ContainerCustomizer} can be used when customization must be applied to all containers.
+ * A {@link ContainerCustomizer} can be used when customization must be applied to all
+ * containers.
  *
  * @param <K> the key type.
  * @param <V> the value type.
@@ -34,7 +36,6 @@ import org.springframework.kafka.listener.AbstractMessageListenerContainer;
  *
  * @see ContainerCustomizer
  * @see KafkaListener
- *
  */
 @FunctionalInterface
 public interface ContainerPostProcessor<K, V, C extends AbstractMessageListenerContainer<K, V>> {

@@ -742,10 +742,12 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		return factory;
 	}
 
-	private void resolveContainerPostProcessor(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener) {
+	private void resolveContainerPostProcessor(MethodKafkaListenerEndpoint<?, ?> endpoint,
+		KafkaListener kafkaListener) {
 		final String containerPostProcessor = kafkaListener.containerPostProcessor();
 		if (StringUtils.hasText(containerPostProcessor)) {
-			endpoint.setContainerPostProcessor(this.beanFactory.getBean(containerPostProcessor, ContainerPostProcessor.class));
+			endpoint.setContainerPostProcessor(this.beanFactory.getBean(containerPostProcessor,
+					ContainerPostProcessor.class));
 		}
 	}
 
