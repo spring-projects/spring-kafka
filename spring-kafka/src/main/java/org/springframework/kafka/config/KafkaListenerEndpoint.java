@@ -176,4 +176,13 @@ public interface KafkaListenerEndpoint {
 		return null;
 	}
 
+	/**
+	 * Return the {@link ContainerPostProcessor} for this endpoint, or null if not explicitly set.
+	 * @return the container post processor.
+	 * @since 3.1.0
+	 */
+	@Nullable
+	default ContainerPostProcessor<?, ?, ?> getContainerPostProcessor() {
+		return null;
+	}
 }

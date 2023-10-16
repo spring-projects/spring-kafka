@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2022 the original author or authors.
+ * Copyright 2016-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -326,4 +326,12 @@ public @interface KafkaListener {
 	 */
 	String info() default "";
 
+	/**
+	 * Set the bean name of a {@link org.springframework.kafka.config.ContainerPostProcessor} to allow customizing the
+	 * container after its creation and configuration. This post processor is only applied on the current listener container
+	 * in contrast to the {@link org.springframework.kafka.config.ContainerCustomizer} which is applied on all listener containers.
+	 * @return the bean name of the container post processor.
+	 * @since 3.1.0
+	 */
+	String containerPostProcessor() default "";
 }

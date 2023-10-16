@@ -367,7 +367,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 			endpoint.setupListenerContainer(instance, this.recordMessageConverter);
 		}
 		initializeContainer(instance, endpoint);
-		customizeContainer(instance);
+		customizeContainer(instance, endpoint);
 		return instance;
 	}
 
@@ -439,58 +439,57 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 				.acceptIfNotNull(endpoint.getListenerInfo(), instance::setListenerInfo);
 	}
 
-	private void customizeContainer(C instance) {
-		if (this.containerCustomizer != null) {
-			this.containerCustomizer.configure(instance);
-		}
-	}
-
 	@Override
 	public C createContainer(TopicPartitionOffset... topicsAndPartitions) {
-		KafkaListenerEndpoint endpoint = new KafkaListenerEndpointAdapter() {
+		return createContainer(new KafkaListenerEndpointAdapter() {
 
 			@Override
 			public TopicPartitionOffset[] getTopicPartitionsToAssign() {
 				return Arrays.copyOf(topicsAndPartitions, topicsAndPartitions.length);
 			}
 
-		};
-		C container = createContainerInstance(endpoint);
-		initializeContainer(container, endpoint);
-		customizeContainer(container);
-		return container;
+		});
 	}
 
 	@Override
 	public C createContainer(String... topics) {
-		KafkaListenerEndpoint endpoint = new KafkaListenerEndpointAdapter() {
+		return createContainer(new KafkaListenerEndpointAdapter() {
 
 			@Override
 			public Collection<String> getTopics() {
 				return Arrays.asList(topics);
 			}
 
-		};
-		C container = createContainerInstance(endpoint);
-		initializeContainer(container, endpoint);
-		customizeContainer(container);
-		return container;
+		});
 	}
 
 	@Override
 	public C createContainer(Pattern topicPattern) {
-		KafkaListenerEndpoint endpoint = new KafkaListenerEndpointAdapter() {
+		return createContainer(new KafkaListenerEndpointAdapter() {
 
 			@Override
 			public Pattern getTopicPattern() {
 				return topicPattern;
 			}
 
-		};
-		C container = createContainerInstance(endpoint);
+		});
+	}
+
+	protected C createContainer(KafkaListenerEndpoint endpoint) {
+		final C container = createContainerInstance(endpoint);
 		initializeContainer(container, endpoint);
-		customizeContainer(container);
+		customizeContainer(container, endpoint);
 		return container;
 	}
 
+	@SuppressWarnings("unchecked")
+	protected void customizeContainer(C instance, KafkaListenerEndpoint endpoint) {
+		if (this.containerCustomizer != null) {
+			this.containerCustomizer.configure(instance);
+		}
+		final ContainerPostProcessor<K, V, C> containerPostProcessor = (ContainerPostProcessor<K, V, C>) endpoint.getContainerPostProcessor();
+		if (containerPostProcessor != null) {
+			containerPostProcessor.postProcess(instance);
+		}
+	}
 }

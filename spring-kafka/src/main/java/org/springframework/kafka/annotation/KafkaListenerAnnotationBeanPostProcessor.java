@@ -78,6 +78,7 @@ import org.springframework.core.log.LogAccessor;
 import org.springframework.format.Formatter;
 import org.springframework.format.FormatterRegistry;
 import org.springframework.format.support.DefaultFormattingConversionService;
+import org.springframework.kafka.config.ContainerPostProcessor;
 import org.springframework.kafka.config.KafkaListenerConfigUtils;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
@@ -663,6 +664,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		resolveErrorHandler(endpoint, kafkaListener);
 		resolveContentTypeConverter(endpoint, kafkaListener);
 		resolveFilter(endpoint, kafkaListener);
+		resolveContainerPostProcessor(endpoint, kafkaListener);
 	}
 
 	private void resolveErrorHandler(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener) {
@@ -738,6 +740,13 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			}
 		}
 		return factory;
+	}
+
+	private void resolveContainerPostProcessor(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener) {
+		final String containerPostProcessor = kafkaListener.containerPostProcessor();
+		if (StringUtils.hasText(containerPostProcessor)) {
+			endpoint.setContainerPostProcessor(this.beanFactory.getBean(containerPostProcessor, ContainerPostProcessor.class));
+		}
 	}
 
 	protected void assertBeanFactory() {
