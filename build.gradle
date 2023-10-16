@@ -350,6 +350,8 @@ project ('spring-kafka-test') {
 		}
 		api "org.apache.kafka:kafka-clients:$kafkaVersion:test"
 		api "org.apache.kafka:kafka-metadata:$kafkaVersion"
+		api "org.apache.kafka:kafka-server-common:$kafkaVersion"
+		api "org.apache.kafka:kafka-server-common:$kafkaVersion:test"
 		api "org.apache.kafka:kafka-streams-test-utils:$kafkaVersion"
 		api "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion"
 		api "org.apache.kafka:kafka_$scalaVersion:$kafkaVersion:test"
