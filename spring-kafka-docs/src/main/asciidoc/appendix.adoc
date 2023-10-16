@@ -14,7 +14,7 @@ For example, {project-version} is supported by Spring Boot 2.7.x which brings in
 .Maven
 ----
 <properties>
-    <kafka.version>3.5.0</kafka.version>
+    <kafka.version>3.6.0</kafka.version>
     <spring-kafka.version>{project-version}</spring-kafka.version>
 </properties>
 
@@ -33,18 +33,29 @@ For example, {project-version} is supported by Spring Boot 2.7.x which brings in
     <artifactId>spring-kafka-test</artifactId>
     <scope>test</scope>
 </dependency>
+
+<!-- Required for the embedded broker when using 3.6.0 or later with Boot 2.7.x -->
+<dependency>
+	<groupId>org.apache.kafka</groupId>
+	<artifactId>kafka-server-common</artifactId>
+	<classifier>test</classifier>
+	<scope>test</scope>
+	<version>${kafka.version}</version>
+</dependency>
 ----
 
 [source, groovy, subs="+attributes", role="secondary"]
 .Gradle
 ----
-ext['kafka.version'] = '3.5.0'
+ext['kafka.version'] = '3.6.0'
 ext['spring-kafka.version'] = '{project-version}'
 
 dependencies {
     implementation 'org.springframework.kafka:spring-kafka'
     implementation 'org.apache.kafka:kafka-streams' // optional - only needed when using kafka-streams
     testImplementation 'org.springframework.kafka:spring-kafka-test'
+    // the following is required for the embedded broker when using 3.6.0 or later with Boot 2.7.x
+    testImplementation "org.apache.kafka:kafka-server-common:$kafka.version:test"
 }
 ----
 ====
