@@ -25,14 +25,14 @@ import org.springframework.kafka.listener.AbstractMessageListenerContainer;
  * {@link KafkaListener#containerPostProcessor()} attribute.
  * <p>
  * A {@link ContainerCustomizer} can be used when customization must be applied to all
- * containers.
+ * containers. In that case, this will be applied after the customizer.
  *
  * @param <K> the key type.
  * @param <V> the value type.
  * @param <C> the container type.
  *
  * @author Francois Rosiere
- * @since 3.1.0
+ * @since 3.1
  *
  * @see ContainerCustomizer
  * @see KafkaListener

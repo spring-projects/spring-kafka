@@ -115,6 +115,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private String correlationHeaderName;
 
+	private ContainerPostProcessor<?, ?, ?> containerPostProcessor;
+
 	@Nullable
 	private String mainListenerId;
 
@@ -466,6 +468,22 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 */
 	public void setCorrelationHeaderName(String correlationHeaderName) {
 		this.correlationHeaderName = correlationHeaderName;
+	}
+
+	@Override
+	public ContainerPostProcessor<?, ?, ?> getContainerPostProcessor() {
+		return this.containerPostProcessor;
+	}
+
+	/**
+	 * Set the {@link ContainerPostProcessor} on the endpoint to allow customizing the
+	 * container after its creation and configuration.
+	 *
+	 * @param containerPostProcessor the post processor.
+	 * @since 3.1
+	 */
+	public void setContainerPostProcessor(ContainerPostProcessor<?, ?, ?> containerPostProcessor) {
+		this.containerPostProcessor = containerPostProcessor;
 	}
 
 	@Override

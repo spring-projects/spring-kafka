@@ -38,8 +38,7 @@ public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory() {
 }
 ----
 
-Starting with version 3.1.0, it's also possible to apply the same kind of customization on a single listener by specifying the bean name of a
-'ContainerPostProcessor' on the KafkaListener annotation.
+Starting with version 3.1, it's also possible to apply the same kind of customization on a single listener by specifying the bean name of a 'ContainerPostProcessor' on the KafkaListener annotation.
 
 [source, java]
 ----

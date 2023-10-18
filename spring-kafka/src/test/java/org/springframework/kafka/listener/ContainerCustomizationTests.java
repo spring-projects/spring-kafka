@@ -43,19 +43,23 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  * Tests for container customizations.
  *
  * @author Francois Rosiere
- * @since 3.1.0
+ * @since 3.1
  */
 @SuppressWarnings("unused")
 @SpringJUnitConfig
 @DirtiesContext
-class ContainerCustomizationTest {
+class ContainerCustomizationTests {
 
 	private static final String TOPIC = "foo";
 
 	private static final String DEFAULT_LISTENER = "default-listener";
+
 	private static final String CONTAINER_CUSTOMIZER = "container-customizer";
+
 	private static final String POST_PROCESSOR = "post-processor";
+
 	private static final String POST_PROCESSOR_MULTI_METHOD = "post-processor-multi-method";
+
 	private static final String CONTAINER_CUSTOMIZER_AND_POST_PROCESSOR = "container-customizer" +
 			"-and-post-processor";
 

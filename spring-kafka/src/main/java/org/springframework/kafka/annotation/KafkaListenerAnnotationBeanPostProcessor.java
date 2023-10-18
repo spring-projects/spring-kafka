@@ -744,6 +744,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private void resolveContainerPostProcessor(MethodKafkaListenerEndpoint<?, ?> endpoint,
 		KafkaListener kafkaListener) {
+
 		final String containerPostProcessor = kafkaListener.containerPostProcessor();
 		if (StringUtils.hasText(containerPostProcessor)) {
 			endpoint.setContainerPostProcessor(this.beanFactory.getBean(containerPostProcessor,

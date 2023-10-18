@@ -331,10 +331,11 @@ public @interface KafkaListener {
 	 * to allow customizing the container after its creation and configuration. This post
 	 * processor is only applied on the current listener container in contrast to the
 	 * {@link org.springframework.kafka.config.ContainerCustomizer} which is applied on all
-	 * listener containers.
+	 * listener containers. This post processor is applied after the container customizer
+	 * (if present).
 	 *
 	 * @return the bean name of the container post processor.
-	 * @since 3.1.0
+	 * @since 3.1
 	 */
 	String containerPostProcessor() default "";
 }

@@ -72,8 +72,6 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 
 	private SmartMessageConverter messagingConverter;
 
-	private ContainerPostProcessor<?, ?, ?> containerPostProcessor;
-
 	/**
 	 * Set the object instance that should manage this endpoint.
 	 * @param bean the target bean instance.
@@ -128,22 +126,6 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 	 */
 	public void setMessagingConverter(SmartMessageConverter messagingConverter) {
 		this.messagingConverter = messagingConverter;
-	}
-
-	@Override
-	public ContainerPostProcessor<?, ?, ?> getContainerPostProcessor() {
-		return this.containerPostProcessor;
-	}
-
-	/**
-	 * Set the {@link ContainerPostProcessor} on the endpoint to allow customizing the
-	 * container after its creation and configuration.
-	 *
-	 * @param containerPostProcessor the post processor.
-	 * @since 3.1.0
-	 */
-	public void setContainerPostProcessor(ContainerPostProcessor<?, ?, ?> containerPostProcessor) {
-		this.containerPostProcessor = containerPostProcessor;
 	}
 
 	@Nullable
