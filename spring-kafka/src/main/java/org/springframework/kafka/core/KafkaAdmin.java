@@ -321,6 +321,9 @@ public class KafkaAdmin extends KafkaResourceFactory
 		if (this.clusterId == null) {
 			try (AdminClient client = createAdmin()) {
 				this.clusterId = client.describeCluster().clusterId().get(this.operationTimeout, TimeUnit.SECONDS);
+				if (this.clusterId == null) {
+					this.clusterId = "null";
+				}
 			}
 			catch (InterruptedException ex) {
 				Thread.currentThread().interrupt();
@@ -358,7 +361,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 		}
 	}
 
-	private AdminClient createAdmin() {
+	AdminClient createAdmin() {
 		Map<String, Object> configs2 = new HashMap<>(this.configs);
 		checkBootstrap(configs2);
 		return AdminClient.create(configs2);

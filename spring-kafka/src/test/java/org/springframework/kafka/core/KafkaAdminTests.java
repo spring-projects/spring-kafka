@@ -19,6 +19,8 @@ package org.springframework.kafka.core;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -37,11 +39,13 @@ import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.AlterConfigOp;
 import org.apache.kafka.clients.admin.AlterConfigOp.OpType;
 import org.apache.kafka.clients.admin.ConfigEntry;
+import org.apache.kafka.clients.admin.DescribeClusterResult;
 import org.apache.kafka.clients.admin.DescribeConfigsResult;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
+import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.ConfigResource.Type;
 import org.apache.kafka.common.config.TopicConfig;
@@ -266,6 +270,24 @@ public class KafkaAdminTests {
 		bootstrapServersSupplier.primary();
 		assertThat(admin.getConfigurationProperties().get(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG))
 				.isEqualTo("a,b,c");
+	}
+
+	@Test
+	void nullClusterId() {
+		AdminClient mock = mock(AdminClient.class);
+		DescribeClusterResult result = mock(DescribeClusterResult.class);
+		KafkaFuture<String> fut = KafkaFuture.completedFuture(null);
+		given(result.clusterId()).willReturn(fut);
+		given(mock.describeCluster()).willReturn(result);
+		KafkaAdmin admin = new KafkaAdmin(Map.of()) {
+
+			@Override
+			AdminClient createAdmin() {
+				return mock;
+			}
+
+		};
+		assertThat(admin.clusterId()).isEqualTo("null");
 	}
 
 	@Configuration
