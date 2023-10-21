@@ -152,7 +152,9 @@ import org.springframework.util.backoff.FixedBackOff;
 		KafkaMessageListenerContainerTests.topic17, KafkaMessageListenerContainerTests.topic18,
 		KafkaMessageListenerContainerTests.topic19, KafkaMessageListenerContainerTests.topic20,
 		KafkaMessageListenerContainerTests.topic21, KafkaMessageListenerContainerTests.topic22,
-		KafkaMessageListenerContainerTests.topic23, KafkaMessageListenerContainerTests.topic24 })
+		KafkaMessageListenerContainerTests.topic23, KafkaMessageListenerContainerTests.topic24,
+		KafkaMessageListenerContainerTests.topic25, KafkaMessageListenerContainerTests.topic26,
+		KafkaMessageListenerContainerTests.topic27})
 public class KafkaMessageListenerContainerTests {
 
 	private final LogAccessor logger = new LogAccessor(LogFactory.getLog(this.getClass()));
@@ -205,7 +207,13 @@ public class KafkaMessageListenerContainerTests {
 
 	public static final String topic24 = "testTopic24";
 
-	public static final String topic25 = "testTopic24";
+	public static final String topic25 = "testTopic25";
+
+	public static final String topic26 = "testTopic26";
+
+	public static final String topic27 = "testTopic27";
+
+	public static final String topic28 = "testTopic27";
 
 	private static EmbeddedKafkaBroker embeddedKafka;
 
@@ -4211,6 +4219,139 @@ public class KafkaMessageListenerContainerTests {
 		testOffsetAndMetadata((listenerMetadata, offset) ->
 				new OffsetAndMetadata(offset, listenerMetadata.getGroupId()),
 				new OffsetAndMetadata(1, "grp"));
+	}
+
+	@Test
+	public void testAckModeIsCount() throws Exception {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("testAckModeIsCount", "false", embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, String> cf = spy(new DefaultKafkaConsumerFactory<>(props));
+		AtomicReference<Consumer<Integer, String>> consumer = new AtomicReference<>();
+		willAnswer(inv -> {
+			consumer.set((Consumer<Integer, String>) spy(inv.callRealMethod()));
+			return consumer.get();
+		}).given(cf).createConsumer(any(), any(), any(), any());
+		ContainerProperties containerProps = new ContainerProperties(topic25);
+		containerProps.setAckMode(AckMode.COUNT);
+		containerProps.setAckCount(2);
+
+		final CountDownLatch latch = new CountDownLatch(5);
+		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
+			logger.info("flushed: " + message);
+			latch.countDown();
+		});
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("testAckModeIsCount");
+
+		container.start();
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic25);
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(1, 0, "bar");
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(1, 0, "bar");
+		template.sendDefault(0, 0, "foo");
+		template.flush();
+
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		verify(consumer.get(), times(2)).commitSync(anyMap(), any());
+		container.stop();
+	}
+
+	@Test
+	public void testAckModeIsTime() throws Exception {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("testAckModeIsTime", "false", embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, String> cf = spy(new DefaultKafkaConsumerFactory<>(props));
+		AtomicReference<Consumer<Integer, String>> consumer = new AtomicReference<>();
+		willAnswer(inv -> {
+			consumer.set((Consumer<Integer, String>) spy(inv.callRealMethod()));
+			return consumer.get();
+		}).given(cf).createConsumer(any(), any(), any(), any());
+		ContainerProperties containerProps = new ContainerProperties(topic26);
+		containerProps.setAckMode(AckMode.TIME);
+		containerProps.setAckTime(100);
+
+		final CountDownLatch latch = new CountDownLatch(5);
+		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
+			try {
+				Thread.sleep(70);
+			} catch (InterruptedException e) {
+			}
+			logger.info("flushed: " + message);
+			latch.countDown();
+		});
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("testAckModeIsTime");
+
+		container.start();
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic26);
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(1, 0, "bar");
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(1, 0, "bar");
+		template.sendDefault(0, 0, "foo");
+		template.flush();
+
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		// waitForAssignment need some time, first message always commit offsets, else message consumer time is 280ms, commit offsets twice
+		verify(consumer.get(), times(3)).commitSync(anyMap(), any());
+		container.stop();
+	}
+
+	@Test
+	public void testAckModeIsCountTime() throws Exception {
+		Map<String, Object> props = KafkaTestUtils.consumerProps("testAckModeIsTime", "false", embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, String> cf = spy(new DefaultKafkaConsumerFactory<>(props));
+		AtomicReference<Consumer<Integer, String>> consumer = new AtomicReference<>();
+		willAnswer(inv -> {
+			consumer.set((Consumer<Integer, String>) spy(inv.callRealMethod()));
+			return consumer.get();
+		}).given(cf).createConsumer(any(), any(), any(), any());
+		ContainerProperties containerProps = new ContainerProperties(topic27);
+		containerProps.setAckMode(AckMode.COUNT_TIME);
+		containerProps.setAckTime(100);
+		containerProps.setAckCount(2);
+
+		final CountDownLatch latch = new CountDownLatch(5);
+		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
+			try {
+				Thread.sleep(70);
+			} catch (InterruptedException e) {
+			}
+			logger.info("flushed: " + message);
+			latch.countDown();
+		});
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("testAckModeIsTime");
+
+		container.start();
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic27);
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(1, 1, "bar");
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(1, 1, "bar");
+		template.sendDefault(0, 0, "foo");
+		template.flush();
+
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		verify(consumer.get(), times(4)).commitSync(anyMap(), any());
+		container.stop();
 	}
 
 	@SuppressWarnings("unchecked")
