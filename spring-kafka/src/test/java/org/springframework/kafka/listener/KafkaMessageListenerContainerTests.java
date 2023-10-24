@@ -3112,9 +3112,9 @@ public class KafkaMessageListenerContainerTests {
 		container.start();
 		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(recordCount.get()).isEqualTo(7);
-		verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(4L)),
+		verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(3L)),
 				Duration.ofSeconds(42));
-		verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(7L)),
+		verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(6L)),
 				Duration.ofSeconds(42));
 		container.stop();
 	}

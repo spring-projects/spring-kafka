@@ -2815,6 +2815,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.nackSleepDurationMillis < 0 && !this.isManualImmediateAck) {
 				ackCurrent(cRecord);
 			}
+			if (this.isCountAck || this.isTimeOnlyAck) {
+				doProcessCommits();
+			}
 		}
 
 		private void doInvokeOnMessage(final ConsumerRecord<K, V> recordArg) {
