@@ -250,8 +250,10 @@ public class KafkaAdmin extends KafkaResourceFactory
 			if (adminClient != null) {
 				try {
 					synchronized (this) {
-						this.clusterId = adminClient.describeCluster().clusterId().get(this.operationTimeout,
-								TimeUnit.SECONDS);
+						if (this.clusterId != null) {
+							this.clusterId = adminClient.describeCluster().clusterId().get(this.operationTimeout,
+									TimeUnit.SECONDS);
+						}
 					}
 					addOrModifyTopicsIfNeeded(adminClient, newTopics);
 					return true;
