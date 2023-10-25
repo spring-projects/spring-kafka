@@ -198,6 +198,16 @@ public class KafkaAdmin extends KafkaResourceFactory
 		return this.createOrModifyTopic;
 	}
 
+	/**
+	 * Set the cluster id. Use this to prevent attempting to fetch the cluster id
+	 * from the broker, perhaps if the user does not have admin permissions.
+	 * @param clusterId the clusterId to set
+	 * @since 3.1
+	 */
+	public void setClusterId(String clusterId) {
+		this.clusterId = clusterId;
+	}
+
 	@Override
 	public Map<String, Object> getConfigurationProperties() {
 		Map<String, Object> configs2 = new HashMap<>(this.configs);
