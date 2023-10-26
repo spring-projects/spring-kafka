@@ -1424,6 +1424,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.firstPoll = true;
 				this.consumerSeekAwareListener.onFirstPoll();
 			}
+			if (records != null && records.count() == 0 && this.isCountAck && this.count > 0) {
+				commitIfNecessary();
+				this.count = 0;
+			}
 			debugRecords(records);
 
 			invokeIfHaveRecords(records);

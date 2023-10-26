@@ -3060,12 +3060,12 @@ public class KafkaMessageListenerContainerTests {
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records2 = new HashMap<>();
 		records2.put(topicPartition, Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 2L, 1, "baz"),
-				new ConsumerRecord<>("foo", 0, 3L, 1, "qux"))); // commit (4 >= 3)
+				new ConsumerRecord<>("foo", 0, 3L, 1, "qux"))); // commit (3 = 3)
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records3 = new HashMap<>();
 		records3.put(topicPartition, Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 4L, 1, "fiz"),
-				new ConsumerRecord<>("foo", 0, 5L, 1, "buz"),
-				new ConsumerRecord<>("foo", 0, 6L, 1, "bif"))); // commit (3 >= 3)
+				new ConsumerRecord<>("foo", 0, 5L, 1, "buz"), // commit (3 = 3)
+				new ConsumerRecord<>("foo", 0, 6L, 1, "bif"))); // commit (1 when next poll returns no records)
 		ConsumerRecords<Integer, String> consumerRecords1 = new ConsumerRecords<>(records1);
 		ConsumerRecords<Integer, String> consumerRecords2 = new ConsumerRecords<>(records2);
 		ConsumerRecords<Integer, String> consumerRecords3 = new ConsumerRecords<>(records3);
@@ -3085,7 +3085,7 @@ public class KafkaMessageListenerContainerTests {
 					return emptyRecords;
 			}
 		});
-		final CountDownLatch commitLatch = new CountDownLatch(2);
+		final CountDownLatch commitLatch = new CountDownLatch(3);
 		willAnswer(i -> {
 			commitLatch.countDown();
 			return null;
@@ -3115,6 +3115,8 @@ public class KafkaMessageListenerContainerTests {
 		verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(3L)),
 				Duration.ofSeconds(42));
 		verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(6L)),
+				Duration.ofSeconds(42));
+		verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(7L)),
 				Duration.ofSeconds(42));
 		container.stop();
 	}
