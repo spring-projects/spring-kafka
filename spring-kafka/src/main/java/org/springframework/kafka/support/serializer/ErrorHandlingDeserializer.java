@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import org.apache.kafka.common.serialization.Deserializer;
 
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
+import org.springframework.validation.Validator;
 
 /**
  * Delegating key/value deserializer that catches exceptions, returning them
@@ -60,11 +61,18 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 	 */
 	public static final String VALUE_DESERIALIZER_CLASS = "spring.deserializer.value.delegate.class";
 
+	/**
+	 * Property name for the validator.
+	 */
+	public static final String VALIDATOR_CLASS = "spring.deserializer.validator.class";
+
 	private Deserializer<T> delegate;
 
 	private boolean isForKey;
 
 	private Function<FailedDeserializationInfo, T> failedDeserializationFunction;
+
+	private Validator validator;
 
 	public ErrorHandlingDeserializer() {
 	}
@@ -108,6 +116,18 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 		return this;
 	}
 
+	/**
+	 * Set a validator to validate the object after successful deserialization. If the
+	 * validator throws an exception, or returns an
+	 * {@link org.springframework.validation.Errors} with validation failures, the raw
+	 * data will be available in any configured error handler.
+	 * @param validator the validator to set
+	 * @since 3.1
+	 */
+	public void setValidator(Validator validator) {
+		this.validator = validator;
+	}
+
 	@Override
 	public void configure(Map<String, ?> configs, boolean isKey) {
 		if (this.delegate == null) {
@@ -119,6 +139,7 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 		if (this.failedDeserializationFunction == null) {
 			setupFunction(configs, isKey ? KEY_FUNCTION : VALUE_FUNCTION);
 		}
+		setupValidator(configs);
 	}
 
 	public void setupDelegate(Map<String, ?> configs, String configKey) {
@@ -145,7 +166,7 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 		if (configs.containsKey(configKey)) {
 			try {
 				Object value = configs.get(configKey);
-				Class<?> clazz = value instanceof Class ? (Class<?>) value : ClassUtils.forName((String) value, null);
+				Class<?> clazz = value instanceof Class cls ? cls : ClassUtils.forName((String) value, null);
 				Assert.isTrue(Function.class.isAssignableFrom(clazz), "'function' must be a 'Function ', not a "
 						+ clazz.getName());
 				this.failedDeserializationFunction = (Function<FailedDeserializationInfo, T>)
@@ -157,10 +178,25 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 		}
 	}
 
+	private void setupValidator(Map<String, ?> configs) {
+		if (configs.containsKey(VALIDATOR_CLASS) && this.validator == null) {
+			try {
+				Object value = configs.get(VALIDATOR_CLASS);
+				Class<?> clazz = value instanceof Class cls ? cls : ClassUtils.forName((String) value, null);
+				Object instance = clazz.getDeclaredConstructor().newInstance();
+				Assert.isInstanceOf(Validator.class, instance, "'validator' must be a 'Validator', not a ");
+				this.validator = (Validator) instance;
+			}
+			catch (Exception e) {
+				throw new IllegalStateException(e);
+			}
+		}
+	}
+
 	@Override
 	public T deserialize(String topic, byte[] data) {
 		try {
-			return this.delegate.deserialize(topic, data);
+			return validate(this.delegate.deserialize(topic, data));
 		}
 		catch (Exception e) {
 			return recoverFromSupplier(topic, null, data, e);
@@ -176,12 +212,20 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 			else {
 				headers.remove(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER);
 			}
-			return this.delegate.deserialize(topic, headers, data);
+			return validate(this.delegate.deserialize(topic, headers, data));
 		}
 		catch (Exception e) {
 			SerializationUtils.deserializationException(headers, data, e, this.isForKey);
 			return recoverFromSupplier(topic, headers, data, e);
 		}
+	}
+
+	private T validate(T deserialized) {
+		if (this.validator == null || !this.validator.supports(deserialized.getClass())) {
+			return deserialized;
+		}
+		this.validator.validateObject(deserialized).failOnError(IllegalStateException::new);
+		return deserialized;
 	}
 
 	private T recoverFromSupplier(String topic, Headers headers, byte[] data, Exception exception) {

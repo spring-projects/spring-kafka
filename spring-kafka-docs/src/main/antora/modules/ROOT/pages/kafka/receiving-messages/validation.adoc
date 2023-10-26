@@ -80,3 +80,5 @@ public KafkaListenerErrorHandler validationErrorHandler() {
 Starting with version 2.5.11, validation now works on payloads for `@KafkaHandler` methods in a class-level listener.
 See xref:kafka/receiving-messages/class-level-kafkalistener.adoc[`@KafkaListener` on a Class].
 
+Starting with version 3.1, you can perform validation in an `ErrorHandlingDeserializer` instead.
+See xref:../serdes.adoc#error-handling-deserializer[Using `ErrorHandlingDeserializer`] for more information.

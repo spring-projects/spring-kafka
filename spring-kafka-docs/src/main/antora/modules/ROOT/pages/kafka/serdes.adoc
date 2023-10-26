@@ -555,11 +555,11 @@ The following example uses a `failedDeserializationFunction`.
 
 [source, java]
 ----
-public class BadFoo extends Foo {
+public class BadThing extends Thing {
 
   private final FailedDeserializationInfo failedDeserializationInfo;
 
-  public BadFoo(FailedDeserializationInfo failedDeserializationInfo) {
+  public BadThing(FailedDeserializationInfo failedDeserializationInfo) {
     this.failedDeserializationInfo = failedDeserializationInfo;
   }
 
@@ -569,11 +569,11 @@ public class BadFoo extends Foo {
 
 }
 
-public class FailedFooProvider implements Function<FailedDeserializationInfo, Foo> {
+public class FailedThingProvider implements Function<FailedDeserializationInfo, Thing> {
 
   @Override
-  public Foo apply(FailedDeserializationInfo info) {
-    return new BadFoo(info);
+  public Thing apply(FailedDeserializationInfo info) {
+    return new BadThing(info);
   }
 
 }
@@ -586,7 +586,7 @@ The preceding example uses the following configuration:
 ...
 consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
 consumerProps.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class);
-consumerProps.put(ErrorHandlingDeserializer.VALUE_FUNCTION, FailedFooProvider.class);
+consumerProps.put(ErrorHandlingDeserializer.VALUE_FUNCTION, FailedThingProvider.class);
 ...
 ----
 
@@ -661,6 +661,12 @@ void listen(List<ConsumerRecord<String, Thing>> in) {
 
 IMPORTANT: If you are also using a `DeadLetterPublishingRecoverer`, the record published for a `DeserializationException` will have a `record.value()` of type `byte[]`; this should not be serialized.
 Consider using a `DelegatingByTypeSerializer` configured to use a `ByteArraySerializer` for `byte[]` and the normal serializer (Json, Avro, etc) for all other types.
+
+Starting with version 3.1, you can add a `Validator` to the `ErrorHandlingDeserializer`.
+If the delegate `Deserializer` successfully deserializes the object, but that object fails validation, an exception is thrown similar to a deserialization exception occurring.
+This allows the original raw data to be passed to the error handler.
+WHen creating the deserializer yourself, simply call `setValidator`; if you configure the serializer using properties, set the consumer configuration property `ErrorHandlingDeserializer.VALIDATOR_CLASS` to the class or fully qualified class name for your `Validator`.
+When using Spring Boot, this property name is `spring.kafka.consumer.properties.spring.deserializer.validator.class`.
 
 [[payload-conversion-with-batch]]
 == Payload Conversion with Batch Listeners

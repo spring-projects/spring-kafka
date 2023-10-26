@@ -31,3 +31,10 @@ When not used with an `ErrorHandlingDeserializer`, the `KafkaConsumer` will cont
 Post processing can be applied on a listener container by specifying the bean name of a `ContainerPostProcessor` on the `@KafkaListener` annotation.
 This occurs after the container has been created and after any configured `ContainerCustomizer` configured on the container factory.
 See xref:kafka/container-factory.adoc[Container Factory] for more information.
+
+[[x31-ehd]]
+=== ErrorHandlingDeserializer
+
+You can now add a `Validator` to this deserializer; if the delegate `Deserializer` successfully deserializes the object, but that object fails validation, an exception is thrown similar to a deserialization exception occurring.
+This allows the original raw data to be passed to the error handler.
+See xref:kafka/serdes.adoc#error-handling-deserializer[Using `ErrorHandlingDeserializer`] for more information.
