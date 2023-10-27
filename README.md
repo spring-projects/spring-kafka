@@ -18,11 +18,9 @@ To check out the project and build from source, do the following:
     cd spring-kafka
     ./gradlew build
 
-The Java SE 7 or higher is recommended to build the project.
+Java 17 or later version is recommended to build the project.
 
-If you encounter out of memory errors during the build, increase available heap and permgen for Gradle:
-
-    GRADLE_OPTS='-XX:MaxPermSize=1024m -Xmx1024m'
+If you encounter out of memory errors during the build, tweak the `org.gradle.jvmargs` property in `gradle.properties`.
 
 To build and install jars into your local Maven cache:
 
