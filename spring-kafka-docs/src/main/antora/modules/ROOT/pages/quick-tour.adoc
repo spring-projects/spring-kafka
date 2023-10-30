@@ -47,7 +47,7 @@ Gradle::
 +
 [source,groovy,subs="+attributes",role="secondary"]
 ----
-compile 'org.springframework.kafka:spring-kafka'
+implementation 'org.springframework.kafka:spring-kafka'
 ----
 ======
 
@@ -58,7 +58,7 @@ However, the quickest way to get started is to use https://start.spring.io[start
 
 This quick tour works with the following versions:
 
-* Apache Kafka Clients 3.5.x
+* Apache Kafka Clients 3.6.x
 * Spring Framework 6.1.x
 * Minimum Java version: 17
 
@@ -124,11 +124,11 @@ include::{kotlin-examples}/started/producer/Application.kt[tag=startedProducer]
 === With Java Configuration (No Spring Boot)
 
 IMPORTANT: Spring for Apache Kafka is designed to be used in a Spring Application Context.
-For example, if you create the listener container yourself outside of a Spring context, not all functions will work unless you satisfy all of the `...Aware` interfaces that the container implements.
+For example, if you create the listener container yourself outside of a Spring context, not all functions will work unless you satisfy all of the `+++...+++Aware` interfaces that the container implements.
 
 Here is an example of an application that does not use Spring Boot; it has both a `Consumer` and `Producer`.
 
-.Without Boot
+.Without Spring Boot
 [tabs]
 ======
 Java::

@@ -42,13 +42,20 @@ List<PartitionInfo> partitionsFor(String topic);
 
 <T> T execute(ProducerCallback<K, V, T> callback);
 
-// Flush the producer.
+<T> T executeInTransaction(OperationsCallback<K, V, T> callback);
 
+// Flush the producer.
 void flush();
 
 interface ProducerCallback<K, V, T> {
 
     T doInKafka(Producer<K, V> producer);
+
+}
+
+interface OperationsCallback<K, V, T> {
+
+    T doInOperations(KafkaOperations<K, V> operations);
 
 }
 ----
@@ -62,7 +69,7 @@ The `sendDefault` API requires that a default topic has been provided to the tem
 
 The API takes in a `timestamp` as a parameter and stores this timestamp in the record.
 How the user-provided timestamp is stored depends on the timestamp type configured on the Kafka topic.
-If the topic is configured to use `CREATE_TIME`, the user specified timestamp is recorded (or generated if not specified).
+If the topic is configured to use `CREATE_TIME`, the user-specified timestamp is recorded (or generated if not specified).
 If the topic is configured to use `LOG_APPEND_TIME`, the user-specified timestamp is ignored and the broker adds in the local broker time.
 
 The `metrics` and `partitionsFor` methods delegate to the same methods on the underlying https://kafka.apache.org/20/javadoc/org/apache/kafka/clients/producer/Producer.html[`Producer`].
