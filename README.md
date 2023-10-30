@@ -20,7 +20,7 @@ To check out the project and build from source, do the following:
 
 Java 17 or later version is recommended to build the project.
 
-If you encounter out of memory errors during the build, tweak the `org.gradle.jvmargs` property in `gradle.properties`.
+If you encounter out of memory errors during the build, change the `org.gradle.jvmargs` property in `gradle.properties`.
 
 To build and install jars into your local Maven cache:
 
