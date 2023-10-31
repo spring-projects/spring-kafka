@@ -91,7 +91,7 @@ public interface CommonErrorHandler extends DeliveryAttemptAware {
 	}
 
 	/**
-	 * Handle the exception for a record listener when {@link #remainingRecords()} returns
+	 * Handle the exception for a record listener when {@link #seeksAfterHandling()} returns
 	 * true. The failed record and all the remaining records from the poll are passed in.
 	 * Usually used when the error handler performs seeks so that the remaining records
 	 * will be redelivered on the next poll.
@@ -99,7 +99,7 @@ public interface CommonErrorHandler extends DeliveryAttemptAware {
 	 * @param records the remaining records including the one that failed.
 	 * @param consumer the consumer.
 	 * @param container the container.
-	 * @see #remainingRecords()
+	 * @see #seeksAfterHandling()
 	 */
 	default void handleRemaining(Exception thrownException, List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {

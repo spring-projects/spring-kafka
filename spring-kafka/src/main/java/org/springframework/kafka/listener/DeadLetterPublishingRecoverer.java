@@ -113,6 +113,8 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	private boolean skipSameTopicFatalExceptions = true;
 
+	private boolean logRecoveryRecord = false;
+
 	private ExceptionHeadersCreator exceptionHeadersCreator = this::addExceptionInfoHeaders;
 
 	private Supplier<HeaderNames> headerNamesSupplier = () -> HeaderNames.Builder
@@ -401,6 +403,15 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	}
 
 	/**
+	 * Set to true if you want to log recovery record and exception.
+	 * @param logRecoveryRecord true to log record and exception.
+	 * @since 3.1.0
+	 */
+	public void setLogRecoveryRecord(boolean logRecoveryRecord) {
+		this.logRecoveryRecord = logRecoveryRecord;
+	}
+
+	/**
 	 * Set a {@link ExceptionHeadersCreator} implementation to completely take over
 	 * setting the exception headers in the output record. Disables all headers that are
 	 * set by default.
@@ -502,6 +513,9 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 					+ " skipped because not retryable exception " + exception.toString()
 					+ " and the destination resolver routed back to the same topic");
 			return;
+		}
+		if (this.logRecoveryRecord) {
+			this.logger.info(exception, () -> "Recovery record " + KafkaUtils.format(record));
 		}
 		if (consumer != null && this.verifyPartition) {
 			tp = checkPartition(tp, consumer);

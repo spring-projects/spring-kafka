@@ -230,6 +230,7 @@ public class DeadLetterPublishingRecovererFactory {
 		recoverer.setAppendOriginalHeaders(false);
 		recoverer.setThrowIfNoDestinationReturned(false);
 		recoverer.setSkipSameTopicFatalExceptions(false);
+		recoverer.setLogRecoveryRecord(false);
 		this.recovererCustomizer.accept(recoverer);
 		this.fatalExceptions.forEach(recoverer::addNotRetryableExceptions);
 		this.nonFatalExceptions.forEach(recoverer::removeClassification);

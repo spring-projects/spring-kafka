@@ -201,7 +201,6 @@ public final class SerializationUtils {
 			return null;
 		}
 		if (header != null) {
-			byte[] value = header.value();
 			DeserializationException exception = byteArrayToDeserializationException(logger, header);
 			if (exception != null) {
 				Headers headers = new RecordHeaders(record.headers().toArray());
