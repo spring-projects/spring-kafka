@@ -405,7 +405,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	/**
 	 * Set to true if you want to log recovery record and exception.
 	 * @param logRecoveryRecord true to log record and exception.
-	 * @since 3.1.0
+	 * @since 3.1
 	 */
 	public void setLogRecoveryRecord(boolean logRecoveryRecord) {
 		this.logRecoveryRecord = logRecoveryRecord;

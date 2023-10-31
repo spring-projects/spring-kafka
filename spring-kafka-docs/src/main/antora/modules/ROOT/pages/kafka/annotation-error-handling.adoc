@@ -729,7 +729,7 @@ Starting with version 2.7, the recoverer checks that the partition selected by t
 If the partition is not present, the partition in the `ProducerRecord` is set to `null`, allowing the `KafkaProducer` to select the partition.
 You can disable this check by setting the `verifyPartition` property to `false`.
 
-Starting with version 3.1.0, set `logRecoveryRecord` to `true` will log recovery record and exception.
+Starting with version 3.1, setting the `logRecoveryRecord` property to `true` will log the recovery record and exception.
 
 [[dlpr-headers]]
 == Managing Dead Letter Record Headers
