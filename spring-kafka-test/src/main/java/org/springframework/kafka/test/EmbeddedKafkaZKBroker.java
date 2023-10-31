@@ -37,6 +37,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -110,6 +111,8 @@ public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker {
 	private final List<KafkaServer> kafkaServers = new ArrayList<>();
 
 	private final Map<String, Object> brokerProperties = new HashMap<>();
+
+	private final AtomicBoolean initialized = new AtomicBoolean();
 
 	private EmbeddedZookeeper zookeeper;
 
@@ -289,45 +292,47 @@ public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker {
 
 	@Override
 	public void afterPropertiesSet() {
-		overrideExitMethods();
-		try {
-			this.zookeeper = new EmbeddedZookeeper(this.zkPort);
-		}
-		catch (IOException | InterruptedException e) {
-			throw new IllegalStateException("Failed to create embedded Zookeeper", e);
-		}
-		this.zkConnect = LOOPBACK + ":" + this.zookeeper.getPort();
-		this.kafkaServers.clear();
-		boolean userLogDir = this.brokerProperties.get(KafkaConfig.LogDirProp()) != null && this.count == 1;
-		for (int i = 0; i < this.count; i++) {
-			Properties brokerConfigProperties = createBrokerProperties(i);
-			brokerConfigProperties.setProperty(KafkaConfig.ReplicaSocketTimeoutMsProp(), "1000");
-			brokerConfigProperties.setProperty(KafkaConfig.ControllerSocketTimeoutMsProp(), "1000");
-			brokerConfigProperties.setProperty(KafkaConfig.OffsetsTopicReplicationFactorProp(), "1");
-			brokerConfigProperties.setProperty(KafkaConfig.ReplicaHighWatermarkCheckpointIntervalMsProp(),
-					String.valueOf(Long.MAX_VALUE));
-			this.brokerProperties.forEach(brokerConfigProperties::put);
-			if (!this.brokerProperties.containsKey(KafkaConfig.NumPartitionsProp())) {
-				brokerConfigProperties.setProperty(KafkaConfig.NumPartitionsProp(), "" + this.partitionsPerTopic);
+		if (this.initialized.compareAndSet(false, true)) {
+			overrideExitMethods();
+			try {
+				this.zookeeper = new EmbeddedZookeeper(this.zkPort);
 			}
-			if (!userLogDir) {
-				logDir(brokerConfigProperties);
+			catch (IOException | InterruptedException e) {
+				throw new IllegalStateException("Failed to create embedded Zookeeper", e);
 			}
-			KafkaServer server = TestUtils.createServer(new KafkaConfig(brokerConfigProperties), Time.SYSTEM);
-			this.kafkaServers.add(server);
-			if (this.kafkaPorts[i] == 0) {
-				this.kafkaPorts[i] = TestUtils.boundPort(server, SecurityProtocol.PLAINTEXT);
+			this.zkConnect = LOOPBACK + ":" + this.zookeeper.getPort();
+			this.kafkaServers.clear();
+			boolean userLogDir = this.brokerProperties.get(KafkaConfig.LogDirProp()) != null && this.count == 1;
+			for (int i = 0; i < this.count; i++) {
+				Properties brokerConfigProperties = createBrokerProperties(i);
+				brokerConfigProperties.setProperty(KafkaConfig.ReplicaSocketTimeoutMsProp(), "1000");
+				brokerConfigProperties.setProperty(KafkaConfig.ControllerSocketTimeoutMsProp(), "1000");
+				brokerConfigProperties.setProperty(KafkaConfig.OffsetsTopicReplicationFactorProp(), "1");
+				brokerConfigProperties.setProperty(KafkaConfig.ReplicaHighWatermarkCheckpointIntervalMsProp(),
+						String.valueOf(Long.MAX_VALUE));
+				this.brokerProperties.forEach(brokerConfigProperties::put);
+				if (!this.brokerProperties.containsKey(KafkaConfig.NumPartitionsProp())) {
+					brokerConfigProperties.setProperty(KafkaConfig.NumPartitionsProp(), "" + this.partitionsPerTopic);
+				}
+				if (!userLogDir) {
+					logDir(brokerConfigProperties);
+				}
+				KafkaServer server = TestUtils.createServer(new KafkaConfig(brokerConfigProperties), Time.SYSTEM);
+				this.kafkaServers.add(server);
+				if (this.kafkaPorts[i] == 0) {
+					this.kafkaPorts[i] = TestUtils.boundPort(server, SecurityProtocol.PLAINTEXT);
+				}
 			}
+			createKafkaTopics(this.topics);
+			if (this.brokerListProperty == null) {
+				this.brokerListProperty = System.getProperty(BROKER_LIST_PROPERTY);
+			}
+			if (this.brokerListProperty != null) {
+				System.setProperty(this.brokerListProperty, getBrokersAsString());
+			}
+			System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
+			System.setProperty(SPRING_EMBEDDED_ZOOKEEPER_CONNECT, getZookeeperConnectionString());
 		}
-		createKafkaTopics(this.topics);
-		if (this.brokerListProperty == null) {
-			this.brokerListProperty = System.getProperty(BROKER_LIST_PROPERTY);
-		}
-		if (this.brokerListProperty != null) {
-			System.setProperty(this.brokerListProperty, getBrokersAsString());
-		}
-		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
-		System.setProperty(SPRING_EMBEDDED_ZOOKEEPER_CONNECT, getZookeeperConnectionString());
 	}
 
 	private void logDir(Properties brokerConfigProperties) {

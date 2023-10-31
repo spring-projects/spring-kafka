@@ -33,6 +33,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -91,6 +92,8 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 	private final int partitionsPerTopic;
 
 	private final Properties brokerProperties = new Properties();
+
+	private final AtomicBoolean initialized = new AtomicBoolean();
 
 	private KafkaClusterTestKit cluster;
 
@@ -191,9 +194,11 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 
 	@Override
 	public void afterPropertiesSet() {
-		overrideExitMethods();
-		addDefaultBrokerPropsIfAbsent(this.brokerProperties, this.count);
-		start();
+		if (this.initialized.compareAndSet(false, true)) {
+			overrideExitMethods();
+			addDefaultBrokerPropsIfAbsent(this.brokerProperties, this.count);
+			start();
+		}
 	}
 
 
@@ -232,7 +237,6 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 			System.setProperty(this.brokerListProperty, getBrokersAsString());
 		}
 		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
-		System.setProperty(this.brokerListProperty, getBrokersAsString());
 	}
 
 	@Override

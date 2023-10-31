@@ -126,6 +126,9 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 			embeddedKafkaBroker.brokerListProperty(this.embeddedKafka.bootstrapServersProperty());
 		}
 
+		// Safe to start an embedded broker eagerly before context refresh
+		embeddedKafkaBroker.afterPropertiesSet();
+
 		((BeanDefinitionRegistry) beanFactory).registerBeanDefinition(EmbeddedKafkaBroker.BEAN_NAME,
 				new RootBeanDefinition(EmbeddedKafkaBroker.class, () -> embeddedKafkaBroker));
 	}
