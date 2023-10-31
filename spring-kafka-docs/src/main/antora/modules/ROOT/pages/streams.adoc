@@ -45,7 +45,7 @@ Instead, a new `KafkaStreams` instance to restart stream processing must be crea
 [[streams-spring]]
 == Spring Management
 
-To simplify using Kafka Streams from the Spring application context perspective and use the lifecycle management through a container, the Spring for Apache Kafka introduces `StreamsBuilderFactoryBean`.
+To simplify using Kafka Streams from the Spring application context perspective and use the lifecycle management through a container, Spring for Apache Kafka introduces `StreamsBuilderFactoryBean`.
 This is an `AbstractFactoryBean` implementation to expose a `StreamsBuilder` singleton instance as a bean.
 The following example creates such a bean:
 
