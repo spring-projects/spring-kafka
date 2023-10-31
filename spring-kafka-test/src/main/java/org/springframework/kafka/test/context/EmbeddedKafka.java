@@ -29,6 +29,7 @@ import org.springframework.core.annotation.AliasFor;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.EmbeddedKafkaZKBroker;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
+import org.springframework.test.context.aot.DisabledInAotMode;
 
 /**
  * Annotation that can be specified on a test class that runs Spring for Apache Kafka
@@ -72,6 +73,7 @@ import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Inherited
+@DisabledInAotMode
 public @interface EmbeddedKafka {
 
 	/**

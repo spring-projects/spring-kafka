@@ -24,7 +24,9 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.DefaultSingletonBeanRegistry;
+import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.io.Resource;
@@ -124,9 +126,8 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 			embeddedKafkaBroker.brokerListProperty(this.embeddedKafka.bootstrapServersProperty());
 		}
 
-		beanFactory.initializeBean(embeddedKafkaBroker, EmbeddedKafkaBroker.BEAN_NAME);
-		beanFactory.registerSingleton(EmbeddedKafkaBroker.BEAN_NAME, embeddedKafkaBroker);
-		((DefaultSingletonBeanRegistry) beanFactory).registerDisposableBean(EmbeddedKafkaBroker.BEAN_NAME, embeddedKafkaBroker);
+		((BeanDefinitionRegistry) beanFactory).registerBeanDefinition(EmbeddedKafkaBroker.BEAN_NAME,
+				new RootBeanDefinition(EmbeddedKafkaBroker.class, () -> embeddedKafkaBroker));
 	}
 
 	private int[] setupPorts() {
