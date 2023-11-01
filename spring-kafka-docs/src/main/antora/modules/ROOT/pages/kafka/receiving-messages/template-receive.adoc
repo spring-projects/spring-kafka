@@ -20,5 +20,5 @@ ConsumerRecords<K, V> receive(Collection<TopicPartitionOffset> requested, Durati
 As you can see, you need to know the partition and offset of the record(s) you need to retrieve; a new `Consumer` is created (and closed) for each operation.
 
 With the last two methods, each record is retrieved individually and the results assembled into a `ConsumerRecords` object.
-When creating the `TopicPartitionOffset` s for the request, only positive, absolute offsets are supported.
+When creating the `TopicPartitionOffset`+++s+++ for the request, only positive, absolute offsets are supported.
 

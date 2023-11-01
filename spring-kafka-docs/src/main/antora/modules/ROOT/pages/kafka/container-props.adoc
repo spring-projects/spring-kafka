@@ -112,12 +112,12 @@ The time to process a batch of records plus this value must be less than the `ma
 
 |[[idleEventInterval]]<<idleEventInterval,`idleEventInterval`>>
 |`null`
-|When set, enables publication of `ListenerContainerIdleEvent` s, see xref:kafka/events.adoc[Application Events] and xref:kafka/events.adoc#idle-containers[Detecting Idle and Non-Responsive Consumers].
+|When set, enables publication of `ListenerContainerIdleEvent`+++s+++, see xref:kafka/events.adoc[Application Events] and xref:kafka/events.adoc#idle-containers[Detecting Idle and Non-Responsive Consumers].
 Also see `idleBeforeDataMultiplier`.
 
 |[[idlePartitionEventInterval]]<<idlePartitionEventInterval,`idlePartitionEventInterval`>>
 |`null`
-|When set, enables publication of `ListenerContainerIdlePartitionEvent` s, see xref:kafka/events.adoc[Application Events] and xref:kafka/events.adoc#idle-containers[Detecting Idle and Non-Responsive Consumers].
+|When set, enables publication of `ListenerContainerIdlePartitionEvent`+++s+++, see xref:kafka/events.adoc[Application Events] and xref:kafka/events.adoc#idle-containers[Detecting Idle and Non-Responsive Consumers].
 
 |[[kafkaConsumerProperties]]<<kafkaConsumerProperties,`kafkaConsumerProperties`>>
 |None
@@ -274,7 +274,7 @@ See xref:kafka/annotation-error-handling.adoc#error-handlers[Container Error Han
 
 |[[listenerId]]<<listenerId,`listenerId`>>
 |See desc.
-|The bean name for user-configured containers or the `id` attribute of `@KafkaListener` s.
+|The bean name for user-configured containers or the `id` attribute of `@KafkaListener`+++s+++.
 
 |[[listenerInfo]]<<listenerInfo,`listenerInfo`>>
 |null
@@ -333,15 +333,15 @@ Also see `interceptBeforeTx`.
 
 |[[assignedPartitions2]]<<assignedPartitions2,`assignedPartitions`>>
 |(read only)
-|The aggregate of partitions currently assigned to this container's child `KafkaMessageListenerContainer` s (explicitly or not).
+|The aggregate of partitions currently assigned to this container's child `KafkaMessageListenerContainer`+++s+++ (explicitly or not).
 
 |[[assignedPartitionsByClientId2]]<<assignedPartitionsByClientId2,`assignedPartitionsByClientId`>>
 |(read only)
-|The partitions currently assigned to this container's child `KafkaMessageListenerContainer` s (explicitly or not), keyed by the child container's consumer's `client.id` property.
+|The partitions currently assigned to this container's child `KafkaMessageListenerContainer`+++s+++ (explicitly or not), keyed by the child container's consumer's `client.id` property.
 
 |[[concurrency]]<<concurrency,`concurrency`>>
 |1
-|The number of child `KafkaMessageListenerContainer` s to manage.
+|The number of child `KafkaMessageListenerContainer`+++s+++ to manage.
 
 |[[containerPaused2]]<<containerPaused2,`containerPaused`>>
 |n/a
@@ -349,6 +349,6 @@ Also see `interceptBeforeTx`.
 
 |[[containers]]<<containers,`containers`>>
 |n/a
-|A reference to all child `KafkaMessageListenerContainer` s.
+|A reference to all child `KafkaMessageListenerContainer`+++s+++.
 |===
 

@@ -36,11 +36,11 @@ void seek(String topic, int partition, long offset);
 
 void seekToBeginning(String topic, int partition);
 
-void seekToBeginning(Collection=<TopicPartitions> partitions);
+void seekToBeginning(Collection<TopicPartitions> partitions);
 
 void seekToEnd(String topic, int partition);
 
-void seekToEnd(Collection=<TopicPartitions> partitions);
+void seekToEnd(Collection<TopicPartitions> partitions);
 
 void seekRelative(String topic, int partition, long offset, boolean toCurrent);
 
@@ -70,7 +70,7 @@ NOTE: The `seekToBeginning` method that accepts a collection is useful, for exam
 ----
 public class MyListener implements ConsumerSeekAware {
 
-...
+    ...
 
     @Override
     public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
@@ -167,7 +167,7 @@ public class SeekToLastOnIdleListener extends AbstractConsumerSeekAware {
     }
 
     @Override
-    public void onIdleContainer(Map<org.apache.kafka.common.TopicPartition, Long> assignments,
+    public void onIdleContainer(Map<TopicPartition, Long> assignments,
             ConsumerSeekCallback callback) {
 
             assignments.keySet().forEach(tp -> callback.seekRelative(tp.topic(), tp.partition(), -1, true));
@@ -186,7 +186,7 @@ public class SeekToLastOnIdleListener extends AbstractConsumerSeekAware {
     * Rewind one partition one record.
     */
     public void rewindOnePartitionOneRecord(String topic, int partition) {
-        getSeekCallbackFor(new org.apache.kafka.common.TopicPartition(topic, partition))
+        getSeekCallbackFor(new TopicPartition(topic, partition))
             .seekRelative(topic, partition, -1, true);
     }
 
@@ -195,9 +195,9 @@ public class SeekToLastOnIdleListener extends AbstractConsumerSeekAware {
 
 Version 2.6 added convenience methods to the abstract class:
 
-* `seekToBeginning()` - seeks all assigned partitions to the beginning
-* `seekToEnd()` - seeks all assigned partitions to the end
-* `seekToTimestamp(long time)` - seeks all assigned partitions to the offset represented by that timestamp.
+* `seekToBeginning()` - seeks all assigned partitions to the beginning.
+* `seekToEnd()` - seeks all assigned partitions to the end.
+* `seekToTimestamp(long timestamp)` - seeks all assigned partitions to the offset represented by that timestamp.
 
 Example:
 
@@ -218,7 +218,7 @@ public class SomeOtherBean {
     ...
 
     void someMethod() {
-        this.listener.seekToTimestamp(System.currentTimeMillis - 60_000);
+        this.listener.seekToTimestamp(System.currentTimeMillis() - 60_000);
     }
 
 }

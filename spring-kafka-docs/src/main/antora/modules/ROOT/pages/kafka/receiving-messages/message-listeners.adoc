@@ -81,5 +81,5 @@ Access to the `Consumer` object is provided.
 IMPORTANT: The `Consumer` object is not thread-safe.
 You must only invoke its methods on the thread that calls the listener.
 
-IMPORTANT: You should not execute any `Consumer<?, ?>` methods that affect the consumer's positions and or committed offsets in your listener; the container needs to manage such information.
+IMPORTANT: You should not execute any `Consumer<?, ?>` methods that affect the consumer's positions or committed offsets in your listener; the container needs to manage such information.
 
