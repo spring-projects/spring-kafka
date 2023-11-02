@@ -45,11 +45,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 public class DefaultJackson2JavaTypeMapper extends AbstractJavaTypeMapper
 		implements Jackson2JavaTypeMapper {
 
-	private static final List<String> TRUSTED_PACKAGES =
-			Arrays.asList(
-					"java.util",
-					"java.lang"
-			);
+	private static final List<String> TRUSTED_PACKAGES = List.of("java.util", "java.lang");
 
 	private final Set<String> trustedPackages = new LinkedHashSet<>(TRUSTED_PACKAGES);
 
@@ -78,7 +74,7 @@ public class DefaultJackson2JavaTypeMapper extends AbstractJavaTypeMapper
 	 */
 	@Override
 	public void addTrustedPackages(String... packagesToTrust) {
-		if (this.trustedPackages.size() == 0) {
+		if (this.trustedPackages.isEmpty()) {
 			return;
 		}
 		if (packagesToTrust != null) {
