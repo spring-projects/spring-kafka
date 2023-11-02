@@ -93,6 +93,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 /**
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Wang Zhiyang
  * @since 2.7
  */
 @SpringJUnitConfig
@@ -121,6 +122,12 @@ public class RetryTopicIntegrationTests {
 	public final static String MANUAL_TOPIC = "myRetryTopic6";
 
 	public final static String NOT_RETRYABLE_EXCEPTION_TOPIC = "noRetryTopic";
+
+	public final static String FIRST_REUSE_RETRY_TOPIC = "reuseRetry1";
+
+	public final static String SECOND_REUSE_RETRY_TOPIC = "reuseRetry2";
+
+	public final static String THIRD_REUSE_RETRY_TOPIC = "reuseRetry3";
 
 	private final static String MAIN_TOPIC_CONTAINER_FACTORY = "kafkaListenerContainerFactory";
 
@@ -265,6 +272,29 @@ public class RetryTopicIntegrationTests {
 		finally {
 			consumer.close();
 		}
+	}
+
+	@Test
+	void shouldFirstReuseRetryTopic(@Autowired FirstReuseRetryTopicListener listener1,
+			@Autowired SecondReuseRetryTopicListener listener2, @Autowired ThirdReuseRetryTopicListener listener3) {
+
+		logger.debug("Sending message to topic " + FIRST_REUSE_RETRY_TOPIC);
+		kafkaTemplate.send(FIRST_REUSE_RETRY_TOPIC, "Testing reuse topic 1");
+		logger.debug("Sending message to topic " + SECOND_REUSE_RETRY_TOPIC);
+		kafkaTemplate.send(SECOND_REUSE_RETRY_TOPIC, "Testing reuse topic 2");
+		logger.debug("Sending message to topic " + THIRD_REUSE_RETRY_TOPIC);
+		kafkaTemplate.send(THIRD_REUSE_RETRY_TOPIC, "Testing reuse topic 3");
+		assertThat(awaitLatch(latchContainer.countDownLatchReuseOne)).isTrue();
+		assertThat(awaitLatch(latchContainer.countDownLatchReuseTwo)).isTrue();
+		assertThat(awaitLatch(latchContainer.countDownLatchReuseThree)).isTrue();
+		assertThat(listener1.topics).containsExactly(FIRST_REUSE_RETRY_TOPIC,
+				FIRST_REUSE_RETRY_TOPIC + "-retry");
+		assertThat(listener2.topics).containsExactly(SECOND_REUSE_RETRY_TOPIC,
+				SECOND_REUSE_RETRY_TOPIC + "-retry-30", SECOND_REUSE_RETRY_TOPIC + "-retry-60",
+				SECOND_REUSE_RETRY_TOPIC + "-retry-100", SECOND_REUSE_RETRY_TOPIC + "-retry-100");
+		assertThat(listener3.topics).containsExactly(THIRD_REUSE_RETRY_TOPIC,
+				THIRD_REUSE_RETRY_TOPIC + "-retry", THIRD_REUSE_RETRY_TOPIC + "-retry",
+				THIRD_REUSE_RETRY_TOPIC + "-retry", THIRD_REUSE_RETRY_TOPIC + "-retry");
 	}
 
 	@Test
@@ -474,6 +504,69 @@ public class RetryTopicIntegrationTests {
 	}
 
 	@Component
+	static class FirstReuseRetryTopicListener {
+
+		final List<String> topics = Collections.synchronizedList(new ArrayList<>());
+
+		@Autowired
+		CountDownLatchContainer container;
+
+		@RetryableTopic(attempts = "2", backoff = @Backoff(50),
+				sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC)
+		@KafkaListener(id = "reuseRetry1", topics = FIRST_REUSE_RETRY_TOPIC,
+				containerFactory = "retryTopicListenerContainerFactory")
+		public void listen1(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
+			logger.debug("Message {} received in topic {} ", message, receivedTopic);
+			this.topics.add(receivedTopic);
+			container.countDownLatchReuseOne.countDown();
+			throw new RuntimeException("Another woooops... " + receivedTopic);
+		}
+
+	}
+
+	@Component
+	static class SecondReuseRetryTopicListener {
+
+		final List<String> topics = Collections.synchronizedList(new ArrayList<>());
+
+		@Autowired
+		CountDownLatchContainer container;
+
+		@RetryableTopic(attempts = "5", backoff = @Backoff(delay = 30, maxDelay = 100, multiplier = 2),
+				sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC)
+		@KafkaListener(id = "reuseRetry2", topics = SECOND_REUSE_RETRY_TOPIC,
+				containerFactory = "retryTopicListenerContainerFactory")
+		public void listen2(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
+			logger.debug("Message {} received in topic {} ", message, receivedTopic);
+			this.topics.add(receivedTopic);
+			container.countDownLatchReuseTwo.countDown();
+			throw new RuntimeException("Another woooops... " + receivedTopic);
+		}
+
+	}
+
+	@Component
+	static class ThirdReuseRetryTopicListener {
+
+		final List<String> topics = Collections.synchronizedList(new ArrayList<>());
+
+		@Autowired
+		CountDownLatchContainer container;
+
+		@RetryableTopic(attempts = "5", backoff = @Backoff(delay = 1, maxDelay = 5, multiplier = 1.4),
+				sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC)
+		@KafkaListener(id = "reuseRetry3", topics = THIRD_REUSE_RETRY_TOPIC,
+				containerFactory = "retryTopicListenerContainerFactory")
+		public void listen3(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
+			logger.debug("Message {} received in topic {} ", message, receivedTopic);
+			this.topics.add(receivedTopic);
+			container.countDownLatchReuseThree.countDown();
+			throw new RuntimeException("Another woooops... " + receivedTopic);
+		}
+
+	}
+
+	@Component
 	static class CountDownLatchContainer {
 
 		CountDownLatch countDownLatch1 = new CountDownLatch(5);
@@ -488,6 +581,9 @@ public class RetryTopicIntegrationTests {
 		CountDownLatch countDownLatchDltTwo = new CountDownLatch(1);
 		CountDownLatch countDownLatchDltThree = new CountDownLatch(1);
 		CountDownLatch countDownLatchDltFour = new CountDownLatch(1);
+		CountDownLatch countDownLatchReuseOne = new CountDownLatch(2);
+		CountDownLatch countDownLatchReuseTwo = new CountDownLatch(5);
+		CountDownLatch countDownLatchReuseThree = new CountDownLatch(5);
 		CountDownLatch customDltCountdownLatch = new CountDownLatch(1);
 		CountDownLatch customErrorHandlerCountdownLatch = new CountDownLatch(6);
 		CountDownLatch customMessageConverterCountdownLatch = new CountDownLatch(6);
@@ -626,6 +722,21 @@ public class RetryTopicIntegrationTests {
 		@Bean
 		public NoRetryTopicListener noRetryTopicListener() {
 			return new NoRetryTopicListener();
+		}
+
+		@Bean
+		public FirstReuseRetryTopicListener firstReuseRetryTopicListener() {
+			return new FirstReuseRetryTopicListener();
+		}
+
+		@Bean
+		public SecondReuseRetryTopicListener secondReuseRetryTopicListener() {
+			return new SecondReuseRetryTopicListener();
+		}
+
+		@Bean
+		public ThirdReuseRetryTopicListener thirdReuseRetryTopicListener() {
+			return new ThirdReuseRetryTopicListener();
 		}
 
 		@Bean

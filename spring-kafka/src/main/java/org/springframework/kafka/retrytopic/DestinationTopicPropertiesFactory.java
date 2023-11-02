@@ -128,7 +128,7 @@ public class DestinationTopicPropertiesFactory {
 	}
 
 	private boolean isSingleTopicFixedDelay() {
-		return isFixedDelay() && isSingleTopicSameIntervalTopicReuseStrategy();
+		return (this.backOffValues.size() == 1 || isFixedDelay()) && isSingleTopicSameIntervalTopicReuseStrategy();
 	}
 
 	private boolean isSingleTopicSameIntervalTopicReuseStrategy() {
@@ -220,8 +220,7 @@ public class DestinationTopicPropertiesFactory {
 	}
 
 	private boolean isDelayWithReusedTopic(Long backoffValue) {
-		return ((isSingleTopicFixedDelay()) ||
-				(hasDuplicates(backoffValue) && isSingleTopicSameIntervalTopicReuseStrategy()));
+		return hasDuplicates(backoffValue) && isSingleTopicSameIntervalTopicReuseStrategy();
 	}
 
 	private int getIndexInBackoffValues(int indexInBackoffValues, Long thisBackOffValue) {
