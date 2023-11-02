@@ -10,8 +10,8 @@ See xref:kafka/annotation-error-handling.adoc#after-rollback[After-rollback Proc
 
 Using transactions enables Exactly Once Semantics (EOS).
 
-This means that, for a `read->process-write` sequence, it is guaranteed that the **sequence** is completed exactly once.
-(The read and process are have at least once semantics).
+This means that, for a `read+++->+++process+++->+++write` sequence, it is guaranteed that the **sequence** is completed exactly once.
+(The read and process have at least once semantics).
 
 Spring for Apache Kafka version 3.0 and later only supports `EOSMode.V2`:
 

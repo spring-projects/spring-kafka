@@ -24,7 +24,7 @@ To configure the retry topic and dlt for a `@KafkaListener` annotated method, yo
 @RetryableTopic(kafkaTemplate = "myRetryableTopicKafkaTemplate")
 @KafkaListener(topics = "my-annotated-topic", groupId = "myGroupId")
 public void processMessage(MyPojo message) {
-        // ... message processing
+    // ... message processing
 }
 ----
 
@@ -35,7 +35,7 @@ If no DltHandler method is provided a default consumer is created which only log
 ----
 @DltHandler
 public void processMessage(MyPojo message) {
-// ... message processing, persistence, etc
+    // ... message processing, persistence, etc
 }
 ----
 
@@ -72,7 +72,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, Object> templa
 }
 ----
 
-This will create retry topics and a dlt, as well as the corresponding consumers, for all topics in methods annotated with '@KafkaListener' using the default configurations. The `KafkaTemplate` instance is required for message forwarding.
+This will create retry topics and a dlt, as well as the corresponding consumers, for all topics in methods annotated with `+++@+++KafkaListener` using the default configurations. The `KafkaTemplate` instance is required for message forwarding.
 
 To achieve more fine-grained control over how to handle non-blocking retrials for each topic, more than one `RetryTopicConfiguration` bean can be provided.
 
@@ -104,7 +104,7 @@ public RetryTopicConfiguration myOtherRetryTopic(KafkaTemplate<String, MyOtherPo
 NOTE: The retry topics' and dlt's consumers will be assigned to a consumer group with a group id that is the combination of the one which you provide in the `groupId` parameter of the `@KafkaListener` annotation with the topic's suffix.
 If you don't provide any they'll all belong to the same group, and rebalance on a retry topic will cause an unnecessary rebalance on the main topic.
 
-IMPORTANT: If the consumer is configured with an xref:kafka/serdes.adoc#error-handling-deserializer[`ErrorHandlingDeserializer`], to handle deserilialization exceptions, it is important to configure the `KafkaTemplate` and its producer with a serializer that can handle normal objects as well as raw `byte[]` values, which result from deserialization exceptions.
+IMPORTANT: If the consumer is configured with an xref:kafka/serdes.adoc#error-handling-deserializer[`ErrorHandlingDeserializer`], to handle deserialization exceptions, it is important to configure the `KafkaTemplate` and its producer with a serializer that can handle normal objects as well as raw `byte[]` values, which result from deserialization exceptions.
 The generic value type of the template should be `Object`.
 One technique is to use the `DelegatingByTypeSerializer`; an example follows:
 
@@ -112,14 +112,14 @@ One technique is to use the `DelegatingByTypeSerializer`; an example follows:
 ----
 @Bean
 public ProducerFactory<String, Object> producerFactory() {
-  return new DefaultKafkaProducerFactory<>(producerConfiguration(), new StringSerializer(),
-    new DelegatingByTypeSerializer(Map.of(byte[].class, new ByteArraySerializer(),
-          MyNormalObject.class, new JsonSerializer<Object>())));
+    return new DefaultKafkaProducerFactory<>(producerConfiguration(), new StringSerializer(),
+        new DelegatingByTypeSerializer(Map.of(byte[].class, new ByteArraySerializer(),
+               MyNormalObject.class, new JsonSerializer<Object>())));
 }
 
 @Bean
 public KafkaTemplate<String, Object> kafkaTemplate() {
-  return new KafkaTemplate<>(producerFactory());
+    return new KafkaTemplate<>(producerFactory());
 }
 ----
 
@@ -168,7 +168,7 @@ IMPORTANT: When using this configuration approach, the `@EnableKafkaRetryTopic` 
 Use the simple `@EnableKafka` annotation instead.
 
 When `autoCreateTopics` is true, the main and retry topics will be created with the specified number of partitions and replication factor.
-Starting with version 3.0, the default replication factor is `-1`, meaning use the broker default.
+Starting with version 3.0, the default replication factor is `-1`, meaning using the broker default.
 If your broker version is earlier than 2.4, you will need to set an explicit value.
 To override these values for a particular topic (e.g. the main topic or DLT), simply add a `NewTopic` `@Bean` with the required properties; that will override the auto creation properties.
 

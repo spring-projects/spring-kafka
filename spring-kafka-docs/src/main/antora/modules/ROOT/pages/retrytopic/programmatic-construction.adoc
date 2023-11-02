@@ -10,7 +10,7 @@ The following Spring Boot application provides an example of how to do so.
 public class Application extends RetryTopicConfigurationSupport {
 
     public static void main(String[] args) {
-        SpringApplication.run(2Application.class, args);
+        SpringApplication.run(Application.class, args);
     }
 
     @Bean

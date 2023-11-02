@@ -4,7 +4,7 @@
 Apache Kafka provides a mechanism to add interceptors to producers and consumers.
 These objects are managed by Kafka, not Spring, and so normal Spring dependency injection won't work for wiring in dependent Spring Beans.
 However, you can manually wire in those dependencies using the interceptor `config()` method.
-The following Spring Boot application shows how to do this by overriding boot's default factories to add some dependent bean into the configuration properties.
+The following Spring Boot application shows how to do this by overriding Spring Boot's default factories to add some dependent bean into the configuration properties.
 
 [source, java]
 ----

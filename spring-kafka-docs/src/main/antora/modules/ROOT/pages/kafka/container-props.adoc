@@ -27,7 +27,7 @@
 |[[assignmentCommitOption]]<<assignmentCommitOption,`assignmentCommitOption`>>
 |LATEST_ONLY _NO_TX
 |Whether or not to commit the initial position on assignment; by default, the initial offset will only be committed if the `ConsumerConfig.AUTO_OFFSET_RESET_CONFIG` is `latest` and it won't run in a transaction even if there is a transaction manager present.
-See the javadocs for `ContainerProperties.AssignmentCommitOption` for more information about the available options.
+See the JavaDocs for `ContainerProperties.AssignmentCommitOption` for more information about the available options.
 
 |[[asyncAcks]]<<asyncAcks,`asyncAcks`>>
 |false

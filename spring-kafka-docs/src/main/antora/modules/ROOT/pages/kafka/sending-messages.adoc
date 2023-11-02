@@ -275,7 +275,7 @@ For another technique to achieve similar results, but with the additional capabi
 
 As seen in xref:kafka/sending-messages.adoc#kafka-template[Using `KafkaTemplate`], a `ProducerFactory` is used to create the producer.
 
-When not using xref:kafka/transactions.adoc[Transactions], by default, the `DefaultKafkaProducerFactory` creates a singleton producer used by all clients, as recommended in the `KafkaProducer` javadocs.
+When not using xref:kafka/transactions.adoc[Transactions], by default, the `DefaultKafkaProducerFactory` creates a singleton producer used by all clients, as recommended in the `KafkaProducer` JavaDocs.
 However, if you call `flush()` on the template, this can cause delays for other threads using the same producer.
 Starting with version 2.3, the `DefaultKafkaProducerFactory` has a new property `producerPerThread`.
 When set to `true`, the factory will create (and cache) a separate producer for each thread, to avoid this issue.
@@ -708,6 +708,6 @@ After a rebalance, it is possible for duplicate reply deliveries; these will be 
 NOTE: If you use an xref:kafka/serdes.adoc#error-handling-deserializer[`ErrorHandlingDeserializer`] with this aggregating template, the framework will not automatically detect `DeserializationException`+++s+++.
 Instead, the record (with a `null` value) will be returned intact, with the deserialization exception(s) in headers.
 It is recommended that applications call the utility method `ReplyingKafkaTemplate.checkDeserialization()` method to determine if a deserialization exception occurred.
-See its javadocs for more information.
+See its JavaDocs for more information.
 The `replyErrorChecker` is also not called for this aggregating template; you should perform the checks on each element of the reply.
 
