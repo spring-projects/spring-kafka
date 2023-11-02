@@ -60,7 +60,7 @@ public class MultiListenerSendTo {
 
 IMPORTANT: In order to support `@SendTo`, the listener container factory must be provided with a `KafkaTemplate` (in its `replyTemplate` property), which is used to send the reply.
 This should be a `KafkaTemplate` and not a `ReplyingKafkaTemplate` which is used on the client-side for request/reply processing.
-When using Spring Boot, Spring Boot will auto-configure the template into the factory; when configuring your own factory, it must be set as shown in the examples below.
+When using Spring Boot, it will auto-configure the template into the factory; when configuring your own factory, it must be set as shown in the examples below.
 
 Starting with version 2.2, you can add a `ReplyHeadersConfigurer` to the listener container factory.
 This is consulted to determine which headers you want to set in the reply message.
