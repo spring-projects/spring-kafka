@@ -16,7 +16,6 @@
 
 package org.springframework.kafka.support.mapping;
 
-import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
