@@ -15,7 +15,7 @@ See xref:retrytopic/retry-config.adoc#retry-topic-global-settings[Configuring Gl
 protected void configureBlockingRetries(BlockingRetriesConfigurer blockingRetries) {
     blockingRetries
             .retryOn(MyBlockingRetryException.class, MyOtherBlockingRetryException.class)
-            .backOff(new FixedBackOff(3000, 5));
+            .backOff(new FixedBackOff(3_000, 5));
 }
 
 ----

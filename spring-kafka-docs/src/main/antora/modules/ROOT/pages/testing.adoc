@@ -9,20 +9,20 @@ The `spring-kafka-test` jar contains some useful utilities to assist with testin
 Two implementations are provided:
 
 * `EmbeddedKafkaZKBroker` - legacy implementation which starts an embedded `Zookeeper` instance.
-* `EmbeddedKafkaKraftBroker` - (default) uses Kraft instead of `Zookeeper` in combined controller and broker modes (since 3.1)
+* `EmbeddedKafkaKraftBroker` - (default) uses `Kraft` instead of `Zookeeper` in combined controller and broker modes (since 3.1).
 
 There are several techniques to configure the broker as discussed in the following sections.
 
 [[ktu]]
 == KafkaTestUtils
 
-`o.s.kafka.test.utils.KafkaTestUtils` provides a number of static helper methods to consume records, retrieve various record offsets, and others.
+`org.springframework.kafka.test.utils.KafkaTestUtils` provides a number of static helper methods to consume records, retrieve various record offsets, and others.
 Refer to its https://docs.spring.io/spring-kafka/docs/current/api/org/springframework/kafka/test/utils/KafkaTestUtils.html[Javadocs] for complete details.
 
 [[junit]]
 == JUnit
 
-`o.s.kafka.test.utils.KafkaTestUtils` also provides some static methods to set up producer and consumer properties.
+`org.springframework.kafka.test.utils.KafkaTestUtils` also provides some static methods to set up producer and consumer properties.
 The following listing shows those method signatures:
 
 [source, java]
@@ -90,8 +90,7 @@ The following example shows how to use it:
 [source, java]
 ----
 Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testT", "false", embeddedKafka);
-DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(
-        consumerProps);
+DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 Consumer<Integer, String> consumer = cf.createConsumer();
 embeddedKafka.consumeFromAllEmbeddedTopics(consumer);
 ----
@@ -157,7 +156,7 @@ public class MyTests {
         embeddedKafkaRule.getEmbeddedKafka()
               .addTopics(new NewTopic("thing1", 10, (short) 1), new NewTopic("thing2", 15, (short) 1));
         ...
-      }
+    }
 
 }
 ----
@@ -225,7 +224,7 @@ To enable this listener, and therefore have a single global embedded Kafka clust
 In addition, these properties can be provided:
 
 - `spring.kafka.embedded.count` - the number of Kafka brokers to manage;
-- `spring.kafka.embedded.ports` - ports (comma-separated value) for every Kafka broker to start, `0` if random port is a preferred; the number of values must be equal to the `count` mentioned above;
+- `spring.kafka.embedded.ports` - ports (comma-separated value) for every Kafka broker to start, `0` if random port is preferred; the number of values must be equal to the `count` mentioned above;
 - `spring.kafka.embedded.topics` - topics (comma-separated value) to create in the started Kafka cluster;
 - `spring.kafka.embedded.partitions` - number of partitions to provision for the created topics;
 - `spring.kafka.embedded.broker.properties.location` - the location of the file for additional Kafka broker configuration properties; the value of this property must follow the Spring resource abstraction pattern;
@@ -296,7 +295,7 @@ public class KafkaStreamsTests {
 
 Starting with version 2.2.4, you can also use the `@EmbeddedKafka` annotation to specify the Kafka ports property.
 
-Starting with version 3.1; set the `kraft` property to `false` to use an `EmbeddedKafkaZKBroker` instead of an `EmbeddedKafkaKraftBroker`.
+Starting with version 3.1, set the `kraft` property to `false` to use an `EmbeddedKafkaZKBroker` instead of an `EmbeddedKafkaKraftBroker`.
 
 The following example sets the `topics`, `brokerProperties`, and `brokerPropertiesLocation` attributes of `@EmbeddedKafka` support property placeholder resolutions:
 
@@ -324,7 +323,7 @@ Starting with version 2.3, there are two ways to use the `@EmbeddedKafka` annota
 When used with the `@SpringJunitConfig` annotation, the embedded broker is added to the test application context.
 You can auto wire the broker into your test, at the class or method level, to get the broker address list.
 
-When *not* using the spring test context, the `EmbdeddedKafkaCondition` creates a broker; the condition includes a parameter resolver so you can access the broker in your test method...
+When *not* using the spring test context, the `EmbdeddedKafkaCondition` creates a broker; the condition includes a parameter resolver so you can access the broker in your test method.
 
 [source, java]
 ----
@@ -389,10 +388,8 @@ The following example shows how to use a JUnit4 class rule to create an embedded
 public class MyApplicationTests {
 
     @ClassRule
-    public static EmbeddedKafkaRule broker = new EmbeddedKafkaRule(1,
-        false, "someTopic")
+    public static EmbeddedKafkaRule broker = new EmbeddedKafkaRule(1, false, "someTopic")
             .brokerListProperty("spring.kafka.bootstrap-servers");
-    }
 
     @Autowired
     private KafkaTemplate<String, String> template;
@@ -405,7 +402,7 @@ public class MyApplicationTests {
 }
 ----
 
-Notice that, since this is a Spring Boot application, we override the broker list property to set Boot's property.
+Notice that, since this is a Spring Boot application, we override the broker list property to set Spring Boot's property.
 
 [[kafka-testing-embeddedkafka-annotation]]
 === `@EmbeddedKafka` Annotation or `EmbeddedKafkaBroker` Bean
@@ -430,12 +427,12 @@ public class MyApplicationTests {
 }
 ----
 
-NOTE: The `bootstrapServersProperty` is automatically set to `spring.kafka.bootstrap-servers`, by default, starting with version 3.0.10.
+NOTE: The `bootstrapServersProperty` is automatically set to `spring.kafka.bootstrap-servers` by default, starting with version 3.0.10.
 
 [[hamcrest-matchers]]
 == Hamcrest Matchers
 
-The `o.s.kafka.test.hamcrest.KafkaMatchers` provides the following matchers:
+The `org.springframework.kafka.test.hamcrest.KafkaMatchers` provides the following matchers:
 
 [source, java]
 ----
@@ -555,7 +552,7 @@ public class KafkaTemplateTests {
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testT", "false",
             embeddedKafka.getEmbeddedKafka());
         DefaultKafkaConsumerFactory<Integer, String> cf =
-                            new DefaultKafkaConsumerFactory<Integer, String>(consumerProps);
+                            new DefaultKafkaConsumerFactory<>(consumerProps);
         ContainerProperties containerProperties = new ContainerProperties(TEMPLATE_TOPIC);
         KafkaMessageListenerContainer<Integer, String> container =
                             new KafkaMessageListenerContainer<>(cf, containerProperties);
@@ -576,7 +573,7 @@ public class KafkaTemplateTests {
         Map<String, Object> producerProps =
                             KafkaTestUtils.producerProps(embeddedKafka.getEmbeddedKafka());
         ProducerFactory<Integer, String> pf =
-                            new DefaultKafkaProducerFactory<Integer, String>(producerProps);
+                            new DefaultKafkaProducerFactory<>(producerProps);
         KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
         template.setDefaultTopic(TEMPLATE_TOPIC);
         template.sendDefault("foo");
@@ -631,7 +628,7 @@ Here is an example of a simple implementation returning a single consumer:
 ConsumerFactory<String, String> consumerFactory() {
     MockConsumer<String, String> consumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
     TopicPartition topicPartition0 = new TopicPartition("topic", 0);
-    List<TopicPartition> topicPartitions = Arrays.asList(topicPartition0);
+    List<TopicPartition> topicPartitions = Collections.singletonList(topicPartition0);
     Map<TopicPartition, Long> beginningOffsets = topicPartitions.stream().collect(Collectors
             .toMap(Function.identity(), tp -> 0L));
     consumer.updateBeginningOffsets(beginningOffsets);
@@ -676,4 +673,4 @@ The transactional id is provided in case you wish to use a different `MockProduc
 
 If you are using producers in a multi-threaded environment, the `BiFunction` should return multiple producers (perhaps thread-bound using a `ThreadLocal`).
 
-IMPORTANT: Transactional `MockProducer` s must be initialized for transactions by calling `initTransaction()`.
+IMPORTANT: Transactional `MockProducer`+++s+++ must be initialized for transactions by calling `initTransaction()`.

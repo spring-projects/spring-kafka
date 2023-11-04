@@ -185,7 +185,7 @@ public ProducerFactory<String, Thing> kafkaProducerFactory(JsonSerializer custom
 Setters are also provided, as an alternative to using these constructors.
 ====
 
-Starting with version 2.2, you can explicitly configure the deserializer to use the supplied target type and ignore type information in headers by using one of the overloaded constructors that have a boolean `useHeadersIfPresent` parameter (which is `true` by default).
+Starting with version 2.2, you can explicitly configure the deserializer to use the supplied target type and ignore type information in headers by using one of the overloaded constructors that have a boolean `useHeadersIfPresent` argument (which is `true` by default).
 The following example shows how to do so:
 
 [source, java]
@@ -509,7 +509,7 @@ Accessor methods will be used to lookup the property name as field in the receiv
 The `@JsonPath` expression allows customization of the value lookup, and even to define multiple JSON Path expressions, to look up values from multiple places until an expression returns an actual value.
 
 To enable this feature, use a `ProjectingMessageConverter` configured with an appropriate delegate converter (used for outbound conversion and converting non-projection interfaces).
-You must also add `spring-data:spring-data-commons` and `com.jayway.jsonpath:json-path` to the class path.
+You must also add `spring-data:spring-data-commons` and `com.jayway.jsonpath:json-path` to the classpath.
 
 When used as the parameter to a `@KafkaListener` method, the interface type is automatically passed to the converter as normal.
 

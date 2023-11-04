@@ -145,7 +145,7 @@ DefaultKafkaHeaderMapper inboundMapper = DefaultKafkaHeaderMapper.forInboundOnly
 
 This will exclude all headers beginning with `abc` and include all others.
 
-By default, the `DefaultKafkaHeaderMapper` is used in the `MessagingMessageConverter` and `BatchMessagingMessageConverter`, as long as Jackson is on the class path.
+By default, the `DefaultKafkaHeaderMapper` is used in the `MessagingMessageConverter` and `BatchMessagingMessageConverter`, as long as Jackson is on the classpath.
 
 With the batch converter, the converted headers are available in the `KafkaHeaders.BATCH_CONVERTED_HEADERS` as a `List<Map<String, Object>>` where the map in a position of the list corresponds to the data position in the payload.
 

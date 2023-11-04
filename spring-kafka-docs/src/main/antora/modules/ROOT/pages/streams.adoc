@@ -76,8 +76,8 @@ public KStream<?, ?> kStream(StreamsBuilder kStreamBuilder) {
 }
 ----
 
-If you would like to control the lifecycle manually (for example, stopping and starting by some condition), you can reference the `StreamsBuilderFactoryBean` bean directly by using the factory bean (`&`) https://docs.spring.io/spring/docs/current/spring-framework-reference/html/beans.html#beans-factory-extension-factorybean[prefix].
-Since `StreamsBuilderFactoryBean` use its internal `KafkaStreams` instance, it is safe to stop and restart it again.
+If you would like to control the lifecycle manually (for example, stopping and starting by some condition), you can reference the `StreamsBuilderFactoryBean` bean directly by using the factory bean (`&`) https://docs.spring.io/spring-framework/reference/core/beans/factory-extension.html#beans-factory-extension-factorybean[prefix].
+Since `StreamsBuilderFactoryBean` uses its internal `KafkaStreams` instance, it is safe to stop and restart it again.
 A new `KafkaStreams` is created on each `start()`.
 You might also consider using different `StreamsBuilderFactoryBean` instances, if you would like to control the lifecycles for `KStream` instances separately.
 
@@ -119,9 +119,9 @@ Starting with version 2.4.1, the factory bean has a new property `infrastructure
 ----
 public interface KafkaStreamsInfrastructureCustomizer {
 
-	void configureBuilder(StreamsBuilder builder);
+    void configureBuilder(StreamsBuilder builder);
 
-	void configureTopology(Topology topology);
+    void configureTopology(Topology topology);
 
 }
 ----
@@ -157,7 +157,8 @@ When constructing the serializer/deserializer programmatically for use in the pr
 
 [source, java]
 ----
-stream.through(new JsonSerde<>(MyKeyType.class)
+stream.through(
+    new JsonSerde<>(MyKeyType.class)
         .forKeys()
         .noTypeInfo(),
     new JsonSerde<>(MyValueType.class)
@@ -175,10 +176,10 @@ Consider the following example that does not use `KafkaStreamBrancher`:
 [source,java]
 ----
 KStream<String, String>[] branches = builder.stream("source").branch(
-      (key, value) -> value.contains("A"),
-      (key, value) -> value.contains("B"),
-      (key, value) -> true
-     );
+        (key, value) -> value.contains("A"),
+        (key, value) -> value.contains("B"),
+        (key, value) -> true
+);
 branches[0].to("A");
 branches[1].to("B");
 branches[2].to("C");
@@ -189,12 +190,12 @@ The following example uses `KafkaStreamBrancher`:
 [source,java]
 ----
 new KafkaStreamBrancher<String, String>()
-   .branch((key, value) -> value.contains("A"), ks -> ks.to("A"))
-   .branch((key, value) -> value.contains("B"), ks -> ks.to("B"))
-   //default branch should not necessarily be defined in the end of the chain!
-   .defaultBranch(ks -> ks.to("C"))
-   .onTopOf(builder.stream("source"));
-   //onTopOf method returns the provided stream so we can continue with method chaining
+        .branch((key, value) -> value.contains("A"), ks -> ks.to("A"))
+        .branch((key, value) -> value.contains("B"), ks -> ks.to("B"))
+        //default branch should not necessarily be defined in the end of the chain!
+        .defaultBranch(ks -> ks.to("C"))
+        .onTopOf(builder.stream("source"));
+        //onTopOf method returns the provided stream so we can continue with method chaining
 ----
 
 [[streams-config]]
@@ -253,7 +254,7 @@ Map<String, Expression> headers = new HashMap<>();
 headers.put("header1", new LiteralExpression("value1"));
 SpelExpressionParser parser = new SpelExpressionParser();
 headers.put("header2", parser.parseExpression("record.timestamp() + ' @' + record.offset()"));
-ProcessorSupplier supplier = () -> new HeaderEnricher<String, String> enricher = new HeaderEnricher<>(headers);
+ProcessorSupplier supplier = () -> new HeaderEnricher<String, String>(headers);
 KStream<String, String> stream = builder.stream(INPUT);
 stream
         .process(() -> supplier)
@@ -263,7 +264,7 @@ stream
 [[streams-messaging]]
 == `MessagingProcessor`
 
-Version 3.0 added the `MessagingProcessor` extension of `ContextualProcessor`; providing the same functionality as the deprecated `MessagingTransformer` which implemented the deprecated `Transformer` interface.
+Version 3.0 added the `MessagingProcessor` extension of `ContextualProcessor`, providing the same functionality as the deprecated `MessagingTransformer` which implemented the deprecated `Transformer` interface.
 This allows a Kafka Streams topology to interact with a Spring Messaging component, such as a Spring Integration flow.
 The transformer requires an implementation of `MessagingFunction`.
 
@@ -272,7 +273,7 @@ The transformer requires an implementation of `MessagingFunction`.
 @FunctionalInterface
 public interface MessagingFunction {
 
-	Message<?> exchange(Message<?> message);
+    Message<?> exchange(Message<?> message);
 
 }
 ----
@@ -324,7 +325,7 @@ The following example combines all the topics we have covered in this chapter:
 @Configuration
 @EnableKafka
 @EnableKafkaStreams
-public static class KafkaStreamsConfig {
+public class KafkaStreamsConfig {
 
     @Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
     public KafkaStreamsConfiguration kStreamsConfigs() {
@@ -350,7 +351,7 @@ public static class KafkaStreamsConfig {
         stream
                 .mapValues((ValueMapper<String, String>) String::toUpperCase)
                 .groupByKey()
-                .windowedBy(TimeWindows.of(Duration.ofMillis(1000)))
+                .windowedBy(TimeWindows.of(Duration.ofMillis(1_000)))
                 .reduce((String value1, String value2) -> value1 + value2,
                 		Named.as("windowStore"))
                 .toStream()
