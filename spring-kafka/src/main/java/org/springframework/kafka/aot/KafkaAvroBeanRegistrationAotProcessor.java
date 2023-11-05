@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 import org.springframework.aot.hint.MemberCategory;
 import org.springframework.aot.hint.ReflectionHints;
@@ -47,7 +48,7 @@ public class KafkaAvroBeanRegistrationAotProcessor implements BeanRegistrationAo
 
 	private static final String CONSUMER_RECORD_CLASS_NAME = ConsumerRecord.class.getName();
 
-	private static final String CONSUMER_RECORDS_CLASS_NAME = ConsumerRecord.class.getName();
+	private static final String CONSUMER_RECORDS_CLASS_NAME = ConsumerRecords.class.getName();
 
 	private static final String AVRO_GENERATED_CLASS_NAME = "org.apache.avro.specific.AvroGenerated";
 
