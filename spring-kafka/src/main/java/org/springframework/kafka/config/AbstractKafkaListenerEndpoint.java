@@ -560,7 +560,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	protected StringBuilder getEndpointDescription() {
 		StringBuilder result = new StringBuilder();
 		return result.append(getClass().getSimpleName()).append("[").append(this.id).
-				append("] topics=").append(this.topics).
+				append("] topics='").append(this.topics).
 				append("' | topicPartitions='").append(this.topicPartitions).
 				append("' | topicPattern='").append(this.topicPattern).append("'");
 	}

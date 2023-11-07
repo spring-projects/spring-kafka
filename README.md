@@ -30,9 +30,9 @@ To build API Javadoc (results will be in `build/api`):
 
     ./gradlew api
 
-To build reference documentation (results will be in `build/reference`):
+To build reference documentation (results will be in `spring-kafka-docs/build/site`):
 
-    ./gradlew reference
+    ./gradlew antora
 
 To build complete distribution including `-dist`, `-docs`, and `-schema` zip files (results will be in `build/distributions`)
 
