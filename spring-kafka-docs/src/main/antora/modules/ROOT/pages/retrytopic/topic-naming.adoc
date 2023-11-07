@@ -5,9 +5,9 @@ Retry topics and DLT are named by suffixing the main topic with a provided or de
 
 Examples:
 
-"my-topic" +++->+++ "my-topic-retry-0", "my-topic-retry-1", ..., "my-topic-dlt"
+"my-topic" -> "my-topic-retry-0", "my-topic-retry-1", ..., "my-topic-dlt"
 
-"my-other-topic" +++->+++ "my-topic-myRetrySuffix-1000", "my-topic-myRetrySuffix-2000", ..., "my-topic-myDltSuffix"
+"my-other-topic" -> "my-topic-myRetrySuffix-1000", "my-topic-myRetrySuffix-2000", ..., "my-topic-myDltSuffix"
 
 NOTE: The default behavior is to create separate retry topics for each attempt, appended with an index value: retry-0, retry-1, ..., retry-n.
 Therefore, by default the number of retry topics is the configured `maxAttempts` minus 1.

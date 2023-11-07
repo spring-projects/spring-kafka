@@ -1,5 +1,5 @@
 [[sequencing]]
-= Starting `@KafkaListener`s in Sequence
+= Starting `@KafkaListener`+++s+++ in Sequence
 
 A common use case is to start a listener after another listener has consumed all the records in a topic.
 For example, you may want to load the contents of one or more compacted topics into memory before processing records from other topics.
