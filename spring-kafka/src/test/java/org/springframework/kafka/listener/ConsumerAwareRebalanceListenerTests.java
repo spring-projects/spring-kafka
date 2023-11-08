@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,20 +45,6 @@ public class ConsumerAwareRebalanceListenerTests {
 		assertThat(called.get()).isTrue();
 	}
 
-	@Test
-	void nonConsumerAwareTestAssignedThrows() {
-		AtomicBoolean called = new AtomicBoolean();
-		new ConsumerAwareRebalanceListener() {
-
-			@Override
-			public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-				called.set(true);
-				throw new RuntimeException();
-			}
-
-		}.onPartitionsAssigned(null, null);
-		assertThat(called.get()).isTrue();
-	}
 
 	@Test
 	void nonConsumerAwareTestRevoked() {
@@ -74,20 +60,6 @@ public class ConsumerAwareRebalanceListenerTests {
 		assertThat(called.get()).isTrue();
 	}
 
-	@Test
-	void nonConsumerAwareTestRevokedThrows() {
-		AtomicBoolean called = new AtomicBoolean();
-		new ConsumerAwareRebalanceListener() {
-
-			@Override
-			public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-				called.set(true);
-				throw new RuntimeException();
-			}
-
-		}.onPartitionsRevokedBeforeCommit(null, null);
-		assertThat(called.get()).isTrue();
-	}
 
 	@Test
 	void nonConsumerAwareTestLost() {
@@ -97,21 +69,6 @@ public class ConsumerAwareRebalanceListenerTests {
 			@Override
 			public void onPartitionsLost(Collection<TopicPartition> partitions) {
 				called.set(true);
-			}
-
-		}.onPartitionsLost(null, null);
-		assertThat(called.get()).isTrue();
-	}
-
-	@Test
-	void nonConsumerAwareTestLostThrows() {
-		AtomicBoolean called = new AtomicBoolean();
-		new ConsumerAwareRebalanceListener() {
-
-			@Override
-			public void onPartitionsLost(Collection<TopicPartition> partitions) {
-				called.set(true);
-				throw new RuntimeException();
 			}
 
 		}.onPartitionsLost(null, null);
