@@ -95,6 +95,6 @@ public class ListenerContainerPartitionNoLongerIdleEvent extends KafkaEvent {
 		return "ListenerContainerNoLongerIdleEvent [idleTime="
 				+ ((float) this.idleTime / 1000) + "s, listenerId=" + this.listenerId // NOSONAR magic #
 				+ ", container=" + getSource()
-				+ ", topicPartitios=" + this.topicPartition + "]";
+				+ ", topicPartitions=" + this.topicPartition + "]";
 	}
 }

@@ -85,7 +85,7 @@ public class RecoveringDeserializationExceptionHandler implements Deserializatio
 				fromClass(configValue);
 			}
 			else {
-				LOGGER.error("Unkown property type for " + KSTREAM_DESERIALIZATION_RECOVERER
+				LOGGER.error("Unknown property type for " + KSTREAM_DESERIALIZATION_RECOVERER
 						+ "; failed deserializations cannot be recovered");
 			}
 		}

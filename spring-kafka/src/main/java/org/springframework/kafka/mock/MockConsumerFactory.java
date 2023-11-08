@@ -42,7 +42,7 @@ public class MockConsumerFactory<K, V> implements ConsumerFactory<K, V> {
 	private final Supplier<MockConsumer<K, V>> consumerProvider;
 
 	/**
-	 * Create an instance with the supplied consumer provicer.
+	 * Create an instance with the supplied consumer provider.
 	 * @param consumerProvider the consumer provider.
 	 */
 	public MockConsumerFactory(Supplier<MockConsumer<K, V>> consumerProvider) {

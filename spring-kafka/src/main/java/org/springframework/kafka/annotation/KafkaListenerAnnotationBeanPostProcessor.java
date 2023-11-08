@@ -265,7 +265,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	/**
 	 * Making a {@link BeanFactory} available is optional; if not set,
-	 * {@link KafkaListenerConfigurer} beans won't get autodetected and an
+	 * {@link KafkaListenerConfigurer} beans won't get auto-detected and an
 	 * {@link #setEndpointRegistry endpoint registry} has to be explicitly configured.
 	 * @param beanFactory the {@link BeanFactory} to be used.
 	 */

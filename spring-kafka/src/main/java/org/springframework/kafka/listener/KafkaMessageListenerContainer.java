@@ -585,7 +585,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				reason = ConsumerRetryAuthEvent.Reason.AUTHORIZATION;
 			}
 			else {
-				throw new IllegalArgumentException("Only Authentication or Authorization Excetions are allowed", throwable);
+				throw new IllegalArgumentException("Only Authentication or Authorization Exceptions are allowed", throwable);
 			}
 			publisher.publishEvent(new ConsumerRetryAuthEvent(this, this.thisOrParentContainer, reason));
 		}
@@ -1553,7 +1553,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						if (saved != null && saved.longValue() != position) {
 							this.logger.debug(() -> "Skipping TX offset correction - seek(s) have been performed; "
 									+ "saved: " + this.savedPositions + ", "
-									+ "comitted: " + oamd + ", "
+									+ "committed: " + oamd + ", "
 									+ "current: " + tp + "@" + position);
 							return;
 						}

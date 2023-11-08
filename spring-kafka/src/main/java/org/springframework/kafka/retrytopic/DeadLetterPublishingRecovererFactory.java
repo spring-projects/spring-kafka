@@ -335,7 +335,7 @@ public class DeadLetterPublishingRecovererFactory {
 				return ByteBuffer.wrap(value).getInt();
 			}
 			else {
-				LOGGER.debug(() -> "Unexected size for " + RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS + " header: "
+				LOGGER.debug(() -> "Unexpected size for " + RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS + " header: "
 						+ value.length);
 			}
 		}

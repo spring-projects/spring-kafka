@@ -66,7 +66,7 @@ public @interface RetryableTopic {
 	/**
 	 *
 	 * The amount of time in milliseconds after which message retrying should give up and
-	 * send the message to the DLT. Expressions must resolv to a long or a String that can
+	 * send the message to the DLT. Expressions must resolve to a long or a String that can
 	 * be parsed as such.
 	 * @return the timeout value.
 	 *

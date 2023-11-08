@@ -207,7 +207,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * {@link org.springframework.kafka.listener.AcknowledgingMessageListener}. Acks will
 	 * be queued and offsets will be committed when all the records returned by the
 	 * previous poll have been processed by the listener.</li>
-	 * <li>MANUAL_IMMDEDIATE: Listener is responsible for acking - use a
+	 * <li>MANUAL_IMMEDIATE: Listener is responsible for acking - use a
 	 * {@link org.springframework.kafka.listener.AcknowledgingMessageListener}. The commit
 	 * will be performed immediately if the {@code Acknowledgment} is acknowledged on the
 	 * calling consumer thread. Otherwise, the acks will be queued and offsets will be
@@ -359,7 +359,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * {@link org.springframework.kafka.listener.AcknowledgingMessageListener}. Acks will
 	 * be queued and offsets will be committed when all the records returned by the
 	 * previous poll have been processed by the listener.</li>
-	 * <li>MANUAL_IMMDEDIATE: Listener is responsible for acking - use a
+	 * <li>MANUAL_IMMEDIATE: Listener is responsible for acking - use a
 	 * {@link org.springframework.kafka.listener.AcknowledgingMessageListener}. The commit
 	 * will be performed immediately if the {@code Acknowledgment} is acknowledged on the
 	 * calling consumer thread. Otherwise, the acks will be queued and offsets will be

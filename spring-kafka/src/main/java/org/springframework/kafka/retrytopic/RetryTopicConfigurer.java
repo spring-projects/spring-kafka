@@ -45,7 +45,7 @@ import org.springframework.lang.Nullable;
 /**
  *
  * <p>Configures main, retry and DLT topics based on a main endpoint and provided
- * configurations to acomplish a distributed retry / DLT pattern in a non-blocking
+ * configurations to accomplish a distributed retry / DLT pattern in a non-blocking
  * fashion, at the expense of ordering guarantees.
  *
  * <p>To illustrate, if you have a "main-topic" topic, and want an exponential backoff
@@ -65,7 +65,7 @@ import org.springframework.lang.Nullable;
  * {@link org.springframework.kafka.retrytopic.DestinationTopicResolver}
  * to know the next topic and the delay for it.
  *
- * <p>Each forwareded record has a back off timestamp header and, if consumption is
+ * <p>Each forwarded record has a back off timestamp header and, if consumption is
  * attempted by the {@link org.springframework.kafka.listener.adapter.KafkaBackoffAwareMessageListenerAdapter}
  * before that time, the partition consumption is paused by a
  * {@link org.springframework.kafka.listener.KafkaConsumerBackoffManager} and a

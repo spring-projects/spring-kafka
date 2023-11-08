@@ -126,7 +126,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 	private String defaultTopic;
 
-	private ProducerListener<K, V> producerListener = new LoggingProducerListener<K, V>();
+	private ProducerListener<K, V> producerListener = new LoggingProducerListener<>();
 
 	private String transactionIdPrefix;
 

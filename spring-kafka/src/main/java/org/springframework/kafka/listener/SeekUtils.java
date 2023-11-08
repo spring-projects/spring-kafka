@@ -115,7 +115,7 @@ public final class SeekUtils {
 					else {
 						logger.error(ex, () -> "Failed to determine if this record ("
 								+ KafkaUtils.format(record)
-								+ ") should be recovererd, including in seeks");
+								+ ") should be recovered, including in seeks");
 					}
 					skipped.set(false);
 				}
@@ -160,7 +160,7 @@ public final class SeekUtils {
 	 * @param records the remaining records.
 	 * @param consumer the consumer.
 	 * @param container the container.
-	 * @param commitRecovered true to commit the recovererd record offset.
+	 * @param commitRecovered true to commit the recovered record offset.
 	 * @param skipPredicate the skip predicate.
 	 * @param logger the logger.
 	 * @param level the log level for the thrown exception after handling.
@@ -181,7 +181,7 @@ public final class SeekUtils {
 	 * @param records the remaining records.
 	 * @param consumer the consumer.
 	 * @param container the container.
-	 * @param commitRecovered true to commit the recovererd record offset.
+	 * @param commitRecovered true to commit the recovered record offset.
 	 * @param recovery the {@link RecoveryStrategy}.
 	 * @param logger the logger.
 	 * @param level the log level for the thrown exception after handling.

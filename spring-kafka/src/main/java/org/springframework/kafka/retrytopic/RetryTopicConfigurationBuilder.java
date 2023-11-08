@@ -429,7 +429,7 @@ public class RetryTopicConfigurationBuilder {
 	}
 
 	/**
-	 * Configure the topic creation behavior to optionall create topics with the provided
+	 * Configure the topic creation behavior to optionally create topics with the provided
 	 * properties.
 	 * @param shouldCreate true to auto create.
 	 * @param numPartitions the number of partitions.
