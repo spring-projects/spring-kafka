@@ -41,7 +41,7 @@ import org.springframework.lang.Nullable;
 public interface BatchAcknowledgingConsumerAwareMessageListener<K, V> extends BatchMessageListener<K, V> {
 
 	/**
-	 * Invoked with data from kafka. Containers should never call this since it they
+	 * Invoked with data from kafka. Containers should never call this since they
 	 * will detect that we are a consumer aware acknowledging listener.
 	 * @param data the data to be processed.
 	 */

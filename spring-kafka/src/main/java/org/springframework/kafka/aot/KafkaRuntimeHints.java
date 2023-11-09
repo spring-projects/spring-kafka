@@ -144,7 +144,7 @@ public class KafkaRuntimeHints implements RuntimeHintsRegistrar {
 					RangeAssignor.class,
 					RoundRobinAssignor.class,
 					StickyAssignor.class,
-					// standard partitions
+					// standard partitioners
 					org.apache.kafka.clients.producer.internals.DefaultPartitioner.class,
 					RoundRobinPartitioner.class,
 					org.apache.kafka.clients.producer.UniformStickyPartitioner.class,
