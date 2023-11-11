@@ -16,16 +16,24 @@
 
 package org.springframework.kafka.test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Gary Russell
+ * @author Nathan Xu
  * @since 2.3
  *
  */
 public class EmbeddedKafkaZKBrokerTests {
+
+	@BeforeEach
+	void setUp() {
+		System.clearProperty(EmbeddedKafkaKraftBroker.BROKER_LIST_PROPERTY);
+		System.clearProperty(EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS);
+	}
 
 	@Test
 	void testUpDown() {
@@ -40,6 +48,21 @@ public class EmbeddedKafkaZKBrokerTests {
 		assertThat(kafka.getZookeeperConnectionString()).isNull();
 		assertThat(System.getProperty("foo.bar")).isNull();
 		assertThat(System.getProperty(EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS)).isNull();
+	}
+
+	@Test
+	void testBrokerListSystemPropertyTakePrecedence() {
+		String customBrokerListPropertyName = "my.brokerList.property";
+		System.setProperty(EmbeddedKafkaKraftBroker.BROKER_LIST_PROPERTY, customBrokerListPropertyName);
+		try {
+			EmbeddedKafkaZKBroker kafka = new EmbeddedKafkaZKBroker(1);
+			kafka.afterPropertiesSet();
+			assertThat(System.getProperty(customBrokerListPropertyName)).isEqualTo(kafka.getBrokersAsString());
+			assertThat(System.getenv().containsKey(EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS)).isFalse();
+			kafka.destroy();
+		} finally {
+			System.clearProperty(customBrokerListPropertyName);
+		}
 	}
 
 }

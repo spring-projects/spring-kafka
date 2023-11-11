@@ -76,12 +76,6 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(EmbeddedKafkaKraftBroker.class));
 
-	/**
-	 * Set the value of this property to a property name that should be set to the list of
-	 * embedded broker addresses instead of {@value #SPRING_EMBEDDED_KAFKA_BROKERS}.
-	 */
-	public static final String BROKER_LIST_PROPERTY = "spring.embedded.kafka.brokers.property";
-
 	public static final int DEFAULT_ADMIN_TIMEOUT = 10;
 
 	private final int count;
@@ -225,14 +219,17 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 		}
 
 		createKafkaTopics(this.topics);
-		if (this.brokerListProperty == null) {
-			this.brokerListProperty = System.getProperty(BROKER_LIST_PROPERTY);
-		}
+
+		String brokersAsString = getBrokersAsString();
 		if (this.brokerListProperty != null) {
-			System.setProperty(this.brokerListProperty, getBrokersAsString());
+			System.setProperty(this.brokerListProperty, brokersAsString);
 		}
-		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
-		System.setProperty(this.brokerListProperty, getBrokersAsString());
+		String globalBrokerListProperty = System.getProperties().containsKey(BROKER_LIST_PROPERTY)
+				? System.getProperties().getProperty(BROKER_LIST_PROPERTY)
+				: SPRING_EMBEDDED_KAFKA_BROKERS;
+		if (!globalBrokerListProperty.equals(this.brokerListProperty)) {
+			System.setProperty(globalBrokerListProperty, brokersAsString);
+		}
 	}
 
 	@Override

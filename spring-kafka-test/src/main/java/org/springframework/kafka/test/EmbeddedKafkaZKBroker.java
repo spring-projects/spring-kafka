@@ -320,13 +320,17 @@ public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker {
 			}
 		}
 		createKafkaTopics(this.topics);
-		if (this.brokerListProperty == null) {
-			this.brokerListProperty = System.getProperty(BROKER_LIST_PROPERTY);
-		}
+
+		String brokersAsString = getBrokersAsString();
 		if (this.brokerListProperty != null) {
-			System.setProperty(this.brokerListProperty, getBrokersAsString());
+			System.setProperty(this.brokerListProperty, brokersAsString);
 		}
-		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
+		String globalBrokerListProperty = System.getProperties().containsKey(BROKER_LIST_PROPERTY)
+				? System.getProperties().getProperty(BROKER_LIST_PROPERTY)
+				: SPRING_EMBEDDED_KAFKA_BROKERS;
+		if (!globalBrokerListProperty.equals(this.brokerListProperty)) {
+			System.setProperty(globalBrokerListProperty, brokersAsString);
+		}
 		System.setProperty(SPRING_EMBEDDED_ZOOKEEPER_CONNECT, getZookeeperConnectionString());
 	}
 

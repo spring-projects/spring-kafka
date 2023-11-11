@@ -16,25 +16,49 @@
 
 package org.springframework.kafka.test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.util.StringUtils;
 
 /**
  * @author Gary Russell
+ * @author Nathan Xu
  * @since 3.1
  *
  */
 public class EmbeddedKafkaKraftBrokerTests {
 
+	@BeforeEach
+	void setUp() {
+		System.clearProperty(EmbeddedKafkaKraftBroker.BROKER_LIST_PROPERTY);
+		System.clearProperty(EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS);
+	}
+
 	@Test
 	void testUpDown() {
 		EmbeddedKafkaKraftBroker kafka = new EmbeddedKafkaKraftBroker(1, 1, "topic1");
 		kafka.afterPropertiesSet();
-		assertThat(StringUtils.hasText(kafka.getBrokersAsString())).isTrue();
+		Assertions.assertTrue(StringUtils.hasText(kafka.getBrokersAsString()));
+		Assertions.assertEquals(kafka.getBrokersAsString(), System.getProperty(EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS));
 		kafka.destroy();
+	}
+
+	@Test
+	void testBrokerListSystemPropertyTakePrecedence() {
+		String customBrokerListPropertyName = "my.brokerList.property";
+		System.setProperty(EmbeddedKafkaKraftBroker.BROKER_LIST_PROPERTY, customBrokerListPropertyName);
+		try {
+			EmbeddedKafkaKraftBroker kafka = new EmbeddedKafkaKraftBroker(1, 1, "topic1");
+			kafka.afterPropertiesSet();
+			String brokersString = kafka.getBrokersAsString();
+			Assertions.assertEquals(brokersString, System.getProperty(customBrokerListPropertyName));
+			Assertions.assertFalse(System.getenv().containsKey(EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS));
+			kafka.destroy();
+		} finally {
+			System.clearProperty(customBrokerListPropertyName);
+		}
 	}
 
 }
