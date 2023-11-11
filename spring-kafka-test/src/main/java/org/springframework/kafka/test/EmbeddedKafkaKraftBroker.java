@@ -232,7 +232,6 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 			System.setProperty(this.brokerListProperty, getBrokersAsString());
 		}
 		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
-		System.setProperty(this.brokerListProperty, getBrokersAsString());
 	}
 
 	@Override
