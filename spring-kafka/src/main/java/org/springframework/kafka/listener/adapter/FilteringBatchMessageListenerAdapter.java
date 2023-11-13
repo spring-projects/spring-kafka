@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,11 +82,11 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 		boolean consumerAware = this.delegateType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
 						|| this.delegateType.equals(ListenerType.CONSUMER_AWARE);
 		/*
-		 *  An empty list goes to the listener if ackDiscarded is false and the listener can ack
-		 *  either through the acknowledgment
+		 *  An empty list goes to the listener if ackDiscarded is false, and the listener can ack
+		 *  either through the acknowledgment or through the consumer
 		 */
-		if (consumerRecords.size() > 0 || consumerAware
-				|| (!this.ackDiscarded && this.delegateType.equals(ListenerType.ACKNOWLEDGING))) {
+		if (consumerRecords.size() > 0
+				|| (!this.ackDiscarded && ((consumer != null && consumerAware) || (acknowledgment != null && this.delegateType.equals(ListenerType.ACKNOWLEDGING))))) {
 			invokeDelegate(consumerRecords, acknowledgment, consumer);
 		}
 		else {
