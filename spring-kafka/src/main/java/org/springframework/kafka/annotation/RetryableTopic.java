@@ -181,10 +181,6 @@ public @interface RetryableTopic {
 
 	/**
 	 * Topic reuse strategy for sequential attempts made with a same backoff interval.
-	 *
-	 * <p>Note: for fixed backoffs, when this is configured as
-	 * {@link SameIntervalTopicReuseStrategy#SINGLE_TOPIC}, it has precedence over
-	 * the configuration in {@link #fixedDelayTopicStrategy()}.
 	 * @return the strategy.
 	 * @since 3.0.4
 	 */

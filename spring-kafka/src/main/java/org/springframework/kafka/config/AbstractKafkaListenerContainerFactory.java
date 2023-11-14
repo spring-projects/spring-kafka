@@ -226,8 +226,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	/**
 	 * Set the {@link CommonErrorHandler} which can handle errors for both record and
-	 * batch listeners. Replaces the use of
-	 * {@link org.springframework.kafka.listener.GenericErrorHandler}s.
+	 * batch listeners.
 	 * @param commonErrorHandler the handler.
 	 * @since 2.8
 	 */

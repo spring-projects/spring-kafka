@@ -30,8 +30,7 @@ import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.TopicPartitionOffset;
 
 /**
- * Replacement for {@link ErrorHandler} and {@link BatchErrorHandler} and their
- * sub-interfaces.
+ * Listener container error handling contract.
  *
  * @author Gary Russell
  * @since 2.8

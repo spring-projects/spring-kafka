@@ -47,8 +47,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
- * {@link DefaultErrorHandler} tests for batch listeners. Copied from
- * {@link RecoveringBatchErrorHandlerIntegrationTests} changing error handler type.
+ * {@link DefaultErrorHandler} tests for batch listeners.
  * @author Gary Russell
  * @since 2.8
  *

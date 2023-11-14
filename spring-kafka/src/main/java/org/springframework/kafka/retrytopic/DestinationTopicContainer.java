@@ -52,7 +52,7 @@ public interface DestinationTopicContainer {
 	 * be forwarded to, since that depends on different factors.
 	 *
 	 * If you need to find out the exact next topic for a message use the
-	 * {@link DestinationTopicResolver#resolveDestinationTopic(String, Integer, Exception, long)}
+	 * {@link DestinationTopicResolver#resolveDestinationTopic(String, String, Integer, Exception, long)}
 	 * method instead.
 	 * @param mainListenerId the listener id.
 	 * @param topicName the topic name of the DestinationTopic to be returned.

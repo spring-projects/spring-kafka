@@ -69,7 +69,6 @@ import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * {@link DefaultErrorHandler} tests for batch listeners.
- * Copied from {@link RecoveringBatchErrorHandlerTests} replacing error handler type.
  *
  * @author Gary Russell
  * @since 2.8

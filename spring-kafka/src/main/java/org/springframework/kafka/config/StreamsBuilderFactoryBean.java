@@ -193,8 +193,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	}
 
 	/**
-	 * Set a {@link StreamsUncaughtExceptionHandler}. Supersedes
-	 * {@link #setUncaughtExceptionHandler(java.lang.Thread.UncaughtExceptionHandler)}.
+	 * Set a {@link StreamsUncaughtExceptionHandler}.
 	 * @param streamsUncaughtExceptionHandler the handler.
 	 * @since 2.8
 	 */
