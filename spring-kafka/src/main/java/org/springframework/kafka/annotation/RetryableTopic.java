@@ -181,7 +181,6 @@ public @interface RetryableTopic {
 
 	/**
 	 * Topic reuse strategy for sequential attempts made with a same backoff interval.
-	 * {@link SameIntervalTopicReuseStrategy#SINGLE_TOPIC}.
 	 * @return the strategy.
 	 * @since 3.0.4
 	 */

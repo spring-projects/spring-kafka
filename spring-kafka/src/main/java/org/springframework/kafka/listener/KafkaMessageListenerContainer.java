@@ -2716,8 +2716,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		/**
 		 * Actually invoke the listener.
 		 * @param cRecord the record.
-		 * @param iterator the {@link ConsumerRecords} iterator - used only if a
-		 * {@link RemainingRecordsErrorHandler} is being used.
+		 * @param iterator the {@link ConsumerRecords} iterator.
 		 * @return an exception.
 		 * @throws Error an error.
 		 */

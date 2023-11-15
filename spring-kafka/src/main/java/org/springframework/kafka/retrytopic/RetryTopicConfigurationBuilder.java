@@ -247,7 +247,7 @@ public class RetryTopicConfigurationBuilder {
 	 * <p>Note: for fixed backoffs, when this is configured as
 	 * {@link SameIntervalTopicReuseStrategy#SINGLE_TOPIC}, it has precedence over
 	 * the configuration done through
-	 * {@link #useSingleTopicForFixedDelays(FixedDelayStrategy)}.
+	 * {@link #useSingleTopicForSameIntervals()}.
 	 * @param sameIntervalTopicReuseStrategy the strategy.
 	 * @return the builder.
 	 * @since 3.0.4

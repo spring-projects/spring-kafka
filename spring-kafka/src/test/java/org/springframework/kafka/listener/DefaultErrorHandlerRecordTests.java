@@ -53,7 +53,6 @@ import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * {@link DefaultErrorHandler} tests for record listeners.
- * Copied from {@link SeekToCurrentErrorHandlerTests} changing the error handler type.
  *
  * @author Gary Russell
  * @since 2.8

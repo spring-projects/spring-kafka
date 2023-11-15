@@ -60,9 +60,6 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 /**
- * Copied from {@link ContainerStoppingBatchErrorHandlerTests} with a new error
- * handler.
- *
  * @author Gary Russell
  * @since 2.8
  *

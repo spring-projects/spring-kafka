@@ -234,7 +234,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	/**
 	 * Set the {@link CommonErrorHandler} which can handle errors for both record
-	 * and batch listeners. Replaces the use of {@link GenericErrorHandler}s.
+	 * and batch listeners.
 	 * @param commonErrorHandler the handler.
 	 * @since 2.8
 	 */
