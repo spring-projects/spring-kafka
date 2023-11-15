@@ -41,6 +41,6 @@ See xref:kafka/serdes.adoc#error-handling-deserializer[Using `ErrorHandlingDeser
 
 [[x31-retryable]]
 === Retryable Topics
-Change suffix -retry-5000 to -retry when `@RetryableTopic(backoff = @Backoff(delay = 5000), attempts = "2", fixedDelayTopicStrategy = FixedDelayStrategy.SINGLE_TOPIC)`.
-If you want to keep suffix -retry-5000, use `@RetryableTopic(backoff = @Backoff(delay = 5000), attempts = "2")`.
+Change suffix `-retry-5000` to `-retry` when `@RetryableTopic(backoff = @Backoff(delay = 5000), attempts = "2", fixedDelayTopicStrategy = FixedDelayStrategy.SINGLE_TOPIC)`.
+If you want to keep suffix `-retry-5000`, use `@RetryableTopic(backoff = @Backoff(delay = 5000), attempts = "2")`.
 See xref:retrytopic/topic-naming.adoc[Topic Naming] for more information.
