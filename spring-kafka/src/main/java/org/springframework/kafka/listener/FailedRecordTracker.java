@@ -246,7 +246,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 	}
 
 	/**
-	 * Return the number of the next delivery attempt for this topic/partition/offsete.
+	 * Return the number of the next delivery attempt for this topic/partition/offset.
 	 * @param topicPartitionOffset the topic/partition/offset.
 	 * @return the delivery attempt.
 	 * @since 2.5

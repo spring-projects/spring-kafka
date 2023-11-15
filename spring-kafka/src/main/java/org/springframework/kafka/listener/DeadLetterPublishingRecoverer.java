@@ -1452,7 +1452,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		 * @param kafkaHeaders the {@link Headers} to add the header(s) to.
 		 * @param exception The exception.
 		 * @param isKey whether the exception is for a key or value.
-		 * @param headerNames the heaader names to use.
+		 * @param headerNames the header names to use.
 		 */
 		void create(Headers kafkaHeaders, Exception exception, boolean isKey, HeaderNames headerNames);
 

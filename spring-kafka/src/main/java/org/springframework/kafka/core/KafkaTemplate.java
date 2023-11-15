@@ -126,7 +126,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 	private String defaultTopic;
 
-	private ProducerListener<K, V> producerListener = new LoggingProducerListener<K, V>();
+	private ProducerListener<K, V> producerListener = new LoggingProducerListener<>();
 
 	private String transactionIdPrefix;
 
@@ -764,6 +764,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 			throw ex;
 		}
 	}
+
 	/**
 	 * Send the producer record.
 	 * @param producerRecord the producer record.
@@ -781,11 +782,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		if (this.micrometerHolder != null) {
 			sample = this.micrometerHolder.start();
 		}
-		if (this.producerInterceptor != null) {
-			this.producerInterceptor.onSend(producerRecord);
-		}
+		ProducerRecord<K, V> interceptedRecord = interceptorProducerRecord(producerRecord);
 		Future<RecordMetadata> sendFuture =
-				producer.send(producerRecord, buildCallback(producerRecord, producer, future, sample, observation));
+				producer.send(interceptedRecord, buildCallback(interceptedRecord, producer, future, sample, observation));
 		// Maybe an immediate failure
 		if (sendFuture.isDone()) {
 			try {
@@ -802,8 +801,15 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		if (this.autoFlush) {
 			flush();
 		}
-		this.logger.trace(() -> "Sent: " + KafkaUtils.format(producerRecord));
+		this.logger.trace(() -> "Sent: " + KafkaUtils.format(interceptedRecord));
 		return future;
+	}
+
+	private ProducerRecord<K, V> interceptorProducerRecord(ProducerRecord<K, V> producerRecord) {
+		if (this.producerInterceptor != null) {
+			return this.producerInterceptor.onSend(producerRecord);
+		}
+		return producerRecord;
 	}
 
 	private Callback buildCallback(final ProducerRecord<K, V> producerRecord, final Producer<K, V> producer,

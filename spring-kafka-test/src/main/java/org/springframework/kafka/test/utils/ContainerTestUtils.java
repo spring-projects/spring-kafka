@@ -122,7 +122,7 @@ public final class ContainerTestUtils {
 				method -> theMethod.set(method),
 				method -> method.getName().equals("getAssignedPartitions") && method.getParameterTypes().length == 0);
 		if (theMethod.get() == null) {
-			throw new IllegalStateException(clazz + " has no getAssignedParitions() method");
+			throw new IllegalStateException(clazz + " has no getAssignedPartitions() method");
 		}
 		return theMethod.get();
 	}

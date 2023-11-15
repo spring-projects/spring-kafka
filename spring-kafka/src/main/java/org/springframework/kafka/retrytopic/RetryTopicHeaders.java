@@ -27,7 +27,7 @@ package org.springframework.kafka.retrytopic;
 public abstract class RetryTopicHeaders {
 
 	/**
-	 * The default header for the backoff duetimestamp.
+	 * The default header for the backoff due timestamp.
 	 */
 	public static final String DEFAULT_HEADER_BACKOFF_TIMESTAMP = "retry_topic-backoff-timestamp";
 

@@ -38,14 +38,14 @@ containerProperties.setConsumerRebalanceListener(new ConsumerAwareRebalanceListe
     @Override
     public void onPartitionsRevokedAfterCommit(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
         // ...
-            store(consumer.position(partition));
+        store(consumer.position(partition));
         // ...
     }
 
     @Override
     public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
         // ...
-            consumer.seek(partition, offsetTracker.getOffset() + 1);
+        consumer.seek(partition, offsetTracker.getOffset() + 1);
         // ...
     }
 });
@@ -54,7 +54,7 @@ containerProperties.setConsumerRebalanceListener(new ConsumerAwareRebalanceListe
 IMPORTANT: Starting with version 2.4, a new method `onPartitionsLost()` has been added (similar to a method with the same name in `ConsumerRebalanceLister`).
 The default implementation on `ConsumerRebalanceLister` simply calls `onPartionsRevoked`.
 The default implementation on `ConsumerAwareRebalanceListener` does nothing.
-When supplying the listener container with a custom listener (of either type), it is important that your implementation not call `onPartitionsRevoked` from `onPartitionsLost`.
+When supplying the listener container with a custom listener (of either type), it is important that your implementation does not call `onPartitionsRevoked` from `onPartitionsLost`.
 If you implement `ConsumerRebalanceListener` you should override the default method.
 This is because the listener container will call its own `onPartitionsRevoked` from its implementation of `onPartitionsLost` after calling the method on your implementation.
 If you implementation delegates to the default behavior, `onPartitionsRevoked` will be called twice each time the `Consumer` calls that method on the container's listener.

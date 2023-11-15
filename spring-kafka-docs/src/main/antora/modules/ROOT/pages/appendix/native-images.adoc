@@ -1,7 +1,7 @@
 [[native-images]]
 = Native Images
 
-https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#aot[Spring AOT] native hints are provided to assist in developing native images for Spring applications that use Spring for Apache Kafka, including hints for AVRO generated classes used in `@KafkaListener` s.
+https://docs.spring.io/spring-framework/docs/current/reference/html/core.html#aot[Spring AOT] native hints are provided to assist in developing native images for Spring applications that use Spring for Apache Kafka, including hints for AVRO generated classes used in `@KafkaListener`+++s+++.
 
 IMPORTANT: `spring-kafka-test` (and, specifically, its `EmbeddedKafkaBroker`) is not supported in native images.
 

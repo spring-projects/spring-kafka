@@ -52,7 +52,7 @@ public class CommonLoggingErrorHandler implements CommonErrorHandler {
 	public boolean handleOne(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 
-		LOGGER.error(thrownException, () -> "Error occured while processing: " + KafkaUtils.format(record));
+		LOGGER.error(thrownException, () -> "Error occurred while processing: " + KafkaUtils.format(record));
 		return true;
 	}
 

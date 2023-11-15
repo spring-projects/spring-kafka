@@ -13,7 +13,7 @@ For convenience, the static `KafkaNull.INSTANCE` is provided.
 When you use a message listener container, the received `ConsumerRecord` has a `null` `value()`.
 
 To configure the `@KafkaListener` to handle `null` payloads, you must use the `@Payload` annotation with `required = false`.
-If it is a tombstone message for a compacted log, you usually also need the key so that your application can determine which key was "`deleted`".
+If it is a tombstone message for a compacted log, you usually also need the key so that your application can determine which key was +++"+++`deleted`+++"+++.
 The following example shows such a configuration:
 
 [source, java]

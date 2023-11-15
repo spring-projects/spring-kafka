@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2022 the original author or authors.
+ * Copyright 2016-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -559,19 +559,21 @@ public class KafkaTemplateTests {
 
 	@SuppressWarnings("unchecked")
 	@Test
-	void testProducerInterceptorManagedOnKafkaTemplate() {
+	void testProducerInterceptorManagedOnKafkaTemplate() throws Exception {
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
 		ProducerInterceptor<Integer, String> producerInterceptor = Mockito.mock(ProducerInterceptor.class);
+		willAnswer(inv -> new ProducerRecord<>("prod-interceptor-test-1", "bar")).given(producerInterceptor).onSend(any());
 		template.setProducerInterceptor(producerInterceptor);
 
 		template.setDefaultTopic("prod-interceptor-test-1");
-		template.sendDefault("foo");
+		CompletableFuture<SendResult<Integer, String>> resultCompletableFuture = template.sendDefault("foo");
 
 		verify(producerInterceptor, times(1)).onSend(any(ProducerRecord.class));
 		verify(producerInterceptor, times(1)).onAcknowledgement(any(RecordMetadata.class), Mockito.isNull());
+		assertThat(resultCompletableFuture.get(10, TimeUnit.SECONDS).getProducerRecord()).isEqualTo(new ProducerRecord<>("prod-interceptor-test-1", "bar"));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -591,13 +593,15 @@ public class KafkaTemplateTests {
 
 	@SuppressWarnings("unchecked")
 	@Test
-	void testCompositeProducerInterceptor() {
+	void testCompositeProducerInterceptor() throws Exception {
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
 		ProducerInterceptor<Integer, String> producerInterceptor1 = Mockito.mock(ProducerInterceptor.class);
 		ProducerInterceptor<Integer, String> producerInterceptor2 = Mockito.mock(ProducerInterceptor.class);
+		willAnswer(inv -> new ProducerRecord<>("prod-interceptor-test-3", "bar")).given(producerInterceptor1).onSend(any());
+		willAnswer(inv -> new ProducerRecord<>("prod-interceptor-test-3", "baz")).given(producerInterceptor2).onSend(any());
 		CompositeProducerInterceptor<Integer, String> compositeProducerInterceptor =
 				new CompositeProducerInterceptor<>(producerInterceptor1, producerInterceptor2);
 		template.setProducerInterceptor(compositeProducerInterceptor);
@@ -606,7 +610,7 @@ public class KafkaTemplateTests {
 		doReturn(mockProducerRecord).when(producerInterceptor1).onSend(any(ProducerRecord.class));
 
 		template.setDefaultTopic("prod-interceptor-test-3");
-		template.sendDefault("foo");
+		CompletableFuture<SendResult<Integer, String>> result = template.sendDefault("foo");
 
 		InOrder inOrder = inOrder(producerInterceptor1, producerInterceptor2);
 
@@ -614,6 +618,7 @@ public class KafkaTemplateTests {
 		inOrder.verify(producerInterceptor2).onSend(any(ProducerRecord.class));
 		inOrder.verify(producerInterceptor1).onAcknowledgement(any(RecordMetadata.class), Mockito.isNull());
 		inOrder.verify(producerInterceptor2).onAcknowledgement(any(RecordMetadata.class), Mockito.isNull());
+		assertThat(result.get(10, TimeUnit.SECONDS).getProducerRecord()).isEqualTo(new ProducerRecord<>("prod-interceptor-test-3", "baz"));
 	}
 
 	@ParameterizedTest(name = "{0} is invalid")

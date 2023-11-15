@@ -49,6 +49,6 @@ public ContainerPostProcessor<String, String, AbstractMessageListenerContainer<S
 
 ...
 
-@KafkaListener(... containerPostProcessor="customContainerPostProcessor" ...)
+@KafkaListener(..., containerPostProcessor="customContainerPostProcessor", ...)
 ----
 

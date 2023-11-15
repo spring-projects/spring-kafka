@@ -23,7 +23,7 @@ For more complex or particular cases, the `KafkaConsumer` (and, therefore, `Kafk
 constructors to accept `Serializer` and `Deserializer` instances for `keys` and `values`, respectively.
 
 When you use this API, the `DefaultKafkaProducerFactory` and `DefaultKafkaConsumerFactory` also provide properties (through constructors or setter methods) to inject custom `Serializer` and `Deserializer` instances into the target `Producer` or `Consumer`.
-Also, you can pass in `Supplier<Serializer>` or `Supplier<Deserializer>` instances through constructors - these `Supplier` s are called on creation of each `Producer` or `Consumer`.
+Also, you can pass in `Supplier<Serializer>` or `Supplier<Deserializer>` instances through constructors - these `Supplier`+++s+++ are called on creation of each `Producer` or `Consumer`.
 
 [[string-serde]]
 == String serialization
@@ -40,7 +40,7 @@ ParseStringDeserializer<Thing> deserializer = new ParseStringDeserializer<>(Thin
 ----
 
 By default, the `ToStringSerializer` is configured to convey type information about the serialized entity in the record `Headers`.
-You can disable this by setting the `addTypeInfo` property to false.
+You can disable this by setting the `addTypeInfo` property to `false`.
 This information can be used by `ParseStringDeserializer` on the receiving side.
 
 * `ToStringSerializer.ADD_TYPE_INFO_HEADERS` (default `true`): You can set it to `false` to disable this feature on the `ToStringSerializer` (sets the `addTypeInfo` property).
@@ -111,7 +111,7 @@ They have no effect if you have provided `Serializer` and `Deserializer` instanc
 * `JsonDeserializer.KEY_DEFAULT_TYPE`: Fallback type for deserialization of keys if no header information is present.
 * `JsonDeserializer.VALUE_DEFAULT_TYPE`: Fallback type for deserialization of values if no header information is present.
 * `JsonDeserializer.TRUSTED_PACKAGES` (default `java.util`, `java.lang`): Comma-delimited list of package patterns allowed for deserialization.
-`*` means deserialize all.
+`*` means deserializing all.
 * `JsonDeserializer.TYPE_MAPPINGS` (default `empty`): See xref:kafka/serdes.adoc#serdes-mapping-types[Mapping Types].
 * `JsonDeserializer.KEY_TYPE_METHOD` (default `empty`): See xref:kafka/serdes.adoc#serdes-type-methods[Using Methods to Determine Types].
 * `JsonDeserializer.VALUE_TYPE_METHOD` (default `empty`): See xref:kafka/serdes.adoc#serdes-type-methods[Using Methods to Determine Types].
@@ -176,7 +176,6 @@ public ConsumerFactory<String, Thing> kafkaConsumerFactory(JsonDeserializer cust
 
 @Bean
 public ProducerFactory<String, Thing> kafkaProducerFactory(JsonSerializer customValueSerializer) {
-
     return new DefaultKafkaProducerFactory<>(properties.buildProducerProperties(),
         new StringSerializer(), customValueSerializer);
 }
@@ -186,7 +185,7 @@ public ProducerFactory<String, Thing> kafkaProducerFactory(JsonSerializer custom
 Setters are also provided, as an alternative to using these constructors.
 ====
 
-Starting with version 2.2, you can explicitly configure the deserializer to use the supplied target type and ignore type information in headers by using one of the overloaded constructors that have a boolean `useHeadersIfPresent` (which is `true` by default).
+Starting with version 2.2, you can explicitly configure the deserializer to use the supplied target type and ignore type information in headers by using one of the overloaded constructors that have a boolean `useHeadersIfPresent` argument (which is `true` by default).
 The following example shows how to do so:
 
 [source, java]
@@ -209,7 +208,6 @@ The method must be declared as `public static`, have one of three signatures `(S
 
 You can use arbitrary headers or inspect the data to determine the type.
 
-.Example
 [source, java]
 ----
 JavaType thing1Type = TypeFactory.defaultInstance().constructType(Thing1.class);
@@ -282,7 +280,6 @@ public ConsumerFactory<MyKeyType, MyValueType> cf() {
 
 To provide type mapping programmatically, similar to xref:kafka/serdes.adoc#serdes-type-methods[Using Methods to Determine Types], use the `typeFunction` property.
 
-.Example
 [source, java]
 ----
 JsonDeserializer<Object> deser = new JsonDeserializer<>()
@@ -355,7 +352,7 @@ In this case, if there are amiguous matches, an ordered `Map`, such as a `Linked
 === By Topic
 
 Starting with version 2.8, the `DelegatingByTopicSerializer` and `DelegatingByTopicDeserializer` allow selection of a serializer/deserializer based on the topic name.
-Regex `Pattern` s are used to lookup the instance to use.
+Regex `Pattern`+++s+++ are used to lookup the instance to use.
 The map can be configured using a constructor, or via properties (a comma delimited list of `pattern:serializer`).
 
 [source, java]
@@ -391,7 +388,7 @@ An additional property `DelegatingByTopicSerialization.CASE_SENSITIVE` (default 
 [[retrying-deserialization]]
 == Retrying Deserializer
 
-The `RetryingDeserializer` uses a delegate `Deserializer` and `RetryTemplate` to retry deserialization when the delegate might have transient errors, such a network issues, during deserialization.
+The `RetryingDeserializer` uses a delegate `Deserializer` and `RetryTemplate` to retry deserialization when the delegate might have transient errors, such as network issues, during deserialization.
 
 [source, java]
 ----
@@ -460,7 +457,7 @@ Starting with version 2.7.1, message payload conversion can be delegated to a `s
 
 IMPORTANT:    The `KafkaMessageConverter.fromMessage()` method is called for outbound conversion to a `ProducerRecord` with the message payload in the `ProducerRecord.value()` property.
 The `KafkaMessageConverter.toMessage()` method is called for inbound conversion from `ConsumerRecord` with the payload being the `ConsumerRecord.value()` property.
-The `SmartMessageConverter.toMessage()` method is called to create a new outbound `Message<?>` from the `Message` passed to`fromMessage()` (usually by `KafkaTemplate.send(Message<?> msg)`).
+The `SmartMessageConverter.toMessage()` method is called to create a new outbound `Message<?>` from the `Message` passed to `fromMessage()` (usually by `KafkaTemplate.send(Message<?> msg)`).
 Similarly, in the `KafkaMessageConverter.toMessage()` method, after the converter has created a new `Message<?>` from the `ConsumerRecord`, the `SmartMessageConverter.fromMessage()` method is called and then the final inbound message is created with the newly converted payload.
 In either case, if the `SmartMessageConverter` returns `null`, the original message is used.
 
@@ -509,10 +506,10 @@ public void projection(SomeSample in) {
 ----
 
 Accessor methods will be used to lookup the property name as field in the received JSON document by default.
-The `@JsonPath` expression allows customization of the value lookup, and even to define multiple JSON Path expressions, to lookup values from multiple places until an expression returns an actual value.
+The `@JsonPath` expression allows customization of the value lookup, and even to define multiple JSON Path expressions, to look up values from multiple places until an expression returns an actual value.
 
 To enable this feature, use a `ProjectingMessageConverter` configured with an appropriate delegate converter (used for outbound conversion and converting non-projection interfaces).
-You must also add `spring-data:spring-data-commons` and `com.jayway.jsonpath:json-path` to the class path.
+You must also add `spring-data:spring-data-commons` and `com.jayway.jsonpath:json-path` to the classpath.
 
 When used as the parameter to a `@KafkaListener` method, the interface type is automatically passed to the converter as normal.
 
@@ -590,7 +587,7 @@ consumerProps.put(ErrorHandlingDeserializer.VALUE_FUNCTION, FailedThingProvider.
 ...
 ----
 
-IMPORTANT: If the consumer is configured with an `ErrorHandlingDeserializer` it is important to configure the `KafkaTemplate` and its producer with a serializer that can handle normal objects as well as raw `byte[]` values, which result from deserialization exceptions.
+IMPORTANT: If the consumer is configured with an `ErrorHandlingDeserializer`, it is important to configure the `KafkaTemplate` and its producer with a serializer that can handle normal objects as well as raw `byte[]` values, which result from deserialization exceptions.
 The generic value type of the template should be `Object`.
 One technique is to use the `DelegatingByTypeSerializer`; an example follows:
 
@@ -717,7 +714,7 @@ The following example shows how to do so:
 [source, java]
 ----
 @KafkaListener(topics = "blc3", groupId = "blc3")
-public void listen1(List<Message<Foo>> fooMessages) {
+public void listen(List<Message<Foo>> fooMessages) {
     ...
 }
 ----
@@ -725,7 +722,7 @@ public void listen1(List<Message<Foo>> fooMessages) {
 [[conversionservice-customization]]
 == `ConversionService` Customization
 
-Starting with version 2.1.1, the `org.springframework.core.convert.ConversionService` used by the default `o.s.messaging.handler.annotation.support.MessageHandlerMethodFactory` to resolve parameters for the invocation of a listener method is supplied with all beans that implement any of the following interfaces:
+Starting with version 2.1.1, the `org.springframework.core.convert.ConversionService` used by the default `org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory` to resolve parameters for the invocation of a listener method is supplied with all beans that implement any of the following interfaces:
 
 * `org.springframework.core.convert.converter.Converter`
 * `org.springframework.core.convert.converter.GenericConverter`
@@ -736,7 +733,7 @@ This lets you further customize listener deserialization without changing the de
 IMPORTANT: Setting a custom `MessageHandlerMethodFactory` on the `KafkaListenerEndpointRegistrar` through a `KafkaListenerConfigurer` bean disables this feature.
 
 [[custom-arg-resolve]]
-== Adding custom `HandlerMethodArgumentResolver` to `@KafkaListener`
+== Adding Custom `HandlerMethodArgumentResolver` to `@KafkaListener`
 
 Starting with version 2.4.2 you are able to add your own `HandlerMethodArgumentResolver` and resolve custom method parameters.
 All you need is to implement `KafkaListenerConfigurer` and use method `setCustomMethodArgumentResolvers()` from class `KafkaListenerEndpointRegistrar`.
@@ -773,5 +770,5 @@ You can also completely replace the framework's argument resolution by adding a 
 If you do this, and your application needs to handle tombstone records, with a `null` `value()` (e.g. from a compacted topic), you should add a `KafkaNullAwarePayloadArgumentResolver` to the factory; it must be the last resolver because it supports all types and can match arguments without a `@Payload` annotation.
 If you are using a `DefaultMessageHandlerMethodFactory`, set this resolver as the last custom resolver; the factory will ensure that this resolver will be used before the standard `PayloadMethodArgumentResolver`, which has no knowledge of `KafkaNull` payloads.
 
-See also xref:kafka/tombstones.adoc[Null Payloads and Log Compaction of 'Tombstone' Records].
+See also xref:kafka/tombstones.adoc[Null Payloads and Log Compaction of `Tombstone` Records].
 

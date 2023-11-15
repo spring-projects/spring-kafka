@@ -123,7 +123,7 @@ You can also configure the template by using standard `<bean/>` definitions.
 
 Then, to use the template, you can invoke one of its methods.
 
-When you use the methods with a `Message<?>` parameter, the topic, partition, and key information is provided in a message header that includes the following items:
+When you use the methods with a `Message<?>` parameter, the topic, partition, key and timestamp information is provided in a message header that includes the following items:
 
 * `KafkaHeaders.TOPIC`
 * `KafkaHeaders.PARTITION`
@@ -266,7 +266,7 @@ public class Application {
 }
 ----
 
-The corresponding `@KafkaListener` s for this example are shown in xref:kafka/receiving-messages/listener-annotation.adoc#annotation-properties[Annotation Properties].
+The corresponding `@KafkaListener`+++s+++ for this example are shown in xref:kafka/receiving-messages/listener-annotation.adoc#annotation-properties[Annotation Properties].
 
 For another technique to achieve similar results, but with the additional capability of sending different types to the same topic, see xref:kafka/serdes.adoc#delegating-serialization[Delegating Serializer and Deserializer].
 
@@ -275,7 +275,7 @@ For another technique to achieve similar results, but with the additional capabi
 
 As seen in xref:kafka/sending-messages.adoc#kafka-template[Using `KafkaTemplate`], a `ProducerFactory` is used to create the producer.
 
-When not using xref:kafka/transactions.adoc[Transactions], by default, the `DefaultKafkaProducerFactory` creates a singleton producer used by all clients, as recommended in the `KafkaProducer` javadocs.
+When not using xref:kafka/transactions.adoc[Transactions], by default, the `DefaultKafkaProducerFactory` creates a singleton producer used by all clients, as recommended in the `KafkaProducer` JavaDocs.
 However, if you call `flush()` on the template, this can cause delays for other threads using the same producer.
 Starting with version 2.3, the `DefaultKafkaProducerFactory` has a new property `producerPerThread`.
 When set to `true`, the factory will create (and cache) a separate producer for each thread, to avoid this issue.
@@ -287,7 +287,7 @@ Calling `reset()` or `destroy()` will not clean up these producers.
 Also see xref:kafka/transactions.adoc#tx-template-mixed[`KafkaTemplate` Transactional and non-Transactional Publishing].
 
 When creating a `DefaultKafkaProducerFactory`, key and/or value `Serializer` classes can be picked up from configuration by calling the constructor that only takes in a Map of properties (see example in xref:kafka/sending-messages.adoc#kafka-template[Using `KafkaTemplate`]), or `Serializer` instances may be passed to the `DefaultKafkaProducerFactory` constructor (in which case all `Producer` s share the same instances).
-Alternatively you can provide `Supplier<Serializer>` s (starting with version 2.3) that will be used to obtain separate `Serializer` instances for each `Producer`:
+Alternatively you can provide `Supplier<Serializer>`+++s+++ (starting with version 2.3) that will be used to obtain separate `Serializer` instances for each `Producer`:
 
 [source, java]
 ----
@@ -340,7 +340,7 @@ The result is a `CompletableFuture` that is asynchronously populated with the re
 The result also has a `sendFuture` property, which is the result of calling `KafkaTemplate.send()`.
 You can use this future to determine the result of the send operation.
 
-IMPORTANT: In version 3.0, the futures returned by these methods (and their `sendFuture` properties) have been changed to  `CompletableFuture` s instead of `ListenableFuture` s.
+IMPORTANT: In version 3.0, the futures returned by these methods (and their `sendFuture` properties) have been changed to  `CompletableFuture`+++s+++ instead of `ListenableFuture`+++s+++.
 
 If the first method is used, or the `replyTimeout` argument is `null`, the template's `defaultReplyTimeout` property is used (5 seconds by default).
 
@@ -418,7 +418,7 @@ Note that we can use Boot's auto-configured container factory to create the repl
 If a non-trivial deserializer is being used for replies, consider using an xref:kafka/serdes.adoc#error-handling-deserializer[`ErrorHandlingDeserializer`] that delegates to your configured deserializer.
 When so configured, the `RequestReplyFuture` will be completed exceptionally and you can catch the `ExecutionException`, with the `DeserializationException` in its `cause` property.
 
-Starting with version 2.6.7, in addition to detecting `DeserializationException` s, the template will call the `replyErrorChecker` function, if provided.
+Starting with version 2.6.7, in addition to detecting `DeserializationException`+++s+++, the template will call the `replyErrorChecker` function, if provided.
 If it returns an exception, the future will be completed exceptionally.
 
 Here is an example:
@@ -557,7 +557,7 @@ NOTE: Conversely, if the requesting application is not a spring application and 
 Previously, the listener had to echo custom correlation headers.
 
 [[exchanging-messages]]
-=== Request/Reply with `Message<?>` s
+=== Request/Reply with `Message<?>`+++s+++
 
 Version 2.7 added methods to the `ReplyingKafkaTemplate` to send and receive `spring-messaging` 's `Message<?>` abstraction:
 
@@ -571,7 +571,7 @@ RequestReplyMessageFuture<K, V> sendAndReceive(Message<?> message);
 
 These will use the template's default `replyTimeout`, there are also overloaded versions that can take a timeout in the method call.
 
-IMPORTANT: In version 3.0, the futures returned by these methods (and their `sendFuture` properties) have been changed to  `CompletableFuture` s instead of `ListenableFuture` s.
+IMPORTANT: In version 3.0, the futures returned by these methods (and their `sendFuture` properties) have been changed to  `CompletableFuture`+++s+++ instead of `ListenableFuture`+++s+++.
 
 Use the first method if the consumer's `Deserializer` or the template's `MessageConverter` can convert the payload without any additional information, either via configuration or type metadata in the reply message.
 
@@ -657,7 +657,7 @@ The template in xref:kafka/sending-messages.adoc#replying-template[Using `Replyi
 For cases where multiple receivers of a single message return a reply, you can use the `AggregatingReplyingKafkaTemplate`.
 This is an implementation of the client-side of the https://www.enterpriseintegrationpatterns.com/patterns/messaging/BroadcastAggregate.html[Scatter-Gather Enterprise Integration Pattern].
 
-Like the `ReplyingKafkaTemplate`, the `AggregatingReplyingKafkaTemplate` constructor takes a producer factory and a listener container to receive the replies; it has a third parameter `BiPredicate<List<ConsumerRecord<K, R>>, Boolean> releaseStrategy` which is consulted each time a reply is received; when the predicate returns `true`, the collection of `ConsumerRecord` s is used to complete the `Future` returned by the `sendAndReceive` method.
+Like the `ReplyingKafkaTemplate`, the `AggregatingReplyingKafkaTemplate` constructor takes a producer factory and a listener container to receive the replies; it has a third parameter `BiPredicate<List<ConsumerRecord<K, R>>, Boolean> releaseStrategy` which is consulted each time a reply is received; when the predicate returns `true`, the collection of `ConsumerRecord`+++s+++ is used to complete the `Future` returned by the `sendAndReceive` method.
 
 There is an additional property `returnPartialOnTimeout` (default false).
 When this is set to `true`, instead of completing the future with a `KafkaReplyTimeoutException`, a partial result completes the future normally (as long as at least one reply record has been received).
@@ -679,7 +679,7 @@ ConsumerRecord<Integer, Collection<ConsumerRecord<Integer, String>>> consumerRec
         future.get(30, TimeUnit.SECONDS);
 ----
 
-Notice that the return type is a `ConsumerRecord` with a value that is a collection of `ConsumerRecord` s.
+Notice that the return type is a `ConsumerRecord` with a value that is a collection of `ConsumerRecord`+++s+++.
 The "outer" `ConsumerRecord` is not a "real" record, it is synthesized by the template, as a holder for the actual reply records received for the request.
 When a normal release occurs (release strategy returns true), the topic is set to `aggregatedResults`; if `returnPartialOnTimeout` is true, and timeout occurs (and at least one reply record has been received), the topic is set to `partialResultsAfterTimeout`.
 The template provides constant static variables for these "topic" names:
@@ -699,15 +699,15 @@ public static final String AGGREGATED_RESULTS_TOPIC = "aggregatedResults";
 public static final String PARTIAL_RESULTS_AFTER_TIMEOUT_TOPIC = "partialResultsAfterTimeout";
 ----
 
-The real `ConsumerRecord` s in the `Collection` contain the actual topic(s) from which the replies are received.
+The real `ConsumerRecord`+++s+++ in the `Collection` contain the actual topic(s) from which the replies are received.
 
-IMPORTANT: The listener container for the replies MUST be configured with `AckMode.MANUAL` or `AckMode.MANUAL_IMMEDIATE`; the consumer property `enable.auto.commit` must be `false` (the default since version 2.3).
+IMPORTANT: The listener container for the replies **must** be configured with `AckMode.MANUAL` or `AckMode.MANUAL_IMMEDIATE`; the consumer property `enable.auto.commit` must be `false` (the default since version 2.3).
 To avoid any possibility of losing messages, the template only commits offsets when there are zero requests outstanding, i.e. when the last outstanding request is released by the release strategy.
 After a rebalance, it is possible for duplicate reply deliveries; these will be ignored for any in-flight requests; you may see error log messages when duplicate replies are received for already released replies.
 
-NOTE: If you use an xref:kafka/serdes.adoc#error-handling-deserializer[`ErrorHandlingDeserializer`] with this aggregating template, the framework will not automatically detect `DeserializationException` s.
+NOTE: If you use an xref:kafka/serdes.adoc#error-handling-deserializer[`ErrorHandlingDeserializer`] with this aggregating template, the framework will not automatically detect `DeserializationException`+++s+++.
 Instead, the record (with a `null` value) will be returned intact, with the deserialization exception(s) in headers.
 It is recommended that applications call the utility method `ReplyingKafkaTemplate.checkDeserialization()` method to determine if a deserialization exception occurred.
-See its javadocs for more information.
+See its JavaDocs for more information.
 The `replyErrorChecker` is also not called for this aggregating template; you should perform the checks on each element of the reply.
 

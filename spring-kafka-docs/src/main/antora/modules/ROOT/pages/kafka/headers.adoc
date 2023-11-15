@@ -37,7 +37,7 @@ public interface KafkaHeaderMapper {
 The `SimpleKafkaHeaderMapper` maps raw headers as `byte[]`, with configuration options for conversion to `String` values.
 
 The `DefaultKafkaHeaderMapper` maps the key to the `MessageHeaders` header name and, in order to support rich header types for outbound messages, JSON conversion is performed.
-A "`special`" header (with a key of `spring_json_header_types`) contains a JSON map of `<key>:<type>`.
+A +++"+++`special`+++"+++ header (with a key of `spring_json_header_types`) contains a JSON map of `<key>:<type>`.
 This header is used on the inbound side to provide appropriate conversion of each header value to the original type.
 
 On the inbound side, all Kafka `Header` instances are mapped to `MessageHeaders`.
@@ -70,7 +70,7 @@ public DefaultKafkaHeaderMapper(ObjectMapper objectMapper, String... patterns) {
 <3> Uses a default Jackson `ObjectMapper` and maps headers according to the provided patterns.
 <4> Uses the provided Jackson `ObjectMapper` and maps headers according to the provided patterns.
 
-Patterns are rather simple and can contain a leading wildcard (`*`), a trailing wildcard, or both (for example, `*.cat.*`).
+Patterns are rather simple and can contain a leading wildcard (`+++*+++`), a trailing wildcard, or both (for example, `+++*+++.cat.+++*+++`).
 You can negate patterns with a leading `!`.
 The first pattern that matches a header name (whether positive or negative) wins.
 
@@ -79,7 +79,7 @@ When you provide your own patterns, we recommend including `!id` and `!timestamp
 IMPORTANT: By default, the mapper deserializes only classes in `java.lang` and `java.util`.
 You can trust other (or all) packages by adding trusted packages with the `addTrustedPackages` method.
 If you receive messages from untrusted sources, you may wish to add only those packages you trust.
-To trust all packages, you can use `mapper.addTrustedPackages("*")`.
+To trust all packages, you can use `mapper.addTrustedPackages("+++*+++")`.
 
 NOTE: Mapping `String` header values in a raw form is useful when communicating with systems that are not aware of the mapper's JSON format.
 
@@ -145,12 +145,12 @@ DefaultKafkaHeaderMapper inboundMapper = DefaultKafkaHeaderMapper.forInboundOnly
 
 This will exclude all headers beginning with `abc` and include all others.
 
-By default, the `DefaultKafkaHeaderMapper` is used in the `MessagingMessageConverter` and `BatchMessagingMessageConverter`, as long as Jackson is on the class path.
+By default, the `DefaultKafkaHeaderMapper` is used in the `MessagingMessageConverter` and `BatchMessagingMessageConverter`, as long as Jackson is on the classpath.
 
 With the batch converter, the converted headers are available in the `KafkaHeaders.BATCH_CONVERTED_HEADERS` as a `List<Map<String, Object>>` where the map in a position of the list corresponds to the data position in the payload.
 
 If there is no converter (either because Jackson is not present or it is explicitly set to `null`), the headers from the consumer record are provided unconverted in the `KafkaHeaders.NATIVE_HEADERS` header.
-This header is a `Headers` object (or a `List<Headers>` in the case of the batch converter), where the position in the list corresponds to the data position in the payload).
+This header is a `Headers` object (or a `List<Headers>` in the case of the batch converter), where the position in the list corresponds to the data position in the payload.
 
 IMPORTANT: Certain types are not suitable for JSON serialization, and a simple `toString()` serialization might be preferred for these types.
 The `DefaultKafkaHeaderMapper` has a method called `addToStringClasses()` that lets you supply the names of classes that should be treated this way for outbound mapping.
@@ -158,9 +158,9 @@ During inbound mapping, they are mapped as `String`.
 By default, only `org.springframework.util.MimeType` and `org.springframework.http.MediaType` are mapped this way.
 
 NOTE: Starting with version 2.3, handling of String-valued headers is simplified.
-Such headers are no longer JSON encoded, by default (i.e. they do not have enclosing `"..."` added).
+Such headers are no longer JSON encoded, by default (i.e. they do not have enclosing `"+++...+++"` added).
 The type is still added to the JSON_TYPES header so the receiving system can convert back to a String (from `byte[]`).
-The mapper can handle (decode) headers produced by older versions (it checks for a leading `"`); in this way an application using 2.3 can consume records from older versions.
+The mapper can handle (decode) headers produced by older versions (it checks for a leading `+++"+++`); in this way an application using 2.3 can consume records from older versions.
 
 IMPORTANT: To be compatible with earlier versions, set `encodeStrings` to `true`, if records produced by a version using 2.3 might be consumed by applications using earlier versions.
 When all applications are using 2.3 or higher, you can leave the property at its default value of `false`.

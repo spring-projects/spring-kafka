@@ -52,7 +52,7 @@ public interface MessageConverter {
 	 * @param theKey the key.
 	 * @param topic the topic.
 	 * @param partition the partition.
-	 * @param offset the offfset.
+	 * @param offset the offset.
 	 * @param timestampType the timestamp type.
 	 * @param timestamp the timestamp.
 	 */

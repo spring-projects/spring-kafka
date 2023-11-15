@@ -10,7 +10,7 @@ For the `@RetryableTopic` annotation you can provide the factory's bean name, an
 @RetryableTopic(listenerContainerFactory = "my-retry-topic-factory")
 @KafkaListener(topics = "my-annotated-topic")
 public void processMessage(MyPojo message) {
-        // ... message processing
+    // ... message processing
 }
 ----
 [source, java]
@@ -18,7 +18,6 @@ public void processMessage(MyPojo message) {
 @Bean
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<Integer, MyPojo> template,
         ConcurrentKafkaListenerContainerFactory<Integer, MyPojo> factory) {
-
     return RetryTopicConfigurationBuilder
             .newInstance()
             .listenerFactory(factory)

@@ -10,9 +10,8 @@ Alternatively, you can access the group id in a method parameter.
 [source, java]
 ----
 @KafkaListener(id = "id", topicPattern = "someTopic")
-public void listener(@Payload String payload,
-        @Header(KafkaHeaders.GROUP_ID) String groupId) {
-...
+public void listener(@Payload String payload, @Header(KafkaHeaders.GROUP_ID) String groupId) {
+    ...
 }
 ----
 

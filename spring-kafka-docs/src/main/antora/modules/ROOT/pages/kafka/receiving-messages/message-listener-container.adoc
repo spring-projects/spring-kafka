@@ -12,7 +12,7 @@ The `ConcurrentMessageListenerContainer` delegates to one or more `KafkaMessageL
 Starting with version 2.2.7, you can add a `RecordInterceptor` to the listener container; it will be invoked before calling the listener allowing inspection or modification of the record.
 If the interceptor returns null, the listener is not called.
 Starting with version 2.7, it has additional methods which are called after the listener exits (normally, or by throwing an exception).
-Also, starting with version 2.7, there is now a `BatchInterceptor`, providing similar functionality for <<batch-listeners>>.
+Also, starting with version 2.7, there is now a `BatchInterceptor`, providing similar functionality for xref:kafka/receiving-messages/listener-annotation.adoc#batch-listeners[Batch Listeners].
 In addition, the `ConsumerAwareRecordInterceptor` (and `BatchInterceptor`) provide access to the `Consumer<?, ?>`.
 This might be used, for example, to access the consumer metrics in the interceptor.
 
@@ -24,7 +24,7 @@ The `CompositeRecordInterceptor` and `CompositeBatchInterceptor` can be used to 
 
 By default, starting with version 2.8, when using transactions, the interceptor is invoked before the transaction has started.
 You can set the listener container's `interceptBeforeTx` property to `false` to invoke the interceptor after the transaction has started instead.
-Starting with version 2.9, this will apply to any transaction manager, not just `KafkaAwareTransactionManager` s.
+Starting with version 2.9, this will apply to any transaction manager, not just `KafkaAwareTransactionManager`+++s+++.
 This allows, for example, the interceptor to participate in a JDBC transaction started by the container.
 
 Starting with versions 2.3.8, 2.4.6, the `ConcurrentMessageListenerContainer` now supports https://kafka.apache.org/documentation/#static_membership[Static Membership] when the concurrency is greater than one.
@@ -155,7 +155,7 @@ org.apache.kafka.clients.consumer.RoundRobinAssignor
 =====
 ====
 
-When the container properties are configured with `TopicPartitionOffset` s, the `ConcurrentMessageListenerContainer` distributes the `TopicPartitionOffset` instances across the delegate `KafkaMessageListenerContainer` instances.
+When the container properties are configured with `TopicPartitionOffset`+++s+++, the `ConcurrentMessageListenerContainer` distributes the `TopicPartitionOffset` instances across the delegate `KafkaMessageListenerContainer` instances.
 
 If, say, six `TopicPartitionOffset` instances are provided and the `concurrency` is `3`; each container gets two partitions.
 For five `TopicPartitionOffset` instances, two containers get two partitions, and the third gets one.
@@ -196,14 +196,14 @@ After that, the same semantics as `BATCH` are applied.
 
 When using xref:kafka/transactions.adoc[transactions], the offset(s) are sent to the transaction and the semantics are equivalent to `RECORD` or `BATCH`, depending on the listener type (record or batch).
 
-NOTE: `MANUAL`, and `MANUAL_IMMEDIATE` require the listener to be an `AcknowledgingMessageListener` or a `BatchAcknowledgingMessageListener`.
-See <<message-listeners, Message Listeners>>.
+NOTE: `MANUAL` and `MANUAL_IMMEDIATE` require the listener to be an `AcknowledgingMessageListener` or a `BatchAcknowledgingMessageListener`.
+See xref:kafka/receiving-messages/message-listeners.adoc[Message Listeners].
 
 Depending on the `syncCommits` container property, the `commitSync()` or `commitAsync()` method on the consumer is used.
 `syncCommits` is `true` by default; also see `setSyncCommitTimeout`.
 See `setCommitCallback` to get the results of asynchronous commits; the default callback is the `LoggingCommitCallback` which logs errors (and successes at debug level).
 
-Because the listener container has it's own mechanism for committing offsets, it prefers the Kafka `ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG` to be `false`.
+Because the listener container has its own mechanism for committing offsets, it prefers the Kafka `ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG` to be `false`.
 Starting with version 2.3, it unconditionally sets it to false unless specifically set in the consumer factory or the container's consumer property overrides.
 
 The `Acknowledgment` has the following method:

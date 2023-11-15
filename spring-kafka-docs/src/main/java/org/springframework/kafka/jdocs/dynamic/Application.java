@@ -96,7 +96,7 @@ public KafkaAdmin.NewTopics topics() {
 @Bean
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 MyPojo pojo(String id, String topic) {
-	return new MyPojo(id, topic);
+    return new MyPojo(id, topic);
 }
 //end::pojoBean[]
 

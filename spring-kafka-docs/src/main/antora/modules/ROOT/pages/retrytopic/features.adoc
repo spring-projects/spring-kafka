@@ -23,7 +23,7 @@ It includes:
     backoff = @Backoff(delay = 1000, multiplier = 2, maxDelay = 5000))
 @KafkaListener(topics = "my-annotated-topic")
 public void processMessage(MyPojo message) {
-        // ... message processing
+    // ... message processing
 }
 ----
 
@@ -33,7 +33,7 @@ public void processMessage(MyPojo message) {
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
     return RetryTopicConfigurationBuilder
             .newInstance()
-            .fixedBackoff(3000)
+            .fixedBackoff(3_000)
             .maxAttempts(4)
             .create(template);
 }
@@ -53,25 +53,25 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
 }
 ----
 
-NOTE: The default backoff policy is `FixedBackOffPolicy` with a maximum of 3 attempts and 1000ms intervals.
+NOTE: The default back off policy is `FixedBackOffPolicy` with a maximum of 3 attempts and 1000ms intervals.
 
 NOTE: There is a 30-second default maximum delay for the `ExponentialBackOffPolicy`.
-If your back off policy requires delays with values bigger than that, adjust the maxDelay property accordingly.
+If your back off policy requires delays with values bigger than that, adjust the `maxDelay` property accordingly.
 
 IMPORTANT: The first attempt counts against `maxAttempts`, so if you provide a `maxAttempts` value of 4 there'll be the original attempt plus 3 retries.
 
 [[global-timeout]]
-== Global timeout
+== Global Timeout
 
 You can set the global timeout for the retrying process.
 If that time is reached, the next time the consumer throws an exception the message goes straight to the DLT, or just ends the processing if no DLT is available.
 
 [source, java]
 ----
-@RetryableTopic(backoff = @Backoff(2000), timeout = 5000)
+@RetryableTopic(backoff = @Backoff(2_000), timeout = 5_000)
 @KafkaListener(topics = "my-annotated-topic")
 public void processMessage(MyPojo message) {
-        // ... message processing
+    // ... message processing
 }
 ----
 
@@ -81,8 +81,8 @@ public void processMessage(MyPojo message) {
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
     return RetryTopicConfigurationBuilder
             .newInstance()
-            .fixedBackoff(2000)
-            .timeoutAfter(5000)
+            .fixedBackoff(2_000)
+            .timeoutAfter(5_000)
             .create(template);
 }
 ----
@@ -100,7 +100,7 @@ You can also set it to traverse the causes to lookup nested exceptions.
 @RetryableTopic(include = {MyRetryException.class, MyOtherRetryException.class}, traversingCauses = true)
 @KafkaListener(topics = "my-annotated-topic")
 public void processMessage(MyPojo message) {
-        throw new RuntimeException(new MyRetryException()); // Will retry
+    throw new RuntimeException(new MyRetryException()); // will retry
 }
 ----
 
@@ -168,7 +168,7 @@ NOTE: The default behavior is to include all topics.
 
 Unless otherwise specified the framework will auto create the required topics using `NewTopic` beans that are consumed by the `KafkaAdmin` bean.
 You can specify the number of partitions and the replication factor with which the topics will be created, and you can turn this feature off.
-Starting with version 3.0, the default replication factor is `-1`, meaning use the broker default.
+Starting with version 3.0, the default replication factor is `-1`, meaning using the broker default.
 If your broker version is earlier than 2.4, you will need to set an explicit value.
 
 IMPORTANT: Note that if you're not using Spring Boot you'll have to provide a KafkaAdmin bean in order to use this feature.
@@ -178,13 +178,13 @@ IMPORTANT: Note that if you're not using Spring Boot you'll have to provide a Ka
 @RetryableTopic(numPartitions = 2, replicationFactor = 3)
 @KafkaListener(topics = "my-annotated-topic")
 public void processMessage(MyPojo message) {
-        // ... message processing
+    // ... message processing
 }
 
 @RetryableTopic(autoCreateTopics = false)
 @KafkaListener(topics = "my-annotated-topic")
 public void processMessage(MyPojo message) {
-        // ... message processing
+    // ... message processing
 }
 ----
 [source, java]
@@ -206,7 +206,7 @@ public RetryTopicConfiguration myOtherRetryTopic(KafkaTemplate<Integer, MyPojo> 
 }
 ----
 
-NOTE: By default the topics are autocreated with one partition and a replication factor of -1 (meaning use the broker default).
+NOTE: By default the topics are autocreated with one partition and a replication factor of -1 (meaning using the broker default).
 If your broker version is earlier than 2.4, you will need to set an explicit value.
 
 [[retry-headers]]
@@ -235,7 +235,7 @@ protected void configureCustomizers(CustomizersConfigurer customizersConfigurer)
 }
 ----
 
-Starting with version 2.8.4, if you wish to add custom headers (in addition to the retry information headers added by the factory, you can add a `headersFunction` to the factory - `factory.setHeadersFunction((rec, ex) -> { ... })`
+Starting with version 2.8.4, if you wish to add custom headers (in addition to the retry information headers added by the factory, you can add a `headersFunction` to the factory - `factory.setHeadersFunction((rec, ex) +++->+++ { +++...+++ })`.
 
 By default, any headers added will be cumulative - Kafka headers can contain multiple values.
 Starting with version 2.9.5, if the `Headers` returned by the function contains a header of type `DeadLetterPublishingRecoverer.SingleRecordHeader`, then any existing values for that header will be removed and only the new single value will remain.

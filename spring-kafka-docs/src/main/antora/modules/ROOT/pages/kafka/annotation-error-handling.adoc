@@ -32,7 +32,7 @@ It might be used in a request/reply scenario where you wish to send a failure re
 [source, java]
 ----
 @Bean
-KafkaListenerErrorHandler eh(DeadLetterPublishingRecoverer recoverer) {
+public KafkaListenerErrorHandler eh(DeadLetterPublishingRecoverer recoverer) {
     return (msg, ex) -> {
         if (msg.getHeaders().get(KafkaHeaders.DELIVERY_ATTEMPT, Integer.class) > 9) {
             recoverer.accept(msg.getHeaders().get(KafkaHeaders.RAW_DATA, ConsumerRecord.class), ex);
@@ -50,7 +50,7 @@ It has a sub-interface (`ConsumerAwareListenerErrorHandler`) that has access to 
 Object handleError(Message<?> message, ListenerExecutionFailedException exception, Consumer<?, ?> consumer);
 ----
 
-Another sub-interface (`ManualAckListenerErrorHandler`) provides access to the `Acknowledgment` object when using manual `AckMode` s.
+Another sub-interface (`ManualAckListenerErrorHandler`) provides access to the `Acknowledgment` object when using manual `AckMode`+++s+++.
 
 [source, java]
 ----
@@ -157,7 +157,7 @@ For example, with the `@KafkaListener` container factory, you can add `DefaultEr
 ----
 @Bean
 public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
-    ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory();
+    ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
     factory.setConsumerFactory(consumerFactory());
     factory.getContainerProperties().setAckMode(AckMode.RECORD);
     factory.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(1000L, 2L)));
@@ -168,7 +168,7 @@ public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerCont
 For a record listener, this will retry a delivery up to 2 times (3 delivery attempts) with a back off of 1 second, instead of the default configuration (`FixedBackOff(0L, 9)`).
 Failures are simply logged after retries are exhausted.
 
-As an example; if the `poll` returns six records (two from each partition 0, 1, 2) and the listener throws an exception on the fourth record, the container acknowledges the first three messages by committing their offsets.
+As an example, if the `poll` returns six records (two from each partition 0, 1, 2) and the listener throws an exception on the fourth record, the container acknowledges the first three messages by committing their offsets.
 The `DefaultErrorHandler` seeks to offset 1 for partition 1 and offset 0 for partition 2.
 The next `poll()` returns the three unprocessed records.
 
@@ -181,7 +181,7 @@ The sequence of events is:
 * Commit the offsets of the records before the index.
 * If retries are not exhausted, perform seeks so that all the remaining records (including the failed record) will be redelivered.
 * If retries are exhausted, attempt recovery of the failed record (default log only) and perform seeks so that the remaining records (excluding the failed record) will be redelivered.
-The recovered record's offset is committed
+The recovered record's offset is committed.
 * If retries are exhausted and recovery fails, seeks are performed as if retries are not exhausted.
 
 IMPORTANT: Starting with version 2.9, the `DefaultErrorHandler` can be configured to provide the same semantics as seeking the unprocessed record offsets as discussed above, but without actually seeking.
@@ -243,7 +243,7 @@ public DefaultErrorHandler errorHandler(ConsumerRecordRecoverer recoverer) {
 }
 ----
 
-The error handler can be configured with one or more `RetryListener` s, receiving notifications of retry and recovery progress.
+The error handler can be configured with one or more `RetryListener`+++s+++, receiving notifications of retry and recovery progress.
 Starting with version 2.8.10, methods for batch listeners were added.
 
 [source, java]
@@ -259,11 +259,11 @@ public interface RetryListener {
     default void recoveryFailed(ConsumerRecord<?, ?> record, Exception original, Exception failure) {
     }
 
-	default void failedDelivery(ConsumerRecords<?, ?> records, Exception ex, int deliveryAttempt) {
-	}
+    default void failedDelivery(ConsumerRecords<?, ?> records, Exception ex, int deliveryAttempt) {
+    }
 
-	default void recovered(ConsumerRecords<?, ?> records, Exception ex) {
-	}
+    default void recovered(ConsumerRecords<?, ?> records, Exception ex) {
+    }
 
 	default void recoveryFailed(ConsumerRecords<?, ?> records, Exception original, Exception failure) {
 	}
@@ -271,7 +271,7 @@ public interface RetryListener {
 }
 ----
 
-See the javadocs for more information.
+See the JavaDocs for more information.
 
 IMPORTANT: If the recoverer fails (throws an exception), the failed record will be included in the seeks.
 If the recoverer fails, the `BackOff` will be reset by default and redeliveries will again go through the back offs before recovery is attempted again.
@@ -298,7 +298,7 @@ Also see xref:kafka/annotation-error-handling.adoc#delivery-header[Delivery Atte
 
 Starting with version 2.8, batch listeners can now properly handle conversion errors, when using a `MessageConverter` with a `ByteArrayDeserializer`, a `BytesDeserializer` or a `StringDeserializer`, as well as a `DefaultErrorHandler`.
 When a conversion error occurs, the payload is set to null and a deserialization exception is added to the record headers, similar to the `ErrorHandlingDeserializer`.
-A list of `ConversionException` s is available in the listener so the listener can throw a `BatchListenerFailedException` indicating the first index at which a conversion exception occurred.
+A list of `ConversionException`+++s+++ is available in the listener so the listener can throw a `BatchListenerFailedException` indicating the first index at which a conversion exception occurred.
 
 Example:
 
@@ -323,7 +323,7 @@ This is now the fallback behavior of the `DefaultErrorHandler` for a batch liste
 
 There is no guarantee that, when a batch is redelivered, the batch has the same number of records and/or the redelivered records are in the same order.
 It is impossible, therefore, to easily maintain retry state for a batch.
-The `FallbackBatchErrorHandler` takes a the following approach.
+The `FallbackBatchErrorHandler` takes the following approach.
 If a batch listener throws an exception that is not a `BatchListenerFailedException`, the retries are performed from the in-memory batch of records.
 In order to avoid a rebalance during an extended retry sequence, the error handler pauses the consumer, polls it before sleeping for the back off, for each retry, and calls the listener again.
 If/when retries are exhausted, the `ConsumerRecordRecoverer` is called for each record in the batch.
@@ -340,7 +340,7 @@ While waiting for a `BackOff` interval, the error handler will loop with a short
 The `CommonContainerStoppingErrorHandler` stops the container if the listener throws an exception.
 For record listeners, when the `AckMode` is `RECORD`, offsets for already processed records are committed.
 For record listeners, when the `AckMode` is any manual value, offsets for already acknowledged records are committed.
-For record listeners, wWhen the `AckMode` is `BATCH`, or for batch listeners, the entire batch is replayed when the container is restarted.
+For record listeners, when the `AckMode` is `BATCH`, or for batch listeners, the entire batch is replayed when the container is restarted.
 
 After the container stops, an exception that wraps the `ListenerExecutionFailedException` is thrown.
 This is to cause the transaction to roll back (if transactions are enabled).
@@ -407,16 +407,16 @@ If you wish to use a different error handling strategy for record and batch list
 |`DefaultErrorHandler`
 
 |`RetryingBatchErrorHandler`
-|No replacements - use `DefaultErrorHandler` and throw an exception other than `BatchListenerFailedException`.
+|No replacements, use `DefaultErrorHandler` and throw an exception other than `BatchListenerFailedException`.
 |===
 
 [[migrating-legacy-eh]]
 === Migrating Custom Legacy Error Handler Implementations to `CommonErrorHandler`
 
-Refer to the javadocs in `CommonErrorHandler`.
+Refer to the JavaDocs in `CommonErrorHandler`.
 
 To replace an `ErrorHandler` or `ConsumerAwareErrorHandler` implementation, you should implement `handleOne()` and leave `seeksAfterHandle()` to return `false` (default).
-You should also implement `handleOtherException()` - to handle exceptions that occur outside the scope of record processing (e.g. consumer errors).
+You should also implement `handleOtherException()` to handle exceptions that occur outside the scope of record processing (e.g. consumer errors).
 
 To replace a `RemainingRecordsErrorHandler` implementation, you should implement `handleRemaining()`  and override `seeksAfterHandle()` to return `true` (the error handler must perform the necessary seeks).
 You should also implement `handleOtherException()` - to handle exceptions that occur outside the scope of record processing (e.g. consumer errors).
@@ -515,7 +515,7 @@ Since the event also has a reference to the container, you can restart the conta
 
 Starting with version 2.7, while waiting for a `BackOff` interval, the error handler will loop with a short sleep until the desired delay is reached, while checking to see if the container has been stopped, allowing the sleep to exit soon after the `stop()` rather than causing a delay.
 
-Starting with version 2.7, the processor can be configured with one or more `RetryListener` s, receiving notifications of retry and recovery progress.
+Starting with version 2.7, the processor can be configured with one or more `RetryListener`+++s+++, receiving notifications of retry and recovery progress.
 
 [source, java]
 ----
@@ -533,7 +533,7 @@ public interface RetryListener {
 }
 ----
 
-See the javadocs for more information.
+See the JavaDocs for more information.
 
 [[delivery-header]]
 == Delivery Attempts Header
@@ -548,7 +548,7 @@ When receiving a raw `ConsumerRecord<?, ?>` the integer is in a `byte[4]`.
 ----
 int delivery = ByteBuffer.wrap(record.headers()
     .lastHeader(KafkaHeaders.DELIVERY_ATTEMPT).value())
-    .getInt()
+    .getInt();
 ----
 
 When using `@KafkaListener` with the `DefaultKafkaHeaderMapper` or `SimpleKafkaHeaderMapper`, it can be obtained by adding `@Header(KafkaHeaders.DELIVERY_ATTEMPT) int delivery` as a parameter to the listener method.
@@ -568,15 +568,15 @@ Then, the container will add this in the `KafkaListener.LISTENER_INFO` header to
 
 [source, java]
 ----
-@KafkaListener(id = "something", topic = "topic", filter = "someFilter",
+@KafkaListener(id = "something", topics = "topic", filter = "someFilter",
         info = "this is the something listener")
-public void listen2(@Payload Thing thing,
+public void listen(@Payload Thing thing,
         @Header(KafkaHeaders.LISTENER_INFO) String listenerInfo) {
-...
+    ...
 }
 ----
 
-When used in a `RecordInterceptor` or `RecordFilterStrategy` implementation, the header is in the consumer record as a byte array, converted using the `KafkaListenerAnnotationBeanPostProcessor` 's `charSet` property.
+When used in a `RecordInterceptor` or `RecordFilterStrategy` implementation, the header is in the consumer record as a byte array, converted using the `KafkaListenerAnnotationBeanPostProcessor`+++'+++s `charSet` property.
 
 The header mappers also convert to `String` when creating `MessageHeaders` from the consumer record and never map this header on an outbound record.
 
@@ -600,7 +600,7 @@ NOTE: If the batch listener has a filter and the filter results in an empty batc
 
 If you receive `List<Message<Thing>>` the info is in the `KafkaHeaders.LISTENER_INFO` header of each `Message<?>`.
 
-See <<batch-listeners>> for more information about consuming batches.
+See xref:kafka/receiving-messages/listener-annotation.adoc#batch-listeners[Batch Listeners] for more information about consuming batches.
 
 [[dead-letters]]
 == Publishing Dead-letter Records
@@ -649,7 +649,7 @@ The record sent to the dead-letter topic is enhanced with the following headers:
 * `KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE`: The original timestamp type.
 * `KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP`: The original consumer group that failed to process the record (since version 2.8).
 
-Key exceptions are only caused by `DeserializationException` s so there is no `DLT_KEY_EXCEPTION_CAUSE_FQCN`.
+Key exceptions are only caused by `DeserializationException`+++s+++ so there is no `DLT_KEY_EXCEPTION_CAUSE_FQCN`.
 
 There are two mechanisms to add more headers.
 
@@ -661,15 +661,14 @@ The second is simpler to implement but the first has more information available,
 
 Starting with version 2.3, when used in conjunction with an `ErrorHandlingDeserializer`, the publisher will restore the record `value()`, in the dead-letter producer record, to the original value that failed to be deserialized.
 Previously, the `value()` was null and user code had to decode the `DeserializationException` from the message headers.
-In addition, you can provide multiple `KafkaTemplate` s to the publisher; this might be needed, for example, if you want to publish the `byte[]` from a `DeserializationException`, as well as values using a different serializer from records that were deserialized successfully.
-Here is an example of configuring the publisher with `KafkaTemplate` s that use a `String` and `byte[]` serializer:
+In addition, you can provide multiple `KafkaTemplate`+++s+++ to the publisher; this might be needed, for example, if you want to publish the `byte[]` from a `DeserializationException`, as well as values using a different serializer from records that were deserialized successfully.
+Here is an example of configuring the publisher with `KafkaTemplate`+++s+++ that use a `String` and `byte[]` serializer:
 
 [source, java]
 ----
 @Bean
 public DeadLetterPublishingRecoverer publisher(KafkaTemplate<?, ?> stringTemplate,
         KafkaTemplate<?, ?> bytesTemplate) {
-
     Map<Class<?>, KafkaTemplate<?, ?>> templates = new LinkedHashMap<>();
     templates.put(String.class, stringTemplate);
     templates.put(byte[].class, bytesTemplate);
@@ -680,7 +679,7 @@ public DeadLetterPublishingRecoverer publisher(KafkaTemplate<?, ?> stringTemplat
 The publisher uses the map keys to locate a template that is suitable for the `value()` about to be published.
 A `LinkedHashMap` is recommended so that the keys are examined in order.
 
-When publishing `null` values, when there are multiple templates, the recoverer will look for a template for the `Void` class; if none is present, the first template from the `values().iterator()` will be used.
+When publishing `null` values, and there are multiple templates, the recoverer will look for a template for the `Void` class; if none is present, the first template from the `values().iterator()` will be used.
 
 Since 2.7 you can use the `setFailIfSendResultIsError` method so that an exception is thrown when message publishing fails.
 You can also set a timeout for the verification of the sender success with `setWaitForSendResultTimeout`.
@@ -695,7 +694,7 @@ By default, the exception type is not considered.
 
 Starting with version 2.3, the recoverer can also be used with Kafka Streams - see xref:streams.adoc#streams-deser-recovery[Recovery from Deserialization Exceptions] for more information.
 
-The `ErrorHandlingDeserializer` adds the deserialization exception(s) in headers `ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER` and `ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER` (using java serialization).
+The `ErrorHandlingDeserializer` adds the deserialization exception(s) in headers `ErrorHandlingDeserializer.VALUE_DESERIALIZER_EXCEPTION_HEADER` and `ErrorHandlingDeserializer.KEY_DESERIALIZER_EXCEPTION_HEADER` (using Java serialization).
 By default, these headers are not retained in the message published to the dead letter topic.
 Starting with version 2.7, if both the key and value fail deserialization, the original values of both are populated in the record sent to the DLT.
 

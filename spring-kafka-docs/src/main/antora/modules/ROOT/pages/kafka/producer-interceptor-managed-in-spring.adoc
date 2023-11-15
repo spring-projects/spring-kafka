@@ -17,7 +17,6 @@ public class MyProducerInterceptor implements ProducerInterceptor<String, String
 
     @Override
     public void configure(Map<String, ?> configs) {
-
     }
 
     @Override
@@ -47,7 +46,7 @@ public MyProducerInterceptor myProducerInterceptor(SomeBean someBean) {
 
 @Bean
 public KafkaTemplate<String, String> kafkaTemplate(ProducerFactory<String, String> pf, MyProducerInterceptor myProducerInterceptor) {
-   KafkaTemplate<String, String> kafkaTemplate = new KafkaTemplate<String, String>(pf);
+   KafkaTemplate<String, String> kafkaTemplate = new KafkaTemplate<>(pf);
    kafkaTemplate.setProducerInterceptor(myProducerInterceptor);
 }
 ----

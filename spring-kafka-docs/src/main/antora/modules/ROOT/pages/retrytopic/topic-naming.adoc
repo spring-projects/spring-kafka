@@ -7,7 +7,7 @@ Examples:
 
 "my-topic" -> "my-topic-retry-0", "my-topic-retry-1", ..., "my-topic-dlt"
 
-"my-other-topic" -> "my-topic-myRetrySuffix-1000", "my-topic-myRetrySuffix-2000", ..., "my-topic-myDltSuffix".
+"my-other-topic" -> "my-topic-myRetrySuffix-1000", "my-topic-myRetrySuffix-2000", ..., "my-topic-myDltSuffix"
 
 NOTE: The default behavior is to create separate retry topics for each attempt, appended with an index value: retry-0, retry-1, ..., retry-n.
 Therefore, by default the number of retry topics is the configured `maxAttempts` minus 1.
@@ -15,16 +15,16 @@ Therefore, by default the number of retry topics is the configured `maxAttempts`
 You can xref:retrytopic/topic-naming.adoc#retry-topics-and-dlt-suffixes[configure the suffixes], choose whether to append xref:retrytopic/topic-naming.adoc#append-index-or-delay[the attempt index or delay], use a xref:retrytopic/topic-naming.adoc#single-topic-fixed-delay[single retry topic when using fixed backoff], and use a xref:retrytopic/topic-naming.adoc#single-topic-maxinterval-delay[single retry topic for the attempts with the maxInterval] when using exponential backoffs.
 
 [[retry-topics-and-dlt-suffixes]]
-== Retry Topics and Dlt Suffixes
+== Retry Topics and DLT Suffixes
 
-You can specify the suffixes that will be used by the retry and dlt topics.
+You can specify the suffixes that will be used by the retry and DLT topics.
 
 [source, java]
 ----
 @RetryableTopic(retryTopicSuffix = "-my-retry-suffix", dltTopicSuffix = "-my-dlt-suffix")
 @KafkaListener(topics = "my-annotated-topic")
 public void processMessage(MyPojo message) {
-        // ... message processing
+    // ... message processing
 }
 ----
 
@@ -52,7 +52,7 @@ You can either append the topic's index or delay values after the suffix.
 @RetryableTopic(topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE)
 @KafkaListener(topics = "my-annotated-topic")
 public void processMessage(MyPojo message) {
-        // ... message processing
+    // ... message processing
 }
 ----
 
@@ -79,10 +79,10 @@ NOTE: The previous `FixedDelayStrategy` is now deprecated, and can be replaced b
 
 [source, java]
 ----
-@RetryableTopic(backoff = @Backoff(2000), fixedDelayTopicStrategy = FixedDelayStrategy.SINGLE_TOPIC)
+@RetryableTopic(backoff = @Backoff(2_000), fixedDelayTopicStrategy = FixedDelayStrategy.SINGLE_TOPIC)
 @KafkaListener(topics = "my-annotated-topic")
 public void processMessage(MyPojo message) {
-        // ... message processing
+    // ... message processing
 }
 ----
 
@@ -92,14 +92,14 @@ public void processMessage(MyPojo message) {
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
     return RetryTopicConfigurationBuilder
             .newInstance()
-            .fixedBackoff(3000)
+            .fixedBackoff(3_000)
             .maxAttempts(5)
             .useSingleTopicForFixedDelays()
             .create(template);
 }
 ----
 
-NOTE: The default behavior is creating separate retry topics for each attempt, appended with their index value: retry-0, retry-1, ...
+NOTE: The default behavior is creating separate retry topics for each attempt, appended with their index values: retry-0, retry-1, ...
 
 
 [[single-topic-maxinterval-delay]]
@@ -113,7 +113,7 @@ NOTE: By opting to use a single topic for the retries with the `maxInterval` del
 
 The default behavior is to work with the number of retry topics equal to the configured `maxAttempts` minus 1 and, when using exponential backoff, the retry topics are suffixed with the delay values, with the last retry topic (corresponding to the `maxInterval` delay) being suffixed with an additional index.
 
-For instance, when configuring the exponential backoff with `initialInterval=1000`, `multiplier=2`, and `maxInterval=16000`, in order to keep trying for one hour, one would need to configure `maxAttempts` as 229, and by default the needed retry topics would be:
+For instance, when configuring the exponential backoff with `initialInterval=1_000`, `multiplier=2`, and `maxInterval=16_000`, in order to keep trying for one hour, one would need to configure `maxAttempts` as 229, and by default the needed retry topics would be:
 
 * -retry-1000
 * -retry-2000
@@ -138,11 +138,11 @@ This will be the default in a future release.
 [source, java]
 ----
 @RetryableTopic(attempts = 230,
-    backoff = @Backoff(delay = 1000, multiplier = 2, maxDelay = 16000),
+    backoff = @Backoff(delay = 1_000, multiplier = 2, maxDelay = 16_000),
     sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC)
 @KafkaListener(topics = "my-annotated-topic")
 public void processMessage(MyPojo message) {
-        // ... message processing
+    // ... message processing
 }
 ----
 
@@ -152,7 +152,7 @@ public void processMessage(MyPojo message) {
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
     return RetryTopicConfigurationBuilder
             .newInstance()            
-            .exponentialBackoff(1000, 2, 16000)
+            .exponentialBackoff(1_000, 2, 16_000)
             .maxAttempts(230)
             .useSingleTopicForSameIntervals()
             .create(template);
@@ -160,7 +160,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
 ----
 
 [[custom-naming-strategies]]
-== Custom naming strategies
+== Custom Naming Strategies
 
 More complex naming strategies can be accomplished by registering a bean that implements `RetryTopicNamesProviderFactory`.
 The default implementation is `SuffixingRetryTopicNamesProviderFactory` and a different implementation can be registered in the following way:
@@ -178,7 +178,7 @@ protected RetryTopicComponentFactory createComponentFactory() {
 }
 ----
 
-As an example the following implementation, in addition to the standard suffix, adds a prefix to retry/dl topics names:
+As an example, the following implementation, in addition to the standard suffix, adds a prefix to retry/dlt topics names:
 
 [source, java]
 ----
@@ -188,7 +188,7 @@ public class CustomRetryTopicNamesProviderFactory implements RetryTopicNamesProv
     public RetryTopicNamesProvider createRetryTopicNamesProvider(
                 DestinationTopic.Properties properties) {
 
-        if(properties.isMainEndpoint()) {
+        if (properties.isMainEndpoint()) {
             return new SuffixingRetryTopicNamesProvider(properties);
         }
         else {
