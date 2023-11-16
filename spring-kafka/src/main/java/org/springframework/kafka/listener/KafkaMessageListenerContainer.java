@@ -2259,7 +2259,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				try {
 					this.batchFailed = true;
 					invokeBatchErrorHandler(records, recordList, e);
-					commitOffsetsIfNeeded(records);
+					commitOffsetsIfNeededAfterHandlingError(records);
 				}
 				catch (KafkaException ke) {
 					ke.selfLog(ERROR_HANDLER_THREW_AN_EXCEPTION, this.logger);
@@ -2280,8 +2280,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			return null;
 		}
 
-		private void commitOffsetsIfNeeded(final ConsumerRecords<K, V> records) {
-			if ((!this.autoCommit && this.commonErrorHandler.isAckAfterHandle())
+		private void commitOffsetsIfNeededAfterHandlingError(final ConsumerRecords<K, V> records) {
+			if ((!this.autoCommit && this.commonErrorHandler.isAckAfterHandle() && this.consumerGroupId != null)
 					|| this.producer != null) {
 				if (this.remainingRecords != null) {
 					ConsumerRecord<K, V> firstUncommitted = this.remainingRecords.iterator().next();
@@ -2744,7 +2744,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					}
 					try {
 						invokeErrorHandler(cRecord, iterator, e);
-						commitOffsetsIfNeeded(cRecord);
+						commitOffsetsIfNeededAfterHandlingError(cRecord);
 					}
 					catch (KafkaException ke) {
 						ke.selfLog(ERROR_HANDLER_THREW_AN_EXCEPTION, this.logger);
@@ -2763,8 +2763,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			});
 		}
 
-		private void commitOffsetsIfNeeded(final ConsumerRecord<K, V> cRecord) {
-			if ((!this.autoCommit && this.commonErrorHandler.isAckAfterHandle())
+		private void commitOffsetsIfNeededAfterHandlingError(final ConsumerRecord<K, V> cRecord) {
+			if ((!this.autoCommit && this.commonErrorHandler.isAckAfterHandle() && this.consumerGroupId != null)
 					|| this.producer != null) {
 				if (this.isManualAck) {
 					this.commitRecovered = true;
