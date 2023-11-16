@@ -17,6 +17,7 @@
 package org.springframework.kafka.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.any;
@@ -545,6 +546,7 @@ public class DefaultKafkaProducerFactoryTests {
 		assertThat(KafkaTestUtils.getPropertyValue(pf1, "transactionIdPrefix")).isEqualTo("tx2-");
 		configs.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, null);
 		assertThatIllegalArgumentException().isThrownBy(() -> pf1.updateConfigs(configs));
+		assertThatCode(() -> pf1.updateConfigs(Collections.singletonMap(null, null))).doesNotThrowAnyException();
 	}
 
 	@SuppressWarnings("unchecked")

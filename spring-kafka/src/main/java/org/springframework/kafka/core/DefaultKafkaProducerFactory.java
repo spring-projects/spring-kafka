@@ -626,23 +626,31 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	@Override
 	public void updateConfigs(Map<String, Object> updates) {
-		updates.entrySet().forEach(entry -> {
-			if (entry.getKey().equals(ProducerConfig.TRANSACTIONAL_ID_CONFIG)) {
-				Assert.isTrue(entry.getValue() instanceof String, () -> "'" + ProducerConfig.TRANSACTIONAL_ID_CONFIG
-						+ "' must be a String, not a " + entry.getClass().getName());
-				Assert.isTrue(this.transactionIdPrefix != null
-								? entry.getValue() != null
-								: entry.getValue() == null,
-						"Cannot change transactional capability");
-				this.transactionIdPrefix = (String) entry.getValue();
+		updates.forEach((key, value) -> {
+			if (key == null) {
+				return;
 			}
-			else if (entry.getKey().equals(ProducerConfig.CLIENT_ID_CONFIG)) {
-				Assert.isTrue(entry.getValue() instanceof String, () -> "'" + ProducerConfig.CLIENT_ID_CONFIG
-						+ "' must be a String, not a " + entry.getClass().getName());
-				this.clientIdPrefix = (String) entry.getValue();
+			if (key.equals(ProducerConfig.TRANSACTIONAL_ID_CONFIG)) {
+				Assert.isTrue(
+						value == null || value instanceof String,
+						() -> "'" + ProducerConfig.TRANSACTIONAL_ID_CONFIG
+								+ "' must be null or a String, not a " + value.getClass().getName()
+				);
+				Assert.isTrue(
+						(this.transactionIdPrefix != null) == (value != null),
+						"Cannot change transactional capability"
+				);
+				this.transactionIdPrefix = (String) value;
 			}
-			else {
-				this.configs.put(entry.getKey(), entry.getValue());
+			else if (key.equals(ProducerConfig.CLIENT_ID_CONFIG)) {
+				Assert.isTrue(
+						value == null || value instanceof String,
+						() -> "'" + ProducerConfig.CLIENT_ID_CONFIG
+								+ "' must be null or a String, not a " + value.getClass().getName());
+				this.clientIdPrefix = (String) value;
+			}
+			else if (value != null) {
+				this.configs.put(key, value);
 			}
 		});
 	}
