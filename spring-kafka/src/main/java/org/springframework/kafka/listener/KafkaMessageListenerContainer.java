@@ -661,19 +661,17 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final boolean autoCommit;
 
-		private final boolean isManualAck = this.containerProperties.getAckMode().equals(AckMode.MANUAL);
+		private final boolean isManualAck;
 
-		private final boolean isCountAck = this.containerProperties.getAckMode().equals(AckMode.COUNT)
-				|| this.containerProperties.getAckMode().equals(AckMode.COUNT_TIME);
+		private final boolean isCountAck;
 
-		private final boolean isTimeOnlyAck = this.containerProperties.getAckMode().equals(AckMode.TIME);
+		private final boolean isTimeOnlyAck;
 
-		private final boolean isManualImmediateAck =
-				this.containerProperties.getAckMode().equals(AckMode.MANUAL_IMMEDIATE);
+		private final boolean isManualImmediateAck;
 
-		private final boolean isAnyManualAck = this.isManualAck || this.isManualImmediateAck;
+		private final boolean isAnyManualAck;
 
-		private final boolean isRecordAck = this.containerProperties.getAckMode().equals(AckMode.RECORD);
+		private final boolean isRecordAck;
 
 		private final BlockingQueue<ConsumerRecord<K, V>> acks = new LinkedBlockingQueue<>();
 
@@ -768,15 +766,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Set<TopicPartition> pausedPartitions = new HashSet<>();
 
-		private final Map<TopicPartition, List<Long>> offsetsInThisBatch =
-				this.isAnyManualAck && this.containerProperties.isAsyncAcks()
-						? new HashMap<>()
-						: null;
+		private final Map<TopicPartition, List<Long>> offsetsInThisBatch;
 
-		private final Map<TopicPartition, List<ConsumerRecord<K, V>>> deferredOffsets =
-				this.isAnyManualAck && this.containerProperties.isAsyncAcks()
-						? new HashMap<>()
-						: null;
+		private final Map<TopicPartition, List<ConsumerRecord<K, V>>> deferredOffsets;
 
 		private final Map<TopicPartition, Long> lastReceivePartition;
 
@@ -856,6 +848,24 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		@SuppressWarnings(UNCHECKED)
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType,
 				ObservationRegistry observationRegistry) {
+
+			AckMode ackMode = determineAckMode();
+			this.isManualAck = ackMode.equals(AckMode.MANUAL);
+			this.isCountAck = ackMode.equals(AckMode.COUNT)
+					|| ackMode.equals(AckMode.COUNT_TIME);
+			this.isTimeOnlyAck = ackMode.equals(AckMode.TIME);
+			this.isManualImmediateAck =
+					ackMode.equals(AckMode.MANUAL_IMMEDIATE);
+			this.isAnyManualAck = this.isManualAck || this.isManualImmediateAck;
+			this.isRecordAck = ackMode.equals(AckMode.RECORD);
+			this.offsetsInThisBatch =
+					this.isAnyManualAck && this.containerProperties.isAsyncAcks()
+							? new HashMap<>()
+							: null;
+			this.deferredOffsets =
+					this.isAnyManualAck && this.containerProperties.isAsyncAcks()
+							? new HashMap<>()
+							: null;
 
 			this.observationRegistry = observationRegistry;
 			Properties consumerProperties = propertiesFromConsumerPropertyOverrides();
@@ -948,6 +958,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.lastAlertPartition = new HashMap<>();
 			this.wasIdlePartition = new HashMap<>();
 			this.kafkaAdmin = obtainAdmin();
+		}
+
+		private AckMode determineAckMode() {
+			AckMode ackMode = this.containerProperties.getAckMode();
+			if (this.consumerGroupId == null && KafkaMessageListenerContainer.this.topicPartitions != null) {
+				ackMode = AckMode.MANUAL;
+			}
+			return ackMode;
 		}
 
 		@Nullable

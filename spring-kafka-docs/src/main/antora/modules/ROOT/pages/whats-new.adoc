@@ -44,3 +44,9 @@ See xref:kafka/serdes.adoc#error-handling-deserializer[Using `ErrorHandlingDeser
 Change suffix `-retry-5000` to `-retry` when `@RetryableTopic(backoff = @Backoff(delay = 5000), attempts = "2", fixedDelayTopicStrategy = FixedDelayStrategy.SINGLE_TOPIC)`.
 If you want to keep suffix `-retry-5000`, use `@RetryableTopic(backoff = @Backoff(delay = 5000), attempts = "2")`.
 See xref:retrytopic/topic-naming.adoc[Topic Naming] for more information.
+
+[[x31-c]]
+=== Listener Container Changes
+
+When manually assigning partitions, with a `null` consumer `group.id`, the `AckMode` is now automatically coerced to `MANUAL`.
+See xref:tips.adoc#tip-assign-all-parts[Manually Assigning All Partitions] for more information.
