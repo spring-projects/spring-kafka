@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2022 the original author or authors.
+ * Copyright 2020-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package org.springframework.kafka.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -35,12 +36,13 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 /**
  * @author Gary Russell
+ * @author Nathan Xu
  * @since 2.5
  *
  */
 public class RoutingKafkaTemplateTests {
 
-	@SuppressWarnings({ "unchecked" })
+	@SuppressWarnings("unchecked")
 	@Test
 	public void routing() {
 		Producer<Object, Object> p1 = mock(Producer.class);
@@ -62,6 +64,21 @@ public class RoutingKafkaTemplateTests {
 		verify(p1, times(2)).send(any(), any());
 		verify(p2, times(2)).send(any(), any());
 		assertThat(KafkaTestUtils.getPropertyValue(template, "factoryMap", Map.class)).hasSize(2);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void testTransactionalFactoriesNotSupported() {
+		ProducerFactory<Object, Object> pf1 = mock(ProducerFactory.class);
+		given(pf1.transactionCapable()).willReturn(false);
+		ProducerFactory<Object, Object> pf2 = mock(ProducerFactory.class);
+		given(pf2.transactionCapable()).willReturn(true);
+		Map<Pattern, ProducerFactory<Object, Object>> map = new LinkedHashMap<>();
+		map.put(Pattern.compile("fo.*"), pf1);
+		map.put(Pattern.compile(".*"), pf2);
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new RoutingKafkaTemplate(map))
+				.withMessage("Transactional factories are not supported");
 	}
 
 }

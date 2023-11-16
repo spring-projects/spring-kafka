@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2022 the original author or authors.
+ * Copyright 2020-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,14 +19,12 @@ package org.springframework.kafka.core;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
@@ -40,6 +38,7 @@ import org.springframework.util.Assert;
  * only simple send operations.
  *
  * @author Gary Russell
+ * @author Nathan Xu
  * @since 2.5
  *
  */
@@ -58,19 +57,12 @@ public class RoutingKafkaTemplate extends KafkaTemplate<Object, Object> {
 	 * @param factories the factories.
 	 */
 	public RoutingKafkaTemplate(Map<Pattern, ProducerFactory<Object, Object>> factories) {
-		super(new ProducerFactory<Object, Object>() {
-
-			@Override
-			public Producer<Object, Object> createProducer() {
-				throw new UnsupportedOperationException();
-			}
-
+		super(() -> {
+			throw new UnsupportedOperationException();
 		});
+		Assert.isTrue(factories.values().stream().noneMatch(ProducerFactory::transactionCapable),
+					"Transactional factories are not supported");
 		this.factoryMatchers = new LinkedHashMap<>(factories);
-		Optional<Boolean> transactional = factories.values().stream()
-			.map(fact -> fact.transactionCapable())
-			.findFirst();
-		Assert.isTrue(!transactional.isPresent() || !transactional.get(), "Transactional factories are not supported");
 	}
 
 	@Override
