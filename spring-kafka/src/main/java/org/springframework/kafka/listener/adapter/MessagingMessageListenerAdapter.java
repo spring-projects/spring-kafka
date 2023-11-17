@@ -80,6 +80,7 @@ import org.springframework.util.StringUtils;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Venil Noronha
+ * @author Nathan Xu
  */
 public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware {
 
@@ -470,8 +471,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		if (!returnTypeMessage && topic == null) {
 			this.logger.debug(() -> "No replyTopic to handle the reply: " + result);
 		}
-		else if (result instanceof Message) {
-			Message<?> reply = checkHeaders(result, topic, source);
+		else if (result instanceof Message<?> mResult) {
+			Message<?> reply = checkHeaders(mResult, topic, source);
 			this.replyTemplate.send(reply);
 		}
 		else {
@@ -483,8 +484,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				}
 				if (iterableOfMessages || this.splitIterables) {
 					((Iterable<V>) result).forEach(v -> {
-						if (v instanceof Message) {
-							this.replyTemplate.send((Message<?>) v);
+						if (v instanceof Message<?> mv) {
+							this.replyTemplate.send(checkHeaders(mv, topic, source));
 						}
 						else {
 							this.replyTemplate.send(topic, v);
@@ -501,12 +502,12 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 	}
 
-	private Message<?> checkHeaders(Object result, String topic, @Nullable Object source) { // NOSONAR (complexity)
-		Message<?> reply = (Message<?>) result;
+	private Message<?> checkHeaders(Message<?> reply, String topic, @Nullable Object source) { // NOSONAR (complexity)
 		MessageHeaders headers = reply.getHeaders();
 		boolean needsTopic = headers.get(KafkaHeaders.TOPIC) == null;
 		boolean sourceIsMessage = source instanceof Message;
-		boolean needsCorrelation = headers.get(this.correlationHeaderName) == null && sourceIsMessage;
+		boolean needsCorrelation = headers.get(this.correlationHeaderName) == null && sourceIsMessage
+				&& getCorrelationId((Message<?>) source) != null;
 		boolean needsPartition = headers.get(KafkaHeaders.PARTITION) == null && sourceIsMessage
 				&& getReplyPartition((Message<?>) source) != null;
 		if (needsTopic || needsCorrelation || needsPartition) {
@@ -514,11 +515,10 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			if (needsTopic) {
 				builder.setHeader(KafkaHeaders.TOPIC, topic);
 			}
-			if (needsCorrelation && sourceIsMessage) {
-				builder.setHeader(this.correlationHeaderName,
-						((Message<?>) source).getHeaders().get(this.correlationHeaderName));
+			if (needsCorrelation) {
+				setCorrelationId(builder, (Message<?>) source);
 			}
-			if (sourceIsMessage && reply.getHeaders().get(KafkaHeaders.REPLY_PARTITION) == null) {
+			if (needsPartition) {
 				setPartition(builder, (Message<?>) source);
 			}
 			reply = builder.build();
@@ -569,6 +569,30 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 		setPartition(builder, ((Message<?>) source));
 		this.replyTemplate.send(builder.build());
+	}
+
+	private void setTopic(MessageBuilder<?> builder, Message<?> source) {
+		byte[] topicBytes = getReplyTopic(source);
+		if (topicBytes != null) {
+			builder.setHeader(KafkaHeaders.TOPIC, new String(topicBytes, StandardCharsets.UTF_8));
+		}
+	}
+
+	@Nullable
+	private byte[] getReplyTopic(Message<?> source) {
+		return source.getHeaders().get(KafkaHeaders.REPLY_TOPIC, byte[].class);
+	}
+
+	private void setCorrelationId(MessageBuilder<?> builder, Message<?> source) {
+		byte[] correlationIdBytes = getCorrelationId(source);
+		if (correlationIdBytes != null) {
+			builder.setHeader(this.correlationHeaderName, correlationIdBytes);
+		}
+	}
+
+	@Nullable
+	private byte[] getCorrelationId(Message<?> source) {
+		return source.getHeaders().get(this.correlationHeaderName, byte[].class);
 	}
 
 	private void setPartition(MessageBuilder<?> builder, Message<?> source) {
