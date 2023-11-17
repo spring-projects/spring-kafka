@@ -9,3 +9,5 @@ The consumer will be paused (no new records delivered) until all the offsets for
 
 IMPORTANT: While this feature allows applications to process records asynchronously, it should be understood that it increases the possibility of duplicate deliveries after a failure.
 
+IMPORTANT: When `asyncAcks` is activated, it is not possible to use `nack()` (negative acknowledgments) when xref:kafka/receiving-messages/message-listener-container.adoc#committing-offsets[Committing Offsets].
+
