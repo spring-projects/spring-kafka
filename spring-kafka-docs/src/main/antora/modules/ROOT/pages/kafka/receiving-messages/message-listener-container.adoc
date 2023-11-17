@@ -233,6 +233,8 @@ With a record listener, when `nack()` is called, any pending offsets are committ
 The consumer can be paused before redelivery, by setting the `sleep` argument.
 This is similar functionality to throwing an exception when the container is configured with a `DefaultErrorHandler`.
 
+IMPORTANT: `nack()` pauses the entire listener for the specified sleep duration including all assigned partitions.
+
 When using a batch listener, you can specify the index within the batch where the failure occurred.
 When `nack()` is called, offsets will be committed for records before the index and seeks are performed on the partitions for the failed and discarded records so that they will be redelivered on the next `poll()`.
 

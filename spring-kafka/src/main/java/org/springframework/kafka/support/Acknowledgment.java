@@ -41,7 +41,9 @@ public interface Acknowledgment {
 	/**
 	 * Negatively acknowledge the current record - discard remaining records from the poll
 	 * and re-seek all partitions so that this record will be redelivered after the sleep
-	 * duration. Must be called on the consumer thread.
+	 * duration. This will pause reading for the entire message listener for the specified
+	 * sleep duration and is not limited to a single partition.
+	 * Must be called on the consumer thread.
 	 * <p>
 	 * @param sleep the duration to sleep; the actual sleep time will be larger of this value
 	 * and the container's {@code maxPollInterval}, which defaults to 5 seconds.
