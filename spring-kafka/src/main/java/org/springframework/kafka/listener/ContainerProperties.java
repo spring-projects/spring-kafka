@@ -258,6 +258,8 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private PlatformTransactionManager transactionManager;
 
+	private boolean batchRecoverAfterRollback = false;
+
 	private int monitorInterval = DEFAULT_MONITOR_INTERVAL;
 
 	private TaskScheduler scheduler;
@@ -541,6 +543,14 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	public void setTransactionManager(@Nullable PlatformTransactionManager transactionManager) {
 		this.transactionManager = transactionManager;
+	}
+
+	public boolean isBatchRecoverAfterRollback() {
+		return this.batchRecoverAfterRollback;
+	}
+
+	public void setBatchRecoverAfterRollback(boolean batchRecoverAfterRollback) {
+		this.batchRecoverAfterRollback = batchRecoverAfterRollback;
 	}
 
 	public int getMonitorInterval() {

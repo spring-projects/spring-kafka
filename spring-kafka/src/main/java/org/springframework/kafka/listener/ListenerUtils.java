@@ -126,12 +126,7 @@ public final class ListenerUtils {
 			Map<Thread, Long> lastIntervals, MessageListenerContainer container) throws InterruptedException {
 
 		Thread currentThread = Thread.currentThread();
-		BackOffExecution backOffExecution = executions.get(currentThread);
-		if (backOffExecution == null) {
-			backOffExecution = backOff.start();
-			executions.put(currentThread, backOffExecution);
-		}
-		Long interval = backOffExecution.nextBackOff();
+		Long interval = nextBackOff(backOff, executions);
 		if (interval == BackOffExecution.STOP) {
 			interval = lastIntervals.get(currentThread);
 			if (interval == null) {
@@ -142,6 +137,17 @@ public final class ListenerUtils {
 		if (interval > 0) {
 			stoppableSleep(container, interval);
 		}
+	}
+
+	public static long nextBackOff(BackOff backOff, Map<Thread, BackOffExecution> executions) {
+
+		Thread currentThread = Thread.currentThread();
+		BackOffExecution backOffExecution = executions.get(currentThread);
+		if (backOffExecution == null) {
+			backOffExecution = backOff.start();
+			executions.put(currentThread, backOffExecution);
+		}
+		return backOffExecution.nextBackOff();
 	}
 
 	/**

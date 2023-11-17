@@ -37,6 +37,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -112,7 +113,8 @@ import org.springframework.util.backoff.FixedBackOff;
  */
 @EmbeddedKafka(topics = { TransactionalContainerTests.topic1, TransactionalContainerTests.topic2,
 		TransactionalContainerTests.topic3, TransactionalContainerTests.topic3DLT, TransactionalContainerTests.topic4,
-		TransactionalContainerTests.topic5, TransactionalContainerTests.topic6, TransactionalContainerTests.topic7 },
+		TransactionalContainerTests.topic5, TransactionalContainerTests.topic6, TransactionalContainerTests.topic7,
+		TransactionalContainerTests.topic8, TransactionalContainerTests.topic8DLT },
 		brokerProperties = { "transaction.state.log.replication.factor=1", "transaction.state.log.min.isr=1" })
 public class TransactionalContainerTests {
 
@@ -133,6 +135,12 @@ public class TransactionalContainerTests {
 	public static final String topic6 = "txTopic6";
 
 	public static final String topic7 = "txTopic7";
+
+	public static final String topic8 = "txTopic8";
+
+	public static final String topic8DLT = "txTopic8.DLT";
+
+	public static final String topic9 = "txTopic9";
 
 	private static EmbeddedKafkaBroker embeddedKafka;
 
@@ -666,13 +674,12 @@ public class TransactionalContainerTests {
 		pf.destroy();
 	}
 
-	@SuppressWarnings({ "unchecked", "deprecation" })
+	@SuppressWarnings({ "unchecked"})
 	@Test
 	public void testMaxFailures() throws Exception {
 		logger.info("Start testMaxFailures");
-		Map<String, Object> props = KafkaTestUtils.consumerProps("txTestMaxFailures", "false", embeddedKafka);
 		String group = "groupInARBP";
-		props.put(ConsumerConfig.GROUP_ID_CONFIG, group);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(group, "false", embeddedKafka);
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic3);
@@ -754,7 +761,7 @@ public class TransactionalContainerTests {
 		assertThat(headers.get(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
 		assertThat(headers.get(KafkaHeaders.DLT_EXCEPTION_STACKTRACE, byte[].class))
 				.contains("fail for max failures".getBytes());
-		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_OFFSET, byte[].class)[3]).isEqualTo((byte) 0);
+		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_OFFSET, byte[].class)[7]).isEqualTo((byte) 0);
 		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_PARTITION, byte[].class)[3]).isEqualTo((byte) 0);
 		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP, byte[].class)).isNotNull();
 		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE, byte[].class)).isNotNull();
@@ -768,7 +775,7 @@ public class TransactionalContainerTests {
 		verify(afterRollbackProcessor, times(4)).process(any(), any(), any(), captor.capture(), anyBoolean(), any());
 		assertThat(captor.getValue()).isInstanceOf(ListenerExecutionFailedException.class)
 				.extracting(ex -> ((ListenerExecutionFailedException) ex).getGroupId())
-				.isEqualTo("groupInARBP");
+				.isEqualTo(group);
 		verify(afterRollbackProcessor).clearThreadState();
 		verify(dlTemplate).send(any(ProducerRecord.class));
 		verify(dlTemplate).sendOffsetsToTransaction(
@@ -777,12 +784,133 @@ public class TransactionalContainerTests {
 		logger.info("Stop testMaxAttempts");
 	}
 
+	@SuppressWarnings({ "unchecked"})
+	@Test
+	public void testBatchListenerMaxFailuresOnRecover() throws Exception {
+
+		logger.info("Start testBatchListenerMaxFailures");
+		String group = "groupInARBP2";
+		Map<String, Object> props = KafkaTestUtils.consumerProps(group, "false", embeddedKafka);
+		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic8);
+		containerProps.setPollTimeout(10_000);
+		containerProps.setBatchRecoverAfterRollback(true);
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<Object, Object> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		pf.setTransactionIdPrefix("maxAtt.batchListener");
+		final KafkaTemplate<Object, Object> template = new KafkaTemplate<>(pf);
+		containerProps.setMessageListener((BatchMessageListener<Integer, String>) recordList -> {
+			for (ConsumerRecord<Integer, String> record : recordList) {
+				if (record.offset() == 1) {
+					throw new BatchListenerFailedException("fail for max failures", record);
+				}
+			}
+		});
+
+		@SuppressWarnings({ "rawtypes" })
+		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
+		containerProps.setTransactionManager(tm);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("testBatchListenerMaxFailures");
+		final CountDownLatch recoverLatch = new CountDownLatch(5);
+		final KafkaOperations<Object, Object> dlTemplate = spy(new KafkaTemplate<>(pf));
+		AtomicBoolean recovererShouldFail = new AtomicBoolean(true);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(dlTemplate) {
+
+			@Override
+			public void accept(ConsumerRecord<?, ?> record, Consumer<?, ?> consumer, Exception exception) {
+				if (record.offset() == 1 && recovererShouldFail.getAndSet(false)) {
+					throw new RuntimeException("test recoverer failure");
+				}
+				super.accept(record, consumer, exception);
+				recoverLatch.countDown();
+			}
+
+		};
+		DefaultAfterRollbackProcessor<Object, Object> afterRollbackProcessor =
+				spy(new DefaultAfterRollbackProcessor<>(recoverer, new FixedBackOff(0L, 2L), dlTemplate, true));
+		afterRollbackProcessor.setResetStateOnRecoveryFailure(false);
+		container.setAfterRollbackProcessor(afterRollbackProcessor);
+		final CountDownLatch stopLatch = new CountDownLatch(1);
+		container.setApplicationEventPublisher(e -> {
+			if (e instanceof ConsumerStoppedEvent) {
+				stopLatch.countDown();
+			}
+		});
+		container.start();
+
+		template.setDefaultTopic(topic8);
+		template.executeInTransaction(t -> {
+			RecordHeaders headers = new RecordHeaders(new RecordHeader[] { new RecordHeader("baz", "qux".getBytes()) });
+			ProducerRecord<Object, Object> record = new ProducerRecord<>(topic8, 0, 0, "bar", headers);
+			template.sendDefault(0, 0, "foo");
+			template.send(record);
+			template.sendDefault(0, 0, "baz");
+			template.sendDefault(0, 0, "quz");
+			return null;
+		});
+		assertThat(recoverLatch.await(1000, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		Consumer<Integer, String> consumer = cf.createConsumer();
+		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, topic8DLT);
+		ConsumerRecords<Integer, String> dltRecords = KafkaTestUtils.getRecords(consumer, Duration.ofSeconds(60));
+		List<ConsumerRecord<Integer, String>> recordList = new ArrayList<>();
+		for (ConsumerRecord<Integer, String> record : dltRecords) {
+			recordList.add(record);
+		}
+		assertThat(recordList.size()).isEqualTo(4);
+		ConsumerRecord<Integer, String> dltRecord0 = recordList.get(0);
+		assertThat(dltRecord0.value()).isEqualTo("foo");
+		ConsumerRecord<Integer, String> dltRecord1 = recordList.get(1);
+		assertThat(dltRecord1.value()).isEqualTo("bar");
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		Map<String, Object> map = new HashMap<>();
+		mapper.toHeaders(dltRecord1.headers(), map);
+		MessageHeaders headers = new MessageHeaders(map);
+		assertThat(new String(headers.get(KafkaHeaders.DLT_EXCEPTION_FQCN, byte[].class)))
+				.contains("ListenerExecutionFailedException");
+		assertThat(new String(headers.get(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN, byte[].class)))
+				.isEqualTo("org.springframework.kafka.listener.BatchListenerFailedException");
+		assertThat(new String(headers.get(KafkaHeaders.DLT_EXCEPTION_MESSAGE, byte[].class)))
+				.contains("Listener failed; fail for max failures");
+		assertThat(headers.get(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
+		assertThat(headers.get(KafkaHeaders.DLT_EXCEPTION_STACKTRACE, byte[].class))
+				.contains("fail for max failures".getBytes());
+		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_OFFSET, byte[].class)[7]).isEqualTo((byte) 1);
+		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_PARTITION, byte[].class)[3]).isEqualTo((byte) 0);
+		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP, byte[].class)).isNotNull();
+		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE, byte[].class)).isNotNull();
+		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_TOPIC, byte[].class)).isEqualTo(topic8.getBytes());
+		assertThat(headers.get(KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP)).isEqualTo(group.getBytes());
+		assertThat(headers.get("baz")).isEqualTo("qux".getBytes());
+		ConsumerRecord<Integer, String> dltRecord2 = recordList.get(2);
+		assertThat(dltRecord2.value()).isEqualTo("baz");
+		ConsumerRecord<Integer, String> dltRecord3 = recordList.get(3);
+		assertThat(dltRecord3.value()).isEqualTo("quz");
+		pf.destroy();
+		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		verify(afterRollbackProcessor, times(4)).isProcessInTransaction();
+		ArgumentCaptor<Exception> captor = ArgumentCaptor.forClass(Exception.class);
+		verify(afterRollbackProcessor, times(4)).processBatch(any(), any(), any(), any(), captor.capture(), anyBoolean(), any());
+		assertThat(captor.getValue()).isInstanceOf(ListenerExecutionFailedException.class)
+				.extracting(ex -> ((ListenerExecutionFailedException) ex).getGroupId())
+				.isEqualTo(group);
+		verify(afterRollbackProcessor, times(2)).clearThreadState();
+		verify(dlTemplate, times(5)).send(any(ProducerRecord.class));
+		verify(dlTemplate).sendOffsetsToTransaction(
+				eq(Collections.singletonMap(new TopicPartition(topic8, 0), new OffsetAndMetadata(4L))),
+				any(ConsumerGroupMetadata.class));
+		logger.info("Stop testBatchListenerMaxFailures");
+	}
+
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testRollbackProcessorCrash() throws Exception {
 		logger.info("Start testRollbackNoRetries");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testRollbackNoRetries", "false", embeddedKafka);
-		props.put(ConsumerConfig.GROUP_ID_CONFIG, "group");
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic4);
@@ -835,6 +963,80 @@ public class TransactionalContainerTests {
 		});
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(data.get()).isEqualTo("bar");
+		container.stop();
+		pf.destroy();
+		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		logger.info("Stop testRollbackNoRetries");
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void testBatchListenerRecoverAfterRollbackProcessorCrash() throws Exception {
+		logger.info("Start testBatchListenerRollbackNoRetries");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("testBatchListenerRollbackNoRetries", "false", embeddedKafka);
+		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
+		props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic9);
+		containerProps.setPollTimeout(10_000);
+		containerProps.setBatchRecoverAfterRollback(true);
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<Object, Object> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		pf.setTransactionIdPrefix("batchListener.noRetries.");
+		final KafkaTemplate<Object, Object> template = new KafkaTemplate<>(pf);
+		final CountDownLatch latch = new CountDownLatch(1);
+		AtomicReference<String> data = new AtomicReference<>();
+		containerProps.setMessageListener((BatchMessageListener<Integer, String>) recordList -> {
+			for (ConsumerRecord<Integer, String> record : recordList) {
+				data.set(record.value());
+				if (record.offset() == 0) {
+					throw new BatchListenerFailedException("fail for no retry", record);
+				}
+				latch.countDown();
+			}
+		});
+
+		@SuppressWarnings({ "rawtypes" })
+		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
+		containerProps.setTransactionManager(tm);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("testBatchListenerRollbackNoRetries");
+		final KafkaOperations<Object, Object> dlTemplate = spy(new KafkaTemplate<>(pf));
+		AtomicBoolean recovererShouldFail = new AtomicBoolean(true);
+		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(dlTemplate) {
+			@Override
+			public void accept(ConsumerRecord<?, ?> record, Consumer<?, ?> consumer, Exception exception) {
+				if (recovererShouldFail.getAndSet(false)) {
+					throw new RuntimeException("batch listener arbp fail");
+				}
+			}
+
+		};
+		DefaultAfterRollbackProcessor<Object, Object> afterRollbackProcessor =
+				spy(new DefaultAfterRollbackProcessor<>(recoverer, new FixedBackOff(0L, 0L), dlTemplate, true));
+		container.setAfterRollbackProcessor(afterRollbackProcessor);
+		final CountDownLatch stopLatch = new CountDownLatch(1);
+		container.setApplicationEventPublisher(e -> {
+			if (e instanceof ConsumerStoppedEvent) {
+				stopLatch.countDown();
+			}
+		});
+		container.start();
+
+		template.setDefaultTopic(topic9);
+		template.executeInTransaction(t -> {
+			RecordHeaders headers = new RecordHeaders(new RecordHeader[] { new RecordHeader("baz", "qux".getBytes()) });
+			ProducerRecord<Object, Object> record = new ProducerRecord<>(topic9, 0, 0, "foo", headers);
+			template.send(record);
+			template.sendDefault(0, 0, "bar");
+			template.sendDefault(0, 0, "baz");
+			template.sendDefault(0, 0, "qux");
+			return null;
+		});
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(data.get()).isEqualTo("qux");
 		container.stop();
 		pf.destroy();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();

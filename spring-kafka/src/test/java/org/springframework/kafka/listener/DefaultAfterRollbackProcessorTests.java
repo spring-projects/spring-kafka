@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 the original author or authors.
+ * Copyright 2019-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,14 +27,18 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
@@ -100,8 +104,8 @@ public class DefaultAfterRollbackProcessorTests {
 	}
 
 	@Test
-	void testBatchBackOff() {
-		AtomicReference<ConsumerRecord<?, ?>> recovered = new AtomicReference<>();
+	void testBackOffNoBatchRecover() {
+
 		@SuppressWarnings("unchecked")
 		KafkaOperations<String, String> template = mock(KafkaOperations.class);
 		given(template.isTransactional()).willReturn(true);
@@ -118,35 +122,23 @@ public class DefaultAfterRollbackProcessorTests {
 		ConsumerRecord<String, String> record1 = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
 		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("foo", 1, 1L, "foo", "bar");
 		List<ConsumerRecord<String, String>> records = Arrays.asList(record1, record2);
+		Map<TopicPartition, List<ConsumerRecord<String, String>>> map = new HashMap<>();
+		records.forEach(rec -> map.computeIfAbsent(new TopicPartition(rec.topic(), rec.partition()),
+				tp -> new ArrayList<>()).add(rec));
+		ConsumerRecords<String, String> consumerRecords = new ConsumerRecords<>(map);
 		IllegalStateException illegalState = new IllegalStateException();
 		@SuppressWarnings("unchecked")
 		Consumer<String, String> consumer = mock(Consumer.class);
 		given(consumer.groupMetadata()).willReturn(new ConsumerGroupMetadata("foo"));
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		given(container.isRunning()).willReturn(true);
-		processor.process(records, consumer, container, illegalState, false, EOSMode.V2);
-		processor.process(records, consumer, container, illegalState, false, EOSMode.V2);
+		processor.processBatch(consumerRecords, records, consumer, container, illegalState, false, EOSMode.V2);
+		processor.processBatch(consumerRecords, records, consumer, container, illegalState, false, EOSMode.V2);
 		verify(backOff, times(2)).start();
 		verify(execution.get(), times(2)).nextBackOff();
 		processor.clearThreadState();
-		processor.process(records, consumer, container, illegalState, false, EOSMode.V2);
+		processor.processBatch(consumerRecords, records, consumer, container, illegalState, false, EOSMode.V2);
 		verify(backOff, times(3)).start();
-	}
-
-	void testEarlyExitBackOff() {
-		DefaultAfterRollbackProcessor<String, String> processor = new DefaultAfterRollbackProcessor<>(
-				new FixedBackOff(1, 10_000));
-		@SuppressWarnings("unchecked")
-		Consumer<String, String> consumer = mock(Consumer.class);
-		ConsumerRecord<String, String> record1 = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
-		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("foo", 1, 1L, "foo", "bar");
-		List<ConsumerRecord<String, String>> records = Arrays.asList(record1, record2);
-		IllegalStateException illegalState = new IllegalStateException();
-		MessageListenerContainer container = mock(MessageListenerContainer.class);
-		given(container.isRunning()).willReturn(false);
-		long t1 = System.currentTimeMillis();
-		processor.process(records, consumer, container, illegalState, true, EOSMode.V2);
-		assertThat(System.currentTimeMillis() < t1 + 5_000);
 	}
 
 	@Test

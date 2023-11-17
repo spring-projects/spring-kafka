@@ -32,6 +32,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
@@ -662,6 +663,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final boolean wantsFullRecords;
 
+		private final boolean wantsBatchRecoverAfterRollback;
+
 		private final boolean asyncReplies;
 
 		private final boolean autoCommit;
@@ -888,6 +891,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			this.clientId = determineClientId();
 			this.transactionTemplate = determineTransactionTemplate();
+			this.wantsBatchRecoverAfterRollback = this.containerProperties.isBatchRecoverAfterRollback();
 			this.genericListener = listener;
 			this.consumerSeekAwareListener = checkConsumerSeekAware(listener);
 			this.commitCurrentOnAssignment = determineCommitCurrent(consumerProperties,
@@ -2195,37 +2199,20 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 					@Override
 					protected void doInTransactionWithoutResult(TransactionStatus status) {
-						batchAfterRollback(records, recordList, e, afterRollbackProcessorToUse);
+						afterRollbackProcessorToUse.processBatch(records,
+								Objects.requireNonNullElseGet(recordList, () -> createRecordList(records)),
+								ListenerConsumer.this.consumer,
+								KafkaMessageListenerContainer.this.thisOrParentContainer, e,
+								ListenerConsumer.this.wantsBatchRecoverAfterRollback, ListenerConsumer.this.eosMode);
 					}
 
 				});
 			}
 			else {
-				batchAfterRollback(records, recordList, e, afterRollbackProcessorToUse);
-			}
-		}
-
-		private void batchAfterRollback(final ConsumerRecords<K, V> records,
-				@Nullable final List<ConsumerRecord<K, V>> recordList, RuntimeException rollbackException,
-				AfterRollbackProcessor<K, V> afterRollbackProcessorToUse) {
-
-			try {
-				if (recordList == null) {
-					afterRollbackProcessorToUse.process(createRecordList(records), this.consumer,
-							KafkaMessageListenerContainer.this.thisOrParentContainer,  rollbackException, false,
-							this.eosMode);
-				}
-				else {
-					afterRollbackProcessorToUse.process(recordList, this.consumer,
-							KafkaMessageListenerContainer.this.thisOrParentContainer,  rollbackException, false,
-							this.eosMode);
-				}
-			}
-			catch (KafkaException ke) {
-				ke.selfLog("AfterRollbackProcessor threw an exception", this.logger);
-			}
-			catch (Exception ex) {
-				this.logger.error(ex, "AfterRollbackProcessor threw an exception");
+				afterRollbackProcessorToUse.processBatch(records,
+						Objects.requireNonNullElseGet(recordList, () -> createRecordList(records)), this.consumer,
+						KafkaMessageListenerContainer.this.thisOrParentContainer, e,
+						this.wantsBatchRecoverAfterRollback, this.eosMode);
 			}
 		}
 

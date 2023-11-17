@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import java.util.List;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 import org.springframework.kafka.listener.ContainerProperties.EOSMode;
 
@@ -62,6 +63,12 @@ public interface AfterRollbackProcessor<K, V> {
 	 */
 	void process(List<ConsumerRecord<K, V>> records, Consumer<K, V> consumer,
 			MessageListenerContainer container, Exception exception, boolean recoverable, EOSMode eosMode);
+
+	default void processBatch(ConsumerRecords<K, V> records, List<ConsumerRecord<K, V>> recordList,
+			Consumer<K, V> consumer, MessageListenerContainer container, Exception exception,
+			boolean recoverable, ContainerProperties.EOSMode eosMode) {
+		process(recordList, consumer, container, exception, recoverable, eosMode);
+	}
 
 	/**
 	 * Optional method to clear thread state; will be called just before a consumer

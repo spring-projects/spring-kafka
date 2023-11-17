@@ -133,6 +133,17 @@ public final class SeekUtils {
 		return skipped.get();
 	}
 
+	public static void doSeeksToBegin(List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer,
+			LogAccessor logger) {
+
+		Map<TopicPartition, Long> partitions = new LinkedHashMap<>();
+		records.forEach(record -> {
+			partitions.computeIfAbsent(new TopicPartition(record.topic(), record.partition()),
+					offset -> record.offset());
+		});
+		seekPartitions(consumer, partitions, logger);
+	}
+
 	/**
 	 * Perform seek operations on each partition.
 	 * @param consumer the consumer.

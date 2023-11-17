@@ -98,9 +98,9 @@ public class BatchListenerFailedException extends KafkaException {
 
 	@Override
 	public String getMessage() {
-		return super.getMessage() + (this.record != null
+		return super.getMessage() + " " + (this.record != null
 				? (this.record.topic() + "-" + this.record.partition() + "@" + this.record.offset())
-				: (" @-" + this.index));
+				: ("@-" + this.index));
 	}
 
 }
