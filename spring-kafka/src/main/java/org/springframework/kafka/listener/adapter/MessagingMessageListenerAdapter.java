@@ -80,6 +80,7 @@ import org.springframework.util.StringUtils;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Venil Noronha
+ * @author Nathan Xu
  */
 public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware {
 
@@ -514,11 +515,11 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			if (needsTopic) {
 				builder.setHeader(KafkaHeaders.TOPIC, topic);
 			}
-			if (needsCorrelation && sourceIsMessage) {
+			if (needsCorrelation) {
 				builder.setHeader(this.correlationHeaderName,
 						((Message<?>) source).getHeaders().get(this.correlationHeaderName));
 			}
-			if (sourceIsMessage && reply.getHeaders().get(KafkaHeaders.REPLY_PARTITION) == null) {
+			if (needsPartition) {
 				setPartition(builder, (Message<?>) source);
 			}
 			reply = builder.build();
