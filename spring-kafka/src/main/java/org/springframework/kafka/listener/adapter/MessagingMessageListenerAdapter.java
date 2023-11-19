@@ -484,8 +484,9 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				}
 				if (iterableOfMessages || this.splitIterables) {
 					((Iterable<V>) result).forEach(v -> {
-						if (v instanceof Message) {
-							this.replyTemplate.send((Message<?>) v);
+						if (v instanceof Message<?> mv) {
+							Message<?> aReply = checkHeaders(mv, topic, source);
+							this.replyTemplate.send(aReply);
 						}
 						else {
 							this.replyTemplate.send(topic, v);
@@ -506,9 +507,9 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		MessageHeaders headers = reply.getHeaders();
 		boolean needsTopic = topic != null && headers.get(KafkaHeaders.TOPIC) == null;
 		boolean sourceIsMessage = source instanceof Message;
-		boolean needsCorrelation = sourceIsMessage && headers.get(this.correlationHeaderName) == null
+		boolean needsCorrelation = headers.get(this.correlationHeaderName) == null && sourceIsMessage
 				&& getCorrelation((Message<?>) source) != null;
-		boolean needsPartition = sourceIsMessage && headers.get(KafkaHeaders.PARTITION) == null
+		boolean needsPartition = headers.get(KafkaHeaders.PARTITION) == null && sourceIsMessage
 				&& getReplyPartition((Message<?>) source) != null;
 		if (needsTopic || needsCorrelation || needsPartition) {
 			MessageBuilder<?> builder = MessageBuilder.fromMessage(reply);

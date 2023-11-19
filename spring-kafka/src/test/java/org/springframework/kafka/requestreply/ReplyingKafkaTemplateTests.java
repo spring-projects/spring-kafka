@@ -100,6 +100,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 /**
  * @author Gary Russell
+ * @author Nathan Xu
  * @since 2.1.3
  *
  */
@@ -116,7 +117,8 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 		ReplyingKafkaTemplateTests.I_REPLY, ReplyingKafkaTemplateTests.I_REQUEST,
 		ReplyingKafkaTemplateTests.J_REPLY, ReplyingKafkaTemplateTests.J_REQUEST,
 		ReplyingKafkaTemplateTests.K_REPLY, ReplyingKafkaTemplateTests.K_REQUEST,
-		ReplyingKafkaTemplateTests.L_REPLY, ReplyingKafkaTemplateTests.L_REQUEST })
+		ReplyingKafkaTemplateTests.L_REPLY, ReplyingKafkaTemplateTests.L_REQUEST,
+		ReplyingKafkaTemplateTests.M_REPLY, ReplyingKafkaTemplateTests.M_REQUEST })
 public class ReplyingKafkaTemplateTests {
 
 	public static final String A_REPLY = "aReply";
@@ -166,6 +168,10 @@ public class ReplyingKafkaTemplateTests {
 	public static final String L_REPLY = "lReply";
 
 	public static final String L_REQUEST = "lRequest";
+
+	public static final String M_REPLY = "mReply";
+
+	public static final String M_REQUEST = "mRequest";
 
 	@Autowired
 	private EmbeddedKafkaBroker embeddedKafka;
@@ -845,6 +851,24 @@ public class ReplyingKafkaTemplateTests {
 		}
 	}
 
+	@Test
+	void testMessageIterableReturn() throws Exception {
+		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(M_REPLY);
+		try {
+			template.setDefaultReplyTimeout(Duration.ofSeconds(30));
+			Headers headers = new RecordHeaders();
+			ProducerRecord<Integer, String> record = new ProducerRecord<>(M_REQUEST, null, null, null, "foo", headers);
+			RequestReplyFuture<Integer, String, String> future = template.sendAndReceive(record);
+			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
+			ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
+			assertThat(consumerRecord.value()).isEqualTo("FOO");
+		}
+		finally {
+			template.stop();
+			template.destroy();
+		}
+	}
+
 	@Configuration
 	@EnableKafka
 	public static class Config {
@@ -1009,6 +1033,15 @@ public class ReplyingKafkaTemplateTests {
 			return MessageBuilder.withPayload(in.toUpperCase())
 					.setHeader("serverSentAnError", "user error")
 					.build();
+		}
+
+		@KafkaListener(id = M_REQUEST, topics = M_REQUEST)
+		@SendTo  // default REPLY_TOPIC header
+		public List<Message<String>> handleM(String in) throws InterruptedException {
+			Message<String> message = MessageBuilder.withPayload(in.toUpperCase())
+					.setHeader("serverSentAnError", "user error")
+					.build();
+			return Collections.singletonList(message);
 		}
 
 	}
