@@ -507,7 +507,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		boolean needsTopic = topic != null && headers.get(KafkaHeaders.TOPIC) == null;
 		boolean sourceIsMessage = source instanceof Message;
 		boolean needsCorrelation = sourceIsMessage && headers.get(this.correlationHeaderName) == null
-				&& ((Message<?>) source).getHeaders().get(this.correlationHeaderName) != null;
+				&& getCorrelation((Message<?>) source) != null;
 		boolean needsPartition = sourceIsMessage && headers.get(KafkaHeaders.PARTITION) == null
 				&& getReplyPartition((Message<?>) source) != null;
 		if (needsTopic || needsCorrelation || needsPartition) {
@@ -516,8 +516,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				builder.setHeader(KafkaHeaders.TOPIC, topic);
 			}
 			if (needsCorrelation) {
-				builder.setHeader(this.correlationHeaderName,
-						((Message<?>) source).getHeaders().get(this.correlationHeaderName));
+				setCorrelation(builder, (Message<?>) source);
 			}
 			if (needsPartition) {
 				setPartition(builder, (Message<?>) source);
@@ -532,8 +531,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		byte[] correlationId = null;
 		boolean sourceIsMessage = source instanceof Message;
 		if (sourceIsMessage
-				&& ((Message<?>) source).getHeaders().get(this.correlationHeaderName) != null) {
-			correlationId = ((Message<?>) source).getHeaders().get(this.correlationHeaderName, byte[].class);
+				&& getCorrelation((Message<?>) source) != null) {
+			correlationId = getCorrelation((Message<?>) source);
 		}
 		if (sourceIsMessage) {
 			sendReplyForMessageSource(result, topic, source, correlationId);
@@ -570,6 +569,18 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 		setPartition(builder, ((Message<?>) source));
 		this.replyTemplate.send(builder.build());
+	}
+
+	private void setCorrelation(MessageBuilder<?> builder, Message<?> source) {
+		byte[] correlationBytes = getCorrelation(source);
+		if (correlationBytes != null) {
+			builder.setHeader(this.correlationHeaderName, correlationBytes);
+		}
+	}
+
+	@Nullable
+	private byte[] getCorrelation(Message<?> source) {
+		return source.getHeaders().get(this.correlationHeaderName, byte[].class);
 	}
 
 	private void setPartition(MessageBuilder<?> builder, Message<?> source) {
