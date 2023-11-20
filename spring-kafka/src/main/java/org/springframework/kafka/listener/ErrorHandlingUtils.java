@@ -22,6 +22,8 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -189,12 +191,9 @@ public final class ErrorHandlingUtils {
 	 * @return the String.
 	 */
 	public static String recordsToString(ConsumerRecords<?, ?> records) {
-		StringBuffer sb = new StringBuffer();
-		records.spliterator().forEachRemaining(rec -> sb
-				.append(KafkaUtils.format(rec))
-				.append(','));
-		sb.deleteCharAt(sb.length() - 1);
-		return sb.toString();
+		return StreamSupport.stream(records.spliterator(), false)
+				.map(KafkaUtils::format)
+				.collect(Collectors.joining(","));
 	}
 
 	/**

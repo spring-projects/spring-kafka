@@ -69,7 +69,7 @@ public class LoggingProducerListener<K, V> implements ProducerListener<K, V> {
 	@Override
 	public void onError(ProducerRecord<K, V> record, @Nullable RecordMetadata recordMetadata, Exception exception) {
 		this.logger.error(exception, () -> {
-			StringBuffer logOutput = new StringBuffer();
+			StringBuilder logOutput = new StringBuilder();
 			logOutput.append("Exception thrown when sending a message");
 			if (this.includeContents) {
 				logOutput.append(" with key='")
