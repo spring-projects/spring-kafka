@@ -926,7 +926,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.containerProperties.isLogContainerConfig()) {
 				this.logger.info(toString());
 			}
-			Map<String, Object> props = KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties();
 			ApplicationContext applicationContext = getApplicationContext();
 			this.checkNullKeyForExceptions = this.containerProperties.isCheckDeserExWhenKeyNull()
 					|| ErrorHandlingUtils.checkDeserializer(KafkaMessageListenerContainer.this.consumerFactory,

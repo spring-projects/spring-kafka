@@ -125,6 +125,8 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	private final Map<String, BlockingQueue<CloseSafeProducer<K, V>>> cache = new ConcurrentHashMap<>();
 
+	private final Map<String, BlockingQueue<String>> suffixCache = new ConcurrentHashMap<>();
+
 	private final Map<Thread, CloseSafeProducer<K, V>> threadBoundProducers = new ConcurrentHashMap<>();
 
 	private final AtomicInteger epoch = new AtomicInteger();
@@ -152,6 +154,8 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	private String beanName = "not.managed.by.Spring";
 
 	private boolean producerPerThread;
+
+	private int maxCache;
 
 	private long maxAge;
 
@@ -404,7 +408,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	/**
 	 * Set a prefix for the {@link ProducerConfig#TRANSACTIONAL_ID_CONFIG} config. By
-	 * default a {@link ProducerConfig#TRANSACTIONAL_ID_CONFIG} value from configs is used
+	 * default, a {@link ProducerConfig#TRANSACTIONAL_ID_CONFIG} value from configs is used
 	 * as a prefix in the target producer configs.
 	 * @param transactionIdPrefix the prefix.
 	 * @since 1.3
@@ -486,6 +490,16 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	@Override
 	public List<ProducerPostProcessor<K, V>> getPostProcessors() {
 		return Collections.unmodifiableList(this.postProcessors);
+	}
+
+	/**
+	 * Set the maximum size for transaction producer cache.
+	 * @param maxCache the maxCache to set
+	 * @since 3.1
+	 */
+	public void setMaxCache(int maxCache) {
+		Assert.isTrue(maxCache >= 0, "max cache must greater than or equal 0");
+		this.maxCache = maxCache;
 	}
 
 	/**
@@ -709,6 +723,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			}
 		});
 		this.cache.clear();
+		this.suffixCache.clear();
 		this.threadBoundProducers.values().forEach(prod -> {
 			try {
 				prod.closeDelegate(this.physicalCloseTimeout, this.listeners);
@@ -846,7 +861,20 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			}
 		}
 		if (cachedProducer == null) {
-			return doCreateTxProducer(txIdPrefix, "" + this.transactionIdSuffix.getAndIncrement(), this::cacheReturner);
+			String suffix;
+			if (this.maxCache > 0) {
+				BlockingQueue<String> suffixQueue = getSuffixCache(txIdPrefix, this.maxCache);
+				Assert.notNull(suffixQueue,
+						() -> "No suffix cache found for " + txIdPrefix + ", max cache" + this.maxCache);
+				suffix = suffixQueue.poll();
+				if (suffix == null) {
+					throw new NoProducerAvailableException("No transaction producer available for " + txIdPrefix);
+				}
+			}
+			else {
+				suffix = String.valueOf(this.transactionIdSuffix.getAndIncrement());
+			}
+			return doCreateTxProducer(txIdPrefix, suffix, this::cacheReturner);
 		}
 		else {
 			return cachedProducer;
@@ -856,24 +884,28 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	private boolean expire(CloseSafeProducer<K, V> producer) {
 		boolean expired = this.maxAge > 0 && System.currentTimeMillis() - producer.created > this.maxAge;
 		if (expired) {
-			producer.closeDelegate(this.physicalCloseTimeout, this.listeners);
+			closeTransactionProducer(producer, this.physicalCloseTimeout, this.listeners);
 		}
 		return expired;
 	}
 
 	boolean cacheReturner(CloseSafeProducer<K, V> producerToRemove, Duration timeout) {
 		if (producerToRemove.closed) {
-			producerToRemove.closeDelegate(timeout, this.listeners);
+			closeTransactionProducer(producerToRemove, timeout, this.listeners);
 			return true;
 		}
 		else {
 			this.globalLock.lock();
 			try {
-				BlockingQueue<CloseSafeProducer<K, V>> txIdCache = getCache(producerToRemove.txIdPrefix);
-				if (producerToRemove.epoch != this.epoch.get()
-						|| (txIdCache != null && !txIdCache.contains(producerToRemove)
-						&& !txIdCache.offer(producerToRemove))) {
+				if (producerToRemove.epoch != this.epoch.get()) {
 					producerToRemove.closeDelegate(timeout, this.listeners);
+					return true;
+				}
+
+				BlockingQueue<CloseSafeProducer<K, V>> txIdCache = getCache(producerToRemove.txIdPrefix);
+				if (txIdCache != null && !txIdCache.contains(producerToRemove)
+						&& !txIdCache.offer(producerToRemove)) {
+					closeTransactionProducer(producerToRemove, timeout, this.listeners);
 					return true;
 				}
 			}
@@ -881,6 +913,38 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 				this.globalLock.unlock();
 			}
 			return false;
+		}
+	}
+
+	private void closeTransactionProducer(CloseSafeProducer<K, V> producer, Duration timeout,
+				List<Listener<K, V>> listeners) {
+		try {
+			producer.closeDelegate(timeout, listeners);
+		}
+		finally {
+			reuseTransactionIdSuffix(producer);
+		}
+	}
+
+	private void reuseTransactionIdSuffix(CloseSafeProducer<K, V> producerToRemove) {
+		reuseTransactionIdSuffix(producerToRemove.txIdPrefix, producerToRemove.txIdSuffix, producerToRemove.epoch);
+	}
+
+	private void reuseTransactionIdSuffix(@Nullable String txIdPrefix, @Nullable String suffix, int epoch) {
+		if (txIdPrefix == null || suffix == null) {
+			return;
+		}
+		this.globalLock.lock();
+		try {
+			if (this.maxCache > 0) {
+				BlockingQueue<String> queue = getSuffixCache(txIdPrefix, this.maxCache);
+				if (epoch == this.epoch.get() && queue != null && !queue.contains(suffix)) {
+					queue.add(suffix);
+				}
+			}
+		}
+		finally {
+			this.globalLock.unlock();
 		}
 	}
 
@@ -899,10 +963,13 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 				newEx.addSuppressed(ex2);
 				throw newEx; // NOSONAR - lost stack trace
 			}
+			finally {
+				reuseTransactionIdSuffix(prefix, suffix, this.epoch.get());
+			}
 			throw new KafkaException("initTransactions() failed", ex);
 		}
 		CloseSafeProducer<K, V> closeSafeProducer =
-				new CloseSafeProducer<>(newProducer, remover, prefix, this.physicalCloseTimeout, this.beanName,
+				new CloseSafeProducer<>(newProducer, remover, prefix, suffix, this.physicalCloseTimeout, this.beanName,
 						this.epoch.get());
 		this.listeners.forEach(listener -> listener.producerAdded(closeSafeProducer.clientId, closeSafeProducer));
 		return closeSafeProducer;
@@ -923,11 +990,36 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	}
 
 	@Nullable
-	protected BlockingQueue<CloseSafeProducer<K, V>> getCache(String txIdPrefix) {
+	protected BlockingQueue<CloseSafeProducer<K, V>> getCache(@Nullable String txIdPrefix) {
 		if (txIdPrefix == null) {
 			return null;
 		}
 		return this.cache.computeIfAbsent(txIdPrefix, txId -> new LinkedBlockingQueue<>());
+	}
+
+	@Nullable
+	protected BlockingQueue<String> getSuffixCache() {
+		return getSuffixCache(this.transactionIdPrefix);
+	}
+
+	@Nullable
+	protected BlockingQueue<String> getSuffixCache(@Nullable String txIdPrefix) {
+		return getSuffixCache(txIdPrefix, this.maxCache);
+	}
+
+	@Nullable
+	protected BlockingQueue<String> getSuffixCache(@Nullable String txIdPrefix, int maxCache) {
+		if (txIdPrefix == null || maxCache <= 0) {
+			return null;
+		}
+
+		return this.suffixCache.computeIfAbsent(txIdPrefix, txId -> {
+			BlockingQueue<String> queue = new LinkedBlockingQueue<>();
+			for (int suffix = 0; suffix < maxCache; suffix++) {
+				queue.add(String.valueOf(this.transactionIdSuffix.getAndIncrement()));
+			}
+			return queue;
+		});
 	}
 
 	/**
@@ -991,6 +1083,8 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 		final String txIdPrefix; // NOSONAR
 
+		final String txIdSuffix;  // NOSONAR
+
 		final long created; // NOSONAR
 
 		private final Duration closeTimeout;
@@ -1010,14 +1104,21 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			this(delegate, removeConsumerProducer, null, closeTimeout, factoryName, epoch);
 		}
 
+		CloseSafeProducer(Producer<K, V> delegate, BiPredicate<CloseSafeProducer<K, V>, Duration> removeProducer,
+				@Nullable String txIdPrefix, Duration closeTimeout, String factoryName, int epoch) {
+
+			this(delegate, removeProducer, txIdPrefix, null, closeTimeout, factoryName, epoch);
+		}
+
 		CloseSafeProducer(Producer<K, V> delegate,
 				BiPredicate<CloseSafeProducer<K, V>, Duration> removeProducer, @Nullable String txIdPrefix,
-				Duration closeTimeout, String factoryName, int epoch) {
+				@Nullable String txIdSuffix, Duration closeTimeout, String factoryName, int epoch) {
 
 			Assert.isTrue(!(delegate instanceof CloseSafeProducer), "Cannot double-wrap a producer");
 			this.delegate = delegate;
 			this.removeProducer = removeProducer;
 			this.txIdPrefix = txIdPrefix;
+			this.txIdSuffix = txIdSuffix;
 			this.closeTimeout = closeTimeout;
 			Map<MetricName, ? extends Metric> metrics = delegate.metrics();
 			Iterator<MetricName> metricIterator = metrics.keySet().iterator();
@@ -1047,17 +1148,12 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		@Override
 		public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {
 			LOGGER.trace(() -> toString() + " send(" + record + ")");
-			return this.delegate.send(record, new Callback() {
-
-				@Override
-				public void onCompletion(RecordMetadata metadata, Exception exception) {
-					if (exception instanceof OutOfOrderSequenceException) {
-						CloseSafeProducer.this.producerFailed = exception;
-						close(CloseSafeProducer.this.closeTimeout);
-					}
-					callback.onCompletion(metadata, exception);
+			return this.delegate.send(record, (metadata, exception) -> {
+				if (exception instanceof OutOfOrderSequenceException) {
+					CloseSafeProducer.this.producerFailed = exception;
+					close(CloseSafeProducer.this.closeTimeout);
 				}
-
+				callback.onCompletion(metadata, exception);
 			});
 		}
 

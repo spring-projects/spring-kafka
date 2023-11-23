@@ -50,3 +50,9 @@ See xref:retrytopic/topic-naming.adoc[Topic Naming] for more information.
 
 When manually assigning partitions, with a `null` consumer `group.id`, the `AckMode` is now automatically coerced to `MANUAL`.
 See xref:tips.adoc#tip-assign-all-parts[Manually Assigning All Partitions] for more information.
+
+[[x31-dkpf]]
+=== DefaultKafkaProducerFactory
+
+When setting `maxCache` with `transactionIdPrefix`, can restrict `transaction.id` in range.
+See xref:kafka/transactions.adoc#transaction-id-suffix-fixed[Fixed TransactionIdSuffix] for more information.

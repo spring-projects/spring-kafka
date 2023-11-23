@@ -376,6 +376,59 @@ public class DefaultKafkaConsumerFactoryTests {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
+	@Test
+	public void testNestedTxProducerIsFixed() throws Exception {
+		Map<String, Object> producerProps = KafkaTestUtils.producerProps(this.embeddedKafka);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(producerProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		DefaultKafkaProducerFactory<Integer, String> pfTx = new DefaultKafkaProducerFactory<>(producerProps);
+		pfTx.setTransactionIdPrefix("fooTx.fixed.");
+		pfTx.setMaxCache(3);
+		KafkaOperations<Integer, String> templateTx = new KafkaTemplate<>(pfTx);
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("txCache1FixedGroup", "false", this.embeddedKafka);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
+		AtomicReference<Consumer<Integer, String>> wrapped = new AtomicReference<>();
+		cf.addPostProcessor(consumer -> {
+			ProxyFactory prox = new ProxyFactory();
+			prox.setTarget(consumer);
+			@SuppressWarnings("unchecked")
+			Consumer<Integer, String> proxy = (Consumer<Integer, String>) prox.getProxy();
+			wrapped.set(proxy);
+			return proxy;
+		});
+		ContainerProperties containerProps = new ContainerProperties("txCache1Fixed");
+		CountDownLatch latch = new CountDownLatch(1);
+		containerProps.setMessageListener((MessageListener<Integer, String>) r -> {
+			templateTx.executeInTransaction(t -> t.send("txCacheSendFromListener", "bar"));
+			templateTx.executeInTransaction(t -> t.send("txCacheSendFromListener", "baz"));
+			latch.countDown();
+		});
+		KafkaTransactionManager<Integer, String> tm = new KafkaTransactionManager<>(pfTx);
+		containerProps.setTransactionManager(tm);
+		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
+				containerProps);
+		container.start();
+		try {
+			CompletableFuture<SendResult<Integer, String>> future = template.send("txCache1Fixed", "foo");
+			future.get(10, TimeUnit.SECONDS);
+			pf.getCache();
+			assertThat(KafkaTestUtils.getPropertyValue(pf, "cache", Map.class)).hasSize(0);
+			assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue();
+			assertThat(KafkaTestUtils.getPropertyValue(pfTx, "cache", Map.class)).hasSize(1);
+			assertThat(pfTx.getCache()).hasSize(1);
+			assertThat(KafkaTestUtils.getPropertyValue(pfTx, "suffixCache", Map.class)).hasSize(1);
+			//  1 tm tx producer and 1 templateTx tx producer
+			assertThat(pfTx.getSuffixCache()).hasSize(1);
+			assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer")).isSameAs(wrapped.get());
+		}
+		finally {
+			container.stop();
+			pf.destroy();
+			pfTx.destroy();
+		}
+	}
+
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
 	void listener() {
