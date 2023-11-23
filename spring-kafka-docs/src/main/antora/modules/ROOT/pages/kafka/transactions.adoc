@@ -102,10 +102,43 @@ NOTE: If there is a `KafkaTransactionManager` (or synchronized) transaction in p
 Instead, a new "nested" transaction is used.
 
 [[transaction-id-prefix]]
-== `transactionIdPrefix`
+== `TransactionIdPrefix`
 
 With `EOSMode.V2` (aka `BETA`), the only supported mode, it is no longer necessary to use the same `transactional.id`, even for consumer-initiated transactions; in fact, it must be unique on each instance the same as for producer-initiated transactions.
 This property must have a different value on each application instance.
+
+[[transaction-id-suffix-fixed]]
+== `TransactionIdSuffix Fixed`
+
+Since 3.2, a new `TransactionIdSuffixStrategy` interface was introduced to manage `transactional.id` suffix.
+The default implementation is `DefaultTransactionIdSuffixStrategy` when setting `maxCache` greater than zero can reuse `transactional.id` within a specific range, otherwise suffixes will be generated on the fly by incrementing a counter.
+When a transaction producer is requested and `transactional.id` all in use, throw a `NoProducerAvailableException`.
+User can then use a `RetryTemplate` configured to retry that exception, with a suitably configured back off.
+
+[source,java]
+----
+public static class Config {
+
+    @Bean
+    public ProducerFactory<String, String> myProducerFactory() {
+        Map<String, Object> configs = producerConfigs();
+        configs.put(ProducerConfig.CLIENT_ID_CONFIG, "myClientId");
+        ...
+        DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(configs);
+        ...
+        DefaultTransactionIdSuffixStrategy ss = new DefaultTransactionIdSuffixStrategy();
+        ss.setMaxCache(5);
+        pf.setTransactionIdSuffixStrategy(ss);
+        return pf;
+    }
+
+}
+----
+When setting `maxCache` to 5, `transactional.id` is `my.txid.`++`{0-4}`+.
+
+IMPORTANT: When using `KafkaTransactionManager` with the `ConcurrentMessageListenerContainer` and enabling `maxCache`, it is necessary to set `maxCache` to a value greater than or equal to `concurrency`.
+If a `MessageListenerContainer` is unable to acquire a `transactional.id` suffix, it will throw a `NoProducerAvailableException`.
+When using nested transactions in the `ConcurrentMessageListenerContainer`, it is necessary to adjust the maxCache setting to handle the increased number of nested transactions.
 
 [[tx-template-mixed]]
 == `KafkaTemplate` Transactional and non-Transactional Publishing

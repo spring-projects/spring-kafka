@@ -70,7 +70,7 @@ public class DefaultKafkaProducerFactoryTests {
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
-	void testProducerClosedAfterBadTransition() throws Exception {
+	void testProducerClosedAfterBadTransition() {
 		final Producer producer = mock(Producer.class);
 		given(producer.send(any(), any())).willReturn(new CompletableFuture());
 		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
@@ -119,6 +119,120 @@ public class DefaultKafkaProducerFactoryTests {
 		inOrder.verify(producer).commitTransaction();
 		inOrder.verify(producer).beginTransaction();
 		inOrder.verify(producer).close(ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT);
+		inOrder.verifyNoMoreInteractions();
+		pf.destroy();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void testMaxCacheProducerClosedAfterBadTransition() {
+		final Producer producer = mock(Producer.class);
+		given(producer.send(any(), any())).willReturn(new CompletableFuture());
+		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
+
+			@Override
+			protected Producer createRawProducer(Map configs) {
+				return producer;
+			}
+
+		};
+		pf.setTransactionIdPrefix("foo");
+		DefaultTransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy();
+		suffixStrategy.setMaxCache(2);
+		pf.setTransactionIdSuffixStrategy(suffixStrategy);
+
+		final AtomicInteger flag = new AtomicInteger();
+		willAnswer(i -> {
+			if (flag.incrementAndGet() == 2) {
+				throw new KafkaException("Invalid begin transition ...");
+			}
+			return null;
+		}).given(producer).beginTransaction();
+
+		final AtomicInteger commitFlag = new AtomicInteger();
+		willAnswer(i -> {
+			if (commitFlag.incrementAndGet() == 2) {
+				throw new KafkaException("Invalid commit transition ...");
+			}
+			return null;
+		}).given(producer).commitTransaction();
+
+		final AtomicInteger abortFlag = new AtomicInteger();
+		willAnswer(i -> {
+			if (abortFlag.incrementAndGet() == 1) {
+				throw new KafkaException("Invalid abort transition ...");
+			}
+			return null;
+		}).given(producer).abortTransaction();
+
+		final AtomicInteger initFlag = new AtomicInteger();
+		willAnswer(i -> {
+			if (initFlag.incrementAndGet() == 4) {
+				throw new KafkaException("Invalid init transition ...");
+			}
+			return null;
+		}).given(producer).initTransactions();
+
+		final KafkaTemplate kafkaTemplate = new KafkaTemplate(pf);
+		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
+		TransactionTemplate transactionTemplate = new TransactionTemplate(tm);
+		transactionTemplate.execute(s -> {
+			kafkaTemplate.send("foo", "bar");
+			return null;
+		});
+		Map<?, ?> cache = KafkaTestUtils.getPropertyValue(pf, "cache", Map.class);
+		assertThat(cache).hasSize(1);
+		Queue queue = (Queue) cache.get("foo");
+		assertThat(queue).hasSize(1);
+		Map<?, ?> suffixCache = KafkaTestUtils.getPropertyValue(suffixStrategy, "suffixCache", Map.class);
+		assertThat(suffixCache).hasSize(1);
+		Queue suffixQueue = (Queue) suffixCache.get("foo");
+		assertThat(suffixQueue).hasSize(1);
+
+		assertThatExceptionOfType(CannotCreateTransactionException.class)
+				.isThrownBy(() -> transactionTemplate.execute(s -> null));
+		assertThat(queue).hasSize(0);
+		assertThat(suffixQueue).hasSize(2);
+
+		assertThatExceptionOfType(KafkaException.class)
+				.isThrownBy(() -> transactionTemplate.execute(s -> null))
+				.withStackTraceContaining("Invalid commit transition");
+		assertThat(queue).hasSize(0);
+		assertThat(suffixQueue).hasSize(2);
+
+		assertThatExceptionOfType(KafkaException.class)
+				.isThrownBy(() -> {
+					transactionTemplate.execute(s -> {
+						throw new RuntimeException("rollback exception");
+					});
+				})
+				.withStackTraceContaining("Invalid abort transition");
+		assertThat(queue).hasSize(0);
+		assertThat(suffixQueue).hasSize(2);
+
+		assertThatExceptionOfType(CannotCreateTransactionException.class)
+				.isThrownBy(() -> transactionTemplate.execute(s -> null))
+				.withStackTraceContaining("Could not create Kafka transaction");
+		assertThat(queue).hasSize(0);
+		assertThat(suffixQueue).hasSize(2);
+
+		InOrder inOrder = inOrder(producer);
+		inOrder.verify(producer).initTransactions();
+		inOrder.verify(producer).beginTransaction();
+		inOrder.verify(producer).send(any(), any());
+		inOrder.verify(producer).commitTransaction();
+		inOrder.verify(producer).beginTransaction();
+		inOrder.verify(producer).close(ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT);
+		inOrder.verify(producer).initTransactions();
+		inOrder.verify(producer).beginTransaction();
+		inOrder.verify(producer).commitTransaction();
+		inOrder.verify(producer).close(ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT);
+		inOrder.verify(producer).initTransactions();
+		inOrder.verify(producer).beginTransaction();
+		inOrder.verify(producer).abortTransaction();
+		inOrder.verify(producer).close(ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT);
+		inOrder.verify(producer).initTransactions();
+		inOrder.verify(producer).close(DefaultKafkaProducerFactory.DEFAULT_PHYSICAL_CLOSE_TIMEOUT);
 		inOrder.verifyNoMoreInteractions();
 		pf.destroy();
 	}
@@ -196,6 +310,9 @@ public class DefaultKafkaProducerFactoryTests {
 		};
 		pf.setApplicationContext(ctx);
 		pf.setTransactionIdPrefix("foo");
+		DefaultTransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy();
+		suffixStrategy.setMaxCache(3);
+		pf.setTransactionIdSuffixStrategy(suffixStrategy);
 		Producer aProducer = pf.createProducer();
 		assertThat(aProducer).isNotNull();
 		aProducer.close();
@@ -207,12 +324,19 @@ public class DefaultKafkaProducerFactoryTests {
 		assertThat(cache.size()).isEqualTo(1);
 		Queue queue = (Queue) cache.get("foo");
 		assertThat(queue.size()).isEqualTo(1);
+		Map<?, ?> suffixCache = KafkaTestUtils.getPropertyValue(suffixStrategy, "suffixCache", Map.class);
+		assertThat(suffixCache.size()).isEqualTo(1);
+		Queue suffixQueue = (Queue) suffixCache.get("foo");
+		assertThat(suffixQueue.size()).isEqualTo(2);
 		pf.setMaxAge(Duration.ofMillis(10));
 		Thread.sleep(50);
 		aProducer = pf.createProducer();
 		assertThat(aProducer).isNotSameAs(bProducer);
 		pf.onApplicationEvent(new ContextStoppedEvent(ctx));
 		assertThat(queue.size()).isEqualTo(0);
+		assertThat(suffixCache.size()).isEqualTo(1);
+		Queue suffixQueue2 = (Queue) suffixCache.get("foo");
+		assertThat(suffixQueue2.size()).isEqualTo(2);
 		verify(producer).close(any(Duration.class));
 	}
 
@@ -267,6 +391,9 @@ public class DefaultKafkaProducerFactoryTests {
 		};
 		pf.setApplicationContext(ctx);
 		pf.setTransactionIdPrefix("foo");
+		DefaultTransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy();
+		suffixStrategy.setMaxCache(3);
+		pf.setTransactionIdSuffixStrategy(suffixStrategy);
 		Producer aProducer = pf.createProducer();
 		assertThat(aProducer).isNotNull();
 		aProducer.close();
@@ -278,12 +405,19 @@ public class DefaultKafkaProducerFactoryTests {
 		assertThat(cache.size()).isEqualTo(1);
 		Queue queue = (Queue) cache.get("foo");
 		assertThat(queue.size()).isEqualTo(1);
+		Map<?, ?> suffixCache = KafkaTestUtils.getPropertyValue(suffixStrategy, "suffixCache", Map.class);
+		assertThat(suffixCache.size()).isEqualTo(1);
+		Queue suffixQueue = (Queue) suffixCache.get("foo");
+		assertThat(suffixQueue.size()).isEqualTo(2);
 		bProducer = pf.createProducer();
 		assertThat(bProducer).isSameAs(aProducer);
 		assertThat(queue.size()).isEqualTo(0);
 		pf.reset();
 		bProducer.close();
 		assertThat(queue.size()).isEqualTo(0);
+		assertThat(suffixCache.size()).isEqualTo(1);
+		Queue suffixQueue2 = (Queue) suffixCache.get("foo");
+		assertThat(suffixQueue2.size()).isEqualTo(3);
 		pf.destroy();
 	}
 
@@ -320,12 +454,12 @@ public class DefaultKafkaProducerFactoryTests {
 		pf.closeThreadBoundProducer();
 		assertThat(KafkaTestUtils.getPropertyValue(pf, "threadBoundProducers", Map.class).get(Thread.currentThread()))
 				.isNull();
-		verify(producer, times(3)).close(any(Duration.class));
+		verify(producer, times(2)).close(any(Duration.class));
 	}
 
 	@Test
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	void threadLocalLifecycle() throws InterruptedException {
+	void threadLocalLifecycle() {
 		final Producer producer = mock(Producer.class);
 		AtomicBoolean created = new AtomicBoolean();
 		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
@@ -407,6 +541,31 @@ public class DefaultKafkaProducerFactoryTests {
 		bProducer = pf.createProducer();
 		verify(producer1).close(any(Duration.class));
 		assertThat(bProducer).isNotSameAs(aProducer);
+	}
+
+	@Test
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	void testNoProducerException() {
+		final Producer producer = mock(Producer.class);
+		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
+
+			@Override
+			protected Producer createRawProducer(Map configs) {
+				return producer;
+			}
+
+		};
+		pf.setTransactionIdPrefix("foo");
+		DefaultTransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy();
+		suffixStrategy.setMaxCache(2);
+		pf.setTransactionIdSuffixStrategy(suffixStrategy);
+		Map<?, ?> suffixCache = KafkaTestUtils.getPropertyValue(suffixStrategy, "suffixCache", Map.class);
+		pf.createProducer();
+		Queue queue = (Queue) suffixCache.get("foo");
+		assertThat(queue).hasSize(1);
+		pf.createProducer();
+		assertThat(queue).hasSize(0);
+		assertThatExceptionOfType(NoProducerAvailableException.class).isThrownBy(() -> pf.createProducer());
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
@@ -518,6 +677,38 @@ public class DefaultKafkaProducerFactoryTests {
 		assertThat(configPassedToKafkaConsumer.get(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG)).isEqualTo("bar");
 		pf.destroy();
 	}
+
+	@Test
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	void testTransactionId() throws InterruptedException {
+		final Producer producer = mock(Producer.class);
+		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
+		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
+
+			@Override
+			protected Producer createRawProducer(Map configs) {
+				configPassedToKafkaConsumer.clear();
+				configPassedToKafkaConsumer.putAll(configs);
+				return producer;
+			}
+
+		};
+		pf.setBootstrapServersSupplier(() -> "foo");
+		pf.setTransactionIdPrefix("tx.");
+		DefaultTransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy();
+		suffixStrategy.setMaxCache(2);
+		pf.setTransactionIdSuffixStrategy(suffixStrategy);
+		Producer aProducer = pf.createProducer();
+		assertThat(configPassedToKafkaConsumer.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG)).isEqualTo("tx.0");
+		Producer bProducer = pf.createProducer();
+		assertThat(configPassedToKafkaConsumer.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG)).isEqualTo("tx.1");
+		bProducer.close(Duration.ofSeconds(20));
+		pf.setMaxAge(Duration.ofMillis(10));
+		Thread.sleep(50);
+		Producer cProducer = pf.createProducer();
+		assertThat(configPassedToKafkaConsumer.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG)).isEqualTo("tx.1");
+	}
+
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test

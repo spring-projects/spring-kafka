@@ -38,6 +38,7 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -93,17 +94,18 @@ import org.springframework.transaction.support.TransactionTemplate;
  *
  */
 @EmbeddedKafka(topics = { KafkaTemplateTransactionTests.STRING_KEY_TOPIC,
-		KafkaTemplateTransactionTests.LOCAL_TX_IN_TOPIC }, brokerProperties = {
-				"transaction.state.log.replication.factor=1", "transaction.state.log.min.isr=1" })
+		KafkaTemplateTransactionTests.LOCAL_TX_IN_TOPIC, KafkaTemplateTransactionTests.LOCAL_FIXED_TX_IN_TOPIC },
+		brokerProperties = { "transaction.state.log.replication.factor=1", "transaction.state.log.min.isr=1" })
 public class KafkaTemplateTransactionTests {
 
 	public static final String STRING_KEY_TOPIC = "stringKeyTopic";
 
 	public static final String LOCAL_TX_IN_TOPIC = "localTxInTopic";
 
+	public static final String LOCAL_FIXED_TX_IN_TOPIC = "localFixedTxInTopic";
+
 	private final EmbeddedKafkaBroker embeddedKafka = EmbeddedKafkaCondition.getBroker();
 
-	@SuppressWarnings("deprecation")
 	@Test
 	public void testLocalTransaction() {
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
@@ -118,7 +120,7 @@ public class KafkaTemplateTransactionTests {
 		DefaultKafkaConsumerFactory<String, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		cf.setKeyDeserializer(new StringDeserializer());
 		Consumer<String, String> consumer = cf.createConsumer();
-		embeddedKafka.consumeFromAllEmbeddedTopics(consumer);
+		embeddedKafka.consumeFromEmbeddedTopics(consumer, STRING_KEY_TOPIC, LOCAL_TX_IN_TOPIC);
 		template.executeInTransaction(kt -> kt.send(LOCAL_TX_IN_TOPIC, "one"));
 		ConsumerRecord<String, String> singleRecord = KafkaTestUtils.getSingleRecord(consumer, LOCAL_TX_IN_TOPIC);
 		template.executeInTransaction(t -> {
@@ -157,6 +159,70 @@ public class KafkaTemplateTransactionTests {
 		assertThat(pf.getCache("tx.template.override.")).hasSize(1);
 		pf.destroy();
 		assertThat(pf.getCache()).hasSize(0);
+	}
+
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	@Test
+	public void testLocalTransactionIsFixed() {
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		senderProps.put(ProducerConfig.TRANSACTIONAL_ID_CONFIG, "my.transaction.fixed.");
+		senderProps.put(ProducerConfig.CLIENT_ID_CONFIG, "customClientIdFixed");
+		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		pf.setKeySerializer(new StringSerializer());
+		DefaultTransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy();
+		suffixStrategy.setMaxCache(3);
+		pf.setTransactionIdSuffixStrategy(suffixStrategy);
+		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(STRING_KEY_TOPIC);
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testLocalTxFixed", "false", embeddedKafka);
+		consumerProps.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
+		DefaultKafkaConsumerFactory<String, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
+		cf.setKeyDeserializer(new StringDeserializer());
+		Consumer<String, String> consumer = cf.createConsumer();
+		embeddedKafka.consumeFromEmbeddedTopics(consumer, STRING_KEY_TOPIC, LOCAL_FIXED_TX_IN_TOPIC);
+		template.executeInTransaction(kt -> kt.send(LOCAL_FIXED_TX_IN_TOPIC, "one")); // suffix range {0-2}
+		ConsumerRecord<String, String> singleRecord = KafkaTestUtils.getSingleRecord(consumer, LOCAL_FIXED_TX_IN_TOPIC);
+		template.executeInTransaction(t -> {
+			pf.createProducer("testCustomClientIdIsUniqueFixed").close(); // suffix range {3-5}
+			t.sendDefault("foo", "bar");
+			t.sendDefault("baz", "qux");
+			t.sendOffsetsToTransaction(Collections.singletonMap(
+					new TopicPartition(LOCAL_FIXED_TX_IN_TOPIC, singleRecord.partition()),
+					new OffsetAndMetadata(singleRecord.offset() + 1L)), consumer.groupMetadata());
+			assertThat(KafkaTestUtils.getPropertyValue(
+					KafkaTestUtils.getPropertyValue(template, "producers", Map.class).get(Thread.currentThread()),
+					"delegate.transactionManager.transactionalId")).isEqualTo("my.transaction.fixed.0");
+			return null;
+		});
+		ConsumerRecords<String, String> records = KafkaTestUtils.getRecords(consumer);
+		Iterator<ConsumerRecord<String, String>> iterator = records.iterator();
+		ConsumerRecord<String, String> record = iterator.next();
+		assertThat(record).has(Assertions.<ConsumerRecord<String, String>>allOf(key("foo"), value("bar")));
+		if (!iterator.hasNext()) {
+			records = KafkaTestUtils.getRecords(consumer);
+			iterator = records.iterator();
+		}
+		record = iterator.next();
+		assertThat(record).has(Assertions.<ConsumerRecord<String, String>>allOf(key("baz"), value("qux")));
+		// 2 log slots, 1 for the record, 1 for the commit
+		assertThat(consumer.position(new TopicPartition(LOCAL_FIXED_TX_IN_TOPIC, singleRecord.partition()))).isEqualTo(2L);
+		consumer.close();
+		assertThat(pf.getCache()).hasSize(1);
+		template.setTransactionIdPrefix("tx.template.override.fixed."); // suffix range {6-8}
+		template.executeInTransaction(t -> {
+			assertThat(KafkaTestUtils.getPropertyValue(
+					KafkaTestUtils.getPropertyValue(template, "producers", Map.class).get(Thread.currentThread()),
+					"delegate.transactionManager.transactionalId")).isEqualTo("tx.template.override.fixed.6");
+			return null;
+		});
+		assertThat(pf.getCache("tx.template.override.fixed.")).hasSize(1);
+		Map<?, ?> suffixCache = KafkaTestUtils.getPropertyValue(suffixStrategy, "suffixCache", Map.class);
+		assertThat((Queue) suffixCache.get("tx.template.override.fixed.")).hasSize(2);
+		assertThat(pf.getCache("testCustomClientIdIsUniqueFixed")).hasSize(1);
+		assertThat((Queue) suffixCache.get("testCustomClientIdIsUniqueFixed")).hasSize(2);
+		pf.destroy();
+		assertThat(pf.getCache()).hasSize(0);
+		assertThat(KafkaTestUtils.getPropertyValue(suffixStrategy, "suffixCache", Map.class)).hasSize(3);
 	}
 
 	@Test
@@ -403,7 +469,7 @@ public class KafkaTemplateTransactionTests {
 			public Producer<String, String> createProducer(@Nullable String txIdPrefixArg) {
 				CloseSafeProducer<String, String> closeSafeProducer = new CloseSafeProducer<>(producer,
 						(prod, timeout) -> {
-							prod.closeDelegate(timeout, Collections.emptyList());
+							prod.closeDelegate(timeout);
 							return true;
 						},
 						Duration.ofSeconds(1), "factory", 0);
@@ -447,7 +513,7 @@ public class KafkaTemplateTransactionTests {
 				}
 				KafkaTestUtils.getPropertyValue(this, "cache", Map.class).put("foo", cache);
 				CloseSafeProducer<String, String> closeSafeProducer = new CloseSafeProducer<>(producer,
-						this::cacheReturner, "foo", Duration.ofSeconds(1), "factory", 0);
+						this::cacheReturner, "foo", "1", Duration.ofSeconds(1), "factory", 0);
 				return closeSafeProducer;
 			}
 
