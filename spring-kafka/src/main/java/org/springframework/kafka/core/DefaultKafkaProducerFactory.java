@@ -424,6 +424,15 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		return this.transactionIdPrefix;
 	}
 
+	public final boolean initTransactionIdSuffix(int transactionIdSuffix) {
+		Assert.isTrue(transactionIdSuffix >= 0, "'transactionIdSuffix' initial value must greater than or equal 0");
+		return this.transactionIdSuffix.compareAndSet(0, transactionIdSuffix);
+	}
+
+	public int getCurrTransactionIdSuffix() {
+		return this.transactionIdSuffix.get();
+	}
+
 	/**
 	 * Set to true to create a producer per thread instead of singleton that is shared by
 	 * all clients. Clients <b>must</b> call {@link #closeThreadBoundProducer()} to
@@ -498,7 +507,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 * @since 3.1
 	 */
 	public void setMaxCache(int maxCache) {
-		Assert.isTrue(maxCache >= 0, "max cache must greater than or equal 0");
+		Assert.isTrue(maxCache >= 0, "'maxCache' must greater than or equal 0");
 		this.maxCache = maxCache;
 	}
 
@@ -868,7 +877,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 						() -> "No suffix cache found for " + txIdPrefix + ", max cache" + this.maxCache);
 				suffix = suffixQueue.poll();
 				if (suffix == null) {
-					throw new NoProducerAvailableException("No transaction producer available for " + txIdPrefix);
+					throw new NoProducerAvailableException("No available transaction producer suffix for " + txIdPrefix);
 				}
 			}
 			else {

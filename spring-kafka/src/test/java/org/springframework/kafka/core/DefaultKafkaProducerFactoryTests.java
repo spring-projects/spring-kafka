@@ -666,6 +666,39 @@ public class DefaultKafkaProducerFactoryTests {
 		pf.destroy();
 	}
 
+	@Test
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	void testTransactionId() throws InterruptedException {
+		final Producer producer = mock(Producer.class);
+		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
+		DefaultKafkaProducerFactory pf = new DefaultKafkaProducerFactory(new HashMap<>()) {
+
+			@Override
+			protected Producer createRawProducer(Map configs) {
+				configPassedToKafkaConsumer.clear();
+				configPassedToKafkaConsumer.putAll(configs);
+				return producer;
+			}
+
+		};
+		pf.setBootstrapServersSupplier(() -> "foo");
+		pf.setTransactionIdPrefix("tx.");
+		pf.setMaxCache(2);
+		assertThat(pf.initTransactionIdSuffix(10)).isTrue();
+		Producer aProducer = pf.createProducer();
+		assertThat(configPassedToKafkaConsumer.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG)).isEqualTo("tx.10");
+		assertThat(pf.initTransactionIdSuffix(20)).isFalse();
+		Producer bProducer = pf.createProducer();
+		assertThat(configPassedToKafkaConsumer.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG)).isEqualTo("tx.11");
+		bProducer.close(Duration.ofSeconds(20));
+		pf.setMaxAge(Duration.ofMillis(10));
+		Thread.sleep(50);
+		Producer cProducer = pf.createProducer();
+		assertThat(configPassedToKafkaConsumer.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG)).isEqualTo("tx.11");
+		assertThat(pf.getCurrTransactionIdSuffix()).isEqualTo(12);
+	}
+
+
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
 	void configUpdates() {
