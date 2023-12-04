@@ -74,7 +74,7 @@ public class DestinationTopicTests {
 
 	protected DestinationTopic.Properties dltTopicProps =
 			new DestinationTopic.Properties(0, dltSuffix, DestinationTopic.Type.DLT, 4, 1,
-					DltStrategy.FAIL_ON_ERROR, kafkaOperations1, (a, e) -> false, noTimeout, null);
+				DltStrategy.FAIL_ON_ERROR, kafkaOperations1, (a, e) -> false, noTimeout, null, Collections.emptySet());
 
 	protected List<DestinationTopic.Properties> allProps = Arrays
 			.asList(mainTopicProps, firstRetryProps, secondRetryProps, dltTopicProps);
@@ -93,7 +93,7 @@ public class DestinationTopicTests {
 
 	protected DestinationTopic.Properties dltTopicProps2 =
 			new DestinationTopic.Properties(0, dltSuffix, DestinationTopic.Type.DLT, 4, 1,
-					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, (a, e) -> false, timeout, null);
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, (a, e) -> false, timeout, null, Collections.emptySet());
 
 	protected List<DestinationTopic.Properties> allProps2 = Arrays
 			.asList(mainTopicProps2, firstRetryProps2, secondRetryProps2, dltTopicProps2);
@@ -124,7 +124,7 @@ public class DestinationTopicTests {
 
 	protected DestinationTopic.Properties dltTopicProps4 =
 			new DestinationTopic.Properties(0, dltSuffix, DestinationTopic.Type.DLT, 4, 1,
-					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, (a, e) -> false, timeout, null);
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, (a, e) -> false, timeout, null, Collections.emptySet());
 
 	protected DestinationTopic.Properties mainTopicProps5 =
 			new DestinationTopic.Properties(0, "", DestinationTopic.Type.MAIN, 4, 1,
@@ -136,7 +136,7 @@ public class DestinationTopicTests {
 
 	protected DestinationTopic.Properties dltTopicProps5 =
 			new DestinationTopic.Properties(0, dltSuffix, DestinationTopic.Type.DLT, 4, 1,
-					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, (a, e) -> false, timeout, null);
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, (a, e) -> false, timeout, null, Collections.emptySet());
 
 	// Holders
 

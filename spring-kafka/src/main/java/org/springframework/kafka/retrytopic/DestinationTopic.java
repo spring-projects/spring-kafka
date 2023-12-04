@@ -16,7 +16,9 @@
 
 package org.springframework.kafka.retrytopic;
 
+import java.util.Collections;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.BiPredicate;
 
 import org.springframework.kafka.core.KafkaOperations;
@@ -137,9 +139,10 @@ public class DestinationTopic {
 
 		private final long timeout;
 
+		private final Set<Class<? extends Throwable>> usedForExceptions;
+
 		@Nullable
 		private final Boolean autoStartDltHandler;
-
 		/**
 		 * Create an instance with the provided properties with the DLT container starting
 		 * automatically (if the container factory is so configured).
@@ -160,7 +163,7 @@ public class DestinationTopic {
 						BiPredicate<Integer, Throwable> shouldRetryOn, long timeout) {
 
 			this(delayMs, suffix, type, maxAttempts, numPartitions, dltStrategy, kafkaOperations, shouldRetryOn,
-					timeout, null);
+					timeout, null, Collections.emptySet());
 		}
 
 		/**
@@ -173,7 +176,7 @@ public class DestinationTopic {
 		public Properties(Properties sourceProperties, String suffix, Type type) {
 			this(sourceProperties.delayMs, suffix, type, sourceProperties.maxAttempts, sourceProperties.numPartitions,
 					sourceProperties.dltStrategy, sourceProperties.kafkaOperations, sourceProperties.shouldRetryOn,
-					sourceProperties.timeout, null);
+					sourceProperties.timeout, null, Collections.emptySet());
 		}
 
 		/**
@@ -194,7 +197,8 @@ public class DestinationTopic {
 				int maxAttempts, int numPartitions,
 				DltStrategy dltStrategy,
 				KafkaOperations<?, ?> kafkaOperations,
-				BiPredicate<Integer, Throwable> shouldRetryOn, long timeout, @Nullable Boolean autoStartDltHandler) {
+				BiPredicate<Integer, Throwable> shouldRetryOn, long timeout, @Nullable Boolean autoStartDltHandler,
+			  	Set<Class<? extends Throwable>> usedForExceptions) {
 
 			this.delayMs = delayMs;
 			this.suffix = suffix;
@@ -206,6 +210,7 @@ public class DestinationTopic {
 			this.shouldRetryOn = shouldRetryOn;
 			this.timeout = timeout;
 			this.autoStartDltHandler = autoStartDltHandler;
+			this.usedForExceptions = usedForExceptions;
 		}
 
 		public boolean isDltTopic() {

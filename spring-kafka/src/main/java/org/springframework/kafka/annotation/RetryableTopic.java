@@ -22,11 +22,17 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.springframework.kafka.retrytopic.ExceptionBasedDltRouting;
 import org.springframework.kafka.retrytopic.DltStrategy;
 import org.springframework.kafka.retrytopic.RetryTopicConstants;
 import org.springframework.kafka.retrytopic.SameIntervalTopicReuseStrategy;
 import org.springframework.kafka.retrytopic.TopicSuffixingStrategy;
 import org.springframework.retry.annotation.Backoff;
+
+
+// TODO
+// 2. inject exception detection when sending to DLT (consider traversing causes)
+// 3. route the message to the configured additional destination or to the default DLT
 
 /**
  *
@@ -170,6 +176,8 @@ public @interface RetryableTopic {
 	 * @return the dlt suffix.
 	 */
 	String dltTopicSuffix() default RetryTopicConstants.DEFAULT_DLT_SUFFIX;
+
+	ExceptionBasedDltRouting additionalExceptionBasedDltRouting() default @ExceptionBasedDltRouting;
 
 	/**
 	 * Whether the retry topics will be suffixed with the delay value for that topic or a

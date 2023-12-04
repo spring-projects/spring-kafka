@@ -17,7 +17,10 @@
 package org.springframework.kafka.retrytopic;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.classify.BinaryExceptionClassifierBuilder;
@@ -66,6 +69,7 @@ public class RetryTopicConfigurationBuilder {
 
 	private RetryTopicConfiguration.TopicCreation topicCreationConfiguration = new RetryTopicConfiguration.TopicCreation();
 
+
 	private ConcurrentKafkaListenerContainerFactory<?, ?> listenerContainerFactory;
 
 	@Nullable
@@ -73,6 +77,8 @@ public class RetryTopicConfigurationBuilder {
 
 	@Nullable
 	private BinaryExceptionClassifierBuilder classifierBuilder;
+
+	private Map<String, Set<Class<? extends Throwable>>> exceptionBasedDltRouting = new HashMap<>();
 
 	private DltStrategy dltStrategy = DltStrategy.ALWAYS_RETRY_ON_ERROR;
 
@@ -522,6 +528,11 @@ public class RetryTopicConfigurationBuilder {
 		return this.classifierBuilder;
 	}
 
+	public RetryTopicConfigurationBuilder exceptionBasedDltRouting(Map<String, Set<Class<? extends Throwable>>> exceptionBasedDltRouting) {
+		this.exceptionBasedDltRouting = exceptionBasedDltRouting;
+		return this;
+	}
+
 	/* ---------------- Configure KafkaListenerContainerFactory -------------- */
 	/**
 	 * Configure the container factory to use.
@@ -567,7 +578,7 @@ public class RetryTopicConfigurationBuilder {
 				new DestinationTopicPropertiesFactory(this.retryTopicSuffix, this.dltSuffix, backOffValues,
 						buildClassifier(), this.topicCreationConfiguration.getNumPartitions(),
 						sendToTopicKafkaTemplate, this.dltStrategy,
-						this.topicSuffixingStrategy, this.sameIntervalTopicReuseStrategy, this.timeout)
+						this.topicSuffixingStrategy, this.sameIntervalTopicReuseStrategy, this.timeout, this.exceptionBasedDltRouting)
 								.autoStartDltHandler(this.autoStartDltHandler)
 								.createProperties();
 		return new RetryTopicConfiguration(destinationTopicProperties,
