@@ -18,6 +18,7 @@ package org.springframework.kafka.support.converter;
 
 import org.apache.kafka.common.utils.Bytes;
 
+import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.Message;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -31,6 +32,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * {@code String<->byte[]} conversion is avoided.
  *
  * @author Gary Russell
+ * @author Vladimir Loginov
  * @since 2.1.7
  *
  */
@@ -46,8 +48,9 @@ public class BytesJsonMessageConverter extends JsonMessageConverter {
 	@Override
 	protected Object convertPayload(Message<?> message) {
 		try {
-			Object payload = super.convertPayload(message);
-			return payload == null ? null : Bytes.wrap(getObjectMapper().writeValueAsBytes(payload));
+			return message.getPayload() instanceof KafkaNull
+					? null
+					: Bytes.wrap(getObjectMapper().writeValueAsBytes(message.getPayload()));
 		}
 		catch (JsonProcessingException e) {
 			throw new ConversionException("Failed to convert to JSON", message, e);

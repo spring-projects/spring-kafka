@@ -93,12 +93,8 @@ public class JsonMessageConverter extends MessagingMessageConverter {
 
 	@Override
 	protected Object convertPayload(Message<?> message) {
-		Object payload = super.convertPayload(message);
-		if (payload != null) {
-			throw new UnsupportedOperationException("Select a subclass that creates a ProducerRecord value "
-					+ "corresponding to the configured Kafka Serializer");
-		}
-		return payload;
+		throw new UnsupportedOperationException("Select a subclass that creates a ProducerRecord value "
+				+ "corresponding to the configured Kafka Serializer");
 	}
 
 	@Override

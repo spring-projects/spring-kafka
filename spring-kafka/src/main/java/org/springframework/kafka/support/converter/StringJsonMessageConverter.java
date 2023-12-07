@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.support.converter;
 
+import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.Message;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -31,6 +32,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Dariusz Szablinski
+ * @author Vladimir Loginov
  */
 public class StringJsonMessageConverter extends JsonMessageConverter {
 
@@ -44,9 +46,11 @@ public class StringJsonMessageConverter extends JsonMessageConverter {
 	@Override
 	protected Object convertPayload(Message<?> message) {
 		try {
-			Object payload = super.convertPayload(message);
-			return payload == null ? null : getObjectMapper().writeValueAsString(payload);
-		} catch (JsonProcessingException e) {
+			return message.getPayload() instanceof KafkaNull
+					? null
+					: getObjectMapper().writeValueAsString(message.getPayload());
+		}
+		catch (JsonProcessingException e) {
 			throw new ConversionException("Failed to convert to JSON", message, e);
 		}
 	}
