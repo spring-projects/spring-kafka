@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +46,8 @@ public class BytesJsonMessageConverter extends JsonMessageConverter {
 	@Override
 	protected Object convertPayload(Message<?> message) {
 		try {
-			return Bytes.wrap(getObjectMapper().writeValueAsBytes(message.getPayload()));
+			Object payload = super.convertPayload(message);
+			return payload == null ? null : Bytes.wrap(getObjectMapper().writeValueAsBytes(payload));
 		}
 		catch (JsonProcessingException e) {
 			throw new ConversionException("Failed to convert to JSON", message, e);

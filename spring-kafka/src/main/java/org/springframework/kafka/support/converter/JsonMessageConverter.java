@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -93,8 +93,12 @@ public class JsonMessageConverter extends MessagingMessageConverter {
 
 	@Override
 	protected Object convertPayload(Message<?> message) {
-		throw new UnsupportedOperationException("Select a subclass that creates a ProducerRecord value "
-				+ "corresponding to the configured Kafka Serializer");
+		Object payload = super.convertPayload(message);
+		if (payload != null) {
+			throw new UnsupportedOperationException("Select a subclass that creates a ProducerRecord value "
+					+ "corresponding to the configured Kafka Serializer");
+		}
+		return payload;
 	}
 
 	@Override
