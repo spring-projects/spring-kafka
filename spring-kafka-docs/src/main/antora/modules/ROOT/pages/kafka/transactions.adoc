@@ -108,11 +108,11 @@ With `EOSMode.V2` (aka `BETA`), the only supported mode, it is no longer necessa
 This property must have a different value on each application instance.
 
 [[transaction-id-suffix-fixed]]
-== `TransactionIdSuffix Fixed`
+== `TransactionIdSuffix` Fixed
 
 Since 3.1, when setting `maxCache` greater than zero can reuse `transactional.id` within a specific range.
 When a transaction producer is requested and `transactional.id` all in use, throw a `NoProducerAvailableException`.
-User can use then use a RetryTemplate configured to retry that exception, with a suitably configured back off.
+We can then use a RetryTemplate configured to retry that exception, with a suitably configured back off.
 
 [source, java]
 ----
@@ -134,7 +134,10 @@ public static class Config {
 ----
 When setting `maxCache` to 5, `transactional.id` is `my.txid.`++`{0-4}`+.
 
-IMPORTANT: When use `KafkaTransactionManager` in the `ConcurrentMessageListenerContainer`, `maxCache` must be greater than `concurrency`, also be careful nested transaction.
+IMPORTANT: When use `KafkaTransactionManager` in the `ConcurrentMessageListenerContainer` and enable `maxCache`, `maxCache` must be greater than or equal to `concurrency`.
+If some `MessageListenerContainer` cannot get the transaction, will throw `NoProducerAvailableException`.
+When use nested transactions in `ConcurrentMessageListenerContainer`, `maxCache` needs to increase the number of nested transactions.
+
 
 [[tx-template-mixed]]
 == `KafkaTemplate` Transactional and non-Transactional Publishing
