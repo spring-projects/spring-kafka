@@ -97,8 +97,8 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 				: destinationTopicHolder.getSourceDestination().shouldRetryOn(attempt, maybeUnwrapException(e))
 						&& isNotFatalException(e)
 						&& !isPastTimout(originalTimestamp, destinationTopicHolder)
-					? resolveRetryDestination(destinationTopicHolder)
-					: getDltOrNoOpsDestination(mainListenerId, topic);
+					? resolveRetryDestination(mainListenerId, destinationTopicHolder, e)
+					: getDltOrNoOpsDestination(mainListenerId, topic, e);
 	}
 
 	private Boolean isNotFatalException(Exception e) {
@@ -128,10 +128,20 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 	}
 
 	@SuppressWarnings("deprecation")
-	private DestinationTopic resolveRetryDestination(DestinationTopicHolder destinationTopicHolder) {
-		return (destinationTopicHolder.getSourceDestination().isReusableRetryTopic())
-				? destinationTopicHolder.getSourceDestination()
-				: destinationTopicHolder.getNextDestination();
+	private DestinationTopic resolveRetryDestination(String mainListenerId, DestinationTopicHolder destinationTopicHolder, Exception e) {
+		if (destinationTopicHolder.getSourceDestination().isReusableRetryTopic()) {
+			return destinationTopicHolder.getSourceDestination();
+		}
+
+		if (isAlreadyDltDestination(destinationTopicHolder)) {
+			return getDltOrNoOpsDestination(mainListenerId, destinationTopicHolder.getSourceDestination().getDestinationName(), e);
+		}
+
+		return destinationTopicHolder.getNextDestination();
+	}
+
+	private static boolean isAlreadyDltDestination(DestinationTopicHolder destinationTopicHolder) {
+		return destinationTopicHolder.getNextDestination().isDltTopic();
 	}
 
 	@Override
@@ -144,18 +154,29 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 
 	@Nullable
 	@Override
-	public DestinationTopic getDltFor(String mainListenerId, String topicName) {
-		DestinationTopic destination = getDltOrNoOpsDestination(mainListenerId, topicName);
+	public DestinationTopic getDltFor(String mainListenerId, String topicName, Exception e) {
+		DestinationTopic destination = getDltOrNoOpsDestination(mainListenerId, topicName, e);
 		return destination.isNoOpsTopic()
 				? null
 				: destination;
 	}
 
-	private DestinationTopic getDltOrNoOpsDestination(String mainListenerId, String topic) {
+	private DestinationTopic getDltOrNoOpsDestination(String mainListenerId, String topic, Exception e) {
 		DestinationTopic destination = getNextDestinationTopicFor(mainListenerId, topic);
-		return destination.isDltTopic() || destination.isNoOpsTopic()
-				? destination
-				: getDltOrNoOpsDestination(mainListenerId, destination.getDestinationName());
+		return isMatchingDltTopic(destination, e) || destination.isNoOpsTopic() ?
+			destination :
+			getDltOrNoOpsDestination(mainListenerId, destination.getDestinationName(), e);
+	}
+
+	private static boolean isMatchingDltTopic(DestinationTopic destination, Exception e) {
+		if (!destination.isDltTopic()) {
+			return false;
+		}
+
+		boolean isDltIntendedForCurrentExc = destination.usedForExceptions().stream()
+			.anyMatch(excType -> excType.isInstance(e));
+		boolean isGenericPurposeDlt = destination.usedForExceptions().isEmpty();
+		return isDltIntendedForCurrentExc || isGenericPurposeDlt;
 	}
 
 	@Override

@@ -19,6 +19,7 @@ package org.springframework.kafka.retrytopic;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BiPredicate;
 
 import org.springframework.classify.BinaryExceptionClassifier;
@@ -26,6 +27,7 @@ import org.springframework.classify.BinaryExceptionClassifierBuilder;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.serializer.DeserializationException;
 
 /**
  * @author Tomaz Fernandes
@@ -72,12 +74,16 @@ public class DestinationTopicTests {
 			new DestinationTopic.Properties(2000, retrySuffix + "-2000", DestinationTopic.Type.RETRY, 4, 1,
 					DltStrategy.FAIL_ON_ERROR, kafkaOperations1, getShouldRetryOnDenyList(), noTimeout);
 
+	protected DestinationTopic.Properties deserializationDltTopicProps =
+		new DestinationTopic.Properties(0, "-deserialization" + dltSuffix, DestinationTopic.Type.DLT, 4, 1,
+			DltStrategy.FAIL_ON_ERROR, kafkaOperations1, (a, e) -> false, noTimeout, null, Set.of(DeserializationException.class));
+
 	protected DestinationTopic.Properties dltTopicProps =
 			new DestinationTopic.Properties(0, dltSuffix, DestinationTopic.Type.DLT, 4, 1,
 				DltStrategy.FAIL_ON_ERROR, kafkaOperations1, (a, e) -> false, noTimeout, null, Collections.emptySet());
 
 	protected List<DestinationTopic.Properties> allProps = Arrays
-			.asList(mainTopicProps, firstRetryProps, secondRetryProps, dltTopicProps);
+			.asList(mainTopicProps, firstRetryProps, secondRetryProps, deserializationDltTopicProps, dltTopicProps);
 
 	protected DestinationTopic.Properties mainTopicProps2 =
 			new DestinationTopic.Properties(0, "", DestinationTopic.Type.MAIN, 4, 1,
@@ -148,10 +154,12 @@ public class DestinationTopicTests {
 
 	protected PropsHolder secondRetryDestinationHolder = new PropsHolder(FIRST_TOPIC, secondRetryProps);
 
+	protected PropsHolder deserializationDltDestinationHolder = new PropsHolder(FIRST_TOPIC, deserializationDltTopicProps);
+
 	protected PropsHolder dltDestinationHolder = new PropsHolder(FIRST_TOPIC, dltTopicProps);
 
 	protected List<PropsHolder> allFirstDestinationsHolders = Arrays
-			.asList(mainDestinationHolder, firstRetryDestinationHolder, secondRetryDestinationHolder, dltDestinationHolder);
+			.asList(mainDestinationHolder, firstRetryDestinationHolder, secondRetryDestinationHolder, deserializationDltDestinationHolder, dltDestinationHolder);
 
 	protected final static String SECOND_TOPIC = "secondTopic";
 
@@ -206,12 +214,15 @@ public class DestinationTopicTests {
 	protected DestinationTopic dltDestinationTopic =
 			new DestinationTopic(FIRST_TOPIC + dltTopicProps.suffix(), dltTopicProps);
 
+	protected DestinationTopic deserializationExcDltDestinationTopic =
+		new DestinationTopic(FIRST_TOPIC + "-deserialization" + dltTopicProps.suffix(), deserializationDltTopicProps);
+
 	protected DestinationTopic noOpsDestinationTopic =
 			new DestinationTopic(dltDestinationTopic.getDestinationName() + "-noOps",
 					new DestinationTopic.Properties(dltTopicProps, "-noOps", DestinationTopic.Type.NO_OPS));
 
 	protected List<DestinationTopic> allFirstDestinationsTopics = Arrays
-			.asList(mainDestinationTopic, firstRetryDestinationTopic, secondRetryDestinationTopic, dltDestinationTopic);
+			.asList(mainDestinationTopic, firstRetryDestinationTopic, secondRetryDestinationTopic, deserializationExcDltDestinationTopic, dltDestinationTopic);
 
 	protected DestinationTopic mainDestinationTopic2 =
 			new DestinationTopic(SECOND_TOPIC + mainTopicProps2.suffix(), mainTopicProps2);

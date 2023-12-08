@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -75,11 +75,12 @@ class DefaultDestinationTopicProcessorTests extends DestinationTopicTests {
 		// then
 		assertThat(context.destinationsByTopicMap.containsKey(FIRST_TOPIC)).isTrue();
 		List<DestinationTopic> destinationTopicsForFirstTopic = context.destinationsByTopicMap.get(FIRST_TOPIC);
-		assertThat(destinationTopicsForFirstTopic.size()).isEqualTo(4);
+		assertThat(destinationTopicsForFirstTopic.size()).isEqualTo(5);
 		assertThat(destinationTopicsForFirstTopic.get(0)).isEqualTo(mainDestinationTopic);
 		assertThat(destinationTopicsForFirstTopic.get(1)).isEqualTo(firstRetryDestinationTopic);
 		assertThat(destinationTopicsForFirstTopic.get(2)).isEqualTo(secondRetryDestinationTopic);
-		assertThat(destinationTopicsForFirstTopic.get(3)).isEqualTo(dltDestinationTopic);
+		assertThat(destinationTopicsForFirstTopic.get(3)).isEqualTo(deserializationExcDltDestinationTopic);
+		assertThat(destinationTopicsForFirstTopic.get(4)).isEqualTo(dltDestinationTopic);
 
 		assertThat(context.destinationsByTopicMap.containsKey(SECOND_TOPIC)).isTrue();
 		List<DestinationTopic> destinationTopicsForSecondTopic = context.destinationsByTopicMap.get(SECOND_TOPIC);
@@ -143,7 +144,7 @@ class DefaultDestinationTopicProcessorTests extends DestinationTopicTests {
 				.flatMap(list -> list.stream())
 				.collect(Collectors.toList());
 
-		assertThat(destinationList.size()).isEqualTo(11);
+		assertThat(destinationList.size()).isEqualTo(12);
 
 		assertThat(destinationList.contains(mainDestinationTopic)).isTrue();
 		assertThat(destinationList.contains(firstRetryDestinationTopic)).isTrue();

@@ -90,6 +90,10 @@ public class DestinationTopic {
 		return this.properties.shouldRetryOn.test(attempt, e);
 	}
 
+	public Set<Class<? extends Throwable>> usedForExceptions() {
+		return Collections.unmodifiableSet(this.properties.usedForExceptions);
+	}
+
 	@Override
 	public String toString() {
 		return "DestinationTopic{" +
