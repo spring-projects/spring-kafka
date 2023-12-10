@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,11 +30,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.KafkaOperations;
+import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * @author Tomaz Fernandes
+ * @author Adrian Chlebosz
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
@@ -186,5 +190,21 @@ class RetryTopicConfigurationBuilderTests {
 
 		RetryTopicConfiguration.TopicCreation config = configuration.forKafkaTopicAutoCreation();
 		assertThat(config.shouldCreateTopics()).isFalse();
+	}
+
+	@Test
+	void shouldSetDltRoutingRules() {
+		// setup
+		RetryTopicConfigurationBuilder builder = new RetryTopicConfigurationBuilder();
+
+		//when
+		RetryTopicConfiguration configuration = builder
+			.dltRoutingRules(Map.of("-deserialization", Set.of(DeserializationException.class)))
+			.create(kafkaOperations);
+
+		// then
+		DestinationTopic.Properties desExcDltProps = configuration.getDestinationTopicProperties().get(3);
+		assertThat(desExcDltProps.suffix()).isEqualTo("-deserialization-dlt");
+		assertThat(desExcDltProps.usedForExceptions()).containsExactly(DeserializationException.class);
 	}
 }

@@ -18,7 +18,10 @@ package org.springframework.kafka.retrytopic;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -26,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
 import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.classify.BinaryExceptionClassifierBuilder;
 import org.springframework.kafka.core.KafkaOperations;
@@ -34,14 +38,10 @@ import org.springframework.retry.backoff.BackOffPolicy;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.retry.backoff.FixedBackOffPolicy;
 
-import java.util.Collections;
-import java.util.Map;
-import java.util.Set;
-
-
 /**
  * @author Tomaz Fernandes
  * @author Wang Zhiyang
+ * @author Adrian Chlebosz
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
@@ -218,8 +218,8 @@ class DestinationTopicPropertiesFactoryTests {
 		// then
 		assertThat(propertiesList.size()).isSameAs(3);
 
-		assertDltTopic(propertiesList.get(1));
-		assertDltTopic(propertiesList.get(2), desExcDltSuffix + "-" + this.dltSuffix);
+		assertDltTopic(propertiesList.get(1), desExcDltSuffix + this.dltSuffix);
+		assertDltTopic(propertiesList.get(2));
 	}
 
 	@Test

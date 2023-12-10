@@ -44,6 +44,7 @@ import org.springframework.util.Assert;
  *
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Adrian Chlebosz
  * @since 2.7
  *
  */
@@ -78,7 +79,7 @@ public class RetryTopicConfigurationBuilder {
 	@Nullable
 	private BinaryExceptionClassifierBuilder classifierBuilder;
 
-	private Map<String, Set<Class<? extends Throwable>>> exceptionBasedDltRouting = new HashMap<>();
+	private Map<String, Set<Class<? extends Throwable>>> dltRoutingRules = new HashMap<>();
 
 	private DltStrategy dltStrategy = DltStrategy.ALWAYS_RETRY_ON_ERROR;
 
@@ -528,8 +529,17 @@ public class RetryTopicConfigurationBuilder {
 		return this.classifierBuilder;
 	}
 
-	public RetryTopicConfigurationBuilder exceptionBasedDltRouting(Map<String, Set<Class<? extends Throwable>>> exceptionBasedDltRouting) {
-		this.exceptionBasedDltRouting = exceptionBasedDltRouting;
+	/**
+	 * Configure to set DLT routing rules causing the message to be redirected to the custom
+	 * DLT when the configured exception has been thrown during message processing.
+	 * The cause of the originally thrown exception will be traversed in order to find the
+	 * match with the configured exceptions.
+	 * @param dltRoutingRules specification of custom DLT name extensions and exceptions which should be matched for them
+	 * @return the builder
+	 * @since 3.1.1
+	 */
+	public RetryTopicConfigurationBuilder dltRoutingRules(Map<String, Set<Class<? extends Throwable>>> dltRoutingRules) {
+		this.dltRoutingRules = dltRoutingRules;
 		return this;
 	}
 
@@ -578,7 +588,7 @@ public class RetryTopicConfigurationBuilder {
 				new DestinationTopicPropertiesFactory(this.retryTopicSuffix, this.dltSuffix, backOffValues,
 						buildClassifier(), this.topicCreationConfiguration.getNumPartitions(),
 						sendToTopicKafkaTemplate, this.dltStrategy,
-						this.topicSuffixingStrategy, this.sameIntervalTopicReuseStrategy, this.timeout, this.exceptionBasedDltRouting)
+					this.topicSuffixingStrategy, this.sameIntervalTopicReuseStrategy, this.timeout, this.dltRoutingRules)
 								.autoStartDltHandler(this.autoStartDltHandler)
 								.createProperties();
 		return new RetryTopicConfiguration(destinationTopicProperties,

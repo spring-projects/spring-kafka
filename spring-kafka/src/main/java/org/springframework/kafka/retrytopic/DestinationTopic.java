@@ -30,6 +30,7 @@ import org.springframework.lang.Nullable;
  *
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Adrian Chlebosz
  * @since 2.7
  *
  */
@@ -195,6 +196,7 @@ public class DestinationTopic {
 		 * @param shouldRetryOn the exception classifications.
 		 * @param timeout the timeout.
 		 * @param autoStartDltHandler whether or not to start the DLT handler.
+		 * @param usedForExceptions the exceptions which destination is intended for
 		 * @since 2.8
 		 */
 		public Properties(long delayMs, String suffix, Type type,
@@ -202,7 +204,7 @@ public class DestinationTopic {
 				DltStrategy dltStrategy,
 				KafkaOperations<?, ?> kafkaOperations,
 				BiPredicate<Integer, Throwable> shouldRetryOn, long timeout, @Nullable Boolean autoStartDltHandler,
-			  	Set<Class<? extends Throwable>> usedForExceptions) {
+				Set<Class<? extends Throwable>> usedForExceptions) {
 
 			this.delayMs = delayMs;
 			this.suffix = suffix;
@@ -246,6 +248,10 @@ public class DestinationTopic {
 		@Nullable
 		public Boolean autoStartDltHandler() {
 			return this.autoStartDltHandler;
+		}
+
+		public Set<Class<? extends Throwable>> usedForExceptions() {
+			return this.usedForExceptions;
 		}
 
 		@Override

@@ -22,17 +22,12 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-import org.springframework.kafka.retrytopic.ExceptionBasedDltRouting;
 import org.springframework.kafka.retrytopic.DltStrategy;
+import org.springframework.kafka.retrytopic.ExceptionBasedDltRouting;
 import org.springframework.kafka.retrytopic.RetryTopicConstants;
 import org.springframework.kafka.retrytopic.SameIntervalTopicReuseStrategy;
 import org.springframework.kafka.retrytopic.TopicSuffixingStrategy;
 import org.springframework.retry.annotation.Backoff;
-
-
-// TODO
-// 2. inject exception detection when sending to DLT (consider traversing causes)
-// 3. route the message to the configured additional destination or to the default DLT
 
 /**
  *
@@ -45,6 +40,7 @@ import org.springframework.retry.annotation.Backoff;
  * @author Gary Russell
  * @author Fabio da Silva Jr.
  * @author João Lima
+ * @author Adrian Chlebosz
  * @since 2.7
  *
  * @see org.springframework.kafka.retrytopic.RetryTopicConfigurer
@@ -177,7 +173,12 @@ public @interface RetryableTopic {
 	 */
 	String dltTopicSuffix() default RetryTopicConstants.DEFAULT_DLT_SUFFIX;
 
-	ExceptionBasedDltRouting additionalExceptionBasedDltRouting() default @ExceptionBasedDltRouting;
+	/**
+	 * The DLT routing allowing to redirect the message to the custom DLT based on the
+	 * exception thrown during the processing.
+	 * @return the exception based DLT routing
+	 */
+	ExceptionBasedDltRouting exceptionBasedDltRouting() default @ExceptionBasedDltRouting;
 
 	/**
 	 * Whether the retry topics will be suffixed with the delay value for that topic or a

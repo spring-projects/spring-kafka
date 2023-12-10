@@ -49,6 +49,7 @@ import org.springframework.util.Assert;
  * @author Tomaz Fernandes
  * @author Gary Russell
  * @author Yvette Quinby
+ * @author Adrian Chlebosz
  * @since 2.7
  *
  */
@@ -174,9 +175,24 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 		}
 
 		boolean isDltIntendedForCurrentExc = destination.usedForExceptions().stream()
-			.anyMatch(excType -> excType.isInstance(e));
+			.anyMatch(excType -> isDirectExcOrCause(e, excType));
 		boolean isGenericPurposeDlt = destination.usedForExceptions().isEmpty();
 		return isDltIntendedForCurrentExc || isGenericPurposeDlt;
+	}
+
+	private static boolean isDirectExcOrCause(Exception e, Class<? extends Throwable> excType) {
+		Throwable toMatch = e;
+
+		boolean isMatched = excType.isInstance(toMatch);
+		while (!isMatched) {
+			toMatch = toMatch.getCause();
+			if (toMatch == null) {
+				return false;
+			}
+			isMatched = excType.isInstance(toMatch);
+		}
+
+		return isMatched;
 	}
 
 	@Override

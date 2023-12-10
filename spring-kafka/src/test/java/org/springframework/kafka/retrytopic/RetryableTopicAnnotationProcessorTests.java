@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,6 +43,7 @@ import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.annotation.RetryableTopicAnnotationProcessor;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.support.EndpointHandlerMethod;
+import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.ReflectionUtils;
@@ -50,6 +51,7 @@ import org.springframework.util.ReflectionUtils;
 /**
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Adrian Chlebosz
  * @since 2.7
  */
 @SuppressWarnings("deprecation")
@@ -98,6 +100,15 @@ class RetryableTopicAnnotationProcessorTests {
 
 	private final Object bean = createBean();
 
+	// Retry with custom DLT routing
+	private final Method listenWithCustomDltRouting = ReflectionUtils
+		.findMethod(RetryableTopicAnnotationFactoryWithCustomDltRouting.class, listenerMethodName);
+
+	private final RetryableTopic annotationWithCustomDltRouting = AnnotationUtils.findAnnotation(
+		listenWithCustomDltRouting, RetryableTopic.class);
+
+	private final Object beanWithCustomDltRouting = createBean();
+
 	private Object createBean() {
 		try {
 			return RetryableTopicAnnotationFactory.class.getDeclaredConstructor().newInstance();
@@ -107,17 +118,18 @@ class RetryableTopicAnnotationProcessorTests {
 		}
 	}
 
+
 	@Test
 	void shouldGetDltHandlerMethod() {
 
 		// setup
 		given(beanFactory.getBean(RetryTopicBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME, KafkaOperations.class))
-				.willReturn(kafkaOperationsFromDefaultName);
+			.willReturn(kafkaOperationsFromDefaultName);
 		RetryableTopicAnnotationProcessor processor = new RetryableTopicAnnotationProcessor(beanFactory);
 
 		// given
 		RetryTopicConfiguration configuration = processor
-				.processAnnotation(topics, listenWithRetryAndDlt, annotationWithDlt, beanWithDlt);
+			.processAnnotation(topics, listenWithRetryAndDlt, annotationWithDlt, beanWithDlt);
 
 		// then
 		EndpointHandlerMethod dltHandlerMethod = configuration.getDltHandlerMethod();
@@ -125,7 +137,7 @@ class RetryableTopicAnnotationProcessorTests {
 		assertThat(method.getName()).isEqualTo("handleDlt");
 
 		assertThat(new DestinationTopic("",
-				configuration.getDestinationTopicProperties().get(0)).isAlwaysRetryOnDltFailure()).isFalse();
+			configuration.getDestinationTopicProperties().get(0)).isAlwaysRetryOnDltFailure()).isFalse();
 	}
 
 	@Test
@@ -313,6 +325,27 @@ class RetryableTopicAnnotationProcessorTests {
 
 	}
 
+	@Test
+	void shouldCreateExceptionBasedDltRoutingSpec() {
+		// setup
+		given(this.beanFactory.getBean(RetryTopicBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME, KafkaOperations.class))
+			.willReturn(kafkaOperationsFromDefaultName);
+		RetryableTopicAnnotationProcessor processor = new RetryableTopicAnnotationProcessor(beanFactory);
+
+		// given
+		RetryTopicConfiguration configuration = processor
+			.processAnnotation(
+				topics, listenWithCustomDltRouting, annotationWithCustomDltRouting, beanWithCustomDltRouting);
+
+		// then
+		List<DestinationTopic.Properties> destinationTopicProperties = configuration.getDestinationTopicProperties();
+
+		assertThat(destinationTopicProperties).hasSize(3);
+		assertThat(destinationTopicProperties.get(0).suffix()).isEmpty();
+		assertThat(destinationTopicProperties.get(1).suffix()).isEqualTo("-deserialization-dlt");
+		assertThat(destinationTopicProperties.get(2).suffix()).isEqualTo("-dlt");
+	}
+
 	static class RetryableTopicAnnotationFactory {
 
 		@KafkaListener
@@ -333,6 +366,21 @@ class RetryableTopicAnnotationProcessorTests {
 
 		@DltHandler
 		void handleDlt() {
+			// NoOps
+		}
+	}
+
+	static class RetryableTopicAnnotationFactoryWithCustomDltRouting {
+		@KafkaListener
+		@RetryableTopic(
+			attempts = "1",
+			exceptionBasedDltRouting = @ExceptionBasedDltRouting(routingRules = {
+				@ExceptionBasedDestinationDlt(
+					suffix = "-deserialization", exceptions = {DeserializationException.class}
+				)
+			})
+		)
+		void listenWithRetry() {
 			// NoOps
 		}
 	}

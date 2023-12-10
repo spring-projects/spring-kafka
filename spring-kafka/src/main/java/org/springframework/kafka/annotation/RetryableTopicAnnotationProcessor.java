@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanInitializationException;
@@ -34,6 +33,8 @@ import org.springframework.context.expression.StandardBeanExpressionResolver;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.kafka.core.KafkaOperations;
+import org.springframework.kafka.retrytopic.ExceptionBasedDestinationDlt;
+import org.springframework.kafka.retrytopic.ExceptionBasedDltRouting;
 import org.springframework.kafka.retrytopic.RetryTopicBeanNames;
 import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurationBuilder;
@@ -58,6 +59,7 @@ import org.springframework.util.StringUtils;
  *
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Adrian Chlebosz
  * @since 2.7
  *
  */
@@ -148,6 +150,9 @@ public class RetryableTopicAnnotationProcessor {
 				.autoStartDltHandler(autoStartDlt)
 				.setTopicSuffixingStrategy(annotation.topicSuffixingStrategy())
 				.sameIntervalTopicReuseStrategy(annotation.sameIntervalTopicReuseStrategy())
+				.timeoutAfter(timeout)
+				.dltRoutingRules(createDltRoutingSpecFromAnnotation(annotation.exceptionBasedDltRouting()))
+				.create(getKafkaTemplate(resolveExpressionAsString(annotation.kafkaTemplate(), "kafkaTemplate"), topics));
 				.timeoutAfter(timeout);
 
 		Integer attempts = resolveExpressionAsInteger(annotation.attempts(), "attempts", true);
@@ -205,6 +210,11 @@ public class RetryableTopicAnnotationProcessor {
 			policy.setBackOffPeriod(min);
 		}
 		return policy;
+	}
+
+	private Map<String, Set<Class<? extends Throwable>>> createDltRoutingSpecFromAnnotation(ExceptionBasedDltRouting routingSpec) {
+		return Arrays.stream(routingSpec.routingRules())
+			.collect(Collectors.toMap(ExceptionBasedDestinationDlt::suffix, excBasedDestDlt -> Set.of(excBasedDestDlt.exceptions())));
 	}
 
 	private EndpointHandlerMethod getDltProcessor(Method listenerMethod, Object bean) {

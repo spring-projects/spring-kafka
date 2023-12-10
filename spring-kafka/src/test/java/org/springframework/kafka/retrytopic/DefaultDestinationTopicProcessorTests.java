@@ -35,6 +35,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 /**
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Adrian Chlebosz
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)

@@ -45,6 +45,7 @@ import org.springframework.kafka.support.serializer.DeserializationException;
  * @author Tomaz Fernandes
  * @author Yvette Quinby
  * @author Gary Russell
+ * @author Adrian Chlebosz
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
@@ -146,13 +147,14 @@ class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 	@Test
 	void shouldResolveDeserializationDltDestinationForDeserializationException() {
 		DeserializationException exc = new DeserializationException("", new byte[] {}, false, new IllegalStateException());
+		TimestampedException timestampedExc = new TimestampedException(exc);
 
 		assertThat(defaultDestinationTopicContainer
 			.resolveDestinationTopic("id", secondRetryDestinationTopic.getDestinationName(),
-				1, exc, originalTimestamp)).isEqualTo(deserializationExcDltDestinationTopic);
+				1, timestampedExc, originalTimestamp)).isEqualTo(deserializationExcDltDestinationTopic);
 		assertThat(defaultDestinationTopicContainer
 			.resolveDestinationTopic("id", deserializationExcDltDestinationTopic.getDestinationName(),
-				1, exc, originalTimestamp)).isEqualTo(dltDestinationTopic);
+				1, timestampedExc, originalTimestamp)).isEqualTo(dltDestinationTopic);
 	}
 
 	@Test

@@ -31,6 +31,7 @@ import org.springframework.kafka.support.serializer.DeserializationException;
 
 /**
  * @author Tomaz Fernandes
+ * @author Adrian Chlebosz
  * @since 2.7
  */
 public class DestinationTopicTests {

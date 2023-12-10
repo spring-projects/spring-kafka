@@ -26,6 +26,7 @@ import org.springframework.lang.Nullable;
  *
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Adrian Chlebosz
  * @since 2.7
  */
 public interface DestinationTopicContainer {
@@ -65,9 +66,10 @@ public interface DestinationTopicContainer {
 	 * DLT for the given topic, or null if none is found.
 	 * @param mainListenerId the listener id.
 	 * @param topicName the topic name for which to look the DLT for
+	 * @param exc the exception which is being handled
 	 * @return The {@link DestinationTopic} instance corresponding to the DLT.
 	 */
 	@Nullable
-	DestinationTopic getDltFor(String mainListenerId, String topicName, Exception e);
+	DestinationTopic getDltFor(String mainListenerId, String topicName, Exception exc);
 
 }
