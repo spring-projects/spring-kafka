@@ -72,7 +72,7 @@ public class EmbeddedKafkaCondition implements ExecutionCondition, AfterAllCallb
 			return false;
 		}
 		else {
-			return parameterContext.getParameter().getType().equals(EmbeddedKafkaBroker.class);
+			return EmbeddedKafkaBroker.class.isAssignableFrom(parameterContext.getParameter().getType());
 		}
 	}
 
