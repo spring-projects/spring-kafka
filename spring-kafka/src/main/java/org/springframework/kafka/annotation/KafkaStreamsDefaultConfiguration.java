@@ -29,7 +29,7 @@ import org.springframework.kafka.config.StreamsBuilderFactoryBeanConfigurer;
  * {@code @Configuration} class that registers a {@link StreamsBuilderFactoryBean}
  * if {@link org.apache.kafka.streams.StreamsConfig} with the name
  * {@link KafkaStreamsDefaultConfiguration#DEFAULT_STREAMS_CONFIG_BEAN_NAME} is present
- * in the application context. Otherwise a {@link UnsatisfiedDependencyException} is thrown.
+ * in the application context. Otherwise, a {@link UnsatisfiedDependencyException} is thrown.
  *
  * <p>This configuration class is automatically imported when using the @{@link EnableKafkaStreams}
  * annotation. See {@link EnableKafkaStreams} Javadoc for complete usage.

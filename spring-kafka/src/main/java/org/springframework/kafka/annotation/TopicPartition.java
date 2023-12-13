@@ -42,7 +42,7 @@ public @interface TopicPartition {
 	/**
 	 * The partitions within the topic. Partitions specified here can't be duplicated in
 	 * {@link #partitionOffsets()}. Each string can contain a comma-delimited list of
-	 * partitions, or ranges of partitions (e.g. {@code 0-5, 7, 10-15}.
+	 * partitions, or ranges of partitions (e.g. {@code 0-5, 7, 10-15}).
 	 * @return the partitions within the topic. Property place holders and SpEL
 	 * expressions are supported, which must resolve to Integers (or Strings that can be
 	 * parsed as Integers).

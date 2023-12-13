@@ -22,7 +22,7 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
 /**
  * Optional interface to be implemented by Spring managed bean willing
  * to customize how Kafka listener endpoints are configured. Typically
- * used to defined the default
+ * used to define the default
  * {@link org.springframework.kafka.config.KafkaListenerContainerFactory
  * KafkaListenerContainerFactory} to use or for registering Kafka endpoints
  * in a <em>programmatic</em> fashion as opposed to the <em>declarative</em>

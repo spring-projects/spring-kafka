@@ -91,7 +91,7 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 	 * @param replyContainer the reply container.
 	 * @param releaseStrategy the release strategy which is a {@link BiPredicate} which is
 	 * passed the current list and a boolean to indicate if this is for a normal delivery
-	 * or a timeout (when {@link #setReturnPartialOnTimeout(boolean)} is true. The
+	 * or a timeout (when {@link #setReturnPartialOnTimeout(boolean)} is true). The
 	 * predicate may modify the list of records.
 	 * @since 2.3.5
 	 */
