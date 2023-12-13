@@ -22,7 +22,7 @@ package org.springframework.kafka.retrytopic;
  *
  * @author Adrian Chlebosz
  * @see org.springframework.kafka.retrytopic.ExceptionBasedDestinationDlt
- * @since 3.1.1
+ * @since 3.2.0
  */
 public @interface ExceptionBasedDltRouting {
 

@@ -536,7 +536,7 @@ public class RetryTopicConfigurationBuilder {
 	 * match with the configured exceptions.
 	 * @param dltRoutingRules specification of custom DLT name extensions and exceptions which should be matched for them
 	 * @return the builder
-	 * @since 3.1.1
+	 * @since 3.2.0
 	 */
 	public RetryTopicConfigurationBuilder dltRoutingRules(Map<String, Set<Class<? extends Throwable>>> dltRoutingRules) {
 		this.dltRoutingRules = dltRoutingRules;
