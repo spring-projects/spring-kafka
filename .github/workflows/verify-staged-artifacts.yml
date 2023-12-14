@@ -27,6 +27,8 @@ jobs:
           cache: 'gradle'
 
       - uses: jfrog/setup-jfrog-cli@v3
+        with:
+          version: 2.52.2
         env:
           JF_ENV_SPRING: ${{ secrets.JF_ARTIFACTORY_SPRING }}
 

@@ -176,10 +176,11 @@ import jakarta.validation.constraints.Max;
  * @author Venil Noronha
  * @author Dimitri Penner
  * @author Nakul Mishra
+ * @author Soby Chacko
  */
 @SpringJUnitConfig
 @DirtiesContext
-@EmbeddedKafka(topics = { "annotated1", "annotated2", "annotated3",
+@EmbeddedKafka(topics = { "annotated1", "annotated2", "annotated3", "annotated3x",
 		"annotated4", "annotated5", "annotated6", "annotated7", "annotated8", "annotated8reply",
 		"annotated9", "annotated10",
 		"annotated11", "annotated12", "annotated13", "annotated14", "annotated15", "annotated16", "annotated17",
@@ -312,6 +313,10 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.latch3.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.capturedRecord.value()).isEqualTo("foo");
 		assertThat(this.config.listen3Exception).isNotNull();
+
+		template.send("annotated3x", 0, "foo");
+		assertThat(this.listener.latch3x.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.listener.capturedRecord.value()).isEqualTo("foo");
 
 		template.send("annotated4", 0, "foo");
 		assertThat(this.listener.latch4.await(60, TimeUnit.SECONDS)).isTrue();
@@ -1840,6 +1845,8 @@ public class EnableKafkaIntegrationTests {
 
 		final CountDownLatch latch3 = new CountDownLatch(1);
 
+		final CountDownLatch latch3x = new CountDownLatch(1);
+
 		final CountDownLatch latch4 = new CountDownLatch(1);
 
 		final CountDownLatch latch5 = new CountDownLatch(1);
@@ -2016,6 +2023,14 @@ public class EnableKafkaIntegrationTests {
 			}
 			this.capturedRecord = record;
 			this.latch3.countDown();
+		}
+
+		@KafkaListener(id = "partitionExpression", topicPartitions = @TopicPartition(topic = "${topicThree:annotated3x}",
+				partitions = "${zero:0}",
+				partitionOffsets = @PartitionOffset(partition = "#{'*'}", initialOffset = "0")))
+		public void listenPartitionSpelExpression(ConsumerRecord<?, ?> record) {
+			this.capturedRecord = record;
+			this.latch3x.countDown();
 		}
 
 		@KafkaListener(id = "#{'qux'}", topics = "annotated4",
