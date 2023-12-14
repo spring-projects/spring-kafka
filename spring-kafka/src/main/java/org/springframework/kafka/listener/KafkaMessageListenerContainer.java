@@ -286,7 +286,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	@Nullable
 	public Map<String, Collection<TopicPartition>> getAssignmentsByClientId() {
 		ListenerConsumer partitionsListenerConsumer = this.listenerConsumer;
-		if (this.listenerConsumer != null) {
+		if (partitionsListenerConsumer != null) {
 			return Collections.singletonMap(partitionsListenerConsumer.getClientId(), getAssignedPartitions());
 		}
 		else {
@@ -324,7 +324,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		super.resume();
 		KafkaMessageListenerContainer<K, V>.ListenerConsumer consumer = this.listenerConsumer;
 		if (consumer != null) {
-			this.listenerConsumer.wakeIfNecessary();
+			consumer.wakeIfNecessary();
 		}
 	}
 
@@ -333,7 +333,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		super.resumePartition(topicPartition);
 		KafkaMessageListenerContainer<K, V>.ListenerConsumer consumer = this.listenerConsumer;
 		if (consumer != null) {
-			this.listenerConsumer.wakeIfNecessary();
+			consumer.wakeIfNecessary();
 		}
 	}
 
@@ -926,7 +926,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.containerProperties.isLogContainerConfig()) {
 				this.logger.info(toString());
 			}
-			Map<String, Object> props = KafkaMessageListenerContainer.this.consumerFactory.getConfigurationProperties();
 			ApplicationContext applicationContext = getApplicationContext();
 			this.checkNullKeyForExceptions = this.containerProperties.isCheckDeserExWhenKeyNull()
 					|| ErrorHandlingUtils.checkDeserializer(KafkaMessageListenerContainer.this.consumerFactory,
@@ -942,7 +941,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 									: applicationContext.getClassLoader());
 			this.syncCommitTimeout = determineSyncCommitTimeout();
 			if (this.containerProperties.getSyncCommitTimeout() == null) {
-				// update the property so we can use it directly from code elsewhere
+				// update the property, so we can use it directly from code elsewhere
 				this.containerProperties.setSyncCommitTimeout(this.syncCommitTimeout);
 				if (KafkaMessageListenerContainer.this.thisOrParentContainer != null) {
 					KafkaMessageListenerContainer.this.thisOrParentContainer
@@ -1019,15 +1018,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@Nullable
 		private ThreadStateProcessor setUpPollProcessor(boolean batch) {
-			if (batch) {
-				if (this.commonBatchInterceptor != null) {
-					return this.commonBatchInterceptor;
-				}
-			}
-			else if (this.commonRecordInterceptor != null) {
-				return this.commonRecordInterceptor;
-			}
-			return null;
+			return batch ? this.commonBatchInterceptor : this.commonRecordInterceptor;
 		}
 
 		@Nullable
@@ -3050,14 +3041,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			long now;
 			now = System.currentTimeMillis();
 			boolean elapsed = now - this.last > this.containerProperties.getAckTime();
-			if (ackMode.equals(AckMode.TIME) && elapsed) {
+			if (AckMode.TIME.equals(ackMode) && elapsed) {
 				this.logger.debug(() -> "Committing in AckMode.TIME " +
 						"because time elapsed exceeds configured limit of " +
 						this.containerProperties.getAckTime());
 				commitIfNecessary();
 				this.last = now;
 			}
-			else if (ackMode.equals(AckMode.COUNT_TIME) && elapsed) {
+			else if (AckMode.COUNT_TIME.equals(ackMode) && elapsed) {
 				this.logger.debug(() -> "Committing in AckMode.COUNT_TIME " +
 						"because time elapsed exceeds configured limit of " +
 						this.containerProperties.getAckTime());
@@ -3433,8 +3424,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					acknowledge(this.partial + 1);
 					return;
 				}
-				Map<TopicPartition, List<Long>> offs = ListenerConsumer.this.offsetsInThisBatch;
 				if (!this.acked) {
+					Map<TopicPartition, List<Long>> offs = ListenerConsumer.this.offsetsInThisBatch;
 					Map<TopicPartition, List<ConsumerRecord<K, V>>> deferred = ListenerConsumer.this.deferredOffsets;
 					for (ConsumerRecord<K, V> cRecord : getHighestOffsetRecords(this.records)) {
 						if (offs != null) {
@@ -3871,7 +3862,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Runnable callback;
 
-		StopCallback(Runnable callback) {
+		StopCallback(@Nullable Runnable callback) {
 			this.callback = callback;
 		}
 
@@ -3879,16 +3870,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		public void accept(Object result, @Nullable Throwable throwable) {
 			if (throwable != null) {
 				KafkaMessageListenerContainer.this.logger.error(throwable, "Error while stopping the container");
-				if (this.callback != null) {
-					this.callback.run();
-				}
 			}
 			else {
 				KafkaMessageListenerContainer.this.logger
 						.debug(() -> KafkaMessageListenerContainer.this + " stopped normally");
-				if (this.callback != null) {
-					this.callback.run();
-				}
+			}
+			if (this.callback != null) {
+				this.callback.run();
 			}
 		}
 

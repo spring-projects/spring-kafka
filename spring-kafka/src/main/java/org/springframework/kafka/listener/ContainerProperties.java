@@ -228,7 +228,7 @@ public class ContainerProperties extends ConsumerProperties {
 	/**
 	 * The time (ms) after which outstanding offsets should be committed when
 	 * {@link AckMode#TIME} or {@link AckMode#COUNT_TIME} is being used. Should be
-	 * larger than
+	 * larger than zero.
 	 */
 	private long ackTime = DEFAULT_ACK_TIME;
 
@@ -388,7 +388,7 @@ public class ContainerProperties extends ConsumerProperties {
 	/**
 	 * Set the time (ms) after which outstanding offsets should be committed when
 	 * {@link AckMode#TIME} or {@link AckMode#COUNT_TIME} is being used. Should be
-	 * larger than
+	 * larger than zero.
 	 * @param ackTime the time
 	 */
 	public void setAckTime(long ackTime) {
