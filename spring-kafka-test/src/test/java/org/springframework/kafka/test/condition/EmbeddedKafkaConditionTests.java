@@ -27,6 +27,8 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 /**
  * @author Gary Russell
+ * @author Michał Padula
+ *
  * @since 2.3
  *
  */
