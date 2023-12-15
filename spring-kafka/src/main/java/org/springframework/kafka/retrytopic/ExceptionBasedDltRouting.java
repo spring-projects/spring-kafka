@@ -21,7 +21,7 @@ package org.springframework.kafka.retrytopic;
  * which might be thrown during the processing.
  *
  * @author Adrian Chlebosz
- * @see org.springframework.kafka.retrytopic.ExceptionBasedDestinationDlt
+ * @see ExceptionBasedDltDestination
  * @since 3.2.0
  */
 public @interface ExceptionBasedDltRouting {
@@ -32,5 +32,5 @@ public @interface ExceptionBasedDltRouting {
 	 *
 	 * @return configured routing
 	 */
-	ExceptionBasedDestinationDlt[] routingRules() default {};
+	ExceptionBasedDltDestination[] routingRules() default {};
 }

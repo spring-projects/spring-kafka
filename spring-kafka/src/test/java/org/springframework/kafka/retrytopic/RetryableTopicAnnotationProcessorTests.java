@@ -375,7 +375,7 @@ class RetryableTopicAnnotationProcessorTests {
 		@RetryableTopic(
 			attempts = "1",
 			exceptionBasedDltRouting = @ExceptionBasedDltRouting(routingRules = {
-				@ExceptionBasedDestinationDlt(
+				@ExceptionBasedDltDestination(
 					suffix = "-deserialization", exceptions = {DeserializationException.class}
 				)
 			})

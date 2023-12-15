@@ -24,7 +24,7 @@ package org.springframework.kafka.retrytopic;
  * @see org.springframework.kafka.retrytopic.ExceptionBasedDltRouting
  * @since 3.2.0
  */
-public @interface ExceptionBasedDestinationDlt {
+public @interface ExceptionBasedDltDestination {
 
 	/**
 	 * Suffix extension used when constructing the name for the new DLT. It is placed
