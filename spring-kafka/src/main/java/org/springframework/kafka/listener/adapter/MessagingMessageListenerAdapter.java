@@ -529,14 +529,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	@SuppressWarnings("unchecked")
 	private void sendSingleResult(Object result, String topic, @Nullable Object source) {
-		byte[] correlationId = null;
-		boolean sourceIsMessage = source instanceof Message;
-		if (sourceIsMessage
-				&& getCorrelation((Message<?>) source) != null) {
-			correlationId = getCorrelation((Message<?>) source);
-		}
-		if (sourceIsMessage) {
-			sendReplyForMessageSource(result, topic, source, correlationId);
+		if (source instanceof Message<?> message) {
+			sendReplyForMessageSource(result, topic, message, getCorrelation(message));
 		}
 		else {
 			this.replyTemplate.send(topic, result);
@@ -544,11 +538,11 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	}
 
 	@SuppressWarnings("unchecked")
-	private void sendReplyForMessageSource(Object result, String topic, Object source, @Nullable byte[] correlationId) {
+	private void sendReplyForMessageSource(Object result, String topic, Message<?> source, @Nullable byte[] correlationId) {
 		MessageBuilder<Object> builder = MessageBuilder.withPayload(result)
 				.setHeader(KafkaHeaders.TOPIC, topic);
 		if (this.replyHeadersConfigurer != null) {
-			Map<String, Object> headersToCopy = ((Message<?>) source).getHeaders().entrySet().stream()
+			Map<String, Object> headersToCopy = source.getHeaders().entrySet().stream()
 					.filter(e -> {
 						String key = e.getKey();
 						return !key.equals(MessageHeaders.ID) && !key.equals(MessageHeaders.TIMESTAMP)
@@ -568,7 +562,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		if (correlationId != null) {
 			builder.setHeader(this.correlationHeaderName, correlationId);
 		}
-		setPartition(builder, ((Message<?>) source));
+		setPartition(builder, source);
 		this.replyTemplate.send(builder.build());
 	}
 
