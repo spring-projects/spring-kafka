@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.EmbeddedKafkaZKBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
@@ -39,6 +40,11 @@ public class EmbeddedKafkaConditionTests {
 		assertThat(KafkaTestUtils.getPropertyValue(broker, "brokerListProperty")).isEqualTo("my.bss.property");
 		assertThat(KafkaTestUtils.getPropertyValue(broker, "controlledShutdown")).isEqualTo(Boolean.TRUE);
 		assertThat(broker.getPartitionsPerTopic()).isEqualTo(3);
+	}
+
+	@Test
+	public void testResolver(EmbeddedKafkaZKBroker broker) {
+		assertThat(broker).isNotNull();
 	}
 
 }
