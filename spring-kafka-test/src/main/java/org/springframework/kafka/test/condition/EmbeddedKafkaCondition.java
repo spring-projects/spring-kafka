@@ -54,6 +54,7 @@ import org.springframework.util.StringUtils;
  * @author Artem Bilan
  * @author Pawel Lozinski
  * @author Adrian Chlebosz
+ * @author Michał Padula
  *
  * @since 2.3
  *
