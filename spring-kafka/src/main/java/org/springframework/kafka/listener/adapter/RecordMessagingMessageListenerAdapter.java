@@ -23,12 +23,10 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
-import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.converter.ProjectingMessageConverter;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.support.GenericMessage;
 
 
 /**
@@ -53,8 +51,6 @@ import org.springframework.messaging.support.GenericMessage;
 public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessageListenerAdapter<K, V>
 		implements AcknowledgingConsumerAwareMessageListener<K, V> {
 
-	private final KafkaListenerErrorHandler errorHandler;
-
 	public RecordMessagingMessageListenerAdapter(Object bean, Method method) {
 		this(bean, method, null);
 	}
@@ -62,8 +58,7 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 	public RecordMessagingMessageListenerAdapter(Object bean, Method method,
 			@Nullable KafkaListenerErrorHandler errorHandler) {
 
-		super(bean, method);
-		this.errorHandler = errorHandler;
+		super(bean, method, errorHandler);
 	}
 
 	/**
@@ -88,33 +83,7 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 		if (logger.isDebugEnabled() && !(getMessageConverter() instanceof ProjectingMessageConverter)) {
 			this.logger.debug("Processing [" + message + "]");
 		}
-		try {
-			Object result = invokeHandler(record, acknowledgment, message, consumer);
-			if (result != null) {
-				handleResult(result, record, message);
-			}
-		}
-		catch (ListenerExecutionFailedException e) { // NOSONAR ex flow control
-			if (this.errorHandler != null) {
-				try {
-					if (message.equals(NULL_MESSAGE)) {
-						message = new GenericMessage<>(record);
-					}
-					Object result = this.errorHandler.handleError(message, e, consumer, acknowledgment);
-					if (result != null) {
-						handleResult(result, record, message);
-					}
-				}
-				catch (Exception ex) {
-					throw new ListenerExecutionFailedException(createMessagingErrorMessage(// NOSONAR stack trace loss
-							"Listener error handler threw an exception for the incoming message",
-							message.getPayload()), ex);
-				}
-			}
-			else {
-				throw e;
-			}
-		}
+		invoke(record, acknowledgment, consumer, message);
 	}
 
 }
