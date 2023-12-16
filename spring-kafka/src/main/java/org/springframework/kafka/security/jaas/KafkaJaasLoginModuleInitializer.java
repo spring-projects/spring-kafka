@@ -162,8 +162,8 @@ public class KafkaJaasLoginModuleInitializer implements SmartInitializingSinglet
 		private final Configuration delegate;
 
 		InternalConfiguration(Map<String, AppConfigurationEntry[]> configurationEntries, Configuration delegate) {
-			Assert.notNull(configurationEntries, " cannot be null");
-			Assert.notEmpty(configurationEntries, " cannot be empty");
+			Assert.notNull(configurationEntries, "'configurationEntries' cannot be null");
+			Assert.notEmpty(configurationEntries, "'configurationEntries' cannot be empty");
 			this.configurationEntries = configurationEntries;
 			this.delegate = delegate;
 		}

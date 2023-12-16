@@ -354,13 +354,6 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 
 	@Override
 	public Consumer<K, V> createConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
-			@Nullable String clientIdSuffix) {
-
-		return createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffix, null);
-	}
-
-	@Override
-	public Consumer<K, V> createConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
 			@Nullable final String clientIdSuffixArg, @Nullable Properties properties) {
 
 		return createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffixArg, properties);

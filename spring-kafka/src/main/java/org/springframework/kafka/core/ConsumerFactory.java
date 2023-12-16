@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import org.apache.kafka.common.serialization.Deserializer;
 import org.springframework.lang.Nullable;
 
 /**
- * The strategy to produce a {@link Consumer} instance(s).
+ * The strategy to produce a {@link Consumer} instance.
  *
  * @param <K> the key type.
  * @param <V> the value type.
@@ -79,8 +79,10 @@ public interface ConsumerFactory<K, V> {
 	 * @return the consumer.
 	 * @since 2.1.1
 	 */
-	Consumer<K, V> createConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
-			@Nullable String clientIdSuffix);
+	default Consumer<K, V> createConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
+			@Nullable String clientIdSuffix) {
+		return createConsumer(groupId, clientIdPrefix, clientIdSuffix, null);
+	}
 
 	/**
 	 * Create a consumer with an explicit group id; in addition, the
@@ -94,11 +96,8 @@ public interface ConsumerFactory<K, V> {
 	 * @return the consumer.
 	 * @since 2.2.4
 	 */
-	default Consumer<K, V> createConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
-			@Nullable String clientIdSuffix, @Nullable Properties properties) {
-
-		return createConsumer(groupId, clientIdPrefix, clientIdSuffix);
-	}
+	Consumer<K, V> createConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
+			@Nullable String clientIdSuffix, @Nullable Properties properties);
 
 	/**
 	 * Return true if consumers created by this factory use auto commit.
@@ -155,7 +154,6 @@ public interface ConsumerFactory<K, V> {
 	 * @since 2.5.3
 	 */
 	default void addListener(int index, Listener<K, V> listener) {
-
 	}
 
 	/**
@@ -164,7 +162,6 @@ public interface ConsumerFactory<K, V> {
 	 * @since 2.5.3
 	 */
 	default void addListener(Listener<K, V> listener) {
-
 	}
 
 	/**
@@ -182,7 +179,6 @@ public interface ConsumerFactory<K, V> {
 	 * @since 2.5.3
 	 */
 	default void addPostProcessor(ConsumerPostProcessor<K, V> postProcessor) {
-
 	}
 
 	/**

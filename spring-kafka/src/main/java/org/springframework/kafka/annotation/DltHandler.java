@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Annotation to determine the method the should process the DLT topic message.
+ * Annotation to determine the method that should process the DLT topic message.
  * The method can have the same parameters as a {@link KafkaListener} method can (Message, Acknowledgement, etc).
  *
  * The annotated method must be in the same class as the corresponding {@link KafkaListener} annotation.
