@@ -147,8 +147,8 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 				}
 				String topic = destinations.length == 1 ? destinations[0] : "";
 				BeanFactory beanFactory = getBeanFactory();
-				if (beanFactory instanceof ConfigurableListableBeanFactory) {
-					topic = ((ConfigurableListableBeanFactory) beanFactory).resolveEmbeddedValue(topic);
+				if (beanFactory instanceof ConfigurableListableBeanFactory configurableListableBeanFactory) {
+					topic = configurableListableBeanFactory.resolveEmbeddedValue(topic);
 					if (topic != null) {
 						topic = resolve(topic);
 					}

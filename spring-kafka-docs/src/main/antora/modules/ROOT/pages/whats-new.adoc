@@ -50,3 +50,9 @@ See xref:retrytopic/topic-naming.adoc[Topic Naming] for more information.
 
 When manually assigning partitions, with a `null` consumer `group.id`, the `AckMode` is now automatically coerced to `MANUAL`.
 See xref:tips.adoc#tip-assign-all-parts[Manually Assigning All Partitions] for more information.
+
+[[x31-async-return]]
+=== Async @KafkaListener Return
+
+`@KafkaListener` (and `@KafkaHandler`) methods can now return asynchronous return types `CompletableFuture<?>` and `Mono<?>`.
+See xref:kafka/receiving-messages/async-returns.adoc[Async Returns] for more information.

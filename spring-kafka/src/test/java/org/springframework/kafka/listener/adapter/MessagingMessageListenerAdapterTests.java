@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,16 @@
 package org.springframework.kafka.listener.adapter;
 
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.lang.reflect.Method;
+import java.util.concurrent.CompletableFuture;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
@@ -32,6 +37,8 @@ import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.support.GenericMessage;
+
+import reactor.core.publisher.Mono;
 
 /**
  * @author Gary Russell
@@ -67,6 +74,37 @@ public class MessagingMessageListenerAdapterTests {
 	}
 
 	@Test
+	public void testCompletableFutureReturn() throws NoSuchMethodException {
+
+		Method method = getClass().getDeclaredMethod("future", String.class, Acknowledgment.class);
+		testAsyncResult(method, "bar");
+	}
+
+	@Test
+	public void testMonoReturn() throws NoSuchMethodException {
+
+		Method method = getClass().getDeclaredMethod("mono", String.class, Acknowledgment.class);
+		testAsyncResult(method, "baz");
+	}
+
+	private void testAsyncResult(Method method, String topic) {
+
+		KafkaListenerAnnotationBeanPostProcessor<String, String> bpp = new KafkaListenerAnnotationBeanPostProcessor<>();
+		RecordMessagingMessageListenerAdapter<String, String> adapter =
+				spy(new RecordMessagingMessageListenerAdapter<>(this, method));
+		adapter.setHandlerMethod(
+				new HandlerAdapter(bpp.getMessageHandlerMethodFactory().createInvocableHandlerMethod(this, method)));
+		ConsumerRecord<String, String> cr = new ConsumerRecord<>(topic, 0, 0L, null, "foo");
+		Acknowledgment ack = mock(Acknowledgment.class);
+		RecordMessageConverter converter = mock(RecordMessageConverter.class);
+		willReturn(new GenericMessage<>("foo")).given(converter).toMessage(cr, ack, null, String.class);
+		adapter.setMessageConverter(converter);
+		adapter.onMessage(cr, ack, null);
+		verify(adapter, times(1)).asyncSuccess(any(), any(), any(), anyBoolean());
+		verify(adapter, times(1)).acknowledge(any());
+	}
+
+	@Test
 	void testMissingAck() throws NoSuchMethodException, SecurityException {
 		KafkaListenerAnnotationBeanPostProcessor<String, String> bpp = new KafkaListenerAnnotationBeanPostProcessor<>();
 		Method method = getClass().getDeclaredMethod("test", Acknowledgment.class);
@@ -82,6 +120,18 @@ public class MessagingMessageListenerAdapterTests {
 
 	public void test(Acknowledgment ack) {
 
+	}
+
+	public CompletableFuture<String> future(String data, Acknowledgment ack) {
+
+		CompletableFuture<String> future = new CompletableFuture<>();
+		future.complete("processed" + data);
+		return future;
+	}
+
+	public Mono<String> mono(String data, Acknowledgment ack) {
+
+		return Mono.just(data);
 	}
 
 }
