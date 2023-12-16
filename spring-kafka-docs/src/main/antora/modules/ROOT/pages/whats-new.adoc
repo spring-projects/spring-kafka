@@ -13,3 +13,9 @@ For changes in earlier version, see xref:appendix/change-history.adoc[Change His
 A new `TransactionIdSuffixStrategy` interface was introduced to manage `transactional.id` suffix.
 The default implementation is `DefaultTransactionIdSuffixStrategy` when setting `maxCache` greater than zero can reuse `transactional.id` within a specific range, otherwise suffixes will be generated on the fly by incrementing a counter.
 See xref:kafka/transactions.adoc#transaction-id-suffix-fixed[Fixed TransactionIdSuffix] for more information.
+
+[[x32-async-return]]
+=== Async @KafkaListener Return
+
+`@KafkaListener` (and `@KafkaHandler`) methods can now return asynchronous return types `CompletableFuture<?>` and `Mono<?>`.
+See xref:kafka/receiving-messages/async-returns.adoc[Async Returns] for more information.

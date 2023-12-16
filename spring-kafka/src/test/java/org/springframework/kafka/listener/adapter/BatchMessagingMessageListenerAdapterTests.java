@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,17 @@
 package org.springframework.kafka.listener.adapter;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
@@ -38,6 +45,8 @@ import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+
+import reactor.core.publisher.Mono;
 
 /**
  * @author Gary Russell
@@ -60,6 +69,41 @@ public class BatchMessagingMessageListenerAdapterTests {
 		assertThat(foo.group).isEqualTo("test.group");
 	}
 
+	@SuppressWarnings("unchecked")
+	@Test
+	public void testFutureResult(@Autowired KafkaListenerEndpointRegistry registry, @Autowired Bar bar) {
+
+		BatchMessagingMessageListenerAdapter<String, String> adapter =
+				spy((BatchMessagingMessageListenerAdapter<String, String>) registry
+						.getListenerContainer("bar").getContainerProperties().getMessageListener());
+		KafkaUtils.setConsumerGroupId("test.group.future");
+		List<ConsumerRecord<String, String>> list = new ArrayList<>();
+		list.add(new ConsumerRecord<>("bar", 0, 0L, null, "future_1"));
+		list.add(new ConsumerRecord<>("bar", 0, 1L, null, "future_2"));
+		list.add(new ConsumerRecord<>("bar", 1, 0L, null, "future_3"));
+		adapter.onMessage(list, null, null);
+		assertThat(bar.group).isEqualTo("test.group.future");
+		verify(adapter, times(1)).asyncSuccess(any(), any(), any(), anyBoolean());
+		verify(adapter, times(1)).acknowledge(any());
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void testMonoResult(@Autowired KafkaListenerEndpointRegistry registry, @Autowired Baz baz) {
+
+		BatchMessagingMessageListenerAdapter<String, String> adapter =
+				spy((BatchMessagingMessageListenerAdapter<String, String>) registry
+						.getListenerContainer("baz").getContainerProperties().getMessageListener());
+		KafkaUtils.setConsumerGroupId("test.group.mono");
+		List<ConsumerRecord<String, String>> list = new ArrayList<>();
+		list.add(new ConsumerRecord<>("baz", 0, 0L, null, "mono_1"));
+		list.add(new ConsumerRecord<>("baz", 0, 1L, null, "mono_2"));
+		adapter.onMessage(list, null, null);
+		assertThat(baz.group).isEqualTo("test.group.mono");
+		verify(adapter, times(1)).asyncSuccess(any(), any(), any(), anyBoolean());
+		verify(adapter, times(1)).acknowledge(any());
+	}
+
 	public static class Foo {
 
 		public volatile String value = "someValue";
@@ -68,10 +112,38 @@ public class BatchMessagingMessageListenerAdapterTests {
 
 		@KafkaListener(id = "foo", topics = "foo", autoStartup = "false")
 		public void listen(List<String> list, @Header(KafkaHeaders.GROUP_ID) String groupId) {
-			list.forEach(s -> {
-				this.value = s;
-			});
+			list.forEach(s -> this.value = s);
 			this.group = groupId;
+		}
+
+	}
+
+	public static class Bar {
+
+		public volatile String group;
+
+		@KafkaListener(id = "bar", topics = "bar", autoStartup = "false")
+		public CompletableFuture<String> listen(List<String> list, @Header(KafkaHeaders.GROUP_ID) String groupId) {
+
+			this.group = groupId;
+			CompletableFuture<String> future = new CompletableFuture<>();
+			future.complete("processed: " + list.size());
+			return future;
+		}
+
+	}
+
+	public static class Baz {
+
+		public volatile String value = "someValue";
+
+		public volatile String group;
+
+		@KafkaListener(id = "baz", topics = "baz", autoStartup = "false")
+		public Mono<Integer> listen(List<String> list, @Header(KafkaHeaders.GROUP_ID) String groupId) {
+
+			this.group = groupId;
+			return Mono.just(list.size());
 		}
 
 	}
@@ -85,11 +157,20 @@ public class BatchMessagingMessageListenerAdapterTests {
 			return new Foo();
 		}
 
+		@Bean
+		public Bar bar() {
+			return new Bar();
+		}
+
+		@Bean
+		public Baz baz() {
+			return new Baz();
+		}
+
 		@SuppressWarnings({ "rawtypes" })
 		@Bean
 		public ConsumerFactory consumerFactory() {
-			ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
-			return consumerFactory;
+			return mock(ConsumerFactory.class);
 		}
 
 		@SuppressWarnings({ "rawtypes", "unchecked" })
@@ -100,6 +181,7 @@ public class BatchMessagingMessageListenerAdapterTests {
 			factory.setBatchListener(true);
 			return factory;
 		}
+
 	}
 
 }

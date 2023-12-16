@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
@@ -47,6 +48,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
+import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
@@ -66,8 +68,11 @@ import org.springframework.messaging.handler.annotation.support.MethodArgumentNo
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.Assert;
+import org.springframework.util.ClassUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
+
+import reactor.core.publisher.Mono;
 
 /**
  * An abstract {@link org.springframework.kafka.listener.MessageListener} adapter
@@ -94,6 +99,9 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * Message used when no conversion is needed.
 	 */
 	protected static final Message<KafkaNull> NULL_MESSAGE = new GenericMessage<>(KafkaNull.INSTANCE); // NOSONAR
+
+	private static final boolean monoPresent =
+			ClassUtils.isPresent("reactor.core.publisher.Mono", MessageListener.class.getClassLoader());
 
 	private final Object bean;
 
@@ -368,7 +376,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		try {
 			Object result = invokeHandler(records, acknowledgment, message, consumer);
 			if (result != null) {
-				handleResult(result, records, message);
+				handleResult(result, records, acknowledgment, consumer, message);
 			}
 		}
 		catch (ListenerExecutionFailedException e) { // NOSONAR ex flow control
@@ -436,19 +444,58 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * response message to the SendTo topic.
 	 * @param resultArg the result object to handle (never <code>null</code>)
 	 * @param request the original request message
+	 * @param acknowledgment the acknowledgment to manual ack
+	 * @param consumer the consumer to handler error
 	 * @param source the source data for the method invocation - e.g.
 	 * {@code o.s.messaging.Message<?>}; may be null
 	 */
-	protected void handleResult(Object resultArg, Object request, Object source) {
+	protected void handleResult(Object resultArg, Object request, @Nullable Acknowledgment acknowledgment,
+			Consumer<?, ?> consumer, @Nullable Message<?> source) {
+
 		this.logger.debug(() -> "Listener method returned result [" + resultArg
 				+ "] - generating response message for it");
-		boolean isInvocationResult = resultArg instanceof InvocationResult;
-		Object result = isInvocationResult ? ((InvocationResult) resultArg).getResult() : resultArg;
 		String replyTopic = evaluateReplyTopic(request, source, resultArg);
 		Assert.state(replyTopic == null || this.replyTemplate != null,
 				"a KafkaTemplate is required to support replies");
-		sendResponse(result, replyTopic, source, isInvocationResult
-				? ((InvocationResult) resultArg).isMessageReturnType() : this.messageReturnType);
+		Object result;
+		boolean messageReturnType;
+		if (resultArg instanceof InvocationResult invocationResult) {
+			result = invocationResult.getResult();
+			messageReturnType = invocationResult.isMessageReturnType();
+		}
+		else {
+			result = resultArg;
+			messageReturnType = this.messageReturnType;
+		}
+		if (result instanceof CompletableFuture<?> completable) {
+			if (acknowledgment == null || acknowledgment.isAsyncAcks()) {
+				this.logger.warn("Container 'Acknowledgment' must be async ack for Future<?> return type; "
+						+ "otherwise the container will ack the message immediately");
+			}
+			completable.whenComplete((r, t) -> {
+				if (t == null) {
+					asyncSuccess(r, replyTopic, source, messageReturnType);
+					acknowledge(acknowledgment);
+				}
+				else {
+					asyncFailure(request, acknowledgment, consumer, t, source);
+				}
+			});
+		}
+		else if (monoPresent && result instanceof Mono<?> mono) {
+			if (acknowledgment == null || acknowledgment.isAsyncAcks()) {
+				this.logger.warn("Container 'Acknowledgment' must be async ack for Mono<?> return type; " +
+						"otherwise the container will ack the message immediately");
+			}
+			mono.subscribe(
+					r -> asyncSuccess(r, replyTopic, source, messageReturnType),
+					t -> asyncFailure(request, acknowledgment, consumer, t, source),
+					() -> acknowledge(acknowledgment)
+			);
+		}
+		else {
+			sendResponse(result, replyTopic, source, messageReturnType);
+		}
 	}
 
 	@Nullable
@@ -586,6 +633,37 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		this.replyTemplate.send(builder.build());
 	}
 
+	protected void asyncSuccess(@Nullable Object result, String replyTopic, Message<?> source, boolean returnTypeMessage) {
+		if (result == null) {
+			if (this.logger.isDebugEnabled()) {
+				this.logger.debug("Async result is null, ignoring");
+			}
+		}
+		else {
+			sendResponse(result, replyTopic, source, returnTypeMessage);
+		}
+	}
+
+	protected void acknowledge(@Nullable Acknowledgment acknowledgment) {
+		if (acknowledgment != null) {
+			acknowledgment.acknowledge();
+		}
+	}
+
+	protected void asyncFailure(Object request, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer,
+			Throwable t, Message<?> source) {
+		try {
+			handleException(request, acknowledgment, consumer, source,
+					new ListenerExecutionFailedException(createMessagingErrorMessage(
+							"Async Fail", source.getPayload()), t));
+			return;
+		}
+		catch (Exception ex) {
+		}
+		this.logger.error(t, "Future, Mono, or suspend function was completed with an exception for " + source);
+		acknowledge(acknowledgment);
+	}
+
 	protected void handleException(Object records, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer,
 			Message<?> message, ListenerExecutionFailedException e) {
 
@@ -596,7 +674,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				}
 				Object result = this.errorHandler.handleError(message, e, consumer, acknowledgment);
 				if (result != null) {
-					handleResult(result, records, message);
+					handleResult(result, records, acknowledgment, consumer, message);
 				}
 			}
 			catch (Exception ex) {

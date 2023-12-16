@@ -1,0 +1,31 @@
+[[async-returns]]
+= Asynchronous `@KafkaListener` Return Types
+
+`@KafkaListener` (and `@KafkaHandler`) methods can be specified with asynchronous return types `CompletableFuture<?>` and `Mono<?>`, letting the reply be sent asynchronously.
+
+[source, java]
+----
+@KafkaListener(id = "myListener", topics = "myTopic")
+public CompletableFuture<String> listen(String data) {
+    ...
+    CompletableFuture<String> future = new CompletableFuture<>();
+    future.complete("done");
+    return future;
+}
+----
+
+[source, java]
+----
+@KafkaListener(id = "myListener", topics = "myTopic")
+public Mono<Void> listen(String data) {
+    ...
+    return Mono.empty();
+}
+----
+
+IMPORTANT: The listener container factory must be configured with manual ack mode and async ack to enable out-of-order commits; instead, the asynchronous completion will ack or nack the message when the async operation completes.
+When the async result is completed with an error, whether the message is recover or not depends on the container error handler.
+If some exception occurs within the listener method that prevents creation of the async result object, you MUST catch that exception and return an appropriate return object that will cause the message to be ack or recover.
+
+If a `KafkaListenerErrorHandler` is configured on a listener with an async return type, the error handler is invoked after a failure.
+See xref:kafka/annotation-error-handling.adoc[Handling Exceptions] for more information about this error handler and its purpose.

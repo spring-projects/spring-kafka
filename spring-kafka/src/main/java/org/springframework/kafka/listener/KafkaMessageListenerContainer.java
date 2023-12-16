@@ -3396,6 +3396,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 
 			@Override
+			public boolean isAsyncAcks() {
+				return !ListenerConsumer.this.containerProperties.isAsyncAcks();
+			}
+
+			@Override
 			public String toString() {
 				return "Acknowledgment for " + KafkaUtils.format(this.cRecord);
 			}
@@ -3491,6 +3496,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							tp -> new LinkedList<>()).add(cRecord);
 				}
 				processAcks(new ConsumerRecords<K, V>(newRecords));
+			}
+
+			@Override
+			public boolean isAsyncAcks() {
+				return !ListenerConsumer.this.containerProperties.isAsyncAcks();
 			}
 
 			@Override
