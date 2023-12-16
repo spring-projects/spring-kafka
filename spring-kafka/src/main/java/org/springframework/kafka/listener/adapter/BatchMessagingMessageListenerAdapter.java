@@ -26,14 +26,12 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 import org.springframework.kafka.listener.BatchAcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
-import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.converter.BatchMessageConverter;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.support.GenericMessage;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.Assert;
 
@@ -56,14 +54,13 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Venil Noronha
+ * @author Wang ZhiYang
  * @since 1.1
  */
 public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessageListenerAdapter<K, V>
 		implements BatchAcknowledgingConsumerAwareMessageListener<K, V> {
 
 	private BatchMessageConverter batchMessageConverter = new BatchMessagingMessageConverter();
-
-	private final KafkaListenerErrorHandler errorHandler;
 
 	private BatchToRecordAdapter<K, V> batchToRecordAdapter;
 
@@ -85,8 +82,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	public BatchMessagingMessageListenerAdapter(Object bean, Method method,
 			@Nullable KafkaListenerErrorHandler errorHandler) {
 
-		super(bean, method);
-		this.errorHandler = errorHandler;
+		super(bean, method, errorHandler);
 	}
 
 	/**
@@ -170,39 +166,6 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 		}
 		logger.debug(() -> "Processing [" + message + "]");
 		invoke(records, acknowledgment, consumer, message);
-	}
-
-	protected void invoke(Object records, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer,
-			final Message<?> messageArg) {
-
-		Message<?> message = messageArg;
-		try {
-			Object result = invokeHandler(records, acknowledgment, message, consumer);
-			if (result != null) {
-				handleResult(result, records, message);
-			}
-		}
-		catch (ListenerExecutionFailedException e) { // NOSONAR ex flow control
-			if (this.errorHandler != null) {
-				try {
-					if (message.equals(NULL_MESSAGE)) {
-						message = new GenericMessage<>(records);
-					}
-					Object result = this.errorHandler.handleError(message, e, consumer, acknowledgment);
-					if (result != null) {
-						handleResult(result, records, message);
-					}
-				}
-				catch (Exception ex) {
-					throw new ListenerExecutionFailedException(createMessagingErrorMessage(// NOSONAR stack trace loss
-							"Listener error handler threw an exception for the incoming message",
-							message.getPayload()), ex);
-				}
-			}
-			else {
-				throw e;
-			}
-		}
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,6 +72,7 @@ public interface KafkaListenerErrorHandler {
 	 * @return the return value is ignored unless the annotated method has a
 	 * {@code @SendTo} annotation.
 	 */
+	@Nullable
 	default Object handleError(Message<?> message, ListenerExecutionFailedException exception,
 			Consumer<?, ?> consumer, @Nullable Acknowledgment ack) {
 

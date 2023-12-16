@@ -45,6 +45,7 @@ import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.expression.spel.support.StandardTypeConverter;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.ConsumerSeekAware;
+import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -102,6 +103,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	private final StandardEvaluationContext evaluationContext = new StandardEvaluationContext();
 
+	private final KafkaListenerErrorHandler errorHandler;
+
 	private HandlerAdapter handlerMethod;
 
 	private boolean isConsumerRecordList;
@@ -143,8 +146,19 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * @param method the method.
 	 */
 	protected MessagingMessageListenerAdapter(Object bean, Method method) {
+		this(bean, method, null);
+	}
+
+	/**
+	 * Create an instance with the provided bean, method and kafka listener error handler.
+	 * @param bean the bean.
+	 * @param method the method.
+	 * @param errorHandler the kafka listener error handler.
+	 */
+	protected MessagingMessageListenerAdapter(Object bean, Method method, @Nullable KafkaListenerErrorHandler errorHandler) {
 		this.bean = bean;
 		this.inferredType = determineInferredType(method); // NOSONAR = intentionally not final
+		this.errorHandler = errorHandler;
 	}
 
 	/**
@@ -346,6 +360,20 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	protected Message<?> toMessagingMessage(ConsumerRecord<K, V> cRecord, @Nullable Acknowledgment acknowledgment,
 			Consumer<?, ?> consumer) {
 		return getMessageConverter().toMessage(cRecord, acknowledgment, consumer, getType());
+	}
+
+	protected void invoke(Object records, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer,
+			final Message<?> message) {
+
+		try {
+			Object result = invokeHandler(records, acknowledgment, message, consumer);
+			if (result != null) {
+				handleResult(result, records, message);
+			}
+		}
+		catch (ListenerExecutionFailedException e) { // NOSONAR ex flow control
+			handleException(records, acknowledgment, consumer, message, e);
+		}
 	}
 
 	/**
@@ -556,6 +584,30 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 		setPartition(builder, source);
 		this.replyTemplate.send(builder.build());
+	}
+
+	protected void handleException(Object records, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer,
+			Message<?> message, ListenerExecutionFailedException e) {
+
+		if (this.errorHandler != null) {
+			try {
+				if (NULL_MESSAGE.equals(message)) {
+					message = new GenericMessage<>(records);
+				}
+				Object result = this.errorHandler.handleError(message, e, consumer, acknowledgment);
+				if (result != null) {
+					handleResult(result, records, message);
+				}
+			}
+			catch (Exception ex) {
+				throw new ListenerExecutionFailedException(createMessagingErrorMessage(// NOSONAR stack trace loss
+						"Listener error handler threw an exception for the incoming message",
+						message.getPayload()), ex);
+			}
+		}
+		else {
+			throw e;
+		}
 	}
 
 	private void setCorrelation(MessageBuilder<?> builder, Message<?> source) {
