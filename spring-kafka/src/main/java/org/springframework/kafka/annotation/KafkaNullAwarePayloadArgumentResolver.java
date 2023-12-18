@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,8 +47,7 @@ public class KafkaNullAwarePayloadArgumentResolver extends PayloadMethodArgument
 		/*
 		 * Replace KafkaNull list elements with null.
 		 */
-		if (resolved instanceof List) {
-			List<?> list = ((List<?>) resolved);
+		if (resolved instanceof List<?> list) {
 			for (int i = 0; i < list.size(); i++) {
 				if (list.get(i) instanceof KafkaNull) {
 					list.set(i, null);

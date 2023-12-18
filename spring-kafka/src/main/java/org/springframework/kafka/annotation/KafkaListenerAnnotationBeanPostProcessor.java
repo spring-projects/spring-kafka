@@ -37,7 +37,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.logging.LogFactory;
@@ -255,8 +254,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
 		this.applicationContext = applicationContext;
-		if (applicationContext instanceof ConfigurableApplicationContext) {
-			setBeanFactory(((ConfigurableApplicationContext) applicationContext).getBeanFactory());
+		if (applicationContext instanceof ConfigurableApplicationContext cac) {
+			setBeanFactory(cac.getBeanFactory());
 		}
 		else {
 			setBeanFactory(applicationContext);
@@ -334,7 +333,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		this.registrar.afterPropertiesSet();
 		Map<String, ContainerGroupSequencer> sequencers =
 				this.applicationContext.getBeansOfType(ContainerGroupSequencer.class, false, false);
-		sequencers.values().forEach(seq -> seq.initialize());
+		sequencers.values().forEach(ContainerGroupSequencer::initialize);
 	}
 
 	private void buildEnhancer() {
@@ -406,35 +405,27 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	 * AnnotationUtils.getRepeatableAnnotations does not look at interfaces
 	 */
 	private Collection<KafkaListener> findListenerAnnotations(Class<?> clazz) {
-		Set<KafkaListener> listeners = new HashSet<>();
-		KafkaListener ann = AnnotatedElementUtils.findMergedAnnotation(clazz, KafkaListener.class);
-		if (ann != null) {
-			ann = enhance(clazz, ann);
-			listeners.add(ann);
-		}
-		KafkaListeners anns = AnnotationUtils.findAnnotation(clazz, KafkaListeners.class);
-		if (anns != null) {
-			listeners.addAll(Arrays.stream(anns.value())
-					.map(anno -> enhance(clazz, anno))
-					.collect(Collectors.toList()));
-		}
-		return listeners;
+		return findListenerAnnotationsByAnnotatedElement(clazz);
 	}
 
 	/*
 	 * AnnotationUtils.getRepeatableAnnotations does not look at interfaces
 	 */
 	private Set<KafkaListener> findListenerAnnotations(Method method) {
+		return findListenerAnnotationsByAnnotatedElement(method);
+	}
+
+	private Set<KafkaListener> findListenerAnnotationsByAnnotatedElement(AnnotatedElement element) {
 		Set<KafkaListener> listeners = new HashSet<>();
-		KafkaListener ann = AnnotatedElementUtils.findMergedAnnotation(method, KafkaListener.class);
+		KafkaListener ann = AnnotatedElementUtils.findMergedAnnotation(element, KafkaListener.class);
 		if (ann != null) {
-			ann = enhance(method, ann);
+			ann = enhance(element, ann);
 			listeners.add(ann);
 		}
-		KafkaListeners anns = AnnotationUtils.findAnnotation(method, KafkaListeners.class);
+		KafkaListeners anns = AnnotationUtils.findAnnotation(element, KafkaListeners.class);
 		if (anns != null) {
 			listeners.addAll(Arrays.stream(anns.value())
-					.map(anno -> enhance(method, anno))
+					.map(anno -> enhance(element, anno))
 					.toList());
 		}
 		return listeners;
@@ -720,14 +711,13 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			return null;
 		}
 
-		KafkaListenerContainerFactory<?> factory = null;
-
 		Object resolved = resolveExpression(containerFactory);
-		if (resolved instanceof KafkaListenerContainerFactory) {
-			return (KafkaListenerContainerFactory<?>) resolved;
+		if (resolved instanceof KafkaListenerContainerFactory<?> klcf) {
+			return klcf;
 		}
-		String containerFactoryBeanName = resolveExpressionAsString(containerFactory,
-				"containerFactory");
+
+		KafkaListenerContainerFactory<?> factory = null;
+		String containerFactoryBeanName = resolveExpressionAsString(containerFactory, "containerFactory");
 		if (StringUtils.hasText(containerFactoryBeanName)) {
 			assertBeanFactory();
 			try {
@@ -778,8 +768,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 						loadProperty(properties, prop, prop);
 					}
 				}
-				else if (value instanceof Collection) {
-					Collection<?> values = (Collection<?>) value;
+				else if (value instanceof Collection<?> values) {
 					if (!values.isEmpty() && values.iterator().next() instanceof String) {
 						for (String prop : (Collection<String>) value) {
 							loadProperty(properties, prop, prop);
@@ -1127,7 +1116,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				}
 			}
 			else {
-				parsePartitions(part).forEach(p -> parts.add(p));
+				parsePartitions(part).forEach(parts::add);
 			}
 		}
 		return parts.stream()
