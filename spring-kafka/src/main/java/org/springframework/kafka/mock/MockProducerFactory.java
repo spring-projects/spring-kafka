@@ -29,6 +29,7 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.ProducerFencedException;
+
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.ProducerFactory;
@@ -189,7 +190,7 @@ public class MockProducerFactory<K, V> implements ProducerFactory<K, V> {
 
 		@Override
 		public void close(Duration timeout) {
-			LOGGER.debug(() -> "The closing of delegate producer " + delegate + "has been skipped.");
+			LOGGER.debug(() -> "The closing of delegate producer " + this.delegate + "has been skipped.");
 		}
 	}
 }
