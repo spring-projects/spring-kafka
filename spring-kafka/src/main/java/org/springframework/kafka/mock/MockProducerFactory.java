@@ -111,76 +111,76 @@ public class MockProducerFactory<K, V> implements ProducerFactory<K, V> {
 
 	/**
 	 *
-	 * A wrapper class for the delegate, inspired by {@link DefaultKafkaProducerFactory.CloseSafeProducer}
+	 * A wrapper class for the delegate, inspired by {@link DefaultKafkaProducerFactory.CloseSafeProducer}.
 	 *
 	 * @param <K> the key type.
 	 * @param <V> the value type.
 	 *
 	 * @author Pawel Szymczyk
 	 */
-	static class CloseSafeMockProducer<K,V> implements Producer<K, V> {
+	static class CloseSafeMockProducer<K,V> implements Producer<K,V> {
 
 		private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(CloseSafeMockProducer.class));
 
 		private final MockProducer<K, V> delegate;
 
-		public CloseSafeMockProducer(MockProducer<K, V> delegate) {
+		CloseSafeMockProducer(MockProducer<K,V> delegate) {
 			this.delegate = delegate;
 		}
 
 		@Override
 		public void initTransactions() {
-			delegate.initTransactions();
+			this.delegate.initTransactions();
 		}
 
 		@Override
 		public void beginTransaction() throws ProducerFencedException {
-			delegate.beginTransaction();
+			this.delegate.beginTransaction();
 		}
 
 		@Override
 		public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId) throws ProducerFencedException {
-			delegate.sendOffsetsToTransaction(offsets, consumerGroupId);
+			this.delegate.sendOffsetsToTransaction(offsets, consumerGroupId);
 		}
 
 		@Override
 		public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, ConsumerGroupMetadata groupMetadata) throws ProducerFencedException {
-			delegate.sendOffsetsToTransaction(offsets, groupMetadata);
+			this.delegate.sendOffsetsToTransaction(offsets, groupMetadata);
 		}
 
 		@Override
 		public void commitTransaction() throws ProducerFencedException {
-			delegate.commitTransaction();
+			this.delegate.commitTransaction();
 		}
 
 		@Override
 		public void abortTransaction() throws ProducerFencedException {
-			delegate.abortTransaction();
+			this.delegate.abortTransaction();
 		}
 
 		@Override
 		public Future<RecordMetadata> send(ProducerRecord<K, V> record) {
-			return delegate.send(record);
+			return this.delegate.send(record);
 		}
 
 		@Override
 		public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {
-			return delegate.send(record, callback);
+			return this.delegate.send(record, callback);
 		}
 
 		@Override
 		public void flush() {
-			delegate.flush();
+			this.delegate.flush();
 		}
 
 		@Override
 		public List<PartitionInfo> partitionsFor(String topic) {
-			return delegate.partitionsFor(topic);
+			return this.delegate.partitionsFor(topic);
 		}
 
 		@Override
 		public Map<MetricName, ? extends Metric> metrics() {
-			return delegate.metrics();
+			return this.delegate.metrics();
 		}
 
 		@Override
