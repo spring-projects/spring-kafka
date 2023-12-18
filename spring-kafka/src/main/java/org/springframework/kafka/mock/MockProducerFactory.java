@@ -16,12 +16,29 @@
 
 package org.springframework.kafka.mock;
 
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Future;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
+import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.MockProducer;
 import org.apache.kafka.clients.producer.Producer;
 
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.Metric;
+import org.apache.kafka.common.MetricName;
+import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.ProducerFencedException;
+import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.lang.Nullable;
 
@@ -32,6 +49,7 @@ import org.springframework.lang.Nullable;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Pawel Szymczyk
  * @since 3.0.7
  *
  */
@@ -82,8 +100,8 @@ public class MockProducerFactory<K, V> implements ProducerFactory<K, V> {
 	@Override
 	public Producer<K, V> createProducer(@Nullable String txIdPrefix) {
 		return txIdPrefix == null && this.defaultTxId == null
-				? this.producerProvider.apply(false, null)
-				: this.producerProvider.apply(true, txIdPrefix == null ? this.defaultTxId : txIdPrefix);
+				? new CloseSafeMockProducer<>(this.producerProvider.apply(false, null))
+				: new CloseSafeMockProducer<>(this.producerProvider.apply(true, txIdPrefix == null ? this.defaultTxId : txIdPrefix));
 	}
 
 	@Override
@@ -91,4 +109,88 @@ public class MockProducerFactory<K, V> implements ProducerFactory<K, V> {
 		return this.producerProvider.apply(false, null);
 	}
 
+	/**
+	 *
+	 * A wrapper class for the delegate, inspired by {@link DefaultKafkaProducerFactory.CloseSafeProducer}
+	 *
+	 * @param <K> the key type.
+	 * @param <V> the value type.
+	 *
+	 * @author Pawel Szymczyk
+	 */
+	static class CloseSafeMockProducer<K,V> implements Producer<K, V> {
+
+		private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(CloseSafeMockProducer.class));
+
+		private final MockProducer<K, V> delegate;
+
+		public CloseSafeMockProducer(MockProducer<K, V> delegate) {
+			this.delegate = delegate;
+		}
+
+		@Override
+		public void initTransactions() {
+			delegate.initTransactions();
+		}
+
+		@Override
+		public void beginTransaction() throws ProducerFencedException {
+			delegate.beginTransaction();
+		}
+
+		@Override
+		public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId) throws ProducerFencedException {
+			delegate.sendOffsetsToTransaction(offsets, consumerGroupId);
+		}
+
+		@Override
+		public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, ConsumerGroupMetadata groupMetadata) throws ProducerFencedException {
+			delegate.sendOffsetsToTransaction(offsets, groupMetadata);
+		}
+
+		@Override
+		public void commitTransaction() throws ProducerFencedException {
+			delegate.commitTransaction();
+		}
+
+		@Override
+		public void abortTransaction() throws ProducerFencedException {
+			delegate.abortTransaction();
+		}
+
+		@Override
+		public Future<RecordMetadata> send(ProducerRecord<K, V> record) {
+			return delegate.send(record);
+		}
+
+		@Override
+		public Future<RecordMetadata> send(ProducerRecord<K, V> record, Callback callback) {
+			return delegate.send(record, callback);
+		}
+
+		@Override
+		public void flush() {
+			delegate.flush();
+		}
+
+		@Override
+		public List<PartitionInfo> partitionsFor(String topic) {
+			return delegate.partitionsFor(topic);
+		}
+
+		@Override
+		public Map<MetricName, ? extends Metric> metrics() {
+			return delegate.metrics();
+		}
+
+		@Override
+		public void close() {
+			close(null);
+		}
+
+		@Override
+		public void close(Duration timeout) {
+			LOGGER.debug(() -> "The closing of delegate producer " + delegate + "has been skipped.");
+		}
+	}
 }
