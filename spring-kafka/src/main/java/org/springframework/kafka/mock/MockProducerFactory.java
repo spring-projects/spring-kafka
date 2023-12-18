@@ -16,20 +16,12 @@
 
 package org.springframework.kafka.mock;
 
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Future;
-import java.util.function.BiFunction;
-import java.util.function.Supplier;
-
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.MockProducer;
 import org.apache.kafka.clients.producer.Producer;
-
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.Metric;
@@ -42,6 +34,13 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.lang.Nullable;
 
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Future;
+import java.util.function.BiFunction;
+import java.util.function.Supplier;
+
 /**
  * Support the use of {@link MockProducer} in tests.
  *
@@ -51,7 +50,6 @@ import org.springframework.lang.Nullable;
  * @author Gary Russell
  * @author Pawel Szymczyk
  * @since 3.0.7
- *
  */
 public class MockProducerFactory<K, V> implements ProducerFactory<K, V> {
 
@@ -64,6 +62,7 @@ public class MockProducerFactory<K, V> implements ProducerFactory<K, V> {
 
 	/**
 	 * Create an instance that does not support transactional producers.
+	 *
 	 * @param producerProvider a {@link Supplier} for a {@link MockProducer}.
 	 */
 	public MockProducerFactory(Supplier<MockProducer<K, V>> producerProvider) {
@@ -76,11 +75,12 @@ public class MockProducerFactory<K, V> implements ProducerFactory<K, V> {
 	 * Create an instance that supports transactions, with the supplied producer provider {@link BiFunction}. The
 	 * function has two parameters, a boolean indicating whether a transactional producer
 	 * is being requested and, if true, the transaction id prefix for that producer.
+	 *
 	 * @param producerProvider the provider function.
 	 * @param defaultTxId the default transactional id.
 	 */
 	public MockProducerFactory(BiFunction<Boolean, String, MockProducer<K, V>> producerProvider,
-			@Nullable String defaultTxId) {
+							   @Nullable String defaultTxId) {
 
 		this.producerProvider = producerProvider;
 		this.defaultTxId = defaultTxId;
@@ -110,7 +110,6 @@ public class MockProducerFactory<K, V> implements ProducerFactory<K, V> {
 	}
 
 	/**
-	 *
 	 * A wrapper class for the delegate, inspired by {@link DefaultKafkaProducerFactory.CloseSafeProducer}.
 	 *
 	 * @param <K> the key type.
@@ -118,13 +117,13 @@ public class MockProducerFactory<K, V> implements ProducerFactory<K, V> {
 	 *
 	 * @author Pawel Szymczyk
 	 */
-	static class CloseSafeMockProducer<K,V> implements Producer<K,V> {
+	static class CloseSafeMockProducer<K, V> implements Producer<K, V> {
 
 		private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(CloseSafeMockProducer.class));
 
 		private final MockProducer<K, V> delegate;
 
-		CloseSafeMockProducer(MockProducer<K,V> delegate) {
+		CloseSafeMockProducer(MockProducer<K, V> delegate) {
 			this.delegate = delegate;
 		}
 
