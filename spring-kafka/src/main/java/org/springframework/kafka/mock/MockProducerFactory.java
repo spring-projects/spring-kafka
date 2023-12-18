@@ -29,7 +29,6 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.ProducerFencedException;
-
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.ProducerFactory;
@@ -80,8 +79,7 @@ public class MockProducerFactory<K, V> implements ProducerFactory<K, V> {
 	 * @param producerProvider the provider function.
 	 * @param defaultTxId the default transactional id.
 	 */
-	public MockProducerFactory(BiFunction<Boolean, String, MockProducer<K, V>> producerProvider,
-							   @Nullable String defaultTxId) {
+	public MockProducerFactory(BiFunction<Boolean, String, MockProducer<K, V>> producerProvider, @Nullable String defaultTxId) {
 
 		this.producerProvider = producerProvider;
 		this.defaultTxId = defaultTxId;
@@ -100,9 +98,8 @@ public class MockProducerFactory<K, V> implements ProducerFactory<K, V> {
 
 	@Override
 	public Producer<K, V> createProducer(@Nullable String txIdPrefix) {
-		return txIdPrefix == null && this.defaultTxId == null
-				? new CloseSafeMockProducer<>(this.producerProvider.apply(false, null))
-				: new CloseSafeMockProducer<>(this.producerProvider.apply(true, txIdPrefix == null ? this.defaultTxId : txIdPrefix));
+		return txIdPrefix == null && this.defaultTxId == null ? new CloseSafeMockProducer<>(this.producerProvider.apply(false, null)) :
+				new CloseSafeMockProducer<>(this.producerProvider.apply(true, txIdPrefix == null ? this.defaultTxId : txIdPrefix));
 	}
 
 	@Override
