@@ -36,6 +36,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.context.expression.MapAccessor;
+import org.springframework.core.KotlinDetector;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.expression.BeanResolver;
@@ -484,8 +485,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 		else if (monoPresent && result instanceof Mono<?> mono) {
 			if (acknowledgment == null || acknowledgment.isAsyncAcks()) {
-				this.logger.warn("Container 'Acknowledgment' must be async ack for Mono<?> return type; " +
-						"otherwise the container will ack the message immediately");
+				this.logger.warn("Container 'Acknowledgment' must be async ack for Mono<?> return type " +
+						"(or Kotlin suspend function); otherwise the container will ack the message immediately");
 			}
 			mono.subscribe(
 					r -> asyncSuccess(r, replyTopic, source, messageReturnType),
@@ -660,7 +661,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 		catch (Exception ex) {
 		}
-		this.logger.error(t, "Future, Mono, or suspend function was completed with an exception for " + source);
+		this.logger.error(t, () -> "Future, Mono, or suspend function was completed with an exception for " + source);
 		acknowledge(acknowledgment);
 	}
 
@@ -751,6 +752,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			isNotConvertible |= isAck;
 			boolean isConsumer = parameterIsType(parameterType, Consumer.class);
 			isNotConvertible |= isConsumer;
+			boolean isCoroutines = KotlinDetector.isKotlinType(methodParameter.getParameterType());
+			isNotConvertible |= isCoroutines;
 			boolean isMeta = parameterIsType(parameterType, ConsumerRecordMetadata.class);
 			this.hasMetadataParameter |= isMeta;
 			isNotConvertible |= isMeta;
@@ -769,7 +772,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 					break;
 				}
 			}
-			else if (isAck || isConsumer || annotationHeaderIsGroupId(methodParameter)) {
+			else if (isAck || isCoroutines || isConsumer || annotationHeaderIsGroupId(methodParameter)) {
 				allowedBatchParameters++;
 			}
 		}

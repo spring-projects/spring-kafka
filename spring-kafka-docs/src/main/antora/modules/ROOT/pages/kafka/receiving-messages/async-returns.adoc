@@ -27,5 +27,5 @@ IMPORTANT: The listener container factory must be configured with manual ack mod
 When the async result is completed with an error, whether the message is recover or not depends on the container error handler.
 If some exception occurs within the listener method that prevents creation of the async result object, you MUST catch that exception and return an appropriate return object that will cause the message to be ack or recover.
 
-If a `KafkaListenerErrorHandler` is configured on a listener with an async return type, the error handler is invoked after a failure.
+If a `KafkaListenerErrorHandler` is configured on a listener with an async return type (including Kotlin suspend functions), the error handler is invoked after a failure.
 See xref:kafka/annotation-error-handling.adoc[Handling Exceptions] for more information about this error handler and its purpose.
