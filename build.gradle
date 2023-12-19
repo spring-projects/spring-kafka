@@ -60,6 +60,7 @@ ext {
 	junit4Version = '4.13.2'
 	junitJupiterVersion = '5.10.1'
 	kafkaVersion = '3.6.1'
+	kotlinCoroutinesVersion = '1.7.3'
 	log4jVersion = '2.21.1'
 	micrometerDocsVersion = '1.0.2'
 	micrometerVersion = '1.12.1'
@@ -276,6 +277,7 @@ project ('spring-kafka') {
 		}
 		api "org.apache.kafka:kafka-clients:$kafkaVersion"
 		optionalApi "org.apache.kafka:kafka-streams:$kafkaVersion"
+		optionalApi "org.jetbrains.kotlinx:kotlinx-coroutines-reactor:$kotlinCoroutinesVersion"
 		optionalApi 'com.fasterxml.jackson.core:jackson-core'
 		optionalApi 'com.fasterxml.jackson.core:jackson-databind'
 		optionalApi 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'

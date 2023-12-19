@@ -213,16 +213,16 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 			if (batchToRecordAdapter != null) {
 				messageListener.setBatchToRecordAdapter(batchToRecordAdapter);
 			}
-			if (messageConverter instanceof BatchMessageConverter) {
-				messageListener.setBatchMessageConverter((BatchMessageConverter) messageConverter);
+			if (messageConverter instanceof BatchMessageConverter batchMessageConverter) {
+				messageListener.setBatchMessageConverter(batchMessageConverter);
 			}
 			listener = messageListener;
 		}
 		else {
 			RecordMessagingMessageListenerAdapter<K, V> messageListener = new RecordMessagingMessageListenerAdapter<K, V>(
 					this.bean, this.method, this.errorHandler);
-			if (messageConverter instanceof RecordMessageConverter) {
-				messageListener.setMessageConverter((RecordMessageConverter) messageConverter);
+			if (messageConverter instanceof RecordMessageConverter recordMessageConverter) {
+				messageListener.setMessageConverter(recordMessageConverter);
 			}
 			listener = messageListener;
 		}
