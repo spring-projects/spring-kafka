@@ -81,6 +81,7 @@ import org.springframework.util.StringUtils;
  * @author Artem Bilan
  * @author Venil Noronha
  * @author Nathan Xu
+ * @author Wang ZhiYang
  */
 public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware {
 
@@ -367,14 +368,12 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			if (data instanceof List && !this.isConsumerRecordList) {
 				return this.handlerMethod.invoke(message, ack, consumer);
 			}
+			else if (this.hasMetadataParameter) {
+				return this.handlerMethod.invoke(message, data, ack, consumer,
+						AdapterUtils.buildConsumerRecordMetadata(data));
+			}
 			else {
-				if (this.hasMetadataParameter) {
-					return this.handlerMethod.invoke(message, data, ack, consumer,
-							AdapterUtils.buildConsumerRecordMetadata(data));
-				}
-				else {
-					return this.handlerMethod.invoke(message, data, ack, consumer);
-				}
+				return this.handlerMethod.invoke(message, data, ack, consumer);
 			}
 		}
 		catch (org.springframework.messaging.converter.MessageConversionException ex) {
@@ -475,32 +474,25 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			Message<?> reply = checkHeaders(mResult, topic, source);
 			this.replyTemplate.send(reply);
 		}
-		else {
-			if (result instanceof Iterable) {
-				Iterator<?> iterator = ((Iterable<?>) result).iterator();
-				boolean iterableOfMessages = false;
-				if (iterator.hasNext()) {
-					iterableOfMessages = iterator.next() instanceof Message;
-				}
-				if (iterableOfMessages || this.splitIterables) {
-					((Iterable<V>) result).forEach(v -> {
-						if (v instanceof Message<?> mv) {
-							Message<?> aReply = checkHeaders(mv, topic, source);
-							this.replyTemplate.send(aReply);
-						}
-						else {
-							this.replyTemplate.send(topic, v);
-						}
-					});
+		else if (result instanceof Iterable<?> iterable && (iterableOfMessages(iterable) || this.splitIterables)) {
+			iterable.forEach(v -> {
+				if (v instanceof Message<?> mv) {
+					Message<?> aReply = checkHeaders(mv, topic, source);
+					this.replyTemplate.send(aReply);
 				}
 				else {
-					sendSingleResult(result, topic, source);
+					this.replyTemplate.send(topic, v);
 				}
-			}
-			else {
-				sendSingleResult(result, topic, source);
-			}
+			});
 		}
+		else {
+			sendSingleResult(result, topic, source);
+		}
+	}
+
+	private boolean iterableOfMessages(Iterable<?> iterable) {
+		Iterator<?> iterator = iterable.iterator();
+		return iterator.hasNext() && iterator.next() instanceof Message;
 	}
 
 	private Message<?> checkHeaders(Message<?> reply, @Nullable String topic, @Nullable Object source) { // NOSONAR (complexity)
@@ -647,25 +639,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 					break;
 				}
 			}
-			else if (isAck) {
+			else if (isAck || isConsumer || annotationHeaderIsGroupId(methodParameter)) {
 				allowedBatchParameters++;
-			}
-			else if (methodParameter.hasParameterAnnotation(Header.class)) {
-				Header header = methodParameter.getParameterAnnotation(Header.class);
-				if (header != null && KafkaHeaders.GROUP_ID.equals(header.value())) {
-					allowedBatchParameters++;
-				}
-			}
-			else {
-				if (isConsumer) {
-					allowedBatchParameters++;
-				}
-				else {
-					if (parameterType instanceof ParameterizedType paramType
-							&& paramType.getRawType().equals(Consumer.class)) {
-						allowedBatchParameters++;
-					}
-				}
 			}
 		}
 
@@ -673,7 +648,6 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			this.conversionNeeded = false;
 		}
 		boolean validParametersForBatch = method.getGenericParameterTypes().length <= allowedBatchParameters;
-
 		if (!validParametersForBatch) {
 			String stateMessage = "A parameter of type '%s' must be the only parameter "
 					+ "(except for an optional 'Acknowledgment' and/or 'Consumer' "
@@ -693,19 +667,17 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		Type genericParameterType = methodParameter.getGenericParameterType();
 		if (genericParameterType instanceof ParameterizedType parameterizedType) {
 			if (parameterizedType.getRawType().equals(Message.class)) {
-				genericParameterType = ((ParameterizedType) genericParameterType).getActualTypeArguments()[0];
+				genericParameterType = parameterizedType.getActualTypeArguments()[0];
 			}
 			else if (parameterizedType.getRawType().equals(List.class)
 					&& parameterizedType.getActualTypeArguments().length == 1) {
 
-				Type paramType = parameterizedType.getActualTypeArguments()[0];
-				this.isConsumerRecordList = paramType.equals(ConsumerRecord.class)
-						|| (isSimpleListOfConsumerRecord(paramType)
-						|| isListOfConsumerRecordUpperBounded(paramType));
-				boolean messageWithGeneric = isMessageWithGeneric(paramType);
-				this.isMessageList = paramType.equals(Message.class) || messageWithGeneric;
+				Type paramType = getTypeFromWildCardWithUpperBound(parameterizedType.getActualTypeArguments()[0]);
+				this.isConsumerRecordList = parameterIsType(paramType, ConsumerRecord.class);
+				boolean messageWithGeneric = rawByParameterIsType(paramType, Message.class);
+				this.isMessageList = Message.class.equals(paramType) || messageWithGeneric;
 				if (messageWithGeneric) {
-					genericParameterType = messagePayloadType(paramType);
+					genericParameterType = ((ParameterizedType) paramType).getActualTypeArguments()[0];
 				}
 			}
 			else {
@@ -715,57 +687,33 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		return genericParameterType;
 	}
 
-	private Type messagePayloadType(Type paramType) {
-		if (paramType instanceof ParameterizedType pType) {
-			return pType.getActualTypeArguments()[0];
+	private boolean annotationHeaderIsGroupId(MethodParameter methodParameter) {
+		Header header = methodParameter.getParameterAnnotation(Header.class);
+		return header != null && KafkaHeaders.GROUP_ID.equals(header.value());
+	}
+
+	private Type getTypeFromWildCardWithUpperBound(Type paramType) {
+		if (paramType instanceof WildcardType wcType
+				&& wcType.getUpperBounds() != null
+				&& wcType.getUpperBounds().length > 0) {
+			paramType = wcType.getUpperBounds()[0];
 		}
-		else {
-			return ((ParameterizedType) ((WildcardType) paramType).getUpperBounds()[0]).getActualTypeArguments()[0];
-		}
-	}
-
-	private boolean isMessageWithGeneric(Type paramType) {
-		return (paramType instanceof ParameterizedType pType
-				&& pType.getRawType().equals(Message.class))
-				|| (isWildCardWithUpperBound(paramType)
-						&& ((WildcardType) paramType).getUpperBounds()[0] instanceof ParameterizedType wildCardZero
-						&& wildCardZero.getRawType().equals(Message.class));
-	}
-
-	private boolean isSimpleListOfConsumerRecord(Type paramType) {
-		return paramType instanceof ParameterizedType pType && pType.getRawType().equals(ConsumerRecord.class);
-	}
-
-	private boolean isListOfConsumerRecordUpperBounded(Type paramType) {
-		return isWildCardWithUpperBound(paramType)
-			&& ((WildcardType) paramType).getUpperBounds()[0] instanceof ParameterizedType wildCardZero
-			&& wildCardZero.getRawType().equals(ConsumerRecord.class);
-	}
-
-	private boolean isWildCardWithUpperBound(Type paramType) {
-		return paramType instanceof WildcardType wcType
-			&& wcType.getUpperBounds() != null
-			&& wcType.getUpperBounds().length > 0;
+		return paramType;
 	}
 
 	private boolean isMessageWithNoTypeInfo(Type parameterType) {
-		if (parameterType instanceof ParameterizedType parameterizedType) {
-			Type rawType = parameterizedType.getRawType();
-			if  (rawType.equals(Message.class)) {
-				return parameterizedType.getActualTypeArguments()[0] instanceof WildcardType;
-			}
+		if (parameterType instanceof ParameterizedType pType && pType.getRawType().equals(Message.class)) {
+			return pType.getActualTypeArguments()[0] instanceof WildcardType;
 		}
-		return parameterType.equals(Message.class); // could be Message without a generic type
+		return Message.class.equals(parameterType); // could be Message without a generic type
 	}
 
 	private boolean parameterIsType(Type parameterType, Type type) {
-		if (parameterType instanceof ParameterizedType parameterizedType) {
-			Type rawType = parameterizedType.getRawType();
-			if (rawType.equals(type)) {
-				return true;
-			}
-		}
-		return parameterType.equals(type);
+		return parameterType.equals(type) || rawByParameterIsType(parameterType, type);
+	}
+
+	private boolean rawByParameterIsType(Type parameterType, Type type) {
+		return parameterType instanceof ParameterizedType pType && pType.getRawType().equals(type);
 	}
 
 	/**

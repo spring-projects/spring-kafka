@@ -37,6 +37,7 @@ import org.springframework.util.ClassUtils;
  * Utility methods.
  *
  * @author Gary Russell
+ * @author Wang ZhiYang
  *
  * @since 2.2
  *
@@ -64,26 +65,16 @@ public final class KafkaUtils {
 	 */
 	public static boolean returnTypeMessageOrCollectionOf(Method method) {
 		Type returnType = method.getGenericReturnType();
-		if (returnType.equals(Message.class)) {
-			return true;
-		}
-		if (returnType instanceof ParameterizedType) {
-			ParameterizedType prt = (ParameterizedType) returnType;
-			Type rawType = prt.getRawType();
-			if (rawType.equals(Message.class)) {
-				return true;
+		if (returnType instanceof ParameterizedType prt) {
+			returnType = prt.getRawType();
+			if (Collection.class.equals(returnType)) {
+				returnType = prt.getActualTypeArguments()[0];
 			}
-			if (rawType.equals(Collection.class)) {
-				Type collectionType = prt.getActualTypeArguments()[0];
-				if (collectionType.equals(Message.class)) {
-					return true;
-				}
-				return collectionType instanceof ParameterizedType
-						&& ((ParameterizedType) collectionType).getRawType().equals(Message.class);
+			if (returnType instanceof ParameterizedType pType) {
+				returnType = pType.getRawType();
 			}
 		}
-		return false;
-
+		return Message.class.equals(returnType);
 	}
 
 	/**
@@ -130,12 +121,12 @@ public final class KafkaUtils {
 	 */
 	public static Duration determineSendTimeout(Map<String, Object> producerProps, long buffer, long min) {
 		Object dt = producerProps.get(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG);
-		if (dt instanceof Number) {
-			return Duration.ofMillis(Math.max(((Number) dt).longValue() + buffer, min));
+		if (dt instanceof Number number) {
+			return Duration.ofMillis(Math.max(number.longValue() + buffer, min));
 		}
-		else if (dt instanceof String) {
+		else if (dt instanceof String str) {
 			try {
-				return Duration.ofMillis(Math.max(Long.parseLong((String) dt) + buffer, min));
+				return Duration.ofMillis(Math.max(Long.parseLong(str) + buffer, min));
 			}
 			catch (@SuppressWarnings("unused") NumberFormatException ex) {
 			}

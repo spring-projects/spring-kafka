@@ -1083,7 +1083,6 @@ public class EnableKafkaIntegrationTests {
 		@Autowired
 		private EmbeddedKafkaBroker embeddedKafka;
 
-		@SuppressWarnings("unchecked")
 		@Bean
 		public MeterRegistry meterRegistry() {
 			return new SimpleMeterRegistry();
