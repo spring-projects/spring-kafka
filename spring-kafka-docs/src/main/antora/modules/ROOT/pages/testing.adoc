@@ -680,16 +680,21 @@ This is convenient for testing, when verifying multiple publishing on the same p
 
 Here is an example:
 
-[source, java]
+[source,java]
 ----
 @Bean
-ProducerFactory<String, String> mockProducerFactory() {
-    return new MockProducerFactory<>(() -> new MockProducer<>(false, new StringSerializer(), new StringSerializer()) {
+MockProducer<String, String> mockProducer() {
+    return new MockProducer<>(false, new StringSerializer(), new StringSerializer()) {
         @Override
         public void close() {
 
         }
-    });
+    };
+}
+
+@Bean
+ProducerFactory<String, String> mockProducerFactory(MockProducer<String, String> mockProducer) {
+    return new MockProducerFactory<>(() -> mockProducer);
 }
 
 ----
