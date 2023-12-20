@@ -644,7 +644,7 @@ ConsumerFactory<String, String> consumerFactory() {
 }
 ----
 
-If you wish to test with concurrency, the `Supplier` lambda in the factory's constructor would need create a new instance each time.
+If you wish to test with concurrency, the `Supplier` lambda in the factory's constructor would need to create a new instance each time.
 
 With the `MockProducerFactory`, there are two constructors; one to create a simple factory, and one to create factory that supports transactions.
 
@@ -674,3 +674,22 @@ The transactional id is provided in case you wish to use a different `MockProduc
 If you are using producers in a multi-threaded environment, the `BiFunction` should return multiple producers (perhaps thread-bound using a `ThreadLocal`).
 
 IMPORTANT: Transactional `MockProducer`+++s+++ must be initialized for transactions by calling `initTransaction()`.
+
+When using the `MockProducer`, if you do not want to close the producer after each send, then you can provide a custom `MockProducer` implementation that overrides the `close` method that does not call the `close` method from the super class.
+This is convenient for testing, when verifying multiple publishing on the same producer without closing it.
+
+Here is an example:
+
+[source, java]
+----
+@Bean
+ProducerFactory<String, String> mockProducerFactory() {
+    return new MockProducerFactory<>(() -> new MockProducer<>(false, new StringSerializer(), new StringSerializer()) {
+        @Override
+        public void close() {
+
+        }
+    });
+}
+
+----
