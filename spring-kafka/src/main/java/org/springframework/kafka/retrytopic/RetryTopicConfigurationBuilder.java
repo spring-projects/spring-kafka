@@ -58,14 +58,17 @@ public class RetryTopicConfigurationBuilder {
 
 	private EndpointHandlerMethod dltHandlerMethod;
 
+	@Nullable
 	private String retryTopicSuffix;
 
+	@Nullable
 	private String dltSuffix;
 
 	private RetryTopicConfiguration.TopicCreation topicCreationConfiguration = new RetryTopicConfiguration.TopicCreation();
 
 	private ConcurrentKafkaListenerContainerFactory<?, ?> listenerContainerFactory;
 
+	@Nullable
 	private String listenerContainerFactoryName;
 
 	@Nullable
@@ -206,7 +209,7 @@ public class RetryTopicConfigurationBuilder {
 	 * @param suffix the suffix.
 	 * @return the builder.
 	 */
-	public RetryTopicConfigurationBuilder retryTopicSuffix(String suffix) {
+	public RetryTopicConfigurationBuilder retryTopicSuffix(@Nullable String suffix) {
 		this.retryTopicSuffix = suffix;
 		return this;
 	}
@@ -216,7 +219,7 @@ public class RetryTopicConfigurationBuilder {
 	 * @param suffix the suffix.
 	 * @return the builder.
 	 */
-	public RetryTopicConfigurationBuilder dltSuffix(String suffix) {
+	public RetryTopicConfigurationBuilder dltSuffix(@Nullable String suffix) {
 		this.dltSuffix = suffix;
 		return this;
 	}
@@ -422,7 +425,7 @@ public class RetryTopicConfigurationBuilder {
 	 * broker is version 2.4 or later).
 	 * @return the builder.
 	 */
-	public RetryTopicConfigurationBuilder autoCreateTopicsWith(int numPartitions, short replicationFactor) {
+	public RetryTopicConfigurationBuilder autoCreateTopicsWith(@Nullable Integer numPartitions, @Nullable Short replicationFactor) {
 		this.topicCreationConfiguration = new RetryTopicConfiguration.TopicCreation(true, numPartitions,
 				replicationFactor);
 		return this;
@@ -437,8 +440,8 @@ public class RetryTopicConfigurationBuilder {
 	 * broker is version 2.4 or later).
 	 * @return the builder.
 	 */
-	public RetryTopicConfigurationBuilder autoCreateTopics(boolean shouldCreate, int numPartitions,
-			short replicationFactor) {
+	public RetryTopicConfigurationBuilder autoCreateTopics(@Nullable Boolean shouldCreate, @Nullable Integer numPartitions,
+			@Nullable Short replicationFactor) {
 
 		this.topicCreationConfiguration = new RetryTopicConfiguration.TopicCreation(shouldCreate, numPartitions,
 				replicationFactor);
@@ -535,7 +538,7 @@ public class RetryTopicConfigurationBuilder {
 	 * @param factoryBeanName the factory bean name.
 	 * @return the builder.
 	 */
-	public RetryTopicConfigurationBuilder listenerFactory(String factoryBeanName) {
+	public RetryTopicConfigurationBuilder listenerFactory(@Nullable String factoryBeanName) {
 		this.listenerContainerFactoryName = factoryBeanName;
 		return this;
 	}

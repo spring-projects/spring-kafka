@@ -127,9 +127,7 @@ public class RetryableTopicAnnotationProcessor {
 		if (StringUtils.hasText(annotation.autoStartDltHandler())) {
 			autoStartDlt = resolveExpressionAsBoolean(annotation.autoStartDltHandler(), "autoStartDltContainer");
 		}
-		return RetryTopicConfigurationBuilder.newInstance()
-				.maxAttempts(resolveExpressionAsInteger(annotation.attempts(), "attempts", true))
-				.concurrency(resolveExpressionAsInteger(annotation.concurrency(), "concurrency", false))
+		RetryTopicConfigurationBuilder builder = RetryTopicConfigurationBuilder.newInstance()
 				.customBackoff(createBackoffFromAnnotation(annotation.backoff(), this.beanFactory))
 				.retryTopicSuffix(resolveExpressionAsString(annotation.retryTopicSuffix(), "retryTopicSuffix"))
 				.dltSuffix(resolveExpressionAsString(annotation.dltTopicSuffix(), "dltTopicSuffix"))
@@ -146,8 +144,17 @@ public class RetryableTopicAnnotationProcessor {
 				.autoStartDltHandler(autoStartDlt)
 				.setTopicSuffixingStrategy(annotation.topicSuffixingStrategy())
 				.sameIntervalTopicReuseStrategy(annotation.sameIntervalTopicReuseStrategy())
-				.timeoutAfter(timeout)
-				.create(getKafkaTemplate(resolveExpressionAsString(annotation.kafkaTemplate(), "kafkaTemplate"), topics));
+				.timeoutAfter(timeout);
+
+		Integer attempts = resolveExpressionAsInteger(annotation.attempts(), "attempts", true);
+		if (attempts != null) {
+			builder.maxAttempts(attempts);
+		}
+		Integer concurrency = resolveExpressionAsInteger(annotation.concurrency(), "concurrency", false);
+		if (concurrency != null) {
+			builder.concurrency(concurrency);
+		}
+		return builder.create(getKafkaTemplate(resolveExpressionAsString(annotation.kafkaTemplate(), "kafkaTemplate"), topics));
 	}
 
 	private SleepingBackOffPolicy<?> createBackoffFromAnnotation(Backoff backoff, BeanFactory beanFactory) { // NOSONAR
@@ -231,8 +238,8 @@ public class RetryableTopicAnnotationProcessor {
 
 	private String resolveExpressionAsString(String value, String attribute) {
 		Object resolved = resolveExpression(value);
-		if (resolved instanceof String sResolved) {
-			return sResolved;
+		if (resolved instanceof String str) {
+			return str;
 		}
 		else if (resolved != null) {
 			throw new IllegalStateException(THE_OSQ + attribute + "] must resolve to a String. "
@@ -244,13 +251,13 @@ public class RetryableTopicAnnotationProcessor {
 	private Integer resolveExpressionAsInteger(String value, String attribute, boolean required) {
 		Object resolved = resolveExpression(value);
 		Integer result = null;
-		if (resolved instanceof String sResolved) {
-			if (required || StringUtils.hasText(sResolved)) {
-				result = Integer.parseInt(sResolved);
+		if (resolved instanceof String str) {
+			if (required || StringUtils.hasText(str)) {
+				result = Integer.parseInt(str);
 			}
 		}
-		else if (resolved instanceof Number nResolved) {
-			result = nResolved.intValue();
+		else if (resolved instanceof Number num) {
+			result = num.intValue();
 		}
 		else if (resolved != null || required) {
 			throw new IllegalStateException(
@@ -264,13 +271,13 @@ public class RetryableTopicAnnotationProcessor {
 	private Short resolveExpressionAsShort(String value, String attribute, boolean required) {
 		Object resolved = resolveExpression(value);
 		Short result = null;
-		if (resolved instanceof String sResolved) {
-			if (required || StringUtils.hasText(sResolved)) {
-				result = Short.parseShort(sResolved);
+		if (resolved instanceof String str) {
+			if (required || StringUtils.hasText(str)) {
+				result = Short.parseShort(str);
 			}
 		}
-		else if (resolved instanceof Number nResolved) {
-			result = nResolved.shortValue();
+		else if (resolved instanceof Number num) {
+			result = num.shortValue();
 		}
 		else if (resolved != null || required) {
 			throw new IllegalStateException(
@@ -284,13 +291,13 @@ public class RetryableTopicAnnotationProcessor {
 	private Long resolveExpressionAsLong(String value, String attribute, boolean required) {
 		Object resolved = resolveExpression(value);
 		Long result = null;
-		if (resolved instanceof String sResolved) {
-			if (required || StringUtils.hasText(sResolved)) {
-				result = Long.parseLong(sResolved);
+		if (resolved instanceof String str) {
+			if (required || StringUtils.hasText(str)) {
+				result = Long.parseLong(str);
 			}
 		}
-		else if (resolved instanceof Number nResolved) {
-			result = nResolved.longValue();
+		else if (resolved instanceof Number num) {
+			result = num.longValue();
 		}
 		else if (resolved != null || required) {
 			throw new IllegalStateException(
@@ -304,13 +311,13 @@ public class RetryableTopicAnnotationProcessor {
 	private Double resolveExpressionAsDouble(String value, String attribute, boolean required) {
 		Object resolved = resolveExpression(value);
 		Double result = null;
-		if (resolved instanceof String sResolved) {
-			if (required || StringUtils.hasText(sResolved)) {
-				result = Double.parseDouble(sResolved);
+		if (resolved instanceof String str) {
+			if (required || StringUtils.hasText(str)) {
+				result = Double.parseDouble(str);
 			}
 		}
-		else if (resolved instanceof Number nResolved) {
-			result = nResolved.doubleValue();
+		else if (resolved instanceof Number num) {
+			result = num.doubleValue();
 		}
 		else if (resolved != null || required) {
 			throw new IllegalStateException(
@@ -324,11 +331,11 @@ public class RetryableTopicAnnotationProcessor {
 	private Boolean resolveExpressionAsBoolean(String value, String attribute) {
 		Object resolved = resolveExpression(value);
 		Boolean result = null;
-		if (resolved instanceof Boolean bResolved) {
-			result = bResolved;
+		if (resolved instanceof Boolean bool) {
+			result = bool;
 		}
-		else if (resolved instanceof String sResolved) {
-			result = Boolean.parseBoolean(sResolved);
+		else if (resolved instanceof String str) {
+			result = Boolean.parseBoolean(str);
 		}
 		else if (resolved != null) {
 			throw new IllegalStateException(

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -100,10 +100,10 @@ public class RetryTopicConfiguration {
 		private final int numPartitions;
 		private final short replicationFactor;
 
-		TopicCreation(boolean shouldCreate, int numPartitions, short replicationFactor) {
-			this.shouldCreateTopics = shouldCreate;
-			this.numPartitions = numPartitions;
-			this.replicationFactor = replicationFactor;
+		TopicCreation(@Nullable Boolean shouldCreate, @Nullable Integer numPartitions, @Nullable Short replicationFactor) {
+			this.shouldCreateTopics = shouldCreate == null || shouldCreate;
+			this.numPartitions = numPartitions == null ? 1 : numPartitions;
+			this.replicationFactor = replicationFactor == null ? -1 : replicationFactor;
 		}
 
 		TopicCreation() {
