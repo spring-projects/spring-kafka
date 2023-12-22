@@ -150,7 +150,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 		this.retryListeners.addAll(Arrays.asList(listeners));
 	}
 
-	protected List<RetryListener> getRetryListeners() {
+	List<RetryListener> getRetryListeners() {
 		return this.retryListeners;
 	}
 
