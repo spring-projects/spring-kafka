@@ -1458,9 +1458,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						ConsumerRecords<K, V> pending = this.remainingRecords;
 						this.remainingRecords = null;
 						List<ConsumerRecord<?, ?>> records = new ArrayList<>();
-						Iterator<ConsumerRecord<K, V>> iterator = pending.iterator();
-						while (iterator.hasNext()) {
-							records.add(iterator.next());
+						for (ConsumerRecord<K, V> kvConsumerRecord : pending) {
+							records.add(kvConsumerRecord);
 						}
 						this.commonErrorHandler.handleRemaining(cfe, records, this.consumer,
 								KafkaMessageListenerContainer.this.thisOrParentContainer);
@@ -2403,7 +2402,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			ConsumerRecords<K, V> records = recordsArg;
 			List<ConsumerRecord<K, V>> recordList = recordListArg;
 			if (this.listenerinfo != null) {
-				records.iterator().forEachRemaining(rec -> listenerInfo(rec));
+				records.iterator().forEachRemaining(this::listenerInfo);
 			}
 			if (this.batchInterceptor != null) {
 				records = this.batchInterceptor.intercept(recordsArg, this.consumer);

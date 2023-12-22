@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 the original author or authors.
+ * Copyright 2019-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -93,8 +93,6 @@ public class DefaultErrorHandlerRecordTests {
 
 		});
 		ConsumerRecord<String, String> record1 = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
-		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("foo", 1, 1L, "foo", "bar");
-		List<ConsumerRecord<?, ?>> records = Arrays.asList(record1, record2);
 		IllegalStateException illegalState = new IllegalStateException();
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		assertThat(handler.handleOne(illegalState, record1, consumer, mock(MessageListenerContainer.class))).isFalse();
@@ -116,7 +114,7 @@ public class DefaultErrorHandlerRecordTests {
 		assertThat(failedDeliveryAttempt.get()).isEqualTo(1);
 		assertThat(recoveryFailureEx.get())
 				.isInstanceOf(RuntimeException.class)
-				.extracting(ex -> ex.getMessage())
+				.extracting(Throwable::getMessage)
 				.isEqualTo("test recoverer failure");
 		assertThat(isRecovered.get()).isTrue();
 	}
@@ -183,7 +181,7 @@ public class DefaultErrorHandlerRecordTests {
 		assertThat(failedDeliveryAttempt.get()).isEqualTo(1);
 		assertThat(recoveryFailureEx.get())
 				.isInstanceOf(RuntimeException.class)
-				.extracting(ex -> ex.getMessage())
+				.extracting(Throwable::getMessage)
 				.isEqualTo("test recoverer failure");
 		assertThat(isRecovered.get()).isTrue();
 	}

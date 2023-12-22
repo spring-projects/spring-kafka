@@ -181,7 +181,7 @@ class FallbackBatchErrorHandler extends ExceptionClassifier implements CommonErr
 					.stream()
 					.collect(
 							Collectors.toMap(tp -> tp,
-									tp -> data.records(tp).get(0).offset(), (u, v) -> (long) v, LinkedHashMap::new))
+									tp -> data.records(tp).get(0).offset(), (u, v) -> v, LinkedHashMap::new))
 					.forEach(consumer::seek);
 
 			throw new KafkaException("Seek to current after exception", getLogLevel(), thrownException);

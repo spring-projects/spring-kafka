@@ -279,13 +279,6 @@ public class KafkaMessageListenerContainerTests {
 				.isEqualTo(ListenerType.SIMPLE);
 		template.sendDefault(0, 0, "foo");
 		assertThat(latch2.await(10, TimeUnit.SECONDS)).isTrue();
-		// verify that the container called the right method - avoiding the creation of an Acknowledgment
-		//		assertThat(trace.get()[1].getMethodName()).contains("onMessage"); // onMessage(d, a, c) (inner)
-		//		assertThat(trace.get()[2].getMethodName()).contains("onMessage"); // bridge
-		//		assertThat(trace.get()[3].getMethodName()).contains("onMessage"); // onMessage(d, a, c) (outer)
-		//		assertThat(trace.get()[4].getMethodName()).contains("onMessage"); // onMessage(d)
-		//		assertThat(trace.get()[5].getMethodName()).contains("onMessage"); // bridge
-		//		assertThat(trace.get()[6].getMethodName()).contains("invokeRecordListener");
 		container.stop();
 		final CountDownLatch latch3 = new CountDownLatch(1);
 		filtering = new FilteringMessageListenerAdapter<>(
@@ -299,15 +292,6 @@ public class KafkaMessageListenerContainerTests {
 				.isEqualTo(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE);
 		template.sendDefault(0, 0, "foo");
 		assertThat(latch3.await(10, TimeUnit.SECONDS)).isTrue();
-		// verify that the container called the 3 arg method directly
-		//		int i = 0;
-		//		if (trace.get()[1].getClassName().endsWith("AcknowledgingConsumerAwareMessageListener")) {
-		//			// this frame does not appear in eclise, but does in gradle.\
-		//			i++;
-		//		}
-		//		assertThat(trace.get()[i + 1].getMethodName()).contains("onMessage"); // onMessage(d, a, c)
-		//		assertThat(trace.get()[i + 2].getMethodName()).contains("onMessage"); // bridge
-		//		assertThat(trace.get()[i + 3].getMethodName()).contains("invokeRecordListener");
 		container.stop();
 		long t = System.currentTimeMillis();
 		container.stop();

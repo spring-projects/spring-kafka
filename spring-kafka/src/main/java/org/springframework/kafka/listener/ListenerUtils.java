@@ -135,7 +135,7 @@ public final class ListenerUtils {
 		if (interval == BackOffExecution.STOP) {
 			interval = lastIntervals.get(currentThread);
 			if (interval == null) {
-				interval = Long.valueOf(0);
+				interval = 0L;
 			}
 		}
 		lastIntervals.put(currentThread, interval);

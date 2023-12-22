@@ -90,8 +90,8 @@ class FailedRecordTracker implements RecoveryStrategy {
 			};
 		}
 		else {
-			if (recoverer instanceof ConsumerAwareRecordRecoverer) {
-				this.recoverer = (ConsumerAwareRecordRecoverer) recoverer;
+			if (recoverer instanceof ConsumerAwareRecordRecoverer carr) {
+				this.recoverer = carr;
 			}
 			else {
 				this.recoverer = (rec, consumer, ex) -> recoverer.accept(rec, ex);
@@ -150,7 +150,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 		this.retryListeners.addAll(Arrays.asList(listeners));
 	}
 
-	List<RetryListener> getRetryListeners() {
+	protected List<RetryListener> getRetryListeners() {
 		return this.retryListeners;
 	}
 

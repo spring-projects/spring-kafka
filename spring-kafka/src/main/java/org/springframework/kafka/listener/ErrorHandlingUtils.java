@@ -94,9 +94,8 @@ public final class ErrorHandlingUtils {
 		listen(retryListeners, records, thrownException, attempt++);
 		ConsumerRecord<?, ?> first = records.iterator().next();
 		MessageListenerContainer childOrSingle = container.getContainerFor(first.topic(), first.partition());
-		if (childOrSingle instanceof ConsumerPauseResumeEventPublisher) {
-			((ConsumerPauseResumeEventPublisher) childOrSingle)
-					.publishConsumerPausedEvent(assignment, "For batch retry");
+		if (childOrSingle instanceof ConsumerPauseResumeEventPublisher consumerPauseResumeEventPublisher) {
+			consumerPauseResumeEventPublisher.publishConsumerPausedEvent(assignment, "For batch retry");
 		}
 		try {
 			Exception recoveryException = thrownException;
@@ -165,7 +164,7 @@ public final class ErrorHandlingUtils {
 				retryListeners.forEach(listener -> listener.recovered(records, finalRecoveryException));
 			}
 			catch (Exception ex) {
-				logger.error(ex, () -> "Recoverer threw an exception; re-seeking batch");
+				logger.error(ex, "Recoverer threw an exception; re-seeking batch");
 				retryListeners.forEach(listener -> listener.recoveryFailed(records, thrownException, ex));
 				seeker.handleBatch(thrownException, records, consumer, container, NO_OP);
 			}
@@ -173,8 +172,8 @@ public final class ErrorHandlingUtils {
 		finally {
 			Set<TopicPartition> assignment2 = consumer.assignment();
 			consumer.resume(assignment2);
-			if (childOrSingle instanceof ConsumerPauseResumeEventPublisher) {
-				((ConsumerPauseResumeEventPublisher) childOrSingle).publishConsumerResumedEvent(assignment2);
+			if (childOrSingle instanceof ConsumerPauseResumeEventPublisher consumerPauseResumeEventPublisher) {
+				consumerPauseResumeEventPublisher.publishConsumerResumedEvent(assignment2);
 			}
 		}
 	} // NOSONAR NCSS line count
