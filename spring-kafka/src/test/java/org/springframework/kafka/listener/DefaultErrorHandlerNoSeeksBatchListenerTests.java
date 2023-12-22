@@ -19,7 +19,6 @@ package org.springframework.kafka.listener;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willReturn;
@@ -46,7 +45,6 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.record.TimestampType;
@@ -61,30 +59,28 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * @author Gary Russell
+ * @author Wang Zhiyang
  * @since 2.9
  *
  */
 @SpringJUnitConfig
 @DirtiesContext
-@SuppressWarnings("deprecation")
 public class DefaultErrorHandlerNoSeeksBatchListenerTests {
 
 	private static final String CONTAINER_ID = "container";
 
-	@SuppressWarnings("rawtypes")
-	@Autowired
-	private Consumer consumer;
+	private static final String CONTAINER_ID_2 = "container2";
 
 	@SuppressWarnings("rawtypes")
 	@Autowired
-	private Producer producer;
+	private Consumer consumer;
 
 	@Autowired
 	private Config config;
@@ -104,7 +100,7 @@ public class DefaultErrorHandlerNoSeeksBatchListenerTests {
 		assertThat(this.config.commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		this.registry.stop();
 		assertThat(this.config.closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		InOrder inOrder = inOrder(this.consumer, this.producer);
+		InOrder inOrder = inOrder(this.consumer);
 		inOrder.verify(this.consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
 		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		Map<TopicPartition, OffsetAndMetadata> offsets = new LinkedHashMap<>();
@@ -123,11 +119,25 @@ public class DefaultErrorHandlerNoSeeksBatchListenerTests {
 		assertThat(this.config.contents).contains("foo", "bar", "baz", "qux", "qux", "qux", "fiz", "buz");
 	}
 
+	/*
+	 * Deliver 6 records from three partitions, fail on the last record
+	 */
+	@Test
+	void retriesWithNoSeeksAndBatchListener2() throws Exception {
+		assertThat(this.config.pollLatch2.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.config.fooLatch2.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.config.deliveryCount.get()).isEqualTo(4);
+		assertThat(this.config.ehException2).isInstanceOf(ListenerExecutionFailedException.class);
+		assertThat(((ListenerExecutionFailedException) this.config.ehException2).getGroupId()).isEqualTo(CONTAINER_ID_2);
+	}
+
 	@Configuration
 	@EnableKafka
 	public static class Config {
 
 		final CountDownLatch pollLatch = new CountDownLatch(1);
+
+		final CountDownLatch pollLatch2 = new CountDownLatch(1);
 
 		final CountDownLatch deliveryLatch = new CountDownLatch(2);
 
@@ -135,19 +145,38 @@ public class DefaultErrorHandlerNoSeeksBatchListenerTests {
 
 		final CountDownLatch commitLatch = new CountDownLatch(2);
 
+		final AtomicInteger deliveryCount = new AtomicInteger(0);
+
+		final CountDownLatch fooLatch2 = new CountDownLatch(1);
+
 		final AtomicBoolean fail = new AtomicBoolean(true);
 
 		final List<String> contents = new ArrayList<>();
 
 		volatile Exception ehException;
 
-		@KafkaListener(id = CONTAINER_ID, topics = "foo")
+		volatile Exception ehException2;
+
+		@KafkaListener(id = CONTAINER_ID, topics = "foo", containerFactory = "kafkaListenerContainerFactory")
 		public void foo(List<String> in) {
 			this.contents.addAll(in);
 			this.deliveryLatch.countDown();
 			if (this.fail.getAndSet(false)) {
 				throw new BatchListenerFailedException("test", 3);
 			}
+		}
+
+		@KafkaListener(id = CONTAINER_ID_2, topics = "foo2", containerFactory = "kafkaListenerContainerFactory2")
+		public void foo2(List<String> in) {
+			deliveryCount.incrementAndGet();
+			int index = 0;
+			for (String str : in) {
+				if ("qux".equals(str)) {
+					throw new BatchListenerFailedException("test", index);
+				}
+				index++;
+			}
+			fooLatch2.countDown();
 		}
 
 		@SuppressWarnings({ "rawtypes" })
@@ -164,30 +193,7 @@ public class DefaultErrorHandlerNoSeeksBatchListenerTests {
 		@Bean
 		public Consumer consumer() {
 			final Consumer consumer = mock(Consumer.class);
-			final TopicPartition topicPartition0 = new TopicPartition("foo", 0);
-			final TopicPartition topicPartition1 = new TopicPartition("foo", 1);
-			final TopicPartition topicPartition2 = new TopicPartition("foo", 2);
-			willAnswer(i -> {
-				((ConsumerRebalanceListener) i.getArgument(1)).onPartitionsAssigned(
-						Collections.singletonList(topicPartition1));
-				return null;
-			}).given(consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
-			Map<TopicPartition, List<ConsumerRecord>> records1 = new LinkedHashMap<>();
-			records1.put(topicPartition0, Arrays.asList(
-					new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
-							new RecordHeaders(), Optional.empty()),
-					new ConsumerRecord("foo", 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "bar",
-							new RecordHeaders(), Optional.empty())));
-			records1.put(topicPartition1, Arrays.asList(
-					new ConsumerRecord("foo", 1, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "baz",
-							new RecordHeaders(), Optional.empty()),
-					new ConsumerRecord("foo", 1, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "qux",
-							new RecordHeaders(), Optional.empty())));
-			records1.put(topicPartition2, Arrays.asList(
-					new ConsumerRecord("foo", 2, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "fiz",
-							new RecordHeaders(), Optional.empty()),
-					new ConsumerRecord("foo", 2, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "buz",
-							new RecordHeaders(), Optional.empty())));
+			Map<TopicPartition, List<ConsumerRecord>> records1 = createRecords(consumer, "foo");
 			final AtomicInteger which = new AtomicInteger();
 			willAnswer(i -> {
 				this.pollLatch.countDown();
@@ -218,9 +224,63 @@ public class DefaultErrorHandlerNoSeeksBatchListenerTests {
 
 		@SuppressWarnings({ "rawtypes", "unchecked" })
 		@Bean
+		public Consumer consumer2() {
+			final Consumer consumer = mock(Consumer.class);
+			Map<TopicPartition, List<ConsumerRecord>> records1 = createRecords(consumer, "foo2");
+			final TopicPartition topicPartition0 = new TopicPartition("foo2", 0);
+			Map<TopicPartition, List<ConsumerRecord>> records2 = new LinkedHashMap<>();
+			records2.put(topicPartition0, List.of(
+					new ConsumerRecord("foo2", 1, 2L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
+							new RecordHeaders(), Optional.empty())));
+			final AtomicInteger which = new AtomicInteger();
+			willAnswer(i -> {
+				this.pollLatch2.countDown();
+				switch (which.getAndIncrement()) {
+					case 0:
+						return new ConsumerRecords(records1);
+					case 3:  // after backoff
+						return new ConsumerRecords(records2);
+					default:
+						try {
+							Thread.sleep(0);
+						}
+						catch (InterruptedException e) {
+							Thread.currentThread().interrupt();
+						}
+						return new ConsumerRecords(Collections.emptyMap());
+				}
+			}).given(consumer).poll(any());
+			willReturn(new ConsumerGroupMetadata(CONTAINER_ID_2)).given(consumer).groupMetadata();
+			return consumer;
+		}
+
+		@SuppressWarnings({ "rawtypes" })
+		@Bean
+		public ConsumerFactory consumerFactory2() {
+			ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+			final Consumer consumer = consumer2();
+			given(consumerFactory.createConsumer(CONTAINER_ID_2, "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
+					.willReturn(consumer);
+			return consumerFactory;
+		}
+
+		@SuppressWarnings({ "rawtypes"})
+		@Bean
 		public ConcurrentKafkaListenerContainerFactory kafkaListenerContainerFactory() {
+			return createConcurrentKafkaListenerContainerFactory(consumerFactory(), CONTAINER_ID);
+		}
+
+		@SuppressWarnings({ "rawtypes"})
+		@Bean
+		public ConcurrentKafkaListenerContainerFactory kafkaListenerContainerFactory2() {
+			return createConcurrentKafkaListenerContainerFactory(consumerFactory2(), CONTAINER_ID_2);
+		}
+
+		@SuppressWarnings({ "rawtypes", "unchecked" })
+		private ConcurrentKafkaListenerContainerFactory createConcurrentKafkaListenerContainerFactory(
+				ConsumerFactory consumerFactory, String id) {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
-			factory.setConsumerFactory(consumerFactory());
+			factory.setConsumerFactory(consumerFactory);
 			factory.setBatchListener(true);
 			factory.getContainerProperties().setPollTimeoutWhilePaused(Duration.ZERO);
 			DefaultErrorHandler eh = new DefaultErrorHandler() {
@@ -230,29 +290,51 @@ public class DefaultErrorHandlerNoSeeksBatchListenerTests {
 						ConsumerRecords<?, ?> data, Consumer<?, ?> consumer, MessageListenerContainer container,
 						Runnable invokeListener) {
 
-					Config.this.ehException = thrownException;
+					if (id.equals(CONTAINER_ID)) {
+						Config.this.ehException = thrownException;
+					}
+					else {
+						Config.this.ehException2 = thrownException;
+					}
 					return super.handleBatchAndReturnRemaining(thrownException, data, consumer, container, invokeListener);
 				}
 
 			};
 			eh.setSeekAfterError(false);
+			if (id.equals(CONTAINER_ID_2)) {
+				eh.setBackOffFunction((rc, ex) -> new FixedBackOff(0, 2));
+			}
 			factory.setCommonErrorHandler(eh);
 			return factory;
 		}
 
-		@SuppressWarnings("rawtypes")
-		@Bean
-		public ProducerFactory producerFactory() {
-			ProducerFactory pf = mock(ProducerFactory.class);
-			given(pf.createProducer(isNull())).willReturn(producer());
-			given(pf.transactionCapable()).willReturn(true);
-			return pf;
-		}
-
-		@SuppressWarnings("rawtypes")
-		@Bean
-		public Producer producer() {
-			return mock(Producer.class);
+		@SuppressWarnings({ "rawtypes", "unchecked" })
+		private Map<TopicPartition, List<ConsumerRecord>> createRecords(Consumer consumer, String topic) {
+			final TopicPartition topicPartition0 = new TopicPartition(topic, 0);
+			final TopicPartition topicPartition1 = new TopicPartition(topic, 1);
+			final TopicPartition topicPartition2 = new TopicPartition(topic, 2);
+			willAnswer(i -> {
+				((ConsumerRebalanceListener) i.getArgument(1)).onPartitionsAssigned(
+						Collections.singletonList(topicPartition1));
+				return null;
+			}).given(consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
+			Map<TopicPartition, List<ConsumerRecord>> records1 = new LinkedHashMap<>();
+			records1.put(topicPartition0, Arrays.asList(
+					new ConsumerRecord(topic, 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
+							new RecordHeaders(), Optional.empty()),
+					new ConsumerRecord(topic, 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "bar",
+							new RecordHeaders(), Optional.empty())));
+			records1.put(topicPartition1, Arrays.asList(
+					new ConsumerRecord(topic, 1, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "baz",
+							new RecordHeaders(), Optional.empty()),
+					new ConsumerRecord(topic, 1, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "qux",
+							new RecordHeaders(), Optional.empty())));
+			records1.put(topicPartition2, Arrays.asList(
+					new ConsumerRecord(topic, 2, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "fiz",
+							new RecordHeaders(), Optional.empty()),
+					new ConsumerRecord(topic, 2, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "buz",
+							new RecordHeaders(), Optional.empty())));
+			return records1;
 		}
 
 	}
