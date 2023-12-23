@@ -31,31 +31,36 @@ import java.lang.annotation.Target;
 public @interface PartitionOffset {
 
 	/**
-	 * The partition within the topic to listen on. Property place holders and SpEL
-	 * expressions are supported, which must resolve to Integer (or String that can be
-	 * parsed as Integer). '*' indicates that the initial offset will be applied to all
-	 * partitions in the encompassing {@link TopicPartition} The string can contain a
-	 * comma-delimited list of partitions, or ranges of partitions (e.g.
-	 * {@code 0-5, 7, 10-15}), in which case, the offset will be applied to all of those
-	 * partitions.
-	 * @return partition within the topic.
+	 * Specifies the partition within the topic to listen on. Property placeholders and
+	 * Spring Expression Language (SpEL) expressions are supported. These must resolve to
+	 * an Integer or a String that can be parsed as an Integer. The '*' symbol indicates
+	 * that the initial offset will be applied to all partitions within the specified
+	 * {@link TopicPartition}. The string can also contain a comma-delimited list of
+	 * individual partitions or ranges of partitions (e.g., {@code 0-5, 7, 10-15}). In this
+	 * case, the offset will be applied to all specified partitions.
+	 *
+	 * @return The specified partition or partitions within the topic.
 	 */
 	String partition();
 
 	/**
-	 * The initial offset of the {@link #partition()}.
-	 * Property place holders and SpEL expressions are supported,
-	 * which must resolve to Long (or String that can be parsed as Long).
-	 * @return initial offset.
+	 * Specifies the initial offset of the {@link #partition()}. Property placeholders and
+	 * Spring Expression Language (SpEL) expressions are supported. These expressions must
+	 * resolve to a Long or a String that can be parsed as a Long.
+	 *
+	 * @return The initial offset for the partition, indicating the starting point for
+	 *         processing messages.
 	 */
 	String initialOffset();
 
 	/**
-	 * By default, positive {@link #initialOffset()} is absolute, negative
-	 * is relative to the current topic end. When this is 'true', the
-	 * initial offset (positive or negative) is relative to the current
-	 * consumer position.
-	 * @return whether or not the offset is relative to the current position.
+	 * Determines whether the {@link #initialOffset()} is relative to the current
+	 * consumer position. By default, a positive initial offset is treated as an absolute
+	 * value, while a negative offset is relative to the current end of the topic. When
+	 * this property is set to 'true', both positive and negative initial offsets are
+	 * interpreted as relative to the current consumer position.
+	 *
+	 * @return True if the offset is relative to the current consumer position, false otherwise.
 	 * @since 1.1
 	 */
 	String relativeToCurrent() default "false";
