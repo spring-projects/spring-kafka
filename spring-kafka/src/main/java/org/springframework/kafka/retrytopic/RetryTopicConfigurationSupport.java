@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2022-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -310,7 +310,7 @@ public class RetryTopicConfigurationSupport implements ApplicationContextAware, 
 	@Bean(name = KafkaListenerConfigUtils.KAFKA_CONSUMER_BACK_OFF_MANAGER_BEAN_NAME)
 	public KafkaConsumerBackoffManager kafkaConsumerBackoffManager(ApplicationContext applicationContext,
 			@Qualifier(KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)
-					ListenerContainerRegistry registry,
+					@Nullable ListenerContainerRegistry registry,
 					ObjectProvider<RetryTopicComponentFactory> componentFactoryProvider,
 					@Nullable RetryTopicSchedulerWrapper wrapper,
 					@Nullable TaskScheduler taskScheduler) {
@@ -325,7 +325,7 @@ public class RetryTopicConfigurationSupport implements ApplicationContextAware, 
 	}
 
 	private void configurePartitionPausingFactory(ContainerPartitionPausingBackOffManagerFactory factory,
-			ListenerContainerRegistry registry, @Nullable TaskScheduler scheduler) {
+			@Nullable ListenerContainerRegistry registry, @Nullable TaskScheduler scheduler) {
 
 		Assert.notNull(scheduler, "Either a RetryTopicSchedulerWrapper or TaskScheduler bean is required");
 		factory.setBackOffHandler(new ContainerPausingBackOffHandler(
@@ -346,8 +346,10 @@ public class RetryTopicConfigurationSupport implements ApplicationContextAware, 
 	 */
 	public static class BlockingRetriesConfigurer {
 
+		@Nullable
 		private BackOff backOff;
 
+		@Nullable
 		private Class<? extends Exception>[] retryableExceptions;
 
 		/**
@@ -378,10 +380,12 @@ public class RetryTopicConfigurationSupport implements ApplicationContextAware, 
 			return this;
 		}
 
+		@Nullable
 		BackOff getBackOff() {
 			return this.backOff;
 		}
 
+		@Nullable
 		Class<? extends Exception>[] getRetryableExceptions() {
 			return this.retryableExceptions;
 		}
@@ -393,10 +397,13 @@ public class RetryTopicConfigurationSupport implements ApplicationContextAware, 
 	 */
 	public static class CustomizersConfigurer {
 
+		@Nullable
 		private Consumer<DefaultErrorHandler> errorHandlerCustomizer;
 
+		@Nullable
 		private Consumer<ConcurrentMessageListenerContainer<?, ?>> listenerContainerCustomizer;
 
+		@Nullable
 		private Consumer<DeadLetterPublishingRecoverer> deadLetterPublishingRecovererCustomizer;
 
 		/**
@@ -406,6 +413,7 @@ public class RetryTopicConfigurationSupport implements ApplicationContextAware, 
 		 * @return the configurer.
 		 * @see DefaultErrorHandler
 		 */
+		@SuppressWarnings("unused")
 		public CustomizersConfigurer customizeErrorHandler(Consumer<DefaultErrorHandler> errorHandlerCustomizer) {
 			this.errorHandlerCustomizer = errorHandlerCustomizer;
 			return this;
@@ -433,14 +441,17 @@ public class RetryTopicConfigurationSupport implements ApplicationContextAware, 
 			return this;
 		}
 
+		@Nullable
 		Consumer<DefaultErrorHandler> getErrorHandlerCustomizer() {
 			return this.errorHandlerCustomizer;
 		}
 
+		@Nullable
 		Consumer<ConcurrentMessageListenerContainer<?, ?>> getListenerContainerCustomizer() {
 			return this.listenerContainerCustomizer;
 		}
 
+		@Nullable
 		Consumer<DeadLetterPublishingRecoverer> getDeadLetterPublishingRecovererCustomizer() {
 			return this.deadLetterPublishingRecovererCustomizer;
 		}

@@ -19,7 +19,9 @@ package org.springframework.kafka.annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanInitializationException;
@@ -38,6 +40,7 @@ import org.springframework.kafka.retrytopic.RetryTopicConfigurationBuilder;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
 import org.springframework.kafka.retrytopic.RetryTopicConstants;
 import org.springframework.kafka.support.EndpointHandlerMethod;
+import org.springframework.lang.Nullable;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.retry.backoff.ExponentialRandomBackOffPolicy;
@@ -70,10 +73,13 @@ public class RetryableTopicAnnotationProcessor {
 
 	private static final String CSQ_FOR_OSQ = "] for [";
 
+	@Nullable
 	private final BeanFactory beanFactory;
 
+	@Nullable
 	private final BeanExpressionResolver resolver;
 
+	@Nullable
 	private final BeanExpressionContext expressionContext;
 
 	/**
@@ -93,8 +99,8 @@ public class RetryableTopicAnnotationProcessor {
 	 * @param resolver the bean expression resolver.
 	 * @param expressionContext the bean expression context.
 	 */
-	public RetryableTopicAnnotationProcessor(BeanFactory beanFactory, BeanExpressionResolver resolver,
-			BeanExpressionContext expressionContext) {
+	public RetryableTopicAnnotationProcessor(@Nullable BeanFactory beanFactory, @Nullable BeanExpressionResolver resolver,
+											@Nullable BeanExpressionContext expressionContext) {
 
 		this.beanFactory = beanFactory;
 		this.resolver = resolver;
@@ -116,12 +122,10 @@ public class RetryableTopicAnnotationProcessor {
 		boolean traverse = false;
 		if (StringUtils.hasText(annotation.traversingCauses())) {
 			Boolean traverseResolved = resolveExpressionAsBoolean(annotation.traversingCauses(), "traversingCauses");
-			if (traverseResolved != null) {
-				traverse = traverseResolved;
-			}
-			else {
-				traverse = !includes.isEmpty() || !excludes.isEmpty();
-			}
+			traverse = Objects.requireNonNullElseGet(
+					traverseResolved,
+					() -> !includes.isEmpty() || !excludes.isEmpty()
+			);
 		}
 		Boolean autoStartDlt = null;
 		if (StringUtils.hasText(annotation.autoStartDltHandler())) {
@@ -157,9 +161,11 @@ public class RetryableTopicAnnotationProcessor {
 		return builder.create(getKafkaTemplate(resolveExpressionAsString(annotation.kafkaTemplate(), "kafkaTemplate"), topics));
 	}
 
-	private SleepingBackOffPolicy<?> createBackoffFromAnnotation(Backoff backoff, BeanFactory beanFactory) { // NOSONAR
+	private SleepingBackOffPolicy<?> createBackoffFromAnnotation(Backoff backoff, @Nullable BeanFactory beanFactory) { // NOSONAR
 		StandardEvaluationContext evaluationContext = new StandardEvaluationContext();
-		evaluationContext.setBeanResolver(new BeanFactoryResolver(beanFactory));
+		if (beanFactory != null) {
+			evaluationContext.setBeanResolver(new BeanFactoryResolver(beanFactory));
+		}
 
 		// Code from Spring Retry
 		Long min = backoff.delay() == 0 ? backoff.value() : backoff.delay();
@@ -210,7 +216,7 @@ public class RetryableTopicAnnotationProcessor {
 				.orElse(RetryTopicConfigurer.DEFAULT_DLT_HANDLER);
 	}
 
-	private KafkaOperations<?, ?> getKafkaTemplate(String kafkaTemplateName, String[] topics) {
+	private KafkaOperations<?, ?> getKafkaTemplate(@Nullable String kafkaTemplateName, String[] topics) {
 		if (StringUtils.hasText(kafkaTemplateName)) {
 			Assert.state(this.beanFactory != null, "BeanFactory must be set to obtain kafka template by bean name");
 			try {
@@ -236,6 +242,7 @@ public class RetryableTopicAnnotationProcessor {
 		}
 	}
 
+	@Nullable
 	private String resolveExpressionAsString(String value, String attribute) {
 		Object resolved = resolveExpression(value);
 		if (resolved instanceof String str) {
@@ -248,6 +255,7 @@ public class RetryableTopicAnnotationProcessor {
 		return null;
 	}
 
+	@Nullable
 	private Integer resolveExpressionAsInteger(String value, String attribute, boolean required) {
 		Object resolved = resolveExpression(value);
 		Integer result = null;
@@ -268,6 +276,8 @@ public class RetryableTopicAnnotationProcessor {
 		return result;
 	}
 
+	@SuppressWarnings("SameParameterValue")
+	@Nullable
 	private Short resolveExpressionAsShort(String value, String attribute, boolean required) {
 		Object resolved = resolveExpression(value);
 		Short result = null;
@@ -288,6 +298,7 @@ public class RetryableTopicAnnotationProcessor {
 		return result;
 	}
 
+	@Nullable
 	private Long resolveExpressionAsLong(String value, String attribute, boolean required) {
 		Object resolved = resolveExpression(value);
 		Long result = null;
@@ -308,6 +319,8 @@ public class RetryableTopicAnnotationProcessor {
 		return result;
 	}
 
+	@SuppressWarnings("SameParameterValue")
+	@Nullable
 	private Double resolveExpressionAsDouble(String value, String attribute, boolean required) {
 		Object resolved = resolveExpression(value);
 		Double result = null;
@@ -328,6 +341,7 @@ public class RetryableTopicAnnotationProcessor {
 		return result;
 	}
 
+	@Nullable
 	private Boolean resolveExpressionAsBoolean(String value, String attribute) {
 		Object resolved = resolveExpression(value);
 		Boolean result = null;
@@ -349,7 +363,8 @@ public class RetryableTopicAnnotationProcessor {
 	private List<Class<? extends Throwable>> resolveClasses(Class<? extends Throwable>[] fromAnnot, String[] names,
 			String type) {
 
-		List<Class<? extends Throwable>> classes = new ArrayList<>(Arrays.asList(fromAnnot));
+		List<Class<? extends Throwable>> classes = new ArrayList<>(fromAnnot.length + names.length);
+		Collections.addAll(classes, fromAnnot);
 		try {
 			for (String name : names) {
 				Class<?> clazz = ClassUtils.forName(name, ClassUtils.getDefaultClassLoader());
@@ -365,8 +380,9 @@ public class RetryableTopicAnnotationProcessor {
 		return classes;
 	}
 
+	@Nullable
 	private Object resolveExpression(String value) {
-		if (this.expressionContext != null) {
+		if (this.expressionContext != null && this.resolver != null) {
 			String resolved = resolve(value);
 			return this.resolver.evaluate(resolved, this.expressionContext);
 		}
@@ -375,6 +391,7 @@ public class RetryableTopicAnnotationProcessor {
 		}
 	}
 
+	@Nullable
 	private String resolve(String value) {
 		if (this.beanFactory instanceof ConfigurableBeanFactory cbf) {
 			return cbf.resolveEmbeddedValue(value);

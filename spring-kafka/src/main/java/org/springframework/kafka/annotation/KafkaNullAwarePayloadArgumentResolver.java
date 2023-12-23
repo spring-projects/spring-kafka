@@ -20,6 +20,7 @@ import java.util.List;
 
 import org.springframework.core.MethodParameter;
 import org.springframework.kafka.support.KafkaNull;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.MessageConverter;
 import org.springframework.messaging.handler.annotation.support.PayloadMethodArgumentResolver;
@@ -59,7 +60,7 @@ public class KafkaNullAwarePayloadArgumentResolver extends PayloadMethodArgument
 	}
 
 	@Override
-	protected boolean isEmptyPayload(Object payload) {
+	protected boolean isEmptyPayload(@Nullable Object payload) {
 		return payload == null || payload instanceof KafkaNull;
 	}
 

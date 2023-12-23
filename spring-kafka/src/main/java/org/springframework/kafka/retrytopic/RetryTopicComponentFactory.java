@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2022-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
 import org.springframework.kafka.listener.ListenerContainerRegistry;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.KafkaBackoffAwareMessageListenerAdapter;
+import org.springframework.lang.Nullable;
 
 /**
  * Provide the component instances that will be used with
@@ -154,7 +155,7 @@ public class RetryTopicComponentFactory {
 	 * @param applicationContext the application context.
 	 * @return the instance.
 	 */
-	public KafkaBackOffManagerFactory kafkaBackOffManagerFactory(ListenerContainerRegistry registry,
+	public KafkaBackOffManagerFactory kafkaBackOffManagerFactory(@Nullable ListenerContainerRegistry registry,
 			ApplicationContext applicationContext) {
 
 		return new ContainerPartitionPausingBackOffManagerFactory(registry, applicationContext);

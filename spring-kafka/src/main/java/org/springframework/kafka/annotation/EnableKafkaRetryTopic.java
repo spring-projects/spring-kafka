@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2022-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,6 +55,7 @@ import org.springframework.kafka.retrytopic.RetryTopicConfigurationSupport;
  * bean. This annotation is meta-annotated with {@code @EnableKafka} so it is not
  * necessary to specify both.
  *
+ * <p>
  * To configure the feature's components, extend the
  * {@link RetryTopicConfigurationSupport} class and override the appropriate methods on a
  * {@link Configuration @Configuration} class, such as:
