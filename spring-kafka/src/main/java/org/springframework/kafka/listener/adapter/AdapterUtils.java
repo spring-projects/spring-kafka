@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.listener.adapter;
 
+import java.util.concurrent.CompletableFuture;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
@@ -24,6 +26,9 @@ import org.springframework.expression.ParserContext;
 import org.springframework.expression.common.TemplateParserContext;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.lang.Nullable;
+import org.springframework.util.ClassUtils;
+
+import reactor.core.publisher.Mono;
 
 /**
  * Utilities for listener adapters.
@@ -39,6 +44,9 @@ public final class AdapterUtils {
 	 * @since 2.2.15
 	 */
 	public static final ParserContext PARSER_CONTEXT = new TemplateParserContext("!{", "}");
+
+	private static final boolean MONO_PRESENT =
+			ClassUtils.isPresent("reactor.core.publisher.Mono", AdapterUtils.class.getClassLoader());
 
 	private AdapterUtils() {
 	}
@@ -83,6 +91,18 @@ public final class AdapterUtils {
 	public static String getDefaultReplyTopicExpression() {
 		return PARSER_CONTEXT.getExpressionPrefix() + "source.headers['"
 				+ KafkaHeaders.REPLY_TOPIC + "']" + PARSER_CONTEXT.getExpressionSuffix();
+	}
+
+	static boolean isAsyncReply(Class<?> resultType) {
+		return isMono(resultType) || isCompletableFuture(resultType);
+	}
+
+	static boolean isMono(Class<?> resultType) {
+		return MONO_PRESENT && Mono.class.isAssignableFrom(resultType);
+	}
+
+	static boolean isCompletableFuture(Class<?> resultType) {
+		return CompletableFuture.class.isAssignableFrom(resultType);
 	}
 
 }

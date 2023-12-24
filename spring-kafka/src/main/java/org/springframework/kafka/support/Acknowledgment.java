@@ -81,7 +81,7 @@ public interface Acknowledgment {
 		throw new UnsupportedOperationException("nack(index, sleep) is not supported by this Acknowledgment");
 	}
 
-	default boolean isAsyncAcks() {
+	default boolean isOutOfOrderCommit() {
 		return false;
 	}
 
