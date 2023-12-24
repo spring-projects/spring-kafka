@@ -33,6 +33,8 @@ public class HandlerAdapter {
 
 	private final DelegatingInvocableHandler delegatingHandler;
 
+	private final boolean asyncReplies;
+
 	/**
 	 * Construct an instance with the provided method.
 	 * @param invokerHandlerMethod the method.
@@ -40,6 +42,7 @@ public class HandlerAdapter {
 	public HandlerAdapter(InvocableHandlerMethod invokerHandlerMethod) {
 		this.invokerHandlerMethod = invokerHandlerMethod;
 		this.delegatingHandler = null;
+		this.asyncReplies = AdapterUtils.isAsyncReply(invokerHandlerMethod.getMethod().getReturnType());
 	}
 
 	/**
@@ -49,6 +52,16 @@ public class HandlerAdapter {
 	public HandlerAdapter(DelegatingInvocableHandler delegatingHandler) {
 		this.invokerHandlerMethod = null;
 		this.delegatingHandler = delegatingHandler;
+		this.asyncReplies = delegatingHandler.isAsyncReplies();
+	}
+
+	/**
+	 * Return true if any handler method has an async reply type.
+	 * @return the asyncReply.
+	 * @since 3.2
+	 */
+	public boolean isAsyncReplies() {
+		return this.asyncReplies;
 	}
 
 	public Object invoke(Message<?> message, Object... providedArgs) throws Exception { //NOSONAR

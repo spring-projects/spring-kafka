@@ -37,6 +37,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -51,7 +52,9 @@ import reactor.core.publisher.Mono;
 @EmbeddedKafka(topics = {
 		AsyncListenerTests.FUTURE_TOPIC_1, AsyncListenerTests.FUTURE_TOPIC_BATCH_1,
 		AsyncListenerTests.MONO_TOPIC_1, AsyncListenerTests.MONO_TOPIC_BATCH_1,
-		AsyncListenerTests.SEND_TOPIC_1}, partitions = 1)
+		AsyncListenerTests.AUTO_DETECT_ASYNC_FUTURE, AsyncListenerTests.AUTO_DETECT_ASYNC_BATCH_FUTURE,
+		AsyncListenerTests.AUTO_DETECT_ASYNC_MONO, AsyncListenerTests.AUTO_DETECT_ASYNC_BATCH_MONO,
+		AsyncListenerTests.AUTO_DETECT_ASYNC_KAFKA_HANDLER, AsyncListenerTests.SEND_TOPIC_1}, partitions = 1)
 public class AsyncListenerTests {
 
 	static final String FUTURE_TOPIC_1 = "future-topic-1";
@@ -64,11 +67,27 @@ public class AsyncListenerTests {
 
 	static final String SEND_TOPIC_1 = "send-topic-1";
 
+	static final String AUTO_DETECT_ASYNC_FUTURE = "auto-detect-async-future";
+
+	static final String AUTO_DETECT_ASYNC_BATCH_FUTURE = "auto-detect-async-batch-future";
+
+	static final String AUTO_DETECT_ASYNC_MONO = "auto-detect-async-mono";
+
+	static final String AUTO_DETECT_ASYNC_BATCH_MONO = "auto-detect-async-batch-mono";
+
+	static final String AUTO_DETECT_ASYNC_KAFKA_HANDLER = "auto-detect-async-kafka-handler";
+
 	@Autowired
 	private KafkaTemplate<String, String> kafkaTemplate;
 
 	@Autowired
 	private Config config;
+
+	@Autowired
+	private Listener listener;
+
+	@Autowired
+	MultiMethodListener multiMethodListener;
 
 	@Test
 	public void testAsyncListener() throws Exception {
@@ -85,7 +104,7 @@ public class AsyncListenerTests {
 		assertThat(cr1.value()).isEqualTo("1");
 		kafkaTemplate.send(FUTURE_TOPIC_BATCH_1, "bar-2");
 		cr1 = kafkaTemplate.receive(SEND_TOPIC_1, 0, 3);
-		assertThat(cr1.value()).isEqualTo("bar-2_beh");
+		assertThat(cr1.value()).isEqualTo("[bar-2]_beh");
 
 		kafkaTemplate.send(MONO_TOPIC_1, "foo-3");
 		cr1 = kafkaTemplate.receive(SEND_TOPIC_1, 0, 4);
@@ -95,14 +114,32 @@ public class AsyncListenerTests {
 		cr1 = kafkaTemplate.receive(SEND_TOPIC_1, 0, 5);
 		assertThat(cr1.value()).isEqualTo("bar-3_eh");
 
-
 		kafkaTemplate.send(MONO_TOPIC_BATCH_1, "foo-4");
 		cr1 = kafkaTemplate.receive(SEND_TOPIC_1, 0, 6);
 		assertThat(cr1.value()).isEqualTo("1");
 		kafkaTemplate.send(MONO_TOPIC_BATCH_1, "bar-4");
 		assertThat(config.latch2.await(10, TimeUnit.SECONDS)).isEqualTo(true);
 		cr1 = kafkaTemplate.receive(SEND_TOPIC_1, 0, 7);
-		assertThat(cr1.value()).isEqualTo("bar-4_beh");
+		assertThat(cr1.value()).isEqualTo("[bar-4]_beh");
+	}
+
+	@Test
+	public void testAsyncAcks() throws Exception {
+
+		kafkaTemplate.send(AUTO_DETECT_ASYNC_FUTURE, "baz-future");
+		assertThat(this.listener.autoDetectFuture.await(10, TimeUnit.SECONDS)).isTrue();
+
+		kafkaTemplate.send(AUTO_DETECT_ASYNC_BATCH_FUTURE, "baz-batch-future");
+		assertThat(this.listener.autoDetectBatchFuture.await(10, TimeUnit.SECONDS)).isTrue();
+
+		kafkaTemplate.send(AUTO_DETECT_ASYNC_MONO, "baz-mono");
+		assertThat(this.listener.autoDetectMono.await(10, TimeUnit.SECONDS)).isTrue();
+
+		kafkaTemplate.send(AUTO_DETECT_ASYNC_BATCH_MONO, "baz-batch-mono");
+		assertThat(this.listener.autoDetectBatchMono.await(10, TimeUnit.SECONDS)).isTrue();
+
+		kafkaTemplate.send(AUTO_DETECT_ASYNC_KAFKA_HANDLER, "foo-multi-async");
+		assertThat(this.multiMethodListener.handler1.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
 	public static class Listener {
@@ -115,7 +152,16 @@ public class AsyncListenerTests {
 
 		private final AtomicBoolean monoBatch1 = new AtomicBoolean(true);
 
-		@KafkaListener(id = "future1", topics = FUTURE_TOPIC_1, errorHandler = "errorHandler")
+		public final CountDownLatch autoDetectFuture = new CountDownLatch(1);
+
+		public final CountDownLatch autoDetectMono = new CountDownLatch(1);
+
+		public final CountDownLatch autoDetectBatchFuture = new CountDownLatch(1);
+
+		public final CountDownLatch autoDetectBatchMono = new CountDownLatch(1);
+
+		@KafkaListener(id = "future1", topics = FUTURE_TOPIC_1, errorHandler = "errorHandler",
+				containerFactory = "kafkaListenerContainerFactory")
 		@SendTo(SEND_TOPIC_1)
 		public CompletableFuture<String> listen1(String foo) {
 			CompletableFuture<String> future = new CompletableFuture<>();
@@ -128,7 +174,8 @@ public class AsyncListenerTests {
 			return future;
 		}
 
-		@KafkaListener(id = "futureBatch1", topics = FUTURE_TOPIC_BATCH_1, errorHandler = "errorBatchHandler")
+		@KafkaListener(id = "futureBatch1", topics = FUTURE_TOPIC_BATCH_1, errorHandler = "errorBatchHandler",
+				containerFactory = "kafkaBatchListenerContainerFactory")
 		@SendTo(SEND_TOPIC_1)
 		public CompletableFuture<String> listen2(List<String> foo) {
 			CompletableFuture<String> future = new CompletableFuture<>();
@@ -141,7 +188,8 @@ public class AsyncListenerTests {
 			return future;
 		}
 
-		@KafkaListener(id = "mono1", topics = MONO_TOPIC_1, errorHandler = "errorHandler")
+		@KafkaListener(id = "mono1", topics = MONO_TOPIC_1, errorHandler = "errorHandler",
+				containerFactory = "kafkaListenerContainerFactory")
 		@SendTo(SEND_TOPIC_1)
 		public Mono<String> listen3(String bar) {
 			if (mono1.getAndSet(false)) {
@@ -152,7 +200,8 @@ public class AsyncListenerTests {
 			}
 		}
 
-		@KafkaListener(id = "monoBatch1", topics = MONO_TOPIC_BATCH_1, errorHandler = "errorBatchHandler")
+		@KafkaListener(id = "monoBatch1", topics = MONO_TOPIC_BATCH_1, errorHandler = "errorBatchHandler",
+				containerFactory = "kafkaBatchListenerContainerFactory")
 		@SendTo(SEND_TOPIC_1)
 		public Mono<String> listen4(List<String> bar) {
 			if (monoBatch1.getAndSet(false)) {
@@ -161,6 +210,74 @@ public class AsyncListenerTests {
 			else {
 				return Mono.error(new RuntimeException("Mono.error(batch)"));
 			}
+		}
+
+		@KafkaListener(id = "autoDetectFuture", topics = AUTO_DETECT_ASYNC_FUTURE,
+				containerFactory = "kafkaListenerContainerFactory")
+		public CompletableFuture<String> listen5(String baz, Acknowledgment acknowledgment) {
+			CompletableFuture<String> future = new CompletableFuture<>();
+			future.complete(baz.toUpperCase());
+			if (acknowledgment.isOutOfOrderCommit()) {
+				autoDetectFuture.countDown();
+			}
+			return future;
+		}
+
+		@KafkaListener(id = "autoDetectBatchFuture", topics = AUTO_DETECT_ASYNC_FUTURE,
+				containerFactory = "kafkaBatchListenerContainerFactory")
+		public CompletableFuture<String> listen6(List<String> baz, Acknowledgment acknowledgment) {
+			CompletableFuture<String> future = new CompletableFuture<>();
+			future.complete(String.valueOf(baz.size()));
+			if (acknowledgment.isOutOfOrderCommit()) {
+				autoDetectBatchFuture.countDown();
+			}
+			return future;
+		}
+
+		@KafkaListener(id = "autoDetectMono", topics = AUTO_DETECT_ASYNC_MONO,
+				containerFactory = "kafkaListenerContainerFactory")
+		public Mono<String> listen7(String qux, Acknowledgment acknowledgment) {
+			if (acknowledgment.isOutOfOrderCommit()) {
+				autoDetectMono.countDown();
+			}
+			return Mono.just(qux.toUpperCase());
+		}
+
+		@KafkaListener(id = "autoDetectBatchMono", topics = AUTO_DETECT_ASYNC_BATCH_MONO,
+				containerFactory = "kafkaBatchListenerContainerFactory")
+		public Mono<String> listen8(List<String> qux, Acknowledgment acknowledgment) {
+			if (acknowledgment.isOutOfOrderCommit()) {
+				autoDetectBatchMono.countDown();
+			}
+			return Mono.just(String.valueOf(qux.size()));
+		}
+
+	}
+
+	@KafkaListener(id = "autoDetectKafkaHandler", topics = AUTO_DETECT_ASYNC_KAFKA_HANDLER,
+			containerFactory = "kafkaListenerContainerFactory")
+	public static class MultiMethodListener {
+
+		public final CountDownLatch handler1 = new CountDownLatch(1);
+
+		@KafkaHandler
+		public Mono<String> handler1(String foo, Acknowledgment acknowledgment) {
+			if (acknowledgment.isOutOfOrderCommit()) {
+				handler1.countDown();
+			}
+			return Mono.just(foo);
+		}
+
+		@KafkaHandler
+		public CompletableFuture<Integer> handler2(Integer bar) {
+			CompletableFuture<Integer> future = new CompletableFuture<>();
+			future.complete(bar);
+			return future;
+		}
+
+		@KafkaHandler(isDefault = true)
+		public void handler2(Short baz, Acknowledgment acknowledgment) {
+			acknowledgment.acknowledge();
 		}
 
 	}
@@ -179,6 +296,11 @@ public class AsyncListenerTests {
 		@Bean
 		public Listener listener() {
 			return new Listener();
+		}
+
+		@Bean
+		public MultiMethodListener multiMethodListener() {
+			return new MultiMethodListener();
 		}
 
 		@Bean

@@ -235,8 +235,7 @@ public class KafkaMessageListenerContainerTests {
 		container.setBeanName("delegate");
 		AtomicReference<List<TopicPartitionOffset>> offsets = new AtomicReference<>();
 		container.setApplicationEventPublisher(e -> {
-			if (e instanceof ConsumerStoppingEvent) {
-				ConsumerStoppingEvent event = (ConsumerStoppingEvent) e;
+			if (e instanceof ConsumerStoppingEvent event) {
 				offsets.set(event.getPartitions().stream()
 						.map(p -> new TopicPartitionOffset(p.topic(), p.partition(),
 								event.getConsumer().position(p, Duration.ofMillis(10_000))))

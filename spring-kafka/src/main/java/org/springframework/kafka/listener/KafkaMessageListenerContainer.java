@@ -104,6 +104,7 @@ import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.listener.ContainerProperties.EOSMode;
+import org.springframework.kafka.listener.adapter.HandlerMethodDetect;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
@@ -159,6 +160,7 @@ import io.micrometer.observation.ObservationRegistry;
  * @author Tomaz Fernandes
  * @author Francois Rosiere
  * @author Daniel Gentes
+ * @author Wang Zhiyang
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -659,6 +661,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final boolean wantsFullRecords;
 
+		private final boolean asyncReplies;
+
 		private final boolean autoCommit;
 
 		private final boolean isManualAck;
@@ -849,6 +853,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType,
 				ObservationRegistry observationRegistry) {
 
+			this.asyncReplies = listener instanceof HandlerMethodDetect hmd && hmd.isAsyncReplies()
+					|| this.containerProperties.isAsyncAcks();
 			AckMode ackMode = determineAckMode();
 			this.isManualAck = ackMode.equals(AckMode.MANUAL);
 			this.isCountAck = ackMode.equals(AckMode.COUNT)
@@ -859,12 +865,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.isAnyManualAck = this.isManualAck || this.isManualImmediateAck;
 			this.isRecordAck = ackMode.equals(AckMode.RECORD);
 			this.offsetsInThisBatch =
-					this.isAnyManualAck && this.containerProperties.isAsyncAcks()
-							? new HashMap<>()
+					this.isAnyManualAck && this.asyncReplies
+							? new ConcurrentHashMap<>()
 							: null;
 			this.deferredOffsets =
-					this.isAnyManualAck && this.containerProperties.isAsyncAcks()
-							? new HashMap<>()
+					this.isAnyManualAck && this.asyncReplies
+							? new ConcurrentHashMap<>()
 							: null;
 
 			this.observationRegistry = observationRegistry;
@@ -903,8 +909,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			else {
 				throw new IllegalArgumentException("Listener must be one of 'MessageListener', "
 						+ "'BatchMessageListener', or the variants that are consumer aware and/or "
-						+ "Acknowledging"
-						+ " not " + listener.getClass().getName());
+						+ "Acknowledging not " + listener.getClass().getName());
 			}
 			this.listenerType = listenerType;
 			this.isConsumerAwareListener = listenerType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
@@ -927,18 +932,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.logger.info(toString());
 			}
 			ApplicationContext applicationContext = getApplicationContext();
+			ClassLoader classLoader = applicationContext == null
+					? getClass().getClassLoader()
+					: applicationContext.getClassLoader();
 			this.checkNullKeyForExceptions = this.containerProperties.isCheckDeserExWhenKeyNull()
 					|| ErrorHandlingUtils.checkDeserializer(KafkaMessageListenerContainer.this.consumerFactory,
-							consumerProperties, false,
-							applicationContext == null
-									? getClass().getClassLoader()
-									: applicationContext.getClassLoader());
+							consumerProperties, false, classLoader);
 			this.checkNullValueForExceptions = this.containerProperties.isCheckDeserExWhenValueNull()
 					|| ErrorHandlingUtils.checkDeserializer(KafkaMessageListenerContainer.this.consumerFactory,
-							consumerProperties, true,
-							applicationContext == null
-									? getClass().getClassLoader()
-									: applicationContext.getClassLoader());
+							consumerProperties, true, classLoader);
 			this.syncCommitTimeout = determineSyncCommitTimeout();
 			if (this.containerProperties.getSyncCommitTimeout() == null) {
 				// update the property, so we can use it directly from code elsewhere
@@ -962,6 +964,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private AckMode determineAckMode() {
 			AckMode ackMode = this.containerProperties.getAckMode();
 			if (this.consumerGroupId == null && KafkaMessageListenerContainer.this.topicPartitions != null) {
+				ackMode = AckMode.MANUAL;
+			}
+			if (this.asyncReplies && !(AckMode.MANUAL_IMMEDIATE.equals(ackMode) || AckMode.MANUAL.equals(ackMode))) {
 				ackMode = AckMode.MANUAL;
 			}
 			return ackMode;
@@ -3388,15 +3393,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			public void nack(Duration sleep) {
 				Assert.state(Thread.currentThread().equals(ListenerConsumer.this.consumerThread),
 						"nack() can only be called on the consumer thread");
-				Assert.state(!ListenerConsumer.this.containerProperties.isAsyncAcks(),
-						"nack() is not supported with out-of-order commits (asyncAcks=true)");
+				Assert.state(!ListenerConsumer.this.asyncReplies,
+						"nack() is not supported with out-of-order commits");
 				Assert.isTrue(!sleep.isNegative(), "sleep cannot be negative");
 				ListenerConsumer.this.nackSleepDurationMillis = sleep.toMillis();
 			}
 
 			@Override
-			public boolean isAsyncAcks() {
-				return !ListenerConsumer.this.containerProperties.isAsyncAcks();
+			public boolean isOutOfOrderCommit() {
+				return ListenerConsumer.this.asyncReplies;
 			}
 
 			@Override
@@ -3473,8 +3478,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			public void nack(int index, Duration sleep) {
 				Assert.state(Thread.currentThread().equals(ListenerConsumer.this.consumerThread),
 						"nack() can only be called on the consumer thread");
-				Assert.state(!ListenerConsumer.this.containerProperties.isAsyncAcks(),
-						"nack() is not supported with out-of-order commits (asyncAcks=true)");
+				Assert.state(!ListenerConsumer.this.asyncReplies,
+						"nack() is not supported with out-of-order commits");
 				Assert.isTrue(!sleep.isNegative(), "sleep cannot be negative");
 				Assert.isTrue(index >= 0 && index < this.records.count(), "index out of bounds");
 				ListenerConsumer.this.nackIndex = index;
@@ -3498,8 +3503,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 
 			@Override
-			public boolean isAsyncAcks() {
-				return !ListenerConsumer.this.containerProperties.isAsyncAcks();
+			public boolean isOutOfOrderCommit() {
+				return ListenerConsumer.this.asyncReplies;
 			}
 
 			@Override

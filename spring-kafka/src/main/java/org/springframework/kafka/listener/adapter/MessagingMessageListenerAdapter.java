@@ -90,7 +90,7 @@ import reactor.core.publisher.Mono;
  * @author Nathan Xu
  * @author Wang ZhiYang
  */
-public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware {
+public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware, HandlerMethodDetect {
 
 	private static final SpelExpressionParser PARSER = new SpelExpressionParser();
 
@@ -241,6 +241,10 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 */
 	public void setHandlerMethod(HandlerAdapter handlerMethod) {
 		this.handlerMethod = handlerMethod;
+	}
+
+	public boolean isAsyncReplies() {
+		return this.handlerMethod.isAsyncReplies();
 	}
 
 	protected boolean isConsumerRecordList() {
@@ -469,7 +473,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			messageReturnType = this.messageReturnType;
 		}
 		if (result instanceof CompletableFuture<?> completable) {
-			if (acknowledgment == null || acknowledgment.isAsyncAcks()) {
+			if (acknowledgment == null || !acknowledgment.isOutOfOrderCommit()) {
 				this.logger.warn("Container 'Acknowledgment' must be async ack for Future<?> return type; "
 						+ "otherwise the container will ack the message immediately");
 			}
@@ -484,7 +488,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			});
 		}
 		else if (monoPresent && result instanceof Mono<?> mono) {
-			if (acknowledgment == null || acknowledgment.isAsyncAcks()) {
+			if (acknowledgment == null || !acknowledgment.isOutOfOrderCommit()) {
 				this.logger.warn("Container 'Acknowledgment' must be async ack for Mono<?> return type " +
 						"(or Kotlin suspend function); otherwise the container will ack the message immediately");
 			}
