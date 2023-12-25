@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,10 +67,9 @@ public final class AdapterUtils {
 	 */
 	@Nullable
 	public static ConsumerRecordMetadata buildConsumerRecordMetadata(Object data) {
-		if (!(data instanceof ConsumerRecord)) {
+		if (!(data instanceof ConsumerRecord<?, ?> record)) {
 			return null;
 		}
-		ConsumerRecord<?, ?> record = (ConsumerRecord<?, ?>) data;
 		return new ConsumerRecordMetadata(new RecordMetadata(new TopicPartition(record.topic(), record.partition()),
 				record.offset(), 0, record.timestamp(), record.serializedKeySize(),
 				record.serializedValueSize()), record.timestampType());

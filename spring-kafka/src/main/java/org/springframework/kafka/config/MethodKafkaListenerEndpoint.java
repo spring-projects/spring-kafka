@@ -207,22 +207,22 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 
 		MessagingMessageListenerAdapter<K, V> listener;
 		if (isBatchListener()) {
-			BatchMessagingMessageListenerAdapter<K, V> messageListener = new BatchMessagingMessageListenerAdapter<K, V>(
+			BatchMessagingMessageListenerAdapter<K, V> messageListener = new BatchMessagingMessageListenerAdapter<>(
 					this.bean, this.method, this.errorHandler);
 			BatchToRecordAdapter<K, V> batchToRecordAdapter = getBatchToRecordAdapter();
 			if (batchToRecordAdapter != null) {
 				messageListener.setBatchToRecordAdapter(batchToRecordAdapter);
 			}
-			if (messageConverter instanceof BatchMessageConverter) {
-				messageListener.setBatchMessageConverter((BatchMessageConverter) messageConverter);
+			if (messageConverter instanceof BatchMessageConverter batchMessageConverter) {
+				messageListener.setBatchMessageConverter(batchMessageConverter);
 			}
 			listener = messageListener;
 		}
 		else {
-			RecordMessagingMessageListenerAdapter<K, V> messageListener = new RecordMessagingMessageListenerAdapter<K, V>(
+			RecordMessagingMessageListenerAdapter<K, V> messageListener = new RecordMessagingMessageListenerAdapter<>(
 					this.bean, this.method, this.errorHandler);
-			if (messageConverter instanceof RecordMessageConverter) {
-				messageListener.setMessageConverter((RecordMessageConverter) messageConverter);
+			if (messageConverter instanceof RecordMessageConverter recordMessageConverter) {
+				messageListener.setMessageConverter(recordMessageConverter);
 			}
 			listener = messageListener;
 		}

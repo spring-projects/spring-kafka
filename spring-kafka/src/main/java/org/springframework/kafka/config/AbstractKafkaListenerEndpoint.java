@@ -123,9 +123,9 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
 		this.beanFactory = beanFactory;
-		if (beanFactory instanceof ConfigurableListableBeanFactory) {
-			this.resolver = ((ConfigurableListableBeanFactory) beanFactory).getBeanExpressionResolver();
-			this.expressionContext = new BeanExpressionContext((ConfigurableListableBeanFactory) beanFactory, null);
+		if (beanFactory instanceof ConfigurableListableBeanFactory configurableListableBeanFactory) {
+			this.resolver = configurableListableBeanFactory.getBeanExpressionResolver();
+			this.expressionContext = new BeanExpressionContext(configurableListableBeanFactory, null);
 		}
 		this.beanResolver = new BeanFactoryResolver(beanFactory);
 	}
@@ -275,7 +275,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * @since 1.1
 	 */
 	public boolean isBatchListener() {
-		return this.batchListener == null ? false : this.batchListener;
+		return this.batchListener != null && this.batchListener;
 	}
 
 	/**
@@ -530,11 +530,10 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 				.acceptIfNotNull(this.correlationHeaderName, adapter::setCorrelationHeaderName);
 		adapter.setSplitIterables(this.splitIterables);
 		Object messageListener = adapter;
-		boolean isBatchListener = isBatchListener();
 		Assert.state(messageListener != null,
 				() -> "Endpoint [" + this + "] must provide a non null message listener");
 		if (this.recordFilterStrategy != null) {
-			if (isBatchListener) {
+			if (isBatchListener()) {
 				if (((MessagingMessageListenerAdapter<K, V>) messageListener).isConsumerRecords()) {
 					this.logger.warn(() -> "Filter strategy ignored when consuming 'ConsumerRecords' instead of a List"
 							+ (this.id != null ? " id: " + this.id : ""));

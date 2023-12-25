@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2023 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ public class MultiMethodKafkaListenerEndpoint<K, V> extends MethodKafkaListenerE
 
 	@Override
 	protected HandlerAdapter configureListenerAdapter(MessagingMessageListenerAdapter<K, V> messageListener) {
-		List<InvocableHandlerMethod> invocableHandlerMethods = new ArrayList<InvocableHandlerMethod>();
+		List<InvocableHandlerMethod> invocableHandlerMethods = new ArrayList<>();
 		InvocableHandlerMethod defaultHandler = null;
 		for (Method method : this.methods) {
 			InvocableHandlerMethod handler = getMessageHandlerMethodFactory()

@@ -112,8 +112,8 @@ public class DelegatingInvocableHandler {
 		this.bean = bean;
 		this.resolver = beanExpressionResolver;
 		this.beanExpressionContext = beanExpressionContext;
-		this.beanFactory = beanFactory instanceof ConfigurableListableBeanFactory
-				? (ConfigurableListableBeanFactory) beanFactory
+		this.beanFactory = beanFactory instanceof ConfigurableListableBeanFactory configurableListableBeanFactory
+				? configurableListableBeanFactory
 				: null;
 		this.validator = validator == null ? null : new PayloadValidator(validator);
 	}
@@ -124,7 +124,7 @@ public class DelegatingInvocableHandler {
 		}
 		Parameter[] parameters = handler.getMethod().getParameters();
 		for (Parameter parameter : parameters) {
-			if (parameter.getType().equals(ConsumerRecordMetadata.class)) {
+			if (ConsumerRecordMetadata.class.equals(parameter.getType())) {
 				this.handlerMetadataAware.put(handler, true);
 				return;
 			}
@@ -148,7 +148,7 @@ public class DelegatingInvocableHandler {
 	 * or the method raised an exception.
 	 */
 	public Object invoke(Message<?> message, Object... providedArgs) throws Exception { //NOSONAR
-		Class<? extends Object> payloadClass = message.getPayload().getClass();
+		Class<?> payloadClass = message.getPayload().getClass();
 		InvocableHandlerMethod handler = getHandlerForPayload(payloadClass);
 		if (this.validator != null && this.defaultHandler != null) {
 			MethodParameter parameter = this.payloadMethodParameters.get(handler);
@@ -175,7 +175,7 @@ public class DelegatingInvocableHandler {
 	 * @param payloadClass the payload class.
 	 * @return the handler.
 	 */
-	protected InvocableHandlerMethod getHandlerForPayload(Class<? extends Object> payloadClass) {
+	protected InvocableHandlerMethod getHandlerForPayload(Class<?> payloadClass) {
 		InvocableHandlerMethod handler = this.cachedHandlers.get(payloadClass);
 		if (handler == null) {
 			handler = findHandlerForPayload(payloadClass);
@@ -246,15 +246,12 @@ public class DelegatingInvocableHandler {
 		InvocableHandlerMethod result = null;
 		for (InvocableHandlerMethod handler : this.handlers) {
 			if (matchHandlerMethod(payloadClass, handler)) {
-				if (result != null) {
-					boolean resultIsDefault = result.equals(this.defaultHandler);
-					if (!handler.equals(this.defaultHandler) && !resultIsDefault) {
+				if (result != null && !result.equals(this.defaultHandler)) {
+					if (!handler.equals(this.defaultHandler)) {
 						throw new KafkaException("Ambiguous methods for payload type: " + payloadClass + ": " +
 								result.getMethod().getName() + " and " + handler.getMethod().getName());
 					}
-					if (!resultIsDefault) {
-						continue; // otherwise replace the result with the actual match
-					}
+					continue; // otherwise replace the result with the actual match
 				}
 				result = handler;
 			}
@@ -262,20 +259,19 @@ public class DelegatingInvocableHandler {
 		return result != null ? result : this.defaultHandler;
 	}
 
-	protected boolean matchHandlerMethod(Class<? extends Object> payloadClass, InvocableHandlerMethod handler) {
+	protected boolean matchHandlerMethod(Class<?> payloadClass, InvocableHandlerMethod handler) {
 		Method method = handler.getMethod();
 		Annotation[][] parameterAnnotations = method.getParameterAnnotations();
 		// Single param; no annotation or not @Header
 		if (parameterAnnotations.length == 1) {
 			MethodParameter methodParameter = new MethodParameter(method, 0);
-			if ((methodParameter.getParameterAnnotations().length == 0
-					|| !methodParameter.hasParameterAnnotation(Header.class))
-					&& methodParameter.getParameterType().isAssignableFrom(payloadClass)) {
+			boolean isPayload = assignPayload(methodParameter, payloadClass);
+			if (isPayload) {
 				if (this.validator != null) {
 					this.payloadMethodParameters.put(handler, methodParameter);
 				}
-				return true;
 			}
+			return isPayload;
 		}
 
 		MethodParameter foundCandidate = findCandidate(payloadClass, method, parameterAnnotations);
@@ -285,14 +281,12 @@ public class DelegatingInvocableHandler {
 		return foundCandidate != null;
 	}
 
-	private MethodParameter findCandidate(Class<? extends Object> payloadClass, Method method,
-			Annotation[][] parameterAnnotations) {
+	@Nullable
+	private MethodParameter findCandidate(Class<?> payloadClass, Method method, Annotation[][] parameterAnnotations) {
 		MethodParameter foundCandidate = null;
 		for (int i = 0; i < parameterAnnotations.length; i++) {
 			MethodParameter methodParameter = new MethodParameter(method, i);
-			if ((methodParameter.getParameterAnnotations().length == 0
-					|| !methodParameter.hasParameterAnnotation(Header.class))
-					&& methodParameter.getParameterType().isAssignableFrom(payloadClass)) {
+			if (assignPayload(methodParameter, payloadClass)) {
 				if (foundCandidate != null) {
 					throw new KafkaException("Ambiguous payload parameter for " + method.toGenericString());
 				}
@@ -316,6 +310,12 @@ public class DelegatingInvocableHandler {
 		return this.defaultHandler != null;
 	}
 
+	private boolean assignPayload(MethodParameter methodParameter, Class<?> payloadClass) {
+		return (methodParameter.getParameterAnnotations().length == 0
+				|| !methodParameter.hasParameterAnnotation(Header.class))
+				&& methodParameter.getParameterType().isAssignableFrom(payloadClass);
+	}
+
 	private static final class PayloadValidator extends PayloadMethodArgumentResolver {
 
 		PayloadValidator(Validator validator) {
@@ -323,8 +323,7 @@ public class DelegatingInvocableHandler {
 
 				@Override
 				@Nullable
-				public Message<?> toMessage(Object payload, @Nullable
-				MessageHeaders headers) {
+				public Message<?> toMessage(Object payload, @Nullable MessageHeaders headers) {
 					return null;
 				}
 
