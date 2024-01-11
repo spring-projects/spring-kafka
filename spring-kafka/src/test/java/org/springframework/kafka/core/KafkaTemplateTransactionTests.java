@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2023 the original author or authors.
+ * Copyright 2017-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -502,6 +502,31 @@ public class KafkaTemplateTransactionTests {
 
 		assertThat(producer.transactionCommitted()).isFalse();
 		assertThat(producer.transactionAborted()).isTrue();
+		assertThat(producer.closed()).isTrue();
+		verify(producer, never()).commitTransaction();
+	}
+
+	@Test
+	public void abortFiledOriginalExceptionRethrown() {
+		MockProducer<String, String> producer = spy(new MockProducer<>());
+		producer.initTransactions();
+		producer.abortTransactionException = new RuntimeException("abort failed");
+
+		ProducerFactory<String, String> pf = new MockProducerFactory<>((tx, id) -> producer, null);
+
+		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(STRING_KEY_TOPIC);
+
+		assertThatExceptionOfType(RuntimeException.class)
+				.isThrownBy(() ->
+						template.executeInTransaction(t -> {
+							throw new RuntimeException("intentional");
+						}))
+				.withMessage("intentional")
+				.withStackTraceContaining("abort failed");
+
+		assertThat(producer.transactionCommitted()).isFalse();
+		assertThat(producer.transactionAborted()).isFalse();
 		assertThat(producer.closed()).isTrue();
 		verify(producer, never()).commitTransaction();
 	}
