@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -199,7 +199,7 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 	public void afterPropertiesSet() {
 		if (this.initialized.compareAndSet(false, true)) {
 			overrideExitMethods();
-			addDefaultBrokerPropsIfAbsent(this.brokerProperties, this.count);
+			addDefaultBrokerPropsIfAbsent();
 			start();
 		}
 	}
@@ -252,10 +252,11 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 		this.cluster = null;
 	}
 
-	private void addDefaultBrokerPropsIfAbsent(Properties brokerConfig, int numBrokers) {
-		brokerConfig.putIfAbsent(KafkaConfig.DeleteTopicEnableProp(), "true");
-		brokerConfig.putIfAbsent(KafkaConfig.GroupInitialRebalanceDelayMsProp(), "0");
-		brokerConfig.putIfAbsent(KafkaConfig.OffsetsTopicReplicationFactorProp(), String.valueOf(numBrokers));
+	private void addDefaultBrokerPropsIfAbsent() {
+		this.brokerProperties.putIfAbsent(KafkaConfig.DeleteTopicEnableProp(), "true");
+		this.brokerProperties.putIfAbsent(KafkaConfig.GroupInitialRebalanceDelayMsProp(), "0");
+		this.brokerProperties.putIfAbsent(KafkaConfig.OffsetsTopicReplicationFactorProp(), "" + this.count);
+		this.brokerProperties.putIfAbsent(KafkaConfig.NumPartitionsProp(), "" + this.partitionsPerTopic);
 	}
 
 	private void logDir(Properties brokerConfigProperties) {
