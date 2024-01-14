@@ -470,10 +470,12 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.multiListener.latch2.await(60, TimeUnit.SECONDS)).isTrue();
 		ConsumerRecord<Integer, String> reply = KafkaTestUtils.getSingleRecord(consumer, "annotated8reply");
 		assertThat(reply.value()).isEqualTo("OK");
-		consumer.close();
 
 		template.send("annotated8", 0, 1, "junk");
 		assertThat(this.multiListener.errorLatch.await(60, TimeUnit.SECONDS)).isTrue();
+		ConsumerRecord<Integer, String> reply2 = KafkaTestUtils.getSingleRecord(consumer, "annotated8reply");
+		consumer.close();
+		assertThat(reply2.value()).isEqualTo("JUNK intentional");
 		assertThat(this.multiListener.meta).isNotNull();
 	}
 
@@ -1754,7 +1756,8 @@ public class EnableKafkaIntegrationTests {
 		public KafkaListenerErrorHandler consumeMultiMethodException(MultiListenerBean listener) {
 			return (m, e) -> {
 				listener.errorLatch.countDown();
-				return null;
+				String payload = m.getPayload().toString().toUpperCase();
+				return payload + " " + e.getCause().getMessage();
 			};
 		}
 
@@ -2468,6 +2471,7 @@ public class EnableKafkaIntegrationTests {
 		volatile ConsumerRecordMetadata meta;
 
 		@KafkaHandler
+		@SendTo("annotated8reply")
 		public void bar(@NonNull String bar, @Header(KafkaHeaders.RECORD_METADATA) ConsumerRecordMetadata meta) {
 			if ("junk".equals(bar)) {
 				throw new RuntimeException("intentional");

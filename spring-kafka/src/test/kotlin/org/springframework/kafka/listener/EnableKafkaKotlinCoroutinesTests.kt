@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,7 +56,7 @@ import java.util.concurrent.TimeUnit
 @SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka(topics = ["kotlinAsyncTestTopic1", "kotlinAsyncTestTopic2",
-		"kotlinAsyncBatchTestTopic1", "kotlinAsyncBatchTestTopic2"])
+		"kotlinAsyncBatchTestTopic1", "kotlinAsyncBatchTestTopic2", "sendTopicReply1"])
 class EnableKafkaKotlinCoroutinesTests {
 
 	@Autowired
@@ -96,7 +96,7 @@ class EnableKafkaKotlinCoroutinesTests {
 	@Test
 	fun `test checkedKh reply`() {
 		this.template.send("kotlinAsyncTestTopic3", "foo")
-		val cr = this.template.receive("sendTopic1", 0, 0, Duration.ofSeconds(30))
+		val cr = this.template.receive("sendTopicReply1", 0, 0, Duration.ofSeconds(30))
 		assertThat(cr.value()).isEqualTo("FOO")
 	}
 
@@ -105,7 +105,7 @@ class EnableKafkaKotlinCoroutinesTests {
 	class Listener {
 
 		@KafkaHandler
-		@SendTo("sendTopic1")
+		@SendTo("sendTopicReply1")
 		suspend fun handler1(value: String) : String {
 			return value.uppercase()
 		}

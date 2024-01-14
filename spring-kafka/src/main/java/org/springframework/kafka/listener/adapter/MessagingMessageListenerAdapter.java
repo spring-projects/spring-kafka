@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -462,16 +463,14 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		String replyTopic = evaluateReplyTopic(request, source, resultArg);
 		Assert.state(replyTopic == null || this.replyTemplate != null,
 				"a KafkaTemplate is required to support replies");
-		Object result;
-		boolean messageReturnType;
-		if (resultArg instanceof InvocationResult invocationResult) {
-			result = invocationResult.getResult();
-			messageReturnType = invocationResult.isMessageReturnType();
-		}
-		else {
-			result = resultArg;
-			messageReturnType = this.messageReturnType;
-		}
+
+		Object result = resultArg instanceof InvocationResult invocationResult ?
+				invocationResult.getResult() :
+				resultArg;
+		boolean messageReturnType = resultArg instanceof InvocationResult invocationResult ?
+				invocationResult.isMessageReturnType() :
+				this.messageReturnType;
+
 		if (result instanceof CompletableFuture<?> completable) {
 			if (acknowledgment == null || !acknowledgment.isOutOfOrderCommit()) {
 				this.logger.warn("Container 'Acknowledgment' must be async ack for Future<?> return type; "
@@ -677,9 +676,11 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				if (NULL_MESSAGE.equals(message)) {
 					message = new GenericMessage<>(records);
 				}
-				Object result = this.errorHandler.handleError(message, e, consumer, acknowledgment);
-				if (result != null) {
-					handleResult(result, records, acknowledgment, consumer, message);
+				Object errorResult = this.errorHandler.handleError(message, e, consumer, acknowledgment);
+				if (errorResult != null && !(errorResult instanceof InvocationResult)) {
+					Object result = this.handlerMethod.getInvocationResultFor(errorResult, message.getPayload());
+					handleResult(Objects.requireNonNullElse(result, errorResult),
+							records, acknowledgment, consumer, message);
 				}
 			}
 			catch (Exception ex) {
