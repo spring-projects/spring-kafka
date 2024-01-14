@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -273,7 +273,6 @@ public class EnableKafkaIntegrationTests {
 		container.stop();
 	}
 
-	@SuppressWarnings("deprecation")
 	@Test
 	public void manyTests() throws Exception {
 		this.recordFilter.called = false;
@@ -323,7 +322,7 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.capturedRecord.value()).isEqualTo("foo");
 		assertThat(this.listener.ack).isNotNull();
 		assertThat(this.listener.eventLatch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(this.listener.event.getListenerId().startsWith("qux-"));
+		assertThat(this.listener.event.getListenerId().startsWith("qux-")).isTrue();
 		MessageListenerContainer manualContainer = this.registry.getListenerContainer("qux");
 		assertThat(KafkaTestUtils.getPropertyValue(manualContainer, "containerProperties.messageListener"))
 				.isInstanceOf(FilteringMessageListenerAdapter.class);
@@ -350,7 +349,7 @@ public class EnableKafkaIntegrationTests {
 
 		template.send("annotated4", 0, "foo");
 		assertThat(this.listener.noLongerIdleEventLatch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(this.listener.noLongerIdleEvent.getListenerId().startsWith("qux-"));
+		assertThat(this.listener.noLongerIdleEvent.getListenerId().startsWith("qux-")).isTrue();
 
 		template.send("annotated5", 0, 0, "foo");
 		template.send("annotated5", 1, 0, "bar");
@@ -472,10 +471,12 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.multiListener.latch2.await(60, TimeUnit.SECONDS)).isTrue();
 		ConsumerRecord<Integer, String> reply = KafkaTestUtils.getSingleRecord(consumer, "annotated8reply");
 		assertThat(reply.value()).isEqualTo("OK");
-		consumer.close();
 
 		template.send("annotated8", 0, 1, "junk");
 		assertThat(this.multiListener.errorLatch.await(60, TimeUnit.SECONDS)).isTrue();
+		ConsumerRecord<Integer, String> reply2 = KafkaTestUtils.getSingleRecord(consumer, "annotated8reply");
+		consumer.close();
+		assertThat(reply2.value()).isEqualTo("JUNK intentional");
 		assertThat(this.multiListener.meta).isNotNull();
 	}
 
@@ -1130,7 +1131,6 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@Bean
-		@SuppressWarnings("deprecation")
 		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<Integer, String>>
 				factoryWithBadConverter() {
 
@@ -1758,7 +1758,8 @@ public class EnableKafkaIntegrationTests {
 		public KafkaListenerErrorHandler consumeMultiMethodException(MultiListenerBean listener) {
 			return (m, e) -> {
 				listener.errorLatch.countDown();
-				return null;
+				String payload = m.getPayload().toString().toUpperCase();
+				return payload + " " + e.getCause().getMessage();
 			};
 		}
 
@@ -2475,6 +2476,7 @@ public class EnableKafkaIntegrationTests {
 		volatile ConsumerRecordMetadata meta;
 
 		@KafkaHandler
+		@SendTo("annotated8reply")
 		public void bar(@NonNull String bar, @Header(KafkaHeaders.RECORD_METADATA) ConsumerRecordMetadata meta) {
 			if ("junk".equals(bar)) {
 				throw new RuntimeException("intentional");
@@ -2652,14 +2654,11 @@ public class EnableKafkaIntegrationTests {
 			}
 			Foo other = (Foo) obj;
 			if (this.bar == null) {
-				if (other.bar != null) {
-					return false;
-				}
+				return other.bar == null;
 			}
-			else if (!this.bar.equals(other.bar)) {
-				return false;
+			else {
+				return this.bar.equals(other.bar);
 			}
-			return true;
 		}
 
 	}
@@ -2797,16 +2796,7 @@ public class EnableKafkaIntegrationTests {
 
 	}
 
-	static class CustomMethodArgument {
-
-		final String body;
-
-		final String topic;
-
-		CustomMethodArgument(String body, String topic) {
-			this.body = body;
-			this.topic = topic;
-		}
+	record CustomMethodArgument(String body, String topic) {
 
 	}
 
