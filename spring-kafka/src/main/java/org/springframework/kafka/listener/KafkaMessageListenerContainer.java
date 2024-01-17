@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -159,6 +159,7 @@ import io.micrometer.observation.ObservationRegistry;
  * @author Tomaz Fernandes
  * @author Francois Rosiere
  * @author Daniel Gentes
+ * @author Soby Chacko
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -1683,9 +1684,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						.stream()
 						.filter(entry -> !this.assignedPartitions.contains(entry.getKey()))
 						.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
-				this.logger.warn(() -> "These offsets could not be committed; partition(s) lost during rebalance: "
-								+ uncommitted);
-
+				if (!uncommitted.isEmpty()) {
+					this.logger.warn(() -> "These offsets could not be committed; partition(s) lost during rebalance: "
+							+ uncommitted);
+				}
 				this.commitsDuringRebalance.clear();
 				this.logger.debug(() -> "Commit list: " + commits);
 				commitSync(commits);
