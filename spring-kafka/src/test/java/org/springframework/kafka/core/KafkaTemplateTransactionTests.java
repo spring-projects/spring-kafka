@@ -169,8 +169,7 @@ public class KafkaTemplateTransactionTests {
 		senderProps.put(ProducerConfig.CLIENT_ID_CONFIG, "customClientIdFixed");
 		DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		pf.setKeySerializer(new StringSerializer());
-		DefaultTransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy();
-		suffixStrategy.setMaxCache(3);
+		TransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy(3);
 		pf.setTransactionIdSuffixStrategy(suffixStrategy);
 		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(STRING_KEY_TOPIC);

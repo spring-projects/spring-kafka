@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import java.util.Map;
 import java.util.Queue;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -35,15 +34,9 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
  */
 class DefaultTransactionIdSuffixStrategyTests {
 
-	private DefaultTransactionIdSuffixStrategy suffixStrategy;
-
-	@BeforeEach
-	void setUp() {
-		suffixStrategy = new DefaultTransactionIdSuffixStrategy();
-	}
-
 	@Test
 	void acquireSuffixWithoutCache() {
+		TransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy(0);
 		String txIdPrefix = "txIdPrefix";
 		String suffix = suffixStrategy.acquireSuffix(txIdPrefix);
 		assertThat(suffix).isNotNull();
@@ -51,16 +44,17 @@ class DefaultTransactionIdSuffixStrategyTests {
 
 	@Test
 	void acquireSuffixWithCache() {
+		TransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy(1);
 		String txIdPrefix = "txIdPrefix";
-		String suffix = "suffix";
-		assertThatNoException().isThrownBy(() -> suffixStrategy.releaseSuffix(txIdPrefix, suffix));
+		String suffix = suffixStrategy.acquireSuffix(txIdPrefix);
+		assertThat(suffix).isNotNull();
 	}
 
 
 	@Test
 	void acquireSuffixWithCacheExhausted() {
 		String txIdPrefix = "txIdPrefix";
-		suffixStrategy.setMaxCache(2);
+		TransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy(2);
 		String suffix1 = suffixStrategy.acquireSuffix(txIdPrefix);
 		String suffix2 = suffixStrategy.acquireSuffix(txIdPrefix);
 		assertThatExceptionOfType(NoProducerAvailableException.class)
@@ -71,16 +65,16 @@ class DefaultTransactionIdSuffixStrategyTests {
 	@Test
 	void releaseSuffixWithCache() {
 		String txIdPrefix = "txIdPrefix";
-		suffixStrategy.setMaxCache(2);
+		TransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy(2);
 		String suffix = suffixStrategy.acquireSuffix(txIdPrefix);
 		assertThatNoException().isThrownBy(() -> suffixStrategy.releaseSuffix(txIdPrefix, suffix));
 	}
 
-	@SuppressWarnings("rawtypes")
+	@SuppressWarnings({"rawtypes", "unchecked"})
 	@Test
 	void releaseAllSuffixesWithCache() {
 		String txIdPrefix = "txIdPrefix";
-		suffixStrategy.setMaxCache(2);
+		TransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy(2);
 		String suffix1 = suffixStrategy.acquireSuffix(txIdPrefix);
 		String suffix2 = suffixStrategy.acquireSuffix(txIdPrefix);
 		assertThatNoException().isThrownBy(() -> suffixStrategy.releaseSuffix(txIdPrefix, suffix1));
@@ -93,11 +87,11 @@ class DefaultTransactionIdSuffixStrategyTests {
 
 	@Test
 	void setMaxCacheIsNegative() {
-		assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> suffixStrategy.setMaxCache(-1));
+		assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> new DefaultTransactionIdSuffixStrategy(-1));
 	}
 
 	@Test
 	void setMaxCacheIsZero() {
-		assertThatNoException().isThrownBy(() -> suffixStrategy.setMaxCache(0));
+		assertThatNoException().isThrownBy(() -> new DefaultTransactionIdSuffixStrategy(0));
 	}
 }

@@ -126,8 +126,7 @@ public static class Config {
         ...
         DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(configs);
         ...
-        DefaultTransactionIdSuffixStrategy ss = new DefaultTransactionIdSuffixStrategy();
-        ss.setMaxCache(5);
+        TransactionIdSuffixStrategy ss = new DefaultTransactionIdSuffixStrategy(5);
         pf.setTransactionIdSuffixStrategy(ss);
         return pf;
     }

@@ -10,5 +10,6 @@ For changes in earlier version, see xref:appendix/change-history.adoc[Change His
 [[x32-tiss]]
 === TransactionIdSuffixStrategy
 
-When setting `maxCache` with `transactionIdPrefix`, can restrict `transaction.id` in range.
+A new `TransactionIdSuffixStrategy` interface was introduced to manage `transactional.id` suffix.
+The default implementation is `DefaultTransactionIdSuffixStrategy` when setting `maxCache` greater than zero can reuse `transactional.id` within a specific range, otherwise suffixes will be generated on the fly by incrementing a counter.
 See xref:kafka/transactions.adoc#transaction-id-suffix-fixed[Fixed TransactionIdSuffix] for more information.

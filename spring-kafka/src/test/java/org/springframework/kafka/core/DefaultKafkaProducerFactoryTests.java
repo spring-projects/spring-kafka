@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -137,8 +137,7 @@ public class DefaultKafkaProducerFactoryTests {
 
 		};
 		pf.setTransactionIdPrefix("foo");
-		DefaultTransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy();
-		suffixStrategy.setMaxCache(2);
+		TransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy(2);
 		pf.setTransactionIdSuffixStrategy(suffixStrategy);
 
 		final AtomicInteger flag = new AtomicInteger();
@@ -310,8 +309,7 @@ public class DefaultKafkaProducerFactoryTests {
 		};
 		pf.setApplicationContext(ctx);
 		pf.setTransactionIdPrefix("foo");
-		DefaultTransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy();
-		suffixStrategy.setMaxCache(3);
+		TransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy(3);
 		pf.setTransactionIdSuffixStrategy(suffixStrategy);
 		Producer aProducer = pf.createProducer();
 		assertThat(aProducer).isNotNull();
@@ -391,8 +389,7 @@ public class DefaultKafkaProducerFactoryTests {
 		};
 		pf.setApplicationContext(ctx);
 		pf.setTransactionIdPrefix("foo");
-		DefaultTransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy();
-		suffixStrategy.setMaxCache(3);
+		TransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy(3);
 		pf.setTransactionIdSuffixStrategy(suffixStrategy);
 		Producer aProducer = pf.createProducer();
 		assertThat(aProducer).isNotNull();
@@ -556,8 +553,7 @@ public class DefaultKafkaProducerFactoryTests {
 
 		};
 		pf.setTransactionIdPrefix("foo");
-		DefaultTransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy();
-		suffixStrategy.setMaxCache(2);
+		TransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy(2);
 		pf.setTransactionIdSuffixStrategy(suffixStrategy);
 		Map<?, ?> suffixCache = KafkaTestUtils.getPropertyValue(suffixStrategy, "suffixCache", Map.class);
 		pf.createProducer();
@@ -695,8 +691,7 @@ public class DefaultKafkaProducerFactoryTests {
 		};
 		pf.setBootstrapServersSupplier(() -> "foo");
 		pf.setTransactionIdPrefix("tx.");
-		DefaultTransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy();
-		suffixStrategy.setMaxCache(2);
+		TransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy(2);
 		pf.setTransactionIdSuffixStrategy(suffixStrategy);
 		Producer aProducer = pf.createProducer();
 		assertThat(configPassedToKafkaConsumer.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG)).isEqualTo("tx.0");

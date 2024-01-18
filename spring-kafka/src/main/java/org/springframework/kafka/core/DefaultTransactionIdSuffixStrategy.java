@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,9 +31,8 @@ import org.springframework.util.Assert;
  * Otherwise, the suffixes will be generated on the fly.
  *
  * <p>
- * Setting the {@link #setMaxCache(int)} enables caching to restrict the number of `transactional.id`.
  * The cache is per `transactional.id` prefix. The cache size is limited by the {@link #maxCache}.
- * Default is 0, which means no caching and restriction, so the `transactional.id` will be generated on the fly.
+ * A value of 0 means no caching and restriction, so the `transactional.id` will be generated on the fly.
  *
  * @author Ilya Starchenko
  *
@@ -45,7 +44,16 @@ public class DefaultTransactionIdSuffixStrategy implements TransactionIdSuffixSt
 
 	private final Map<String, BlockingQueue<String>> suffixCache = new ConcurrentHashMap<>();
 
-	private int maxCache;
+	private final int maxCache;
+
+	/**
+	 * Construct a transaction id suffix strategy with the provided size of the cache.
+	 * @param maxCache the maximum size of the cache.
+	 */
+	public DefaultTransactionIdSuffixStrategy(int maxCache) {
+		Assert.isTrue(maxCache >= 0, "'maxCache' must be greater than or equal to 0");
+		this.maxCache = maxCache;
+	}
 
 	/**
 	 * Acquire the suffix for the transactional producer from the cache or generate a new one
@@ -80,15 +88,6 @@ public class DefaultTransactionIdSuffixStrategy implements TransactionIdSuffixSt
 		if (queue != null && !queue.contains(suffix)) {
 			queue.add(suffix);
 		}
-	}
-
-	/**
-	 * Set the maximum size for transaction producer cache.
-	 * @param maxCache the maxCache to set
-	 */
-	public void setMaxCache(int maxCache) {
-		Assert.isTrue(maxCache >= 0, "'maxCache' must be greater than or equal to 0");
-		this.maxCache = maxCache;
 	}
 
 	@Nullable

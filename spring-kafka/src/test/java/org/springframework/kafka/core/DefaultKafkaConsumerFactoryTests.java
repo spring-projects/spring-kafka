@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2023 the original author or authors.
+ * Copyright 2017-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -384,8 +384,7 @@ public class DefaultKafkaConsumerFactoryTests {
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 		DefaultKafkaProducerFactory<Integer, String> pfTx = new DefaultKafkaProducerFactory<>(producerProps);
 		pfTx.setTransactionIdPrefix("fooTx.fixed.");
-		DefaultTransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy();
-		suffixStrategy.setMaxCache(3);
+		TransactionIdSuffixStrategy suffixStrategy = new DefaultTransactionIdSuffixStrategy(3);
 		pfTx.setTransactionIdSuffixStrategy(suffixStrategy);
 		KafkaOperations<Integer, String> templateTx = new KafkaTemplate<>(pfTx);
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("txCache1FixedGroup", "false", this.embeddedKafka);
