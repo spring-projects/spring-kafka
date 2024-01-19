@@ -35,6 +35,7 @@ import org.springframework.kafka.listener.ContainerProperties.EOSMode;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Wang Zhiyang
  *
  * @since 1.3.5
  *
@@ -80,6 +81,7 @@ public interface AfterRollbackProcessor<K, V> {
 	default void processBatch(ConsumerRecords<K, V> records, List<ConsumerRecord<K, V>> recordList,
 			Consumer<K, V> consumer, MessageListenerContainer container, Exception exception,
 			boolean recoverable, ContainerProperties.EOSMode eosMode) {
+
 		process(recordList, consumer, container, exception, recoverable, eosMode);
 	}
 

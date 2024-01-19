@@ -31,6 +31,7 @@ import org.springframework.util.backoff.BackOffExecution;
  * @author Gary Russell
  * @author Francois Rosiere
  * @author Antonio Tomac
+ * @author Wang Zhiyang
  * @since 2.0
  *
  */

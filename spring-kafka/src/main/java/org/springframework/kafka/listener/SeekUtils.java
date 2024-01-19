@@ -45,6 +45,7 @@ import org.springframework.util.backoff.FixedBackOff;
  *
  * @author Gary Russell
  * @author Francois Rosiere
+ * @author Wang Zhiyang
  * @since 2.2
  *
  */
@@ -138,6 +139,7 @@ public final class SeekUtils {
 	 * @param records the records.
 	 * @param consumer the consumer.
 	 * @param logger a {@link LogAccessor} for seek errors.
+	 * @since 3.2
 	 */
 	public static void doSeeksToBegin(List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer,
 			LogAccessor logger) {

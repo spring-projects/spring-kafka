@@ -107,6 +107,7 @@ import org.springframework.util.backoff.FixedBackOff;
 /**
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Wang Zhiyang
  *
  * @since 1.3
  *

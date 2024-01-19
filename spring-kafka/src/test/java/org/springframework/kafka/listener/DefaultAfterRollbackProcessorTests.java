@@ -53,6 +53,7 @@ import org.springframework.util.backoff.FixedBackOff;
 /**
  * @author Gary Russell
  * @author Francois Rosiere
+ * @author Wang Zhiyang
  * @since 2.3.1
  *
  */

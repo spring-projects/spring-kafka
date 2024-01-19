@@ -51,6 +51,7 @@ import org.springframework.util.CollectionUtils;
  * @author Johnny Lim
  * @author Lukasz Kaminski
  * @author Kyuhyeok Park
+ * @author Wang Zhiyang
  */
 public class ContainerProperties extends ConsumerProperties {
 
@@ -545,10 +546,20 @@ public class ContainerProperties extends ConsumerProperties {
 		this.transactionManager = transactionManager;
 	}
 
+	/**
+	 * Recover batch records after rollback if true.
+	 * @return true to recover.
+	 * @since 3.2
+	 */
 	public boolean isBatchRecoverAfterRollback() {
 		return this.batchRecoverAfterRollback;
 	}
 
+	/**
+	 * enable the batch recover after rollback.
+	 * @param batchRecoverAfterRollback the batchRecoverAfterRollback to set.
+	 * @since 3.2
+	 */
 	public void setBatchRecoverAfterRollback(boolean batchRecoverAfterRollback) {
 		this.batchRecoverAfterRollback = batchRecoverAfterRollback;
 	}

@@ -2209,10 +2209,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				});
 			}
 			else {
-				afterRollbackProcessorToUse.processBatch(records,
-						Objects.requireNonNullElseGet(recordList, () -> createRecordList(records)), this.consumer,
-						KafkaMessageListenerContainer.this.thisOrParentContainer, e,
-						this.wantsBatchRecoverAfterRollback, this.eosMode);
+				try {
+					afterRollbackProcessorToUse.processBatch(records,
+							Objects.requireNonNullElseGet(recordList, () -> createRecordList(records)), this.consumer,
+							KafkaMessageListenerContainer.this.thisOrParentContainer, e,
+							this.wantsBatchRecoverAfterRollback, this.eosMode);
+				}
+				catch (Exception ex) {
+					this.logger.error(ex, "AfterRollbackProcessor threw exception");
+				}
 			}
 		}
 

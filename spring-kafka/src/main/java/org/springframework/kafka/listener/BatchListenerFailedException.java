@@ -26,6 +26,7 @@ import org.springframework.lang.Nullable;
  * failed.
  *
  * @author Gary Russell
+ * @author Wang Zhiyang
  * @since 2.5
  *
  */

@@ -454,8 +454,7 @@ See xref:kafka/annotation-error-handling.adoc#error-handlers[Container Error Han
 Starting with version 3.2, Recovery can now recover (skip) entire batch of records that keeps failing.
 Set `ContainerProperties.setBatchRecoverAfterRollback(true)` to enable this feature.
 
-IMPORTANT: Default behavior, recovery is not possible with a batch listener,
-since the framework has no knowledge about which record in the batch keeps failing.
+IMPORTANT: Default behavior, recovery is not possible with a batch listener, since the framework has no knowledge about which record in the batch keeps failing.
 In such cases, the application listener must handle a record that keeps failing.
 
 See also xref:kafka/annotation-error-handling.adoc#dead-letters[Publishing Dead-letter Records].

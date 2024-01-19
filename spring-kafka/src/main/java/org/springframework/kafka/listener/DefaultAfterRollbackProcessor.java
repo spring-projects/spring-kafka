@@ -50,6 +50,7 @@ import org.springframework.util.backoff.BackOffExecution;
  *
  * @author Gary Russell
  * @author Francois Rosiere
+ * @author Wang Zhiyang
  *
  * @since 1.3.5
  *
