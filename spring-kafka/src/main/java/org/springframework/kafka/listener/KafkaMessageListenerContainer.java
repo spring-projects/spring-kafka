@@ -696,12 +696,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final CommonErrorHandler commonErrorHandler;
 
-		private final PlatformTransactionManager transactionManager = this.containerProperties.getTransactionManager();
+		@Deprecated(since = "3.2", forRemoval = true)
+		@SuppressWarnings("removal")
+		private final PlatformTransactionManager transactionManager =
+				this.containerProperties.getKafkaAwareTransactionManager() != null ?
+						this.containerProperties.getKafkaAwareTransactionManager() :
+						this.containerProperties.getTransactionManager();
 
-		@SuppressWarnings(RAWTYPES)
-		private final KafkaAwareTransactionManager kafkaTxManager =
-				this.transactionManager instanceof KafkaAwareTransactionManager
-						? ((KafkaAwareTransactionManager) this.transactionManager) : null;
+		private final KafkaAwareTransactionManager<?, ?> kafkaTxManager =
+				this.transactionManager instanceof KafkaAwareTransactionManager<?, ?> kafkaAwareTransactionManager ?
+						kafkaAwareTransactionManager : null;
 
 		private final TransactionTemplate transactionTemplate;
 
@@ -3034,7 +3038,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			doSendOffsets(this.producer, commits);
 		}
 
-		@SuppressWarnings("deprecation")
 		private void doSendOffsets(Producer<?, ?> prod, Map<TopicPartition, OffsetAndMetadata> commits) {
 			prod.sendOffsetsToTransaction(commits, this.consumer.groupMetadata());
 			if (this.fixTxOffsets) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ import org.springframework.aop.support.AopUtils;
 import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservationConvention;
+import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -257,7 +258,10 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private double idleBeforeDataMultiplier = DEFAULT_IDLE_BEFORE_DATA_MULTIPLIER;
 
+	@Deprecated(since = "3.2")
 	private PlatformTransactionManager transactionManager;
+
+	private KafkaAwareTransactionManager<?, ?> kafkaAwareTransactionManager;
 
 	private boolean batchRecoverAfterRollback = false;
 
@@ -371,7 +375,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * calling thread and sometimes not.</li>
 	 * </ul>
 	 * @param ackMode the {@link AckMode}; default BATCH.
-	 * @see #setTransactionManager(PlatformTransactionManager)
+	 * @see #setKafkaAwareTransactionManager(KafkaAwareTransactionManager)
 	 */
 	public void setAckMode(AckMode ackMode) {
 		Assert.notNull(ackMode, "'ackMode' cannot be null");
@@ -525,6 +529,7 @@ public class ContainerProperties extends ConsumerProperties {
 		return this.idlePartitionEventInterval;
 	}
 
+	@Deprecated(since = "3.2", forRemoval = true)
 	@Nullable
 	public PlatformTransactionManager getTransactionManager() {
 		return this.transactionManager;
@@ -542,8 +547,23 @@ public class ContainerProperties extends ConsumerProperties {
 	 * @since 1.3
 	 * @see #setAckMode(AckMode)
 	 */
+	@Deprecated(since = "3.2", forRemoval = true)
 	public void setTransactionManager(@Nullable PlatformTransactionManager transactionManager) {
 		this.transactionManager = transactionManager;
+	}
+
+	@Nullable
+	public KafkaAwareTransactionManager<?, ?> getKafkaAwareTransactionManager() {
+		return this.kafkaAwareTransactionManager;
+	}
+
+	/**
+	 * Set the transaction manager to start a transaction; replace {@link #setTransactionManager}.
+	 * @param kafkaAwareTransactionManager the transaction manager.
+	 * @since 3.2
+	 */
+	public void setKafkaAwareTransactionManager(@Nullable KafkaAwareTransactionManager<?, ?> kafkaAwareTransactionManager) {
+		this.kafkaAwareTransactionManager = kafkaAwareTransactionManager;
 	}
 
 	/**
@@ -857,8 +877,8 @@ public class ContainerProperties extends ConsumerProperties {
 	/**
 	 * Set a transaction definition with properties (e.g. timeout) that will be copied to
 	 * the container's transaction template. Note that this is only generally useful when
-	 * used with a {@link #setTransactionManager(PlatformTransactionManager)
-	 * PlatformTransactionManager} that supports a custom definition; this does NOT
+	 * used with a {@link #setKafkaAwareTransactionManager(KafkaAwareTransactionManager)
+	 * KafkaAwareTransactionManager} that supports a custom definition; this does NOT
 	 * include the {@link org.springframework.kafka.transaction.KafkaTransactionManager}
 	 * which has no concept of transaction timeout. It can be useful to start, for example
 	 * a database transaction, in the container, rather than using {@code @Transactional}
@@ -866,7 +886,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * can participate in the transaction.
 	 * @param transactionDefinition the definition.
 	 * @since 2.5.4
-	 * @see #setTransactionManager(PlatformTransactionManager)
+	 * @see #setKafkaAwareTransactionManager(KafkaAwareTransactionManager)
 	 */
 	public void setTransactionDefinition(@Nullable TransactionDefinition transactionDefinition) {
 		this.transactionDefinition = transactionDefinition;
@@ -1071,6 +1091,9 @@ public class ContainerProperties extends ConsumerProperties {
 				+ (this.idlePartitionEventInterval == null ? "not enabled" : this.idlePartitionEventInterval)
 				+ (this.transactionManager != null
 						? "\n transactionManager=" + this.transactionManager
+						: "")
+				+ (this.kafkaAwareTransactionManager != null
+						? "\n kafkaAwareTransactionManager=" + this.kafkaAwareTransactionManager
 						: "")
 				+ "\n monitorInterval=" + this.monitorInterval
 				+ (this.scheduler != null ? "\n scheduler=" + this.scheduler : "")

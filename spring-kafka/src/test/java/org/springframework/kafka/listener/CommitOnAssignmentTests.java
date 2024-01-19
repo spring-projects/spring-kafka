@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -120,7 +120,7 @@ public class CommitOnAssignmentTests {
 			latch.countDown();
 			return null;
 		}).given(producer).sendOffsetsToTransaction(any(), any(ConsumerGroupMetadata.class));
-		props.setTransactionManager(tm);
+		props.setKafkaAwareTransactionManager(tm);
 		this.registry.start();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
@@ -135,8 +135,7 @@ public class CommitOnAssignmentTests {
 		KafkaTransactionManager tm = new KafkaTransactionManager<>(pf);
 		Producer producer = mock(Producer.class);
 		given(pf.createProducer(any())).willReturn(producer);
-		CountDownLatch latch = new CountDownLatch(1);
-		props.setTransactionManager(tm);
+		props.setKafkaAwareTransactionManager(tm);
 		this.registry.start();
 		assertThat(this.config.commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		verify(producer, never()).sendOffsetsToTransaction(any(), any(ConsumerGroupMetadata.class));

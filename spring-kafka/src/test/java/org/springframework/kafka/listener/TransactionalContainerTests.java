@@ -221,7 +221,7 @@ public class TransactionalContainerTests {
 		ContainerProperties props = new ContainerProperties("foo");
 		props.setAckMode(ackMode);
 		props.setGroupId("group");
-		props.setTransactionManager(tm);
+		props.setKafkaAwareTransactionManager(tm);
 		props.setAssignmentCommitOption(AssignmentCommitOption.ALWAYS);
 		props.setEosMode(eosMode);
 		props.setStopContainerWhenFenced(stopWhenFenced);
@@ -329,7 +329,7 @@ public class TransactionalContainerTests {
 		ContainerProperties props = new ContainerProperties(new TopicPartitionOffset("foo", 0),
 				new TopicPartitionOffset("foo", 1));
 		props.setGroupId("group");
-		props.setTransactionManager(tm);
+		props.setKafkaAwareTransactionManager(tm);
 		props.setDeliveryAttemptHeader(true);
 		final KafkaTemplate template = new KafkaTemplate(pf);
 		AtomicReference<Header> delivery = new AtomicReference();
@@ -400,7 +400,7 @@ public class TransactionalContainerTests {
 		ContainerProperties props = new ContainerProperties(new TopicPartitionOffset("foo", 0),
 				new TopicPartitionOffset("foo", 1));
 		props.setGroupId("group");
-		props.setTransactionManager(tm);
+		props.setKafkaAwareTransactionManager(tm);
 		props.setSubBatchPerPartition(false);
 		final KafkaTemplate template = new KafkaTemplate(pf);
 		props.setMessageListener((BatchMessageListener) recordlist -> {
@@ -529,7 +529,7 @@ public class TransactionalContainerTests {
 
 		@SuppressWarnings({ "rawtypes" })
 		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
-		containerProps.setTransactionManager(tm);
+		containerProps.setKafkaAwareTransactionManager(tm);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("testRollbackRecord");
@@ -600,7 +600,7 @@ public class TransactionalContainerTests {
 		testFixLagGuts(topic7, 2);
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked"})
 	private void testFixLagGuts(String topic, int whichTm) throws InterruptedException {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("txTest2", "false", embeddedKafka);
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
@@ -617,7 +617,7 @@ public class TransactionalContainerTests {
 		case 0:
 			break;
 		case 1:
-			containerProps.setTransactionManager(new KafkaTransactionManager<>(pf));
+			containerProps.setKafkaAwareTransactionManager(new KafkaTransactionManager<>(pf));
 			break;
 		case 2:
 			containerProps.setTransactionManager(new SomeOtherTransactionManager());
@@ -656,7 +656,7 @@ public class TransactionalContainerTests {
 		pf.destroy();
 	}
 
-	@SuppressWarnings({ "unchecked"})
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testMaxFailures() throws Exception {
 		String group = "groupInARBP";
@@ -682,7 +682,7 @@ public class TransactionalContainerTests {
 
 		@SuppressWarnings({ "rawtypes" })
 		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
-		containerProps.setTransactionManager(tm);
+		containerProps.setKafkaAwareTransactionManager(tm);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("testMaxFailures");
@@ -787,9 +787,8 @@ public class TransactionalContainerTests {
 			}
 		});
 
-		@SuppressWarnings({ "rawtypes" })
-		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
-		containerProps.setTransactionManager(tm);
+		KafkaTransactionManager<Object, Object> tm = new KafkaTransactionManager<>(pf);
+		containerProps.setKafkaAwareTransactionManager(tm);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("testBatchListenerMaxFailures");
@@ -908,7 +907,7 @@ public class TransactionalContainerTests {
 
 		@SuppressWarnings({ "rawtypes" })
 		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
-		containerProps.setTransactionManager(tm);
+		containerProps.setKafkaAwareTransactionManager(tm);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("testRollbackNoRetries");
@@ -944,7 +943,6 @@ public class TransactionalContainerTests {
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
-	@SuppressWarnings("unchecked")
 	@Test
 	public void testBatchListenerRecoverAfterRollbackProcessorCrash() throws Exception {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testBatchListenerRollbackNoRetries", "false", embeddedKafka);
@@ -971,9 +969,8 @@ public class TransactionalContainerTests {
 			}
 		});
 
-		@SuppressWarnings({ "rawtypes" })
-		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
-		containerProps.setTransactionManager(tm);
+		KafkaTransactionManager<Object, Object> tm = new KafkaTransactionManager<>(pf);
+		containerProps.setKafkaAwareTransactionManager(tm);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("testBatchListenerRollbackNoRetries");
@@ -1049,7 +1046,7 @@ public class TransactionalContainerTests {
 		ContainerProperties props = new ContainerProperties(new TopicPartitionOffset("foo", 0),
 				new TopicPartitionOffset("foo", 1));
 		props.setGroupId("group");
-		props.setTransactionManager(tm);
+		props.setKafkaAwareTransactionManager(tm);
 		DefaultTransactionDefinition def = new DefaultTransactionDefinition();
 		def.setTimeout(42);
 		def.setName("myTx");
@@ -1085,7 +1082,6 @@ public class TransactionalContainerTests {
 		assertThatIllegalStateException().isThrownBy(container::start);
 	}
 
-	@SuppressWarnings("serial")
 	public static class SomeOtherTransactionManager extends AbstractPlatformTransactionManager {
 
 		@Override

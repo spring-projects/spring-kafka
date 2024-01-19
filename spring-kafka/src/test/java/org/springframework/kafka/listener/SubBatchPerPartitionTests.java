@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2022 the original author or authors.
+ * Copyright 2017-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,10 +62,10 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.annotation.DirtiesContext.ClassMode;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
-import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * @author Gary Russell
@@ -156,7 +156,7 @@ public class SubBatchPerPartitionTests {
 
 		containerProps = new ContainerProperties("sbpp");
 		containerProps.setMessageListener(mock(MessageListener.class));
-		containerProps.setTransactionManager(mock(PlatformTransactionManager.class));
+		containerProps.setKafkaAwareTransactionManager(mock(KafkaAwareTransactionManager.class));
 		container = new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.start();
 		assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.subBatchPerPartition"))

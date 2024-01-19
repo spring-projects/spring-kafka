@@ -561,7 +561,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		given(tm.getProducerFactory()).willReturn(pf);
 		Producer producer = mock(Producer.class);
 		given(pf.createProducer()).willReturn(producer);
-		containerProperties.setTransactionManager(tm);
+		containerProperties.setKafkaAwareTransactionManager(tm);
 		List<String> order = new ArrayList<>();
 		CountDownLatch latch = new CountDownLatch(option == null ? 2 : 3);
 		willAnswer(inv -> {
@@ -688,7 +688,6 @@ public class ConcurrentMessageListenerContainerMockTests {
 			.willReturn(consumer);
 		ContainerProperties containerProperties = new ContainerProperties("foo");
 		containerProperties.setGroupId("grp");
-		AtomicReference<List<ConsumerRecord<String, String>>> received = new AtomicReference<>();
 		containerProperties.setMessageListener((MessageListener) rec -> {
 		});
 		containerProperties.setMissingTopicsFatal(false);

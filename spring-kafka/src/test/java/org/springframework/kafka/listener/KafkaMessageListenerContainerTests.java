@@ -3951,7 +3951,7 @@ public class KafkaMessageListenerContainerTests {
 
 	@ParameterizedTest(name = "{index} testInvokeBatchInterceptorAllSkipped early intercept {0}")
 	@ValueSource(booleans = { true, false })
-	@SuppressWarnings({"unchecked"})
+	@SuppressWarnings({ "unchecked", "deprecation" })
 	public void testInvokeBatchInterceptorAllSkipped(boolean early) throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);

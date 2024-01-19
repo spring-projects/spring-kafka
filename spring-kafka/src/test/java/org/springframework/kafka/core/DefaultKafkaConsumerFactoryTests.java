@@ -355,7 +355,7 @@ public class DefaultKafkaConsumerFactoryTests {
 			latch.countDown();
 		});
 		KafkaTransactionManager<Integer, String> tm = new KafkaTransactionManager<>(pfTx);
-		containerProps.setTransactionManager(tm);
+		containerProps.setKafkaAwareTransactionManager(tm);
 		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
 				containerProps);
 		container.start();
@@ -406,7 +406,7 @@ public class DefaultKafkaConsumerFactoryTests {
 			latch.countDown();
 		});
 		KafkaTransactionManager<Integer, String> tm = new KafkaTransactionManager<>(pfTx);
-		containerProps.setTransactionManager(tm);
+		containerProps.setKafkaAwareTransactionManager(tm);
 		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
 				containerProps);
 		container.start();

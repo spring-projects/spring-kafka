@@ -123,6 +123,10 @@ Also see `idleBeforeDataMultiplier`.
 |None
 |Used to override any arbitrary consumer properties configured on the consumer factory.
 
+|[[kafkaAwareTransactionManager]]<<kafkaAwareTransactionManager,`kafkaAwareTransactionManager`>>
+|`null`
+|See xref:kafka/transactions.adoc[Transactions].
+
 |[[listenerTaskExecutor]]<<listenerTaskExecutor,`listenerTaskExecutor`>>
 |`SimpleAsyncTaskExecutor`
 |A task executor to run the consumer threads.
@@ -232,7 +236,7 @@ Mutually exclusive; at least one must be provided; enforced by `ContainerPropert
 
 |[[transactionManager]]<<transactionManager,`transactionManager`>>
 |`null`
-|See xref:kafka/transactions.adoc[Transactions].
+|Deprecated since 3.2, see <<kafkaAwareTransactionManager>>, xref:kafka/transactions.adoc#transaction-synchronization[Other transaction managers].
 |===
 
 [[alc-props]]
