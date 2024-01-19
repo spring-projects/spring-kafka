@@ -16,6 +16,12 @@
 
 package org.springframework.kafka.listener.adapter;
 
+import org.springframework.core.MethodParameter;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
+
+import reactor.core.publisher.Mono;
+
 /**
  * No-op resolver for method arguments of type {@link kotlin.coroutines.Continuation}.
  * <p>
@@ -24,17 +30,9 @@ package org.springframework.kafka.listener.adapter;
  * but for regular {@link HandlerMethodArgumentResolver} contract.
  *
  * @author Wang Zhiyang
- *
  * @since 3.2
- *
  * @see org.springframework.messaging.handler.annotation.reactive.ContinuationHandlerMethodArgumentResolver
  */
-import org.springframework.core.MethodParameter;
-import org.springframework.messaging.Message;
-import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
-
-import reactor.core.publisher.Mono;
-
 public class ContinuationHandlerMethodArgumentResolver implements HandlerMethodArgumentResolver {
 
 	@Override

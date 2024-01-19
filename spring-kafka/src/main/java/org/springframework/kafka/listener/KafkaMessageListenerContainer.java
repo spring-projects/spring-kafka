@@ -104,7 +104,7 @@ import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.listener.ContainerProperties.EOSMode;
-import org.springframework.kafka.listener.adapter.HandlerMethodDetect;
+import org.springframework.kafka.listener.adapter.AsyncRepliesAware;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
@@ -854,7 +854,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType,
 				ObservationRegistry observationRegistry) {
 
-			this.asyncReplies = listener instanceof HandlerMethodDetect hmd && hmd.isAsyncReplies()
+			this.asyncReplies = listener instanceof AsyncRepliesAware hmd && hmd.isAsyncReplies()
 					|| this.containerProperties.isAsyncAcks();
 			AckMode ackMode = determineAckMode();
 			this.isManualAck = ackMode.equals(AckMode.MANUAL);

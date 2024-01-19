@@ -91,7 +91,7 @@ import reactor.core.publisher.Mono;
  * @author Nathan Xu
  * @author Wang ZhiYang
  */
-public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware, HandlerMethodDetect {
+public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware, AsyncRepliesAware {
 
 	private static final SpelExpressionParser PARSER = new SpelExpressionParser();
 

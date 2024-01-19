@@ -17,12 +17,12 @@
 package org.springframework.kafka.listener.adapter;
 
 /**
- * Auto-detect {@link HandlerAdapter} args and return type.
+ * Auto-detect {@link HandlerAdapter} return type.
  *
  * @author Wang zhiyang
  * @since 3.2
  */
-public interface HandlerMethodDetect {
+public interface AsyncRepliesAware {
 
 	/**
 	 * Return true if this listener is request/reply and the replies are async.
