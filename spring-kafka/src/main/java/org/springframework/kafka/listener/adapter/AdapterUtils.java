@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 the original author or authors.
+ * Copyright 2020-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ import reactor.core.publisher.Mono;
  * Utilities for listener adapters.
  *
  * @author Gary Russell
+ * @author Wang Zhiyang
  * @since 2.5
  *
  */
@@ -93,15 +94,33 @@ public final class AdapterUtils {
 				+ KafkaHeaders.REPLY_TOPIC + "']" + PARSER_CONTEXT.getExpressionSuffix();
 	}
 
-	static boolean isAsyncReply(Class<?> resultType) {
+	/**
+	 * Return the true when return types are asynchronous.
+	 * @param  resultType {@code InvocableHandlerMethod} return type.
+	 * @return type is {@code Mono} or {@code CompletableFuture}.
+	 * @since 3.2
+	 */
+	public static boolean isAsyncReply(Class<?> resultType) {
 		return isMono(resultType) || isCompletableFuture(resultType);
 	}
 
-	static boolean isMono(Class<?> resultType) {
+	/**
+	 * Return the true when type is {@code Mono}.
+	 * @param  resultType {@code InvocableHandlerMethod} return type.
+	 * @return type is {@code Mono}.
+	 * @since 3.2
+	 */
+	public static boolean isMono(Class<?> resultType) {
 		return MONO_PRESENT && Mono.class.isAssignableFrom(resultType);
 	}
 
-	static boolean isCompletableFuture(Class<?> resultType) {
+	/**
+	 * Return the true when type is {@code CompletableFuture}.
+	 * @param  resultType {@code InvocableHandlerMethod} return type.
+	 * @return type is {@code CompletableFuture}.
+	 * @since 3.2
+	 */
+	public static boolean isCompletableFuture(Class<?> resultType) {
 		return CompletableFuture.class.isAssignableFrom(resultType);
 	}
 

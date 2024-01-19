@@ -56,7 +56,7 @@ import java.util.concurrent.TimeUnit
 @SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka(topics = ["kotlinAsyncTestTopic1", "kotlinAsyncTestTopic2",
-		"kotlinAsyncBatchTestTopic1", "kotlinAsyncBatchTestTopic2", "sendTopicReply1"])
+		"kotlinAsyncBatchTestTopic1", "kotlinAsyncBatchTestTopic2", "kotlinReplyTopic1"])
 class EnableKafkaKotlinCoroutinesTests {
 
 	@Autowired
@@ -96,8 +96,8 @@ class EnableKafkaKotlinCoroutinesTests {
 	@Test
 	fun `test checkedKh reply`() {
 		this.template.send("kotlinAsyncTestTopic3", "foo")
-		val cr = this.template.receive("sendTopicReply1", 0, 0, Duration.ofSeconds(30))
-		assertThat(cr.value()).isEqualTo("FOO")
+		val cr = this.template.receive("kotlinReplyTopic1", 0, 0, Duration.ofSeconds(30))
+		assertThat(cr?.value() ?: "null").isEqualTo("FOO")
 	}
 
 	@KafkaListener(id = "sendTopic", topics = ["kotlinAsyncTestTopic3"],
@@ -105,7 +105,7 @@ class EnableKafkaKotlinCoroutinesTests {
 	class Listener {
 
 		@KafkaHandler
-		@SendTo("sendTopicReply1")
+		@SendTo("kotlinReplyTopic1")
 		suspend fun handler1(value: String) : String {
 			return value.uppercase()
 		}

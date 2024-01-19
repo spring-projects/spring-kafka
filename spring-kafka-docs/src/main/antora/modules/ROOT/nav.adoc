@@ -11,6 +11,7 @@
 **** xref:kafka/receiving-messages/message-listeners.adoc[]
 **** xref:kafka/receiving-messages/message-listener-container.adoc[]
 **** xref:kafka/receiving-messages/ooo-commits.adoc[]
+**** xref:kafka/receiving-messages/async-returns.adoc[]
 **** xref:kafka/receiving-messages/listener-annotation.adoc[]
 **** xref:kafka/receiving-messages/listener-group-id.adoc[]
 **** xref:kafka/receiving-messages/container-thread-naming.adoc[]

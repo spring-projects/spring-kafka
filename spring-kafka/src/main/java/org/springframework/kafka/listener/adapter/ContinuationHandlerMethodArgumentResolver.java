@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 the original author or authors.
+ * Copyright 2023-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.annotation;
+package org.springframework.kafka.listener.adapter;
 
 /**
  * No-op resolver for method arguments of type {@link kotlin.coroutines.Continuation}.
@@ -25,7 +25,7 @@ package org.springframework.kafka.annotation;
  *
  * @author Wang Zhiyang
  *
- * @since 3.1
+ * @since 3.2
  *
  * @see org.springframework.messaging.handler.annotation.reactive.ContinuationHandlerMethodArgumentResolver
  */

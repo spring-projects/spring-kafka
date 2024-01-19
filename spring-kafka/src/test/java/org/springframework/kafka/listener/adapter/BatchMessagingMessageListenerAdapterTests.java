@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2023 the original author or authors.
+ * Copyright 2019-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,6 +50,7 @@ import reactor.core.publisher.Mono;
 
 /**
  * @author Gary Russell
+ * @author Wang Zhiyang
  * @since 2.2.5
  *
  */
@@ -71,35 +72,36 @@ public class BatchMessagingMessageListenerAdapterTests {
 
 	@SuppressWarnings("unchecked")
 	@Test
-	public void testFutureResult(@Autowired KafkaListenerEndpointRegistry registry, @Autowired Bar bar) {
+	public void testFutureResult(@Autowired KafkaListenerEndpointRegistry registry,
+			@Autowired BatchFuture batchFuture) {
 
 		BatchMessagingMessageListenerAdapter<String, String> adapter =
 				spy((BatchMessagingMessageListenerAdapter<String, String>) registry
-						.getListenerContainer("bar").getContainerProperties().getMessageListener());
+						.getListenerContainer("batchFuture").getContainerProperties().getMessageListener());
 		KafkaUtils.setConsumerGroupId("test.group.future");
 		List<ConsumerRecord<String, String>> list = new ArrayList<>();
-		list.add(new ConsumerRecord<>("bar", 0, 0L, null, "future_1"));
-		list.add(new ConsumerRecord<>("bar", 0, 1L, null, "future_2"));
-		list.add(new ConsumerRecord<>("bar", 1, 0L, null, "future_3"));
+		list.add(new ConsumerRecord<>("batchFuture", 0, 0L, null, "future_1"));
+		list.add(new ConsumerRecord<>("batchFuture", 0, 1L, null, "future_2"));
+		list.add(new ConsumerRecord<>("batchFuture", 1, 0L, null, "future_3"));
 		adapter.onMessage(list, null, null);
-		assertThat(bar.group).isEqualTo("test.group.future");
+		assertThat(batchFuture.group).isEqualTo("test.group.future");
 		verify(adapter, times(1)).asyncSuccess(any(), any(), any(), anyBoolean());
 		verify(adapter, times(1)).acknowledge(any());
 	}
 
 	@SuppressWarnings("unchecked")
 	@Test
-	public void testMonoResult(@Autowired KafkaListenerEndpointRegistry registry, @Autowired Baz baz) {
+	public void testMonoResult(@Autowired KafkaListenerEndpointRegistry registry, @Autowired BatchMono batchMono) {
 
 		BatchMessagingMessageListenerAdapter<String, String> adapter =
 				spy((BatchMessagingMessageListenerAdapter<String, String>) registry
-						.getListenerContainer("baz").getContainerProperties().getMessageListener());
+						.getListenerContainer("batchMono").getContainerProperties().getMessageListener());
 		KafkaUtils.setConsumerGroupId("test.group.mono");
 		List<ConsumerRecord<String, String>> list = new ArrayList<>();
-		list.add(new ConsumerRecord<>("baz", 0, 0L, null, "mono_1"));
-		list.add(new ConsumerRecord<>("baz", 0, 1L, null, "mono_2"));
+		list.add(new ConsumerRecord<>("batchMono", 0, 0L, null, "mono_1"));
+		list.add(new ConsumerRecord<>("batchMono", 0, 1L, null, "mono_2"));
 		adapter.onMessage(list, null, null);
-		assertThat(baz.group).isEqualTo("test.group.mono");
+		assertThat(batchMono.group).isEqualTo("test.group.mono");
 		verify(adapter, times(1)).asyncSuccess(any(), any(), any(), anyBoolean());
 		verify(adapter, times(1)).acknowledge(any());
 	}
@@ -118,11 +120,11 @@ public class BatchMessagingMessageListenerAdapterTests {
 
 	}
 
-	public static class Bar {
+	public static class BatchFuture {
 
 		public volatile String group;
 
-		@KafkaListener(id = "bar", topics = "bar", autoStartup = "false")
+		@KafkaListener(id = "batchFuture", topics = "batchFuture", autoStartup = "false")
 		public CompletableFuture<String> listen(List<String> list, @Header(KafkaHeaders.GROUP_ID) String groupId) {
 
 			this.group = groupId;
@@ -133,13 +135,13 @@ public class BatchMessagingMessageListenerAdapterTests {
 
 	}
 
-	public static class Baz {
+	public static class BatchMono {
 
 		public volatile String value = "someValue";
 
 		public volatile String group;
 
-		@KafkaListener(id = "baz", topics = "baz", autoStartup = "false")
+		@KafkaListener(id = "batchMono", topics = "batchMono", autoStartup = "false")
 		public Mono<Integer> listen(List<String> list, @Header(KafkaHeaders.GROUP_ID) String groupId) {
 
 			this.group = groupId;
@@ -158,13 +160,13 @@ public class BatchMessagingMessageListenerAdapterTests {
 		}
 
 		@Bean
-		public Bar bar() {
-			return new Bar();
+		public BatchFuture batchFuture() {
+			return new BatchFuture();
 		}
 
 		@Bean
-		public Baz baz() {
-			return new Baz();
+		public BatchMono batchMono() {
+			return new BatchMono();
 		}
 
 		@SuppressWarnings({ "rawtypes" })
