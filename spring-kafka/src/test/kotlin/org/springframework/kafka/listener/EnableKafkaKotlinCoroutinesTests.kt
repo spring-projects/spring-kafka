@@ -56,7 +56,7 @@ import java.util.concurrent.TimeUnit
 @SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka(topics = ["kotlinAsyncTestTopic1", "kotlinAsyncTestTopic2",
-		"kotlinAsyncBatchTestTopic1", "kotlinAsyncBatchTestTopic2", "kotlinReplyTopic1"])
+		"kotlinAsyncBatchTestTopic1", "kotlinAsyncBatchTestTopic2", "kotlinReplyTopic1"], partitions = 1)
 class EnableKafkaKotlinCoroutinesTests {
 
 	@Autowired

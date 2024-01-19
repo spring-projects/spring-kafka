@@ -30,7 +30,9 @@ import reactor.core.publisher.Mono;
  * but for regular {@link HandlerMethodArgumentResolver} contract.
  *
  * @author Wang Zhiyang
+ *
  * @since 3.2
+ *
  * @see org.springframework.messaging.handler.annotation.reactive.ContinuationHandlerMethodArgumentResolver
  */
 public class ContinuationHandlerMethodArgumentResolver implements HandlerMethodArgumentResolver {

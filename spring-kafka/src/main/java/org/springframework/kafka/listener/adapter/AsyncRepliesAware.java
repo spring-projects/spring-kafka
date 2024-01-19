@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 the original author or authors.
+ * Copyright 2023-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,15 +17,16 @@
 package org.springframework.kafka.listener.adapter;
 
 /**
- * Auto-detect {@link HandlerAdapter} return type.
+ * Message handler adapter implementing this interface can detect {@link HandlerAdapter} async return types.
  *
  * @author Wang zhiyang
+ *
  * @since 3.2
  */
 public interface AsyncRepliesAware {
 
 	/**
-	 * Return true if this listener is request/reply and the replies are async.
+	 * Return true if the {@link HandlerAdapter} return type is async.
 	 * @return true for async replies.
 	 * @since 3.2
 	 */

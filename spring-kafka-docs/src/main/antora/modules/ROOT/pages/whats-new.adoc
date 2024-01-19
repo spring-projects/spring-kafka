@@ -17,5 +17,5 @@ See xref:kafka/transactions.adoc#transaction-id-suffix-fixed[Fixed TransactionId
 [[x32-async-return]]
 === Async @KafkaListener Return
 
-`@KafkaListener` (and `@KafkaHandler`) methods can now return asynchronous return types `CompletableFuture<?>` and `Mono<?>`.
+`@KafkaListener` (and `@KafkaHandler`) methods can now return asynchronous return types include `CompletableFuture<?>`, `Mono<?>` and Kotlin `suspend` functions.
 See xref:kafka/receiving-messages/async-returns.adoc[Async Returns] for more information.
