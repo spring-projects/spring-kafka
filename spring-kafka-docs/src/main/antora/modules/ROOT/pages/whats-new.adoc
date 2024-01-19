@@ -27,3 +27,9 @@ It's now possible to redirect messages to the custom DLTs based on the type of t
 Rules for the redirection are set either via the `RetryableTopic.exceptionBasedDltRouting` or the `RetryTopicConfigurationBuilder.dltRoutingRules`.
 Custom DLTs are created automatically as well as other retry and dead-letter topics.
 See xref:retrytopic/features.adoc#exc-based-custom-dlt-routing[Routing of messages to custom DLTs based on thrown exceptions] for more information.
+
+[[x32-after-rollback-processing]]
+=== After Rollback Processing
+
+A new `AfterRollbackProcessor` API `processBatch` is provided.
+See xref:kafka/annotation-error-handling.adoc#after-rollback[After-rollback Processor] for more information.
