@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ package org.springframework.kafka.retrytopic;
  * processing caused the configured exception to be thrown.
  *
  * @author Adrian Chlebosz
- * @see org.springframework.kafka.retrytopic.ExceptionBasedDltRouting
+ *
  * @since 3.2.0
  */
 public @interface ExceptionBasedDltDestination {
@@ -31,7 +31,6 @@ public @interface ExceptionBasedDltDestination {
 	 * before the main suffix configured through the
 	 * ${@link org.springframework.kafka.annotation.RetryableTopic#dltTopicSuffix()}, so the
 	 * final name is the product of these two.
-	 *
 	 * @return the configured suffix extension
 	 */
 	String suffix();
@@ -41,7 +40,6 @@ public @interface ExceptionBasedDltDestination {
 	 * it should be eventually redirected to the DLT with name containing the extension
 	 * configured through {@link #suffix()}. The causes of the thrown exception will be
 	 * traversed to match with any of configured ones.
-	 *
 	 * @return configured exceptions
 	 */
 	Class<? extends Throwable>[] exceptions();

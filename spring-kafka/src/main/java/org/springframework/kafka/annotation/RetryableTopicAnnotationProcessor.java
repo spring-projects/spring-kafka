@@ -38,7 +38,6 @@ import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.retrytopic.ExceptionBasedDltDestination;
-import org.springframework.kafka.retrytopic.ExceptionBasedDltRouting;
 import org.springframework.kafka.retrytopic.RetryTopicBeanNames;
 import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurationBuilder;
@@ -215,8 +214,8 @@ public class RetryableTopicAnnotationProcessor {
 		return policy;
 	}
 
-	private Map<String, Set<Class<? extends Throwable>>> createDltRoutingSpecFromAnnotation(ExceptionBasedDltRouting routingSpec) {
-		return Arrays.stream(routingSpec.routingRules())
+	private Map<String, Set<Class<? extends Throwable>>> createDltRoutingSpecFromAnnotation(ExceptionBasedDltDestination[] routingRules) {
+		return Arrays.stream(routingRules)
 			.collect(Collectors.toMap(ExceptionBasedDltDestination::suffix, excBasedDestDlt -> Set.of(excBasedDestDlt.exceptions())));
 	}
 

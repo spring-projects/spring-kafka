@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -196,8 +196,31 @@ public class DestinationTopic {
 		 * @param shouldRetryOn the exception classifications.
 		 * @param timeout the timeout.
 		 * @param autoStartDltHandler whether or not to start the DLT handler.
-		 * @param usedForExceptions the exceptions which destination is intended for
 		 * @since 2.8
+		 */
+		public Properties(long delayMs, String suffix, Type type,
+				int maxAttempts, int numPartitions,
+				DltStrategy dltStrategy,
+				KafkaOperations<?, ?> kafkaOperations,
+				BiPredicate<Integer, Throwable> shouldRetryOn, long timeout, @Nullable Boolean autoStartDltHandler) {
+			this(delayMs, suffix, type, maxAttempts, numPartitions, dltStrategy, kafkaOperations, shouldRetryOn,
+					timeout, autoStartDltHandler, Collections.emptySet());
+		}
+
+		/**
+		 * Create an instance with the provided properties.
+		 * @param delayMs the delay in ms.
+		 * @param suffix the suffix.
+		 * @param type the type.
+		 * @param maxAttempts the max attempts.
+		 * @param numPartitions the number of partitions.
+		 * @param dltStrategy the DLT strategy.
+		 * @param kafkaOperations the {@link KafkaOperations}.
+		 * @param shouldRetryOn the exception classifications.
+		 * @param timeout the timeout.
+		 * @param autoStartDltHandler whether or not to start the DLT handler.
+		 * @param usedForExceptions the exceptions which destination is intended for
+		 * @since 3.2
 		 */
 		public Properties(long delayMs, String suffix, Type type,
 				int maxAttempts, int numPartitions,

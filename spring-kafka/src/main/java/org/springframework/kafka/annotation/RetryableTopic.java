@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import org.springframework.kafka.retrytopic.DltStrategy;
-import org.springframework.kafka.retrytopic.ExceptionBasedDltRouting;
+import org.springframework.kafka.retrytopic.ExceptionBasedDltDestination;
 import org.springframework.kafka.retrytopic.RetryTopicConstants;
 import org.springframework.kafka.retrytopic.SameIntervalTopicReuseStrategy;
 import org.springframework.kafka.retrytopic.TopicSuffixingStrategy;
@@ -178,7 +178,7 @@ public @interface RetryableTopic {
 	 * exception thrown during the processing.
 	 * @return the exception based DLT routing
 	 */
-	ExceptionBasedDltRouting exceptionBasedDltRouting() default @ExceptionBasedDltRouting;
+	ExceptionBasedDltDestination[] exceptionBasedDltRouting() default {};
 
 	/**
 	 * Whether the retry topics will be suffixed with the delay value for that topic or a

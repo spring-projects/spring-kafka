@@ -85,8 +85,34 @@ public class DestinationTopicPropertiesFactory {
 	 * @param topicSuffixingStrategy the topic suffixing strategy.
 	 * @param sameIntervalTopicReuseStrategy the same interval reuse strategy.
 	 * @param timeout the timeout.
-	 * @param dltRoutingRules the specification of which DLT should be used for the particular exception type
 	 * @since 3.0.12
+	 */
+	public DestinationTopicPropertiesFactory(String retryTopicSuffix, String dltSuffix, List<Long> backOffValues,
+			BinaryExceptionClassifier exceptionClassifier,
+			int numPartitions, KafkaOperations<?, ?> kafkaOperations,
+			DltStrategy dltStrategy,
+			TopicSuffixingStrategy topicSuffixingStrategy,
+			SameIntervalTopicReuseStrategy sameIntervalTopicReuseStrategy,
+			long timeout) {
+
+		this(retryTopicSuffix, dltSuffix, backOffValues, exceptionClassifier, numPartitions, kafkaOperations,
+				dltStrategy, topicSuffixingStrategy, sameIntervalTopicReuseStrategy, timeout, Collections.emptyMap());
+	}
+
+	/**
+	 * Construct an instance with the provided properties.
+	 * @param retryTopicSuffix the suffix.
+	 * @param dltSuffix the dlt suffix.
+	 * @param backOffValues the back off values.
+	 * @param exceptionClassifier the exception classifier.
+	 * @param numPartitions the number of partitions.
+	 * @param kafkaOperations the operations.
+	 * @param dltStrategy the dlt strategy.
+	 * @param topicSuffixingStrategy the topic suffixing strategy.
+	 * @param sameIntervalTopicReuseStrategy the same interval reuse strategy.
+	 * @param timeout the timeout.
+	 * @param dltRoutingRules the specification of which DLT should be used for the particular exception type
+	 * @since 3.2.0
 	 */
 	public DestinationTopicPropertiesFactory(String retryTopicSuffix, String dltSuffix, List<Long> backOffValues,
 			BinaryExceptionClassifier exceptionClassifier,

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -153,6 +153,11 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 				() -> "No DestinationTopic found for " + mainListenerId + ":" + topic).getSourceDestination();
 	}
 
+	@Override
+	public DestinationTopic getDltFor(String mainListenerId, String topicName) {
+		return getDltFor(mainListenerId, topicName, null);
+	}
+
 	@Nullable
 	@Override
 	public DestinationTopic getDltFor(String mainListenerId, String topicName, Exception e) {
@@ -181,6 +186,10 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 	}
 
 	private static boolean isDirectExcOrCause(Exception e, Class<? extends Throwable> excType) {
+		if (e == null) {
+			return false;
+		}
+
 		Throwable toMatch = e;
 
 		boolean isMatched = excType.isInstance(toMatch);

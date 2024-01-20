@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -79,7 +79,7 @@ public class RetryTopicConfigurationBuilder {
 	@Nullable
 	private BinaryExceptionClassifierBuilder classifierBuilder;
 
-	private Map<String, Set<Class<? extends Throwable>>> dltRoutingRules = new HashMap<>();
+	private final Map<String, Set<Class<? extends Throwable>>> dltRoutingRules = new HashMap<>();
 
 	private DltStrategy dltStrategy = DltStrategy.ALWAYS_RETRY_ON_ERROR;
 
@@ -539,7 +539,7 @@ public class RetryTopicConfigurationBuilder {
 	 * @since 3.2.0
 	 */
 	public RetryTopicConfigurationBuilder dltRoutingRules(Map<String, Set<Class<? extends Throwable>>> dltRoutingRules) {
-		this.dltRoutingRules = dltRoutingRules;
+		this.dltRoutingRules.putAll(dltRoutingRules);
 		return this;
 	}
 
