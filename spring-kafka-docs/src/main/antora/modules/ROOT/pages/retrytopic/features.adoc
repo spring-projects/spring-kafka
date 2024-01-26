@@ -265,11 +265,11 @@ It is recommended that you use the provided resolvers when constructing the cust
 == Routing of messages to custom DLTs based on thrown exceptions
 
 Starting with version 3.2.0, it's possible to route messages to custom DLTs based on the type of the exception, which has been thrown during their processing.
-In order to do that, you need to specify the routing.
+In order to do that, there's a need to specify the routing.
 Routing customization consists of the specification of the additional destinations.
 Destinations in turn consist of two settings: the `suffix` and `exceptions`.
 When the exception type specified in `exceptions` has been thrown, the DLT containing the `suffix` will be considered as the target topic for the message before the general purpose DLT is considered.
-Take a look at the examples:
+Examples of configuration using either annotations or `RetryTopicConfiguration` beans:
 
 [source, java]
 ----

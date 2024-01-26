@@ -18,6 +18,8 @@ package org.springframework.kafka.retrytopic;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -128,7 +130,7 @@ public class DestinationTopicPropertiesFactory {
 		this.numPartitions = numPartitions;
 		this.timeout = timeout;
 		this.destinationTopicSuffixes = new DestinationTopicSuffixes(retryTopicSuffix, dltSuffix);
-		this.dltRoutingRules = dltRoutingRules;
+		this.dltRoutingRules = copyDltRoutingRules(dltRoutingRules);
 		this.backOffValues = backOffValues;
 		int backOffValuesSize = this.backOffValues.size();
 		this.isSameIntervalReuse = SameIntervalTopicReuseStrategy.SINGLE_TOPIC.equals(sameIntervalTopicReuseStrategy);
@@ -139,6 +141,12 @@ public class DestinationTopicPropertiesFactory {
 		this.shouldRetryOn = (attempt, throwable) -> attempt < this.maxAttempts
 				&& exceptionClassifier.classify(throwable);
 		this.retryTopicsAmount = backOffValuesSize - reusableTopicAttempts();
+	}
+
+	private Map<String, Set<Class<? extends Throwable>>> copyDltRoutingRules(Map<String, Set<Class<? extends Throwable>>> dltRoutingRules) {
+		Map<String, Set<Class<? extends Throwable>>> copyOfDltRoutingRules = new HashMap<>();
+		dltRoutingRules.forEach((topicSuffix, exceptions) -> copyOfDltRoutingRules.put(topicSuffix, new HashSet<>(exceptions)));
+		return copyOfDltRoutingRules;
 	}
 
 	/**
@@ -159,8 +167,8 @@ public class DestinationTopicPropertiesFactory {
 			list.add(createRetryProperties(backOffIndex));
 		}
 		if (!DltStrategy.NO_DLT.equals(this.dltStrategy)) {
-			list.add(createDltProperties());
 			list.addAll(createCustomDltProperties());
+			list.add(createDltProperties());
 		}
 		return Collections.unmodifiableList(list);
 	}

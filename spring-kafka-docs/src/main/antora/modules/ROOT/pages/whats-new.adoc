@@ -19,3 +19,11 @@ See xref:kafka/transactions.adoc#transaction-id-suffix-fixed[Fixed TransactionId
 
 `@KafkaListener` (and `@KafkaHandler`) methods can now return asynchronous return types include `CompletableFuture<?>`, `Mono<?>` and Kotlin `suspend` functions.
 See xref:kafka/receiving-messages/async-returns.adoc[Async Returns] for more information.
+
+[[x32-customizable-dlt-routing]]
+=== Routing of messages to custom DLTs based on thrown exceptions
+
+It's now possible to redirect messages to the custom DLTs based on the type of the exception, which has been thrown during the message processing.
+Rules for the redirection are set either via the `RetryableTopic.exceptionBasedDltRouting` or the `RetryTopicConfigurationBuilder.dltRoutingRules`.
+Custom DLTs are created automatically as well as other retry and dead-letter topics.
+See xref:retrytopic/features.adoc#exc-based-custom-dlt-routing[Routing of messages to custom DLTs based on thrown exceptions] for more information.

@@ -154,8 +154,7 @@ public class RetryableTopicAnnotationProcessor {
 				.setTopicSuffixingStrategy(annotation.topicSuffixingStrategy())
 				.sameIntervalTopicReuseStrategy(annotation.sameIntervalTopicReuseStrategy())
 				.timeoutAfter(timeout)
-				.dltRoutingRules(createDltRoutingSpecFromAnnotation(annotation.exceptionBasedDltRouting()))
-				.timeoutAfter(timeout);
+				.dltRoutingRules(createDltRoutingSpecFromAnnotation(annotation.exceptionBasedDltRouting()));
 
 		Integer attempts = resolveExpressionAsInteger(annotation.attempts(), "attempts", true);
 		if (attempts != null) {

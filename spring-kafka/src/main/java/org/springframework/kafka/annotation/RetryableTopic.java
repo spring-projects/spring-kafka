@@ -177,6 +177,7 @@ public @interface RetryableTopic {
 	 * The DLT routing allowing to redirect the message to the custom DLT based on the
 	 * exception thrown during the processing.
 	 * @return the exception based DLT routing
+	 * @since 3.2.0
 	 */
 	ExceptionBasedDltDestination[] exceptionBasedDltRouting() default {};
 
