@@ -19,7 +19,6 @@ package org.springframework.kafka.retrytopic;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -38,6 +37,7 @@ import org.springframework.retry.backoff.FixedBackOffPolicy;
 
 /**
  * @author Tomaz Fernandes
+ * @author Wang Zhiyang
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
@@ -124,7 +124,6 @@ class DestinationTopicPropertiesFactoryTests {
 	}
 
 	@Test
-	@SuppressWarnings("deprecation")
 	void shouldCreateTwoRetryPropertiesForMultipleBackoffValues() {
 		// when
 		ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
@@ -143,7 +142,7 @@ class DestinationTopicPropertiesFactoryTests {
 		List<DestinationTopic> destinationTopicList = propertiesList
 				.stream()
 				.map(properties -> new DestinationTopic("mainTopic" + properties.suffix(), properties))
-				.collect(Collectors.toList());
+				.toList();
 
 		// then
 		assertThat(propertiesList.size() == 4).isTrue();
@@ -197,7 +196,6 @@ class DestinationTopicPropertiesFactoryTests {
 	}
 
 	@Test
-	@SuppressWarnings("deprecation")
 	void shouldCreateOneRetryPropertyForFixedBackoffWithSingleTopicSameIntervalReuseStrategy() {
 
 		// when
@@ -216,7 +214,7 @@ class DestinationTopicPropertiesFactoryTests {
 		List<DestinationTopic> destinationTopicList = propertiesList
 				.stream()
 				.map(properties -> new DestinationTopic("mainTopic" + properties.suffix(), properties))
-				.collect(Collectors.toList());
+				.toList();
 
 		// then
 		assertThat(propertiesList.size() == 3).isTrue();
@@ -239,7 +237,6 @@ class DestinationTopicPropertiesFactoryTests {
 	}
 
 	@Test
-	@SuppressWarnings("deprecation")
 	void shouldCreateRetryPropertiesForFixedBackoffWithMultiTopicStrategy() {
 
 		// when
@@ -258,7 +255,7 @@ class DestinationTopicPropertiesFactoryTests {
 		List<DestinationTopic> destinationTopicList = propertiesList
 				.stream()
 				.map(properties -> new DestinationTopic("mainTopic" + properties.suffix(), properties))
-				.collect(Collectors.toList());
+				.toList();
 
 		// then
 		assertThat(propertiesList.size() == 4).isTrue();
@@ -288,7 +285,6 @@ class DestinationTopicPropertiesFactoryTests {
 	}
 
 	@Test
-	@SuppressWarnings("deprecation")
 	void shouldSuffixRetryTopicsWithIndexIfSuffixWithIndexStrategy() {
 
 		// setup
@@ -305,11 +301,10 @@ class DestinationTopicPropertiesFactoryTests {
 
 		// then
 		IntStream.range(1, maxAttempts).forEach(index -> assertThat(propertiesList.get(index).suffix())
-				.isEqualTo(retryTopicSuffix + "-" + String.valueOf(index - 1)));
+				.isEqualTo(retryTopicSuffix + "-" + (index - 1)));
 	}
 
 	@Test
-	@SuppressWarnings("deprecation")
 	void shouldSuffixRetryTopicsWithIndexIfFixedDelayWithMultipleTopics() {
 
 		// setup
@@ -328,11 +323,10 @@ class DestinationTopicPropertiesFactoryTests {
 		// then
 		IntStream.range(1, maxAttempts)
 				.forEach(index -> assertThat(propertiesList.get(index).suffix()).isEqualTo(retryTopicSuffix +
-						"-" + String.valueOf(index - 1)));
+						"-" + (index - 1)));
 	}
 
 	@Test
-	@SuppressWarnings("deprecation")
 	void shouldSuffixRetryTopicsWithMixedIfMaxDelayReached() {
 
 		// setup
@@ -351,7 +345,6 @@ class DestinationTopicPropertiesFactoryTests {
 		List<DestinationTopic.Properties> propertiesList = factory.createProperties();
 
 		// then
-		assertThat(factory.retryTopicsAmount() == 4).isTrue();
 		assertThat(propertiesList.size() == 6).isTrue();
 		assertThat(propertiesList.get(0).suffix()).isEqualTo("");
 		assertThat(propertiesList.get(1).suffix()).isEqualTo(retryTopicSuffix + "-1000");
@@ -362,7 +355,6 @@ class DestinationTopicPropertiesFactoryTests {
 	}
 
 	@Test
-	@SuppressWarnings("deprecation")
 	void shouldReuseRetryTopicsIfMaxDelayReachedWithDelayValueSuffixingStrategy() {
 
 		// setup
@@ -381,17 +373,15 @@ class DestinationTopicPropertiesFactoryTests {
 		List<DestinationTopic.Properties> propertiesList = factory.createProperties();
 
 		// then
-		assertThat(factory.retryTopicsAmount()).isEqualTo(3);
 		assertThat(propertiesList.size()).isEqualTo(5);
 		assertThat(propertiesList.get(0).suffix()).isEqualTo("");
-		assertRetryTopic(propertiesList.get(1), maxAttempts, 1000L, retryTopicSuffix + "-1000", false, false);
-		assertRetryTopic(propertiesList.get(2), maxAttempts, 2000L, retryTopicSuffix + "-2000", false, false);
-		assertRetryTopic(propertiesList.get(3), maxAttempts, 3000L, retryTopicSuffix + "-3000", true, false);
+		assertRetryTopic(propertiesList.get(1), maxAttempts, 1000L, retryTopicSuffix + "-1000", false);
+		assertRetryTopic(propertiesList.get(2), maxAttempts, 2000L, retryTopicSuffix + "-2000", false);
+		assertRetryTopic(propertiesList.get(3), maxAttempts, 3000L, retryTopicSuffix + "-3000", true);
 		assertThat(propertiesList.get(4).suffix()).isEqualTo(dltSuffix);
 	}
 
 	@Test
-	@SuppressWarnings("deprecation")
 	void shouldReuseRetryTopicsIfMaxDelayReachedWithIndexValueSuffixingStrategy() {
 
 		// setup
@@ -410,17 +400,15 @@ class DestinationTopicPropertiesFactoryTests {
 		List<DestinationTopic.Properties> propertiesList = factory.createProperties();
 
 		// then
-		assertThat(factory.retryTopicsAmount()).isEqualTo(3);
 		assertThat(propertiesList.size()).isEqualTo(5);
 		assertThat(propertiesList.get(0).suffix()).isEqualTo("");
-		assertRetryTopic(propertiesList.get(1), maxAttempts, 1000L, retryTopicSuffix + "-0", false, false);
-		assertRetryTopic(propertiesList.get(2), maxAttempts, 2000L, retryTopicSuffix + "-1", false, false);
-		assertRetryTopic(propertiesList.get(3), maxAttempts, 3000L, retryTopicSuffix + "-2", true, false);
+		assertRetryTopic(propertiesList.get(1), maxAttempts, 1000L, retryTopicSuffix + "-0", false);
+		assertRetryTopic(propertiesList.get(2), maxAttempts, 2000L, retryTopicSuffix + "-1", false);
+		assertRetryTopic(propertiesList.get(3), maxAttempts, 3000L, retryTopicSuffix + "-2", true);
 		assertThat(propertiesList.get(4).suffix()).isEqualTo(dltSuffix);
 	}
 
 	@Test
-	@SuppressWarnings("deprecation")
 	void shouldNotReuseRetryTopicsIfRepeatedIntervalsAreInTheMiddleOfChain() {
 
 		// setup
@@ -435,21 +423,18 @@ class DestinationTopicPropertiesFactoryTests {
 		List<DestinationTopic.Properties> propertiesList = factory.createProperties();
 
 		// then
-		assertThat(factory.retryTopicsAmount()).isEqualTo(5);
 		assertThat(propertiesList.size()).isEqualTo(7);
 		assertThat(propertiesList.get(0).suffix()).isEqualTo("");
-		assertRetryTopic(propertiesList.get(1), maxAttempts, 1000L, retryTopicSuffix + "-1000", false, false);
-		assertRetryTopic(propertiesList.get(2), maxAttempts, 2000L, retryTopicSuffix + "-2000-0", false, false);
-		assertRetryTopic(propertiesList.get(3), maxAttempts, 2000L, retryTopicSuffix + "-2000-1", false, false);
-		assertRetryTopic(propertiesList.get(4), maxAttempts, 2000L, retryTopicSuffix + "-2000-2", false, false);
-		assertRetryTopic(propertiesList.get(5), maxAttempts, 3000L, retryTopicSuffix + "-3000", false, false);
+		assertRetryTopic(propertiesList.get(1), maxAttempts, 1000L, retryTopicSuffix + "-1000", false);
+		assertRetryTopic(propertiesList.get(2), maxAttempts, 2000L, retryTopicSuffix + "-2000-0", false);
+		assertRetryTopic(propertiesList.get(3), maxAttempts, 2000L, retryTopicSuffix + "-2000-1", false);
+		assertRetryTopic(propertiesList.get(4), maxAttempts, 2000L, retryTopicSuffix + "-2000-2", false);
+		assertRetryTopic(propertiesList.get(5), maxAttempts, 3000L, retryTopicSuffix + "-3000", false);
 		assertThat(propertiesList.get(6).suffix()).isEqualTo(dltSuffix);
 	}
 
-	@SuppressWarnings("deprecation")
 	private void assertRetryTopic(DestinationTopic.Properties topicProperties, int maxAttempts,
-			Long expectedDelay, String expectedSuffix, boolean expectedReusableTopic,
-			boolean expectedIsSingleTopicRetry) {
+			Long expectedDelay, String expectedSuffix, boolean expectedReusableTopic) {
 		assertThat(topicProperties.suffix()).isEqualTo(expectedSuffix);
 		assertThat(topicProperties.isRetryTopic()).isTrue();
 		DestinationTopic topic = new DestinationTopic("irrelevant" + topicProperties.suffix(), topicProperties);
