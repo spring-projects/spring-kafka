@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -95,8 +95,8 @@ public class DestinationTopicPropertiesFactory {
 		this.timeout = timeout;
 		this.destinationTopicSuffixes = new DestinationTopicSuffixes(retryTopicSuffix, dltSuffix);
 		this.backOffValues = backOffValues;
-		// Max Attempts to include the initial try.
 		int backOffValuesSize = this.backOffValues.size();
+		// Max Attempts to include the initial try.
 		this.maxAttempts = backOffValuesSize + 1;
 		this.shouldRetryOn = (attempt, throwable) -> attempt < this.maxAttempts
 				&& exceptionClassifier.classify(throwable);
