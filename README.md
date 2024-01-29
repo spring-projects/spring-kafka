@@ -60,7 +60,7 @@ To generate IDEA metadata (.iml and .ipr files), do the following:
 # Resources
 
 For more information, please visit the Spring Kafka website at:
-[Reference Manual](https://docs.spring.io/spring-kafka/docs/current/reference/html/)
+[Reference Manual](https://docs.spring.io/spring-kafka/reference/index.html)
 
 # Contributing to Spring Kafka
 
