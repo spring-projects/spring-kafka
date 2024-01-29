@@ -16,9 +16,10 @@
 
 package org.springframework.kafka.retrytopic;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.BiPredicate;
-import java.util.stream.IntStream;
 
 import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.kafka.core.KafkaOperations;
@@ -96,14 +97,14 @@ public class DestinationTopicPropertiesFactory {
 		this.destinationTopicSuffixes = new DestinationTopicSuffixes(retryTopicSuffix, dltSuffix);
 		this.backOffValues = backOffValues;
 		int backOffValuesSize = this.backOffValues.size();
+		this.isSameIntervalReuse = SameIntervalTopicReuseStrategy.SINGLE_TOPIC.equals(sameIntervalTopicReuseStrategy);
+		this.isFixedDelay = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE.equals(topicSuffixingStrategy)
+				|| backOffValuesSize > 1 && backOffValues.stream().distinct().count() == 1;
 		// Max Attempts to include the initial try.
 		this.maxAttempts = backOffValuesSize + 1;
 		this.shouldRetryOn = (attempt, throwable) -> attempt < this.maxAttempts
 				&& exceptionClassifier.classify(throwable);
-		this.isSameIntervalReuse = SameIntervalTopicReuseStrategy.SINGLE_TOPIC.equals(sameIntervalTopicReuseStrategy);
 		this.retryTopicsAmount = backOffValuesSize - reusableTopicAttempts();
-		this.isFixedDelay = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE.equals(topicSuffixingStrategy)
-				|| backOffValuesSize > 1 && backOffValues.stream().distinct().count() == 1;
 	}
 
 	/**
@@ -118,21 +119,15 @@ public class DestinationTopicPropertiesFactory {
 	}
 
 	public List<DestinationTopic.Properties> createProperties() {
-		int topicAmount = DltStrategy.NO_DLT.equals(this.dltStrategy)
-				? this.retryTopicsAmount
-				: this.retryTopicsAmount + 1;
-		return IntStream
-				.rangeClosed(0, topicAmount)
-				.mapToObj(this::createTopicProperties)
-				.toList();
-	}
-
-	private DestinationTopic.Properties createTopicProperties(int index) {
-		return index == 0
-				? createMainTopicProperties()
-				: index <= this.retryTopicsAmount
-					? createRetryProperties(index)
-					: createDltProperties();
+		List<DestinationTopic.Properties> list = new ArrayList<>(this.retryTopicsAmount + 2);
+		list.add(createMainTopicProperties());
+		for (int backOffIndex = 0; backOffIndex < this.retryTopicsAmount; backOffIndex++) {
+			list.add(createRetryProperties(backOffIndex));
+		}
+		if (!DltStrategy.NO_DLT.equals(this.dltStrategy)) {
+			list.add(createDltProperties());
+		}
+		return Collections.unmodifiableList(list);
 	}
 
 	private DestinationTopic.Properties createMainTopicProperties() {
@@ -146,30 +141,25 @@ public class DestinationTopicPropertiesFactory {
 				this.kafkaOperations, (a, e) -> false, this.timeout, this.autoStartDltHandler);
 	}
 
-	private DestinationTopic.Properties createRetryProperties(int index) {
-		int indexInBackoffValues = index - 1;
-		long thisBackOffValue = this.backOffValues.get(indexInBackoffValues);
-		return createProperties(thisBackOffValue, getTopicSuffix(indexInBackoffValues, thisBackOffValue));
+	private DestinationTopic.Properties createRetryProperties(int backOffIndex) {
+		long thisBackOffValue = this.backOffValues.get(backOffIndex);
+		return createProperties(thisBackOffValue, getTopicSuffix(backOffIndex, thisBackOffValue));
 	}
 
-	private String getTopicSuffix(int indexInBackoffValues, long thisBackOffValue) {
+	private String getTopicSuffix(int backOffIndex, long thisBackOffValue) {
 		if (this.isSameIntervalReuse && this.retryTopicsAmount == 1) {
 			return this.destinationTopicSuffixes.getRetrySuffix();
 		}
 		else if (this.isFixedDelay) {
-			return joinWithRetrySuffix(indexInBackoffValues);
+			return joinWithRetrySuffix(backOffIndex);
 		}
 		else {
 			String retrySuffix = joinWithRetrySuffix(thisBackOffValue);
 			if (!this.isSameIntervalReuse && hasDuplicates(thisBackOffValue)) {
-				return retrySuffix.concat("-" + getIndexInBackoffValues(indexInBackoffValues, thisBackOffValue));
+				return retrySuffix.concat("-" + (backOffIndex - this.backOffValues.indexOf(thisBackOffValue)));
 			}
 			return retrySuffix;
 		}
-	}
-
-	private int getIndexInBackoffValues(int indexInBackoffValues, Long thisBackOffValue) {
-		return indexInBackoffValues - this.backOffValues.indexOf(thisBackOffValue);
 	}
 
 	private DestinationTopic.Type getDestinationTopicType(Long backOffValue) {
@@ -197,9 +187,8 @@ public class DestinationTopicPropertiesFactory {
 	}
 
 	private DestinationTopic.Properties createProperties(long delayMs, String suffix) {
-		return new DestinationTopic.Properties(delayMs, suffix, getDestinationTopicType(delayMs),
-				this.maxAttempts, this.numPartitions, this.dltStrategy, this.kafkaOperations, this.shouldRetryOn,
-				this.timeout);
+		return new DestinationTopic.Properties(delayMs, suffix, getDestinationTopicType(delayMs), this.maxAttempts,
+				this.numPartitions, this.dltStrategy, this.kafkaOperations, this.shouldRetryOn, this.timeout);
 	}
 
 	private String joinWithRetrySuffix(long parameter) {
