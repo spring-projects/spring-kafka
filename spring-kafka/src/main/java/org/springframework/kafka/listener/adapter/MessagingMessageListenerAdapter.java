@@ -465,10 +465,10 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				"a KafkaTemplate is required to support replies");
 
 		Object result = resultArg instanceof InvocationResult invocationResult ?
-				invocationResult.getResult() :
+				invocationResult.result() :
 				resultArg;
 		boolean messageReturnType = resultArg instanceof InvocationResult invocationResult ?
-				invocationResult.isMessageReturnType() :
+				invocationResult.messageReturnType() :
 				this.messageReturnType;
 
 		if (result instanceof CompletableFuture<?> completable) {
@@ -506,7 +506,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	private String evaluateReplyTopic(Object request, Object source, Object result) {
 		String replyTo = null;
 		if (result instanceof InvocationResult invResult) {
-			replyTo = evaluateTopic(request, source, result, invResult.getSendTo());
+			replyTo = evaluateTopic(request, source, result, invResult.sendTo());
 		}
 		else if (this.replyTopicExpression != null) {
 			replyTo = evaluateTopic(request, source, result, this.replyTopicExpression);
@@ -656,16 +656,16 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	protected void asyncFailure(Object request, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer,
 			Throwable t, Message<?> source) {
+
 		try {
 			handleException(request, acknowledgment, consumer, source,
 					new ListenerExecutionFailedException(createMessagingErrorMessage(
 							"Async Fail", source.getPayload()), t));
-			return;
 		}
-		catch (Exception ex) {
+		catch (Throwable ex) {
+			this.logger.error(t, () -> "Future, Mono, or suspend function was completed with an exception for " + source);
+			acknowledge(acknowledgment);
 		}
-		this.logger.error(t, () -> "Future, Mono, or suspend function was completed with an exception for " + source);
-		acknowledge(acknowledgment);
 	}
 
 	protected void handleException(Object records, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer,

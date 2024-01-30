@@ -21,39 +21,14 @@ import org.springframework.lang.Nullable;
 
 /**
  * The result of a method invocation.
+ * @param result the result.
+ * @param messageReturnType the message return type.
+ * @param sendTo the expression about sends topic.
  *
  * @author Gary Russell
  * @since 2.2
  */
-public final class InvocationResult {
-
-	@Nullable
-	private final Object result;
-
-	@Nullable
-	private final Expression sendTo;
-
-	private final boolean messageReturnType;
-
-	public InvocationResult(@Nullable Object result, @Nullable Expression sendTo, boolean messageReturnType) {
-		this.result = result;
-		this.sendTo = sendTo;
-		this.messageReturnType = messageReturnType;
-	}
-
-	@Nullable
-	public Object getResult() {
-		return this.result;
-	}
-
-	@Nullable
-	public Expression getSendTo() {
-		return this.sendTo;
-	}
-
-	public boolean isMessageReturnType() {
-		return this.messageReturnType;
-	}
+public record InvocationResult(@Nullable Object result, @Nullable Expression sendTo, boolean messageReturnType) {
 
 	@Override
 	public String toString() {

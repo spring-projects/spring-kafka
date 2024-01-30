@@ -101,7 +101,6 @@ public class HandlerAdapter {
 
 	@Nullable
 	public InvocationResult getInvocationResultFor(Object result, @Nullable Object inboundPayload) {
-
 		if (this.delegatingHandler != null && inboundPayload != null) {
 			return this.delegatingHandler.getInvocationResultFor(result, inboundPayload);
 		}

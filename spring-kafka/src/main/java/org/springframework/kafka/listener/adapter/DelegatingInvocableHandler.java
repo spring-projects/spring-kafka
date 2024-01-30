@@ -337,9 +337,15 @@ public class DelegatingInvocableHandler {
 				&& methodParameter.getParameterType().isAssignableFrom(payloadClass);
 	}
 
+	/**
+	 * Return the result of a method invocation by providing a result and payload.
+	 * @param result the result.
+	 * @param inboundPayload the payload.
+	 * @return the result of a method invocation.
+	 * @since 3.2
+	 */
 	@Nullable
 	public InvocationResult getInvocationResultFor(Object result, Object inboundPayload) {
-
 		InvocableHandlerMethod handler = findHandlerForPayload(inboundPayload.getClass());
 		if (handler != null) {
 			return new InvocationResult(result, this.handlerSendTo.get(handler),
