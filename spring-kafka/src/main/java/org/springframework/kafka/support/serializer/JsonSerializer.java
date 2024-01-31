@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,6 +52,7 @@ import com.fasterxml.jackson.databind.ObjectWriter;
  * @author Artem Bilan
  * @author Gary Russell
  * @author Elliot Kennedy
+ * @author Wang Zhiyang
  */
 public class JsonSerializer<T> implements Serializer<T> {
 
@@ -156,20 +157,19 @@ public class JsonSerializer<T> implements Serializer<T> {
 		setUseTypeMapperForKey(isKey);
 		if (configs.containsKey(ADD_TYPE_INFO_HEADERS)) {
 			Object config = configs.get(ADD_TYPE_INFO_HEADERS);
-			if (config instanceof Boolean) {
-				this.addTypeInfo = (Boolean) config;
+			if (config instanceof Boolean configBoolean) {
+				this.addTypeInfo = configBoolean;
 			}
-			else if (config instanceof String) {
-				this.addTypeInfo = Boolean.valueOf((String) config);
+			else if (config instanceof String configString) {
+				this.addTypeInfo = Boolean.parseBoolean(configString);
 			}
 			else {
 				throw new IllegalStateException(ADD_TYPE_INFO_HEADERS + " must be Boolean or String");
 			}
 		}
 		if (configs.containsKey(TYPE_MAPPINGS) && !this.typeMapperExplicitlySet
-				&& this.typeMapper instanceof AbstractJavaTypeMapper) {
-			((AbstractJavaTypeMapper) this.typeMapper)
-					.setIdClassMapping(createMappings((String) configs.get(TYPE_MAPPINGS)));
+				&& this.typeMapper instanceof AbstractJavaTypeMapper abstractJavaTypeMapper) {
+			abstractJavaTypeMapper.setIdClassMapping(createMappings((String) configs.get(TYPE_MAPPINGS)));
 		}
 		this.configured = true;
 	}

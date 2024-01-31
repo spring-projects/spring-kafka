@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 the original author or authors.
+ * Copyright 2019-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -140,13 +141,12 @@ public class DelegatingSerializationTests {
 		headers.remove(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR);
 		DelegatingSerializer spySe = spy(serializer);
 		serialized = spySe.serialize("foo", headers, 42L);
-		serialized = spySe.serialize("foo", headers, 42L);
 		verify(spySe, times(1)).trySerdes(42L);
 		assertThat(headers.lastHeader(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR).value())
 				.isEqualTo(Long.class.getName().getBytes());
 		DelegatingDeserializer spyDe = spy(deserializer);
 		assertThat(spyDe.deserialize("foo", headers, serialized)).isEqualTo(42L);
-		spyDe.deserialize("foo", headers, serialized);
+		assertThat(spyDe.deserialize("foo", headers, ByteBuffer.wrap(serialized))).isEqualTo(42L);
 		verify(spyDe, times(1)).trySerdes(Long.class.getName());
 
 		// The DKHM will jsonize the value; test that we ignore the quotes
@@ -158,6 +158,7 @@ public class DelegatingSerializationTests {
 		serialized = serializer.serialize("foo", headers, "bar");
 		assertThat(serialized).isEqualTo(new byte[]{ 'b', 'a', 'r' });
 		assertThat(deserializer.deserialize("foo", headers, serialized)).isEqualTo("bar");
+		assertThat(deserializer.deserialize("foo", headers, ByteBuffer.wrap(serialized))).isEqualTo("bar");
 	}
 
 	private void doTestKeys(DelegatingSerializer serializer, DelegatingDeserializer deserializer) {
@@ -179,13 +180,12 @@ public class DelegatingSerializationTests {
 		headers.remove(DelegatingSerializer.KEY_SERIALIZATION_SELECTOR);
 		DelegatingSerializer spySe = spy(serializer);
 		serialized = spySe.serialize("foo", headers, 42L);
-		serialized = spySe.serialize("foo", headers, 42L);
 		verify(spySe, times(1)).trySerdes(42L);
 		assertThat(headers.lastHeader(DelegatingSerializer.KEY_SERIALIZATION_SELECTOR).value())
 				.isEqualTo(Long.class.getName().getBytes());
 		DelegatingDeserializer spyDe = spy(deserializer);
 		assertThat(spyDe.deserialize("foo", headers, serialized)).isEqualTo(42L);
-		spyDe.deserialize("foo", headers, serialized);
+		assertThat(spyDe.deserialize("foo", headers, ByteBuffer.wrap(serialized))).isEqualTo(42L);
 		verify(spyDe, times(1)).trySerdes(Long.class.getName());
 
 		// The DKHM will jsonize the value; test that we ignore the quotes
@@ -197,6 +197,7 @@ public class DelegatingSerializationTests {
 		serialized = serializer.serialize("foo", headers, "bar");
 		assertThat(serialized).isEqualTo(new byte[]{ 'b', 'a', 'r' });
 		assertThat(deserializer.deserialize("foo", headers, serialized)).isEqualTo("bar");
+		assertThat(deserializer.deserialize("foo", headers, ByteBuffer.wrap(serialized))).isEqualTo("bar");
 	}
 
 	@Test
@@ -206,7 +207,7 @@ public class DelegatingSerializationTests {
 		headers.add(new RecordHeader(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR, "junk".getBytes()));
 		byte[] data = "foo".getBytes();
 		assertThat(spy.deserialize("foo", headers, data)).isSameAs(data);
-		spy.deserialize("foo", headers, data);
+		assertThat(spy.deserialize("foo", headers, ByteBuffer.wrap(data))).isEqualTo(data);
 		verify(spy, times(1)).trySerdes("junk");
 	}
 

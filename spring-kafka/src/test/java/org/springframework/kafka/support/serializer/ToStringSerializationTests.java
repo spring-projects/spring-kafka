@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.kafka.support.serializer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
@@ -35,6 +36,7 @@ import org.springframework.lang.Nullable;
  *
  * @author Alexei Klenin
  * @author Gary Russell
+ *
  * @since 2.5
  */
 public class ToStringSerializationTests {
@@ -167,6 +169,18 @@ public class ToStringSerializationTests {
 				.hasFieldOrPropertyWithValue("first", "toto")
 				.hasFieldOrPropertyWithValue("second", 123)
 				.hasFieldOrPropertyWithValue("third", true);
+
+		/* Given */
+		ByteBuffer byteBuffer = StandardCharsets.UTF_8.encode("foo:456:true");
+
+		/* When */
+		Object entityFromByteBuffer = deserializer.deserialize("my-topic", null, byteBuffer);
+
+		/* Then */
+		assertThat(entityFromByteBuffer)
+				.hasFieldOrPropertyWithValue("first", "foo")
+				.hasFieldOrPropertyWithValue("second", 456)
+				.hasFieldOrPropertyWithValue("third", true);
 	}
 
 	@Test
@@ -187,6 +201,18 @@ public class ToStringSerializationTests {
 		assertThat(entity)
 				.hasFieldOrPropertyWithValue("first", "toto")
 				.hasFieldOrPropertyWithValue("second", 123)
+				.hasFieldOrPropertyWithValue("third", true);
+
+		/* Given */
+		ByteBuffer byteBuffer = StandardCharsets.UTF_8.encode("foo:456:true");
+
+		/* When */
+		Object entityFromByteBuffer = deserializer.deserialize("my-topic", null, byteBuffer);
+
+		/* Then */
+		assertThat(entityFromByteBuffer)
+				.hasFieldOrPropertyWithValue("first", "foo")
+				.hasFieldOrPropertyWithValue("second", 456)
 				.hasFieldOrPropertyWithValue("third", true);
 	}
 
@@ -211,13 +237,28 @@ public class ToStringSerializationTests {
 				.isInstanceOf(DummyEntity.class)
 				.hasFieldOrPropertyWithValue("stringValue", "toto")
 				.hasFieldOrPropertyWithValue("intValue", 123);
+
+		/* Given */
+		ByteBuffer byteBuffer = StandardCharsets.UTF_8.encode("foo:456:true");
+
+		/* When */
+		Object entityFromByteBuffer = deserializer.deserialize("my-topic", headers, byteBuffer);
+
+		/* Then */
+		assertThat(entityFromByteBuffer)
+				.isNotNull()
+				.isInstanceOf(DummyEntity.class)
+				.hasFieldOrPropertyWithValue("stringValue", "foo")
+				.hasFieldOrPropertyWithValue("intValue", 456);
 	}
 
 	@Test
+	@DisplayName("Test deserialization using headers when data is null")
 	void nullValue() {
 		ParseStringDeserializer<Object> deserializer =
 				new ParseStringDeserializer<>(ToStringSerializationTests::parseWithHeaders);
 		assertThat(deserializer.deserialize("foo", new RecordHeaders(), (byte[]) null)).isNull();
+		assertThat(deserializer.deserialize("foo", new RecordHeaders(), (ByteBuffer) null)).isNull();
 	}
 
 	@Test

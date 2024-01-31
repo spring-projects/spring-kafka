@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.support.serializer;
 
+import java.nio.ByteBuffer;
 import java.util.Map;
 
 import org.apache.kafka.common.header.Headers;
@@ -31,6 +32,8 @@ import org.springframework.util.Assert;
  * @param <T> Type to be deserialized into.
  *
  * @author Gary Russell
+ * @author Wang Zhiyang
+ *
  * @since 2.3
  *
  */
@@ -54,16 +57,17 @@ public class RetryingDeserializer<T> implements Deserializer<T> {
 
 	@Override
 	public T deserialize(String topic, byte[] data) {
-		return this.retryOperations.execute(context -> {
-			return this.delegate.deserialize(topic, data);
-		});
+		return this.retryOperations.execute(context -> this.delegate.deserialize(topic, data));
 	}
 
 	@Override
 	public T deserialize(String topic, Headers headers, byte[] data) {
-		return this.retryOperations.execute(context -> {
-			return this.delegate.deserialize(topic, headers, data);
-		});
+		return this.retryOperations.execute(context -> this.delegate.deserialize(topic, headers, data));
+	}
+
+	@Override
+	public T deserialize(String topic, Headers headers, ByteBuffer data) {
+		return this.retryOperations.execute(context -> this.delegate.deserialize(topic, headers, data));
 	}
 
 	@Override

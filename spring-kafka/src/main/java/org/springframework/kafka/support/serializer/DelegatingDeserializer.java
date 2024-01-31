@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.support.serializer;
 
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,12 +38,14 @@ import org.springframework.util.StringUtils;
  * {@link Serdes}.
  *
  * @author Gary Russell
+ * @author Wang Zhiyang
+ *
  * @since 2.3
  *
  */
 public class DelegatingDeserializer implements Deserializer<Object> {
 
-	private final Map<String, Deserializer<? extends Object>> delegates = new ConcurrentHashMap<>();
+	private final Map<String, Deserializer<?>> delegates = new ConcurrentHashMap<>();
 
 	private final Map<String, Object> autoConfigs = new HashMap<>();
 
@@ -81,15 +84,15 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 		}
 		if (value instanceof Map) {
 			((Map<String, Object>) value).forEach((selector, deser) -> {
-				if (deser instanceof Deserializer) {
-					this.delegates.put(selector, (Deserializer<?>) deser);
-					((Deserializer<?>) deser).configure(configs, isKey);
+				if (deser instanceof Deserializer<?> clazz) {
+					this.delegates.put(selector, clazz);
+					clazz.configure(configs, isKey);
 				}
-				else if (deser instanceof Class) {
-					instantiateAndConfigure(configs, isKey, this.delegates, selector, (Class<?>) deser);
+				else if (deser instanceof Class<?> clazz) {
+					instantiateAndConfigure(configs, isKey, this.delegates, selector, clazz);
 				}
-				else if (deser instanceof String) {
-					createInstanceAndConfigure(configs, isKey, this.delegates, selector, (String) deser);
+				else if (deser instanceof String className) {
+					createInstanceAndConfigure(configs, isKey, this.delegates, selector, className);
 				}
 				else {
 					throw new IllegalStateException(configKey
@@ -97,8 +100,8 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 				}
 			});
 		}
-		else if (value instanceof String) {
-			this.delegates.putAll(createDelegates((String) value, configs, isKey));
+		else if (value instanceof String mappings) {
+			this.delegates.putAll(createDelegates(mappings, configs, isKey));
 		}
 		else {
 			throw new IllegalStateException(configKey + " must be a map or String, not " + value.getClass());
@@ -165,6 +168,17 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 
 	@Override
 	public Object deserialize(String topic, Headers headers, byte[] data) {
+		Deserializer<?> deserializer = getDeserializerByHeaders(headers);
+		return deserializer == null ? data : deserializer.deserialize(topic, headers, data);
+	}
+
+	@Override
+	public Object deserialize(String topic, Headers headers, ByteBuffer data) {
+		Deserializer<?> deserializer = getDeserializerByHeaders(headers);
+		return deserializer == null ? data : deserializer.deserialize(topic, headers, data);
+	}
+
+	private Deserializer<?> getDeserializerByHeaders(Headers headers) {
 		byte[] value = null;
 		String selectorKey = selectorKey();
 		Header header = headers.lastHeader(selectorKey);
@@ -175,16 +189,11 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 			throw new IllegalStateException("No '" + selectorKey + "' header present");
 		}
 		String selector = new String(value).replaceAll("\"", "");
-		Deserializer<? extends Object> deserializer = this.delegates.get(selector);
+		Deserializer<?> deserializer = this.delegates.get(selector);
 		if (deserializer == null) {
 			deserializer = trySerdes(selector);
 		}
-		if (deserializer == null) {
-			return data;
-		}
-		else {
-			return deserializer.deserialize(topic, headers, data);
-		}
+		return deserializer;
 	}
 
 	private String selectorKey() {
@@ -197,11 +206,11 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 	 * Package for testing.
 	 */
 	@Nullable
-	Deserializer<? extends Object> trySerdes(String key) {
+	Deserializer<?> trySerdes(String key) {
 		try {
 			Class<?> clazz = ClassUtils.forName(key, ClassUtils.getDefaultClassLoader());
-			Serde<? extends Object> serdeFrom = Serdes.serdeFrom(clazz);
-			Deserializer<? extends Object> deserializer = serdeFrom.deserializer();
+			Serde<?> serdeFrom = Serdes.serdeFrom(clazz);
+			Deserializer<?> deserializer = serdeFrom.deserializer();
 			deserializer.configure(this.autoConfigs, this.forKeys);
 			this.delegates.put(key, deserializer);
 			return deserializer;

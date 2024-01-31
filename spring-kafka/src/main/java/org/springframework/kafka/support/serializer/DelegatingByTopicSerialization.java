@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 import org.springframework.core.log.LogAccessor;
+import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
@@ -37,6 +38,8 @@ import org.springframework.util.StringUtils;
  * @param <T> the type.
  *
  * @author Gary Russell
+ * @author Wang Zhiyang
+ *
  * @since 2.8
  *
  */
@@ -110,14 +113,14 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 		}
 		this.forKeys = isKey;
 		Object insensitive = configs.get(CASE_SENSITIVE);
-		if (insensitive instanceof String) {
-			this.cased = Boolean.parseBoolean((String) insensitive);
+		if (insensitive instanceof String insensitiveString) {
+			this.cased = Boolean.parseBoolean(insensitiveString);
 		}
-		else if (insensitive instanceof Boolean) {
-			this.cased = (Boolean) insensitive;
+		else if (insensitive instanceof Boolean insensitiveBoolean) {
+			this.cased = insensitiveBoolean;
 		}
 		String configKey = defaultKey();
-		if (configKey != null && configs.containsKey(configKey)) {
+		if (configs.containsKey(configKey)) {
 			buildDefault(configs, configKey, isKey, configs.get(configKey));
 		}
 		configKey = configKey();
@@ -128,8 +131,8 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 		else if (value instanceof Map) {
 			processMap(configs, isKey, configKey, (Map<Object, Object>) value);
 		}
-		else if (value instanceof String) {
-			this.delegates.putAll(createDelegates((String) value, configs, isKey));
+		else if (value instanceof String mappings) {
+			this.delegates.putAll(createDelegates(mappings, configs, isKey));
 		}
 		else {
 			throw new IllegalStateException(
@@ -137,6 +140,7 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 		}
 	}
 
+	@NonNull
 	private String defaultKey() {
 		return this.forKeys ? KEY_SERIALIZATION_TOPIC_DEFAULT : VALUE_SERIALIZATION_TOPIC_DEFAULT;
 	}
@@ -163,11 +167,11 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 			this.delegates.put(pattern, (T) delegate);
 			configureDelegate(configs, isKey, (T) delegate);
 		}
-		else if (delegate instanceof Class) {
-			instantiateAndConfigure(configs, isKey, this.delegates, pattern, (Class<?>) delegate);
+		else if (delegate instanceof Class<?> clazz) {
+			instantiateAndConfigure(configs, isKey, this.delegates, pattern, clazz);
 		}
-		else if (delegate instanceof String) {
-			createInstanceAndConfigure(configs, isKey, this.delegates, pattern, (String) delegate);
+		else if (delegate instanceof String className) {
+			createInstanceAndConfigure(configs, isKey, this.delegates, pattern, className);
 		}
 		else {
 			throw new IllegalStateException(configKey
@@ -181,11 +185,11 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 		if (isInstance(delegate)) {
 			this.defaultDelegate = configureDelegate(configs, isKey, (T) delegate);
 		}
-		else if (delegate instanceof Class) {
-			this.defaultDelegate = instantiateAndConfigure(configs, isKey, this.delegates, null, (Class<?>) delegate);
+		else if (delegate instanceof Class<?> clazz) {
+			this.defaultDelegate = instantiateAndConfigure(configs, isKey, this.delegates, null, clazz);
 		}
-		else if (delegate instanceof String) {
-			this.defaultDelegate = createInstanceAndConfigure(configs, isKey, this.delegates, null, (String) delegate);
+		else if (delegate instanceof String className) {
+			this.defaultDelegate = createInstanceAndConfigure(configs, isKey, this.delegates, null, className);
 		}
 		else {
 			throw new IllegalStateException(configKey
@@ -236,15 +240,15 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 	}
 
 	private Pattern obtainPattern(Object key) {
-		if (key instanceof Pattern) {
-			return (Pattern) key;
+		if (key instanceof Pattern pattern) {
+			return pattern;
 		}
-		else if (key instanceof String) {
+		else if (key instanceof String regex) {
 			if (this.cased) {
-				return Pattern.compile(((String) key).trim());
+				return Pattern.compile(regex.trim());
 			}
 			else {
-				return Pattern.compile(((String) key).trim(), Pattern.CASE_INSENSITIVE);
+				return Pattern.compile(regex.trim(), Pattern.CASE_INSENSITIVE);
 			}
 		}
 		else {
@@ -287,7 +291,6 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 	 * @param topic the topic.
 	 * @return the delegate.
 	 */
-	@SuppressWarnings(UNCHECKED)
 	protected T findDelegate(String topic) {
 		T delegate = null;
 		for (Entry<Pattern, T> entry : this.delegates.entrySet()) {

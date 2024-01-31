@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.support.serializer;
 
+import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -26,6 +27,8 @@ import org.apache.kafka.common.serialization.Deserializer;
  * A {@link Deserializer} that delegates to other deserializers based on the topic name.
  *
  * @author Gary Russell
+ * @author Wang Zhiyang
+ *
  * @since 2.8
  *
  */
@@ -72,6 +75,11 @@ public class DelegatingByTopicDeserializer extends DelegatingByTopicSerializatio
 
 	@Override
 	public Object deserialize(String topic, Headers headers, byte[] data) {
+		return findDelegate(topic).deserialize(topic, headers, data);
+	}
+
+	@Override
+	public Object deserialize(String topic, Headers headers, ByteBuffer data) {
 		return findDelegate(topic).deserialize(topic, headers, data);
 	}
 

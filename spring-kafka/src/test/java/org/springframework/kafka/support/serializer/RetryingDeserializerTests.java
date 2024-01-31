@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,17 +18,22 @@ package org.springframework.kafka.support.serializer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.serialization.Deserializer;
+import org.apache.kafka.common.utils.Utils;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.retry.support.RetryTemplate;
 
 /**
  * @author Gary Russell
+ * @author Wang Zhiyang
+ *
  * @since 2.3
  *
  */
@@ -43,6 +48,9 @@ public class RetryingDeserializerTests {
 		delegate.n = 0;
 		assertThat(rdes.deserialize("foo", new RecordHeaders(), "bar".getBytes())).isEqualTo("bar");
 		assertThat(delegate.n).isEqualTo(3);
+		delegate.n = 0;
+		ByteBuffer byteBuffer = StandardCharsets.UTF_8.encode("byteBuffer");
+		assertThat(rdes.deserialize("foo", new RecordHeaders(), byteBuffer)).isEqualTo("byteBuffer");
 		rdes.close();
 	}
 
@@ -68,6 +76,14 @@ public class RetryingDeserializerTests {
 				throw new RuntimeException();
 			}
 			return new String(data);
+		}
+
+		@Override
+		public String deserialize(String topic, Headers headers, ByteBuffer data) {
+			if (n++ < 1) {
+				throw new RuntimeException();
+			}
+			return new String(Utils.toArray(data));
 		}
 
 		@Override

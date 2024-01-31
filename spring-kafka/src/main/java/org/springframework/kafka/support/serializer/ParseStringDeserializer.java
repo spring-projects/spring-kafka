@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.support.serializer;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -24,6 +25,7 @@ import java.util.function.Function;
 
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Deserializer;
+import org.apache.kafka.common.utils.Utils;
 
 import org.springframework.util.Assert;
 
@@ -35,6 +37,8 @@ import org.springframework.util.Assert;
  *
  * @author Alexei Klenin
  * @author Gary Russell
+ * @author Wang Zhiyang
+ *
  * @since 2.5
  */
 public class ParseStringDeserializer<T> implements Deserializer<T> {
@@ -103,6 +107,23 @@ public class ParseStringDeserializer<T> implements Deserializer<T> {
 	@Override
 	public T deserialize(String topic, Headers headers, byte[] data) {
 		return this.parser.apply(data == null ? null : new String(data, this.charset), headers);
+	}
+
+	@Override
+	public T deserialize(String topic, Headers headers, ByteBuffer data) {
+		String value = deserialize(data);
+		return this.parser.apply(value, headers);
+	}
+
+	private String deserialize(ByteBuffer data) {
+		if (data == null) {
+			return null;
+		}
+
+		if (data.hasArray()) {
+			return new String(data.array(), data.position() + data.arrayOffset(), data.remaining(), this.charset);
+		}
+		return new String(Utils.toArray(data), this.charset);
 	}
 
 	/**
