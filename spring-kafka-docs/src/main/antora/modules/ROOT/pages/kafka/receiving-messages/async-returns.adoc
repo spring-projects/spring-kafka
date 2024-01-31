@@ -1,7 +1,7 @@
 [[async-returns]]
 = Asynchronous `@KafkaListener` Return Types
 
-`@KafkaListener` (and `@KafkaHandler`) methods can be specified with asynchronous return types, letting the reply be sent asynchronously.
+`Starting with version 3.2, `@KafkaListener` (and `@KafkaHandler`) methods can be specified with asynchronous return types, letting the reply be sent asynchronously.
 return types include `CompletableFuture<?>`, `Mono<?>` and Kotlin `suspend` functions.
 
 [source, java]
