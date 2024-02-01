@@ -788,8 +788,6 @@ public class TransactionalContainerTests {
 	@SuppressWarnings({ "unchecked"})
 	@Test
 	public void testBatchListenerMaxFailuresOnRecover() throws Exception {
-
-		logger.info("Start testBatchListenerMaxFailures");
 		String group = "groupInARBP2";
 		Map<String, Object> props = KafkaTestUtils.consumerProps(group, "false", embeddedKafka);
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
@@ -904,7 +902,6 @@ public class TransactionalContainerTests {
 		verify(dlTemplate).sendOffsetsToTransaction(
 				eq(Collections.singletonMap(new TopicPartition(topic8, 0), new OffsetAndMetadata(4L))),
 				any(ConsumerGroupMetadata.class));
-		logger.info("Stop testBatchListenerMaxFailures");
 	}
 
 	@SuppressWarnings("unchecked")
@@ -973,7 +970,6 @@ public class TransactionalContainerTests {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testBatchListenerRecoverAfterRollbackProcessorCrash() throws Exception {
-		logger.info("Start testBatchListenerRollbackNoRetries");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("testBatchListenerRollbackNoRetries", "false", embeddedKafka);
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2);
@@ -1041,10 +1037,9 @@ public class TransactionalContainerTests {
 		container.stop();
 		pf.destroy();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		logger.info("Stop testRollbackNoRetries");
 	}
 
-	@SuppressWarnings({ "rawtypes", "unchecked", "deprecation" })
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
 	void testNoAfterRollbackWhenFenced() throws Exception {
 		Consumer consumer = mock(Consumer.class);

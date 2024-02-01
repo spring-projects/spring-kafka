@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2023 the original author or authors.
+ * Copyright 2019-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,12 +54,12 @@ import org.springframework.util.backoff.FixedBackOff;
  * @author Gary Russell
  * @author Francois Rosiere
  * @author Wang Zhiyang
+ *
  * @since 2.3.1
  *
  */
 public class DefaultAfterRollbackProcessorTests {
 
-	@SuppressWarnings("deprecation")
 	@Test
 	void testClassifier() {
 		AtomicReference<ConsumerRecord<?, ?>> recovered = new AtomicReference<>();
@@ -143,9 +143,26 @@ public class DefaultAfterRollbackProcessorTests {
 	}
 
 	@Test
+	void testEarlyExitBackOff() {
+		DefaultAfterRollbackProcessor<String, String> processor = new DefaultAfterRollbackProcessor<>(
+				new FixedBackOff(10_000, 1));
+		@SuppressWarnings("unchecked")
+		Consumer<String, String> consumer = mock(Consumer.class);
+		ConsumerRecord<String, String> record1 = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
+		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("foo", 1, 1L, "foo", "bar");
+		List<ConsumerRecord<String, String>> records = Arrays.asList(record1, record2);
+		IllegalStateException illegalState = new IllegalStateException();
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.isRunning()).willReturn(false);
+		long t1 = System.currentTimeMillis();
+		processor.process(records, consumer, container, illegalState, true, EOSMode.V2);
+		assertThat(System.currentTimeMillis() < t1 + 5_000).isTrue();
+	}
+
+	@Test
 	void testNoEarlyExitBackOff() {
 		DefaultAfterRollbackProcessor<String, String> processor = new DefaultAfterRollbackProcessor<>(
-				new FixedBackOff(1, 200));
+				new FixedBackOff(200, 1));
 		@SuppressWarnings("unchecked")
 		Consumer<String, String> consumer = mock(Consumer.class);
 		ConsumerRecord<String, String> record1 = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
@@ -156,7 +173,7 @@ public class DefaultAfterRollbackProcessorTests {
 		given(container.isRunning()).willReturn(true);
 		long t1 = System.currentTimeMillis();
 		processor.process(records, consumer, container, illegalState, true, EOSMode.V2);
-		assertThat(System.currentTimeMillis() >= t1 + 200);
+		assertThat(System.currentTimeMillis() >= t1 + 200).isTrue();
 	}
 
 }
