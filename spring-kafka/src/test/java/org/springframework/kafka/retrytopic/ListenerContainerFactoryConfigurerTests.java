@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,7 +47,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
-import org.springframework.kafka.config.ContainerCustomizer;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpoint;
 import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
@@ -69,10 +68,12 @@ import org.springframework.util.backoff.FixedBackOff;
 /**
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Wang Zhiyang
+ *
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
-@SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
+@SuppressWarnings({"unchecked", "rawtypes"})
 class ListenerContainerFactoryConfigurerTests {
 
 	@Mock
@@ -107,10 +108,6 @@ class ListenerContainerFactoryConfigurerTests {
 	@Mock
 	private java.util.function.Consumer<DefaultErrorHandler> errorHandlerCustomizer;
 
-	@SuppressWarnings("rawtypes")
-	@Captor
-	private ArgumentCaptor<ContainerCustomizer> containerCustomizerCaptor;
-
 	@Mock
 	private ConcurrentKafkaListenerContainerFactory<?, ?> containerFactory;
 
@@ -140,17 +137,9 @@ class ListenerContainerFactoryConfigurerTests {
 	private final byte[] originalTimestampBytes = BigInteger.valueOf(originalTimestamp).toByteArray();
 
 	@Mock
-	private RetryTopicConfiguration configuration;
-
-	@Mock
 	private KafkaListenerEndpoint endpoint;
 
-	private final long backOffValue = 2000L;
 
-	private final ListenerContainerFactoryConfigurer.Configuration lcfcConfiguration =
-			new ListenerContainerFactoryConfigurer.Configuration(Collections.singletonList(backOffValue));
-
-	@SuppressWarnings("deprecation")
 	@Test
 	void shouldSetupErrorHandling() {
 
@@ -161,7 +150,6 @@ class ListenerContainerFactoryConfigurerTests {
 		given(containerProperties.getAckMode()).willReturn(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
 		given(containerProperties.getCommitCallback()).willReturn(offsetCommitCallback);
 		given(containerProperties.getMessageListener()).willReturn(listener);
-		given(configuration.forContainerFactoryConfigurer()).willReturn(lcfcConfiguration);
 		willReturn(container).given(containerFactory).createListenerContainer(endpoint);
 		given(container.getListenerId()).willReturn(testListenerId);
 
@@ -170,8 +158,7 @@ class ListenerContainerFactoryConfigurerTests {
 				new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager,
 						deadLetterPublishingRecovererFactory, clock);
 		configurer.setErrorHandlerCustomizer(errorHandlerCustomizer);
-		KafkaListenerContainerFactory<?> factory = configurer.decorateFactory(containerFactory,
-				configuration.forContainerFactoryConfigurer());
+		KafkaListenerContainerFactory<?> factory = configurer.decorateFactory(containerFactory);
 		factory.createListenerContainer(endpoint);
 
 		// then
@@ -199,7 +186,6 @@ class ListenerContainerFactoryConfigurerTests {
 		headers.add(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP, originalTimestampBytes);
 		given(data.headers()).willReturn(headers);
 		given(container.getListenerId()).willReturn(testListenerId);
-		given(configuration.forContainerFactoryConfigurer()).willReturn(lcfcConfiguration);
 		willReturn(container).given(containerFactory).createListenerContainer(endpoint);
 
 		// when
@@ -207,8 +193,7 @@ class ListenerContainerFactoryConfigurerTests {
 				new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager,
 						deadLetterPublishingRecovererFactory, clock);
 		configurer.setContainerCustomizer(configurerContainerCustomizer);
-		KafkaListenerContainerFactory<?> factory = configurer
-				.decorateFactory(containerFactory, configuration.forContainerFactoryConfigurer());
+		KafkaListenerContainerFactory<?> factory = configurer.decorateFactory(containerFactory);
 		factory.createListenerContainer(endpoint);
 
 		// then
@@ -237,7 +222,6 @@ class ListenerContainerFactoryConfigurerTests {
 		headers.add(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP, originalTimestampBytes);
 		given(data.headers()).willReturn(headers);
 		given(container.getListenerId()).willReturn(testListenerId);
-		given(configuration.forContainerFactoryConfigurer()).willReturn(lcfcConfiguration);
 		willReturn(container).given(containerFactory).createListenerContainer(endpoint);
 
 		// when
@@ -245,8 +229,7 @@ class ListenerContainerFactoryConfigurerTests {
 				new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager,
 						deadLetterPublishingRecovererFactory, clock);
 		configurer.setContainerCustomizer(configurerContainerCustomizer);
-		KafkaListenerContainerFactory<?> factory = configurer
-				.decorateFactory(containerFactory, configuration.forContainerFactoryConfigurer());
+		KafkaListenerContainerFactory<?> factory = configurer.decorateFactory(containerFactory);
 		factory.createListenerContainer(endpoint);
 
 		// then
@@ -270,7 +253,6 @@ class ListenerContainerFactoryConfigurerTests {
 		given(container.getContainerProperties()).willReturn(containerProperties);
 		given(deadLetterPublishingRecovererFactory.create(testListenerId)).willReturn(recoverer);
 		given(containerProperties.getMessageListener()).willReturn(listener);
-		given(configuration.forContainerFactoryConfigurer()).willReturn(lcfcConfiguration);
 		willReturn(container).given(containerFactory).createListenerContainer(endpoint);
 		given(container.getListenerId()).willReturn(testListenerId);
 		BackOff backOffMock = mock(BackOff.class);
@@ -284,8 +266,7 @@ class ListenerContainerFactoryConfigurerTests {
 		configurer.setBlockingRetryableExceptions(IllegalArgumentException.class, IllegalStateException.class);
 
 		// when
-		KafkaListenerContainerFactory<?> decoratedFactory =
-				configurer.decorateFactory(this.containerFactory, configuration.forContainerFactoryConfigurer());
+		KafkaListenerContainerFactory<?> decoratedFactory = configurer.decorateFactory(this.containerFactory);
 		decoratedFactory.createListenerContainer(endpoint);
 
 		// then
@@ -308,7 +289,6 @@ class ListenerContainerFactoryConfigurerTests {
 		given(container.getContainerProperties()).willReturn(containerProperties);
 		given(deadLetterPublishingRecovererFactory.create(testListenerId)).willReturn(recoverer);
 		given(containerProperties.getMessageListener()).willReturn(listener);
-		given(configuration.forContainerFactoryConfigurer()).willReturn(lcfcConfiguration);
 		willReturn(container).given(containerFactory).createListenerContainer(endpoint);
 		given(container.getListenerId()).willReturn(testListenerId);
 		BackOff backOffMock = mock(BackOff.class);
@@ -323,8 +303,7 @@ class ListenerContainerFactoryConfigurerTests {
 		configurer.setRetainStandardFatal(true);
 
 		// when
-		KafkaListenerContainerFactory<?> decoratedFactory =
-				configurer.decorateFactory(this.containerFactory, configuration.forContainerFactoryConfigurer());
+		KafkaListenerContainerFactory<?> decoratedFactory = configurer.decorateFactory(this.containerFactory);
 		decoratedFactory.createListenerContainer(endpoint);
 
 		// then

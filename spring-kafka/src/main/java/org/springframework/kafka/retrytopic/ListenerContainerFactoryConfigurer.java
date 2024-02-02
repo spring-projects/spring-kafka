@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,6 +51,8 @@ import org.springframework.util.backoff.BackOff;
  *
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Wang Zhiyang
+ *
  * @since 2.7
  *
  */
@@ -90,9 +92,10 @@ public class ListenerContainerFactoryConfigurer {
 	 * @param configuration the configuration provided by the {@link RetryTopicConfiguration}.
 	 * @return the decorated factory instance.
 	 */
+	@Deprecated(since = "3.2", forRemoval = true)
 	public KafkaListenerContainerFactory<?> decorateFactory(ConcurrentKafkaListenerContainerFactory<?, ?> factory,
 															Configuration configuration) {
-		return new RetryTopicListenerContainerFactoryDecorator(factory, configuration, true);
+		return this.decorateFactory(factory);
 	}
 
 	/**
@@ -102,9 +105,20 @@ public class ListenerContainerFactoryConfigurer {
 	 * @param configuration the configuration provided by the {@link RetryTopicConfiguration}.
 	 * @return the decorated factory instance.
 	 */
+	@Deprecated(since = "3.2", forRemoval = true)
 	public KafkaListenerContainerFactory<?> decorateFactoryWithoutSettingContainerProperties(
 			ConcurrentKafkaListenerContainerFactory<?, ?> factory, Configuration configuration) {
-		return new RetryTopicListenerContainerFactoryDecorator(factory, configuration, false);
+		return this.decorateFactory(factory);
+	}
+
+	/**
+	 * Decorates the provided {@link ConcurrentKafkaListenerContainerFactory}.
+	 * @param factory the factory instance to be decorated.
+	 * @return the decorated factory instance.
+	 * @since 3.2
+	 */
+	public KafkaListenerContainerFactory<?> decorateFactory(ConcurrentKafkaListenerContainerFactory<?, ?> factory) {
+		return new RetryTopicListenerContainerFactoryDecorator(factory);
 	}
 
 	/**
@@ -162,8 +176,7 @@ public class ListenerContainerFactoryConfigurer {
 		this.errorHandlerCustomizer = errorHandlerCustomizer;
 	}
 
-	protected CommonErrorHandler createErrorHandler(DeadLetterPublishingRecoverer deadLetterPublishingRecoverer,
-												Configuration configuration) {
+	protected CommonErrorHandler createErrorHandler(DeadLetterPublishingRecoverer deadLetterPublishingRecoverer) {
 		DefaultErrorHandler errorHandler = createDefaultErrorHandlerInstance(deadLetterPublishingRecoverer);
 		errorHandler.defaultFalse(this.retainStandardFatal);
 		errorHandler.setCommitRecovered(true);
@@ -181,8 +194,7 @@ public class ListenerContainerFactoryConfigurer {
 				: new DefaultErrorHandler(deadLetterPublishingRecoverer);
 	}
 
-	protected void setupBackoffAwareMessageListenerAdapter(ConcurrentMessageListenerContainer<?, ?> container,
-														Configuration configuration, boolean isSetContainerProperties) {
+	protected void setupBackoffAwareMessageListenerAdapter(ConcurrentMessageListenerContainer<?, ?> container) {
 		MessageListener<?, ?> listener = checkAndCast(container.getContainerProperties()
 				.getMessageListener(), MessageListener.class);
 
@@ -205,16 +217,8 @@ public class ListenerContainerFactoryConfigurer {
 
 		private final ConcurrentKafkaListenerContainerFactory<?, ?> delegate;
 
-		private final Configuration configuration;
-
-		private final boolean isSetContainerProperties;
-
-		RetryTopicListenerContainerFactoryDecorator(ConcurrentKafkaListenerContainerFactory<?, ?> delegate,
-				Configuration configuration, boolean isSetContainerProperties) {
-
+		RetryTopicListenerContainerFactoryDecorator(ConcurrentKafkaListenerContainerFactory<?, ?> delegate) {
 			this.delegate = delegate;
-			this.configuration = configuration;
-			this.isSetContainerProperties = isSetContainerProperties;
 		}
 
 		@Override
@@ -231,8 +235,7 @@ public class ListenerContainerFactoryConfigurer {
 			}
 			CommonErrorHandler errorHandler = createErrorHandler(
 					ListenerContainerFactoryConfigurer.this.deadLetterPublishingRecovererFactory
-							.create(mainListenerId),
-					this.configuration);
+							.create(mainListenerId));
 			if (listenerContainer.getContainerProperties().isAsyncAcks()) {
 				AckMode ackMode = listenerContainer.getContainerProperties().getAckMode();
 				if ((AckMode.MANUAL.equals(ackMode) || AckMode.MANUAL_IMMEDIATE.equals(ackMode))
@@ -242,8 +245,7 @@ public class ListenerContainerFactoryConfigurer {
 			}
 			listenerContainer
 					.setCommonErrorHandler(errorHandler);
-			setupBackoffAwareMessageListenerAdapter(listenerContainer, this.configuration,
-					this.isSetContainerProperties);
+			setupBackoffAwareMessageListenerAdapter(listenerContainer);
 			return listenerContainer;
 		}
 
@@ -263,6 +265,7 @@ public class ListenerContainerFactoryConfigurer {
 		}
 	}
 
+	@Deprecated(since = "3.2", forRemoval = true)
 	static class Configuration {
 
 		private final List<Long> backOffValues;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,6 +56,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * @author Tomaz Fernandes
+ * @author Wang Zhiyang
+ *
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
@@ -113,9 +115,6 @@ class RetryTopicConfigurerTests {
 
 	@Mock
 	private ConsumerRecord<?, ?> consumerRecordMessage;
-
-	@Mock
-	private ListenerContainerFactoryConfigurer.Configuration lcfcConfiguration;
 
 	@Mock
 	private Object objectMessage;
@@ -220,14 +219,10 @@ class RetryTopicConfigurerTests {
 		given(dltDestinationProperties.suffix()).willReturn(dltSuffix);
 		given(mainDestinationProperties.isMainEndpoint()).willReturn(true);
 		given(mainEndpoint.getTopics()).willReturn(topics);
-		given(configuration.forContainerFactoryConfigurer()).willReturn(lcfcConfiguration);
 
 		willReturn(containerFactory).given(containerFactoryResolver).resolveFactoryForRetryEndpoint(containerFactory,
 				defaultFactoryBeanName, factoryResolverConfig);
-		willReturn(containerFactory).given(this.listenerContainerFactoryConfigurer).decorateFactory(containerFactory,
-				lcfcConfiguration);
-		willReturn(containerFactory).given(this.listenerContainerFactoryConfigurer).decorateFactoryWithoutSettingContainerProperties(containerFactory,
-				lcfcConfiguration);
+		willReturn(containerFactory).given(this.listenerContainerFactoryConfigurer).decorateFactory(containerFactory);
 
 		RetryTopicConfigurer configurer = new RetryTopicConfigurer(destinationTopicProcessor, containerFactoryResolver,
 				listenerContainerFactoryConfigurer, new SuffixingRetryTopicNamesProviderFactory());

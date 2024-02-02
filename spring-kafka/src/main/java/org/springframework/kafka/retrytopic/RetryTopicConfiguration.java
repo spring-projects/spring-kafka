@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,8 @@ import org.springframework.lang.Nullable;
  *
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Wang Zhiyang
+ *
  * @since 2.7
  *
  */
@@ -44,8 +46,6 @@ public class RetryTopicConfiguration {
 
 	private final ListenerContainerFactoryResolver.Configuration factoryResolverConfig;
 
-	private final ListenerContainerFactoryConfigurer.Configuration factoryConfigurerConfig;
-
 	@Nullable
 	private final Integer concurrency;
 
@@ -54,14 +54,12 @@ public class RetryTopicConfiguration {
 							TopicCreation kafkaTopicAutoCreationConfig,
 							AllowDenyCollectionManager<String> topicAllowListManager,
 							ListenerContainerFactoryResolver.Configuration factoryResolverConfig,
-							ListenerContainerFactoryConfigurer.Configuration factoryConfigurerConfig,
 							@Nullable Integer concurrency) {
 		this.destinationTopicProperties = destinationTopicProperties;
 		this.dltHandlerMethod = dltHandlerMethod;
 		this.kafkaTopicAutoCreationConfig = kafkaTopicAutoCreationConfig;
 		this.topicAllowListManager = topicAllowListManager;
 		this.factoryResolverConfig = factoryResolverConfig;
-		this.factoryConfigurerConfig = factoryConfigurerConfig;
 		this.concurrency = concurrency;
 	}
 
@@ -75,10 +73,6 @@ public class RetryTopicConfiguration {
 
 	public ListenerContainerFactoryResolver.Configuration forContainerFactoryResolver() {
 		return this.factoryResolverConfig;
-	}
-
-	public ListenerContainerFactoryConfigurer.Configuration forContainerFactoryConfigurer() {
-		return this.factoryConfigurerConfig;
 	}
 
 	public EndpointHandlerMethod getDltHandlerMethod() {

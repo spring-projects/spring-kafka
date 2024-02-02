@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -210,6 +210,8 @@ import org.springframework.lang.Nullable;
  * @author Tomaz Fernandes
  * @author Fabio da Silva Jr.
  * @author Gary Russell
+ * @author Wang Zhiyang
+ *
  * @since 2.7
  *
  * @see RetryTopicConfigurationBuilder
@@ -403,9 +405,7 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 				.resolveFactoryForMainEndpoint(providedFactory, defaultFactoryBeanName,
 						configuration.forContainerFactoryResolver());
 
-		return this.listenerContainerFactoryConfigurer
-				.decorateFactoryWithoutSettingContainerProperties(resolvedFactory,
-						configuration.forContainerFactoryConfigurer());
+		return this.listenerContainerFactoryConfigurer.decorateFactory(resolvedFactory);
 	}
 
 	private KafkaListenerContainerFactory<?> resolveAndConfigureFactoryForRetryEndpoint(
@@ -416,8 +416,7 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory =
 				this.containerFactoryResolver.resolveFactoryForRetryEndpoint(providedFactory, defaultFactoryBeanName,
 				configuration.forContainerFactoryResolver());
-		return this.listenerContainerFactoryConfigurer
-				.decorateFactory(resolvedFactory, configuration.forContainerFactoryConfigurer());
+		return this.listenerContainerFactoryConfigurer.decorateFactory(resolvedFactory);
 	}
 
 	private void throwIfMultiMethodEndpoint(MethodKafkaListenerEndpoint<?, ?> mainEndpoint) {

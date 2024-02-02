@@ -45,6 +45,8 @@ import org.springframework.util.Assert;
  * @author Tomaz Fernandes
  * @author Gary Russell
  * @author Adrian Chlebosz
+ * @author Wang Zhiyang
+ *
  * @since 2.7
  *
  */
@@ -581,9 +583,6 @@ public class RetryTopicConfigurationBuilder {
 
 		List<Long> backOffValues = new BackOffValuesGenerator(this.maxAttempts, this.backOffPolicy).generateValues();
 
-		ListenerContainerFactoryConfigurer.Configuration factoryConfigurerConfig =
-				new ListenerContainerFactoryConfigurer.Configuration(backOffValues);
-
 		List<DestinationTopic.Properties> destinationTopicProperties =
 				new DestinationTopicPropertiesFactory(this.retryTopicSuffix, this.dltSuffix, backOffValues,
 						buildClassifier(), this.topicCreationConfiguration.getNumPartitions(),
@@ -593,7 +592,7 @@ public class RetryTopicConfigurationBuilder {
 								.createProperties();
 		return new RetryTopicConfiguration(destinationTopicProperties,
 				this.dltHandlerMethod, this.topicCreationConfiguration, allowListManager,
-				factoryResolverConfig, factoryConfigurerConfig, this.concurrency);
+				factoryResolverConfig, this.concurrency);
 	}
 
 	private BinaryExceptionClassifier buildClassifier() {
