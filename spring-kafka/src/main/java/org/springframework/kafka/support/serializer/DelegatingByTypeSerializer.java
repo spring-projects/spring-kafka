@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package org.springframework.kafka.support.serializer;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
@@ -32,6 +31,7 @@ import org.springframework.util.Assert;
  *
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Wang Zhiyang
  *
  * @since 2.7.9
  *
@@ -86,7 +86,7 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 		if (data == null) {
 			return null;
 		}
-		Serializer<Object> delegate = findDelegate(data, this.delegates);
+		Serializer<Object> delegate = findDelegate(data);
 		return delegate.serialize(topic, data);
 	}
 
@@ -95,8 +95,12 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 		if (data == null) {
 			return null;
 		}
-		Serializer<Object> delegate = findDelegate(data, this.delegates);
+		Serializer<Object> delegate = findDelegate(data);
 		return delegate.serialize(topic, headers, data);
+	}
+
+	private  <T> Serializer<T> findDelegate(T data) {
+		return findDelegate(data, this.delegates);
 	}
 
 	/**
@@ -114,22 +118,22 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 			Serializer<?> delegate = delegates.get(data.getClass());
 			if (delegate == null) {
 				throw new SerializationException("No matching delegate for type: " + data.getClass().getName()
-						+ "; supported types: " + this.delegates.keySet().stream()
+						+ "; supported types: " + delegates.keySet().stream()
 						.map(Class::getName)
-						.collect(Collectors.toList()));
+						.toList());
 			}
 			return (Serializer<T>) delegate;
 		}
 		else {
-			for (Entry<Class<?>, Serializer<?>> entry : this.delegates.entrySet()) {
+			for (Entry<Class<?>, Serializer<?>> entry : delegates.entrySet()) {
 				if (entry.getKey().isAssignableFrom(data.getClass())) {
 					return (Serializer<T>) entry.getValue();
 				}
 			}
 			throw new SerializationException("No matching delegate for type: " + data.getClass().getName()
-					+ "; supported types: " + this.delegates.keySet().stream()
+					+ "; supported types: " + delegates.keySet().stream()
 					.map(Class::getName)
-					.collect(Collectors.toList()));
+					.toList());
 		}
 	}
 
