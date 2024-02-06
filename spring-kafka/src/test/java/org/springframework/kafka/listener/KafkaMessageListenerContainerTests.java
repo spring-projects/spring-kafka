@@ -142,6 +142,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * @author Ray Chuan Tay
  * @author Daniel Gentes
  * @author Soby Chacko
+ * @author Wang Zhiyang
  */
 @EmbeddedKafka(topics = { KafkaMessageListenerContainerTests.topic1, KafkaMessageListenerContainerTests.topic2,
 		KafkaMessageListenerContainerTests.topic3, KafkaMessageListenerContainerTests.topic4,
@@ -2630,7 +2631,7 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(consumer).seekToEnd(Collections.singletonList(iterator.next()));
 		assertThat(container.isContainerPaused()).isFalse();
 		container.pause();
-		assertThat(container.isPaused()).isTrue();
+		assertThat(container.isPauseRequested()).isTrue();
 		assertThat(pauseLatch1.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(container.isContainerPaused()).isTrue();
 		assertThat(pollWhilePausedLatch.await(10, TimeUnit.SECONDS)).isTrue();

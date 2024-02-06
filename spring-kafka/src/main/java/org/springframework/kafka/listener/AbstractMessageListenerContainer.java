@@ -67,6 +67,7 @@ import org.springframework.util.StringUtils;
  * @author Marius Bogoevici
  * @author Artem Bilan
  * @author Tomaz Fernandes
+ * @author Wang Zhiyang
  */
 public abstract class AbstractMessageListenerContainer<K, V>
 		implements GenericMessageListenerContainer<K, V>, BeanNameAware, ApplicationEventPublisherAware,
@@ -269,6 +270,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		return this.running;
 	}
 
+	@Deprecated(since = "3.2", forRemoval = true)
 	protected boolean isPaused() {
 		return this.paused;
 	}

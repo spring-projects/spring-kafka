@@ -300,7 +300,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	@Override
 	public boolean isContainerPaused() {
-		return isPaused() && this.listenerConsumer != null && this.listenerConsumer.isConsumerPaused();
+		return isPauseRequested() && this.listenerConsumer != null && this.listenerConsumer.isConsumerPaused();
 	}
 
 	@Override
@@ -1639,7 +1639,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						KafkaMessageListenerContainer.this.emergencyStop.run();
 					}
 					TopicPartition firstPart = this.remainingRecords.partitions().iterator().next();
-					boolean isPaused = isPaused() || isPartitionPauseRequested(firstPart);
+					boolean isPaused = isPauseRequested() || isPartitionPauseRequested(firstPart);
 					this.logger.debug(() -> "First pending after error: " + firstPart + "; paused: " + isPaused);
 					if (!isPaused) {
 						records = this.remainingRecords;
@@ -1759,7 +1759,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.pausedForAsyncAcks = true;
 				this.logger.debug(() -> "Pausing for incomplete async acks: " + this.offsetsInThisBatch);
 			}
-			if (!this.consumerPaused && (isPaused() || this.pausedForAsyncAcks)
+			if (!this.consumerPaused && (isPauseRequested() || this.pausedForAsyncAcks)
 					|| this.pauseForPending) {
 
 				Collection<TopicPartition> assigned = getAssignedPartitions();
@@ -1800,7 +1800,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.pausedForAsyncAcks = false;
 				this.logger.debug("Resuming after manual async acks cleared");
 			}
-			if (this.consumerPaused && !isPaused() && !this.pausedForAsyncAcks) {
+			if (this.consumerPaused && !isPauseRequested() && !this.pausedForAsyncAcks) {
 				this.logger.debug(() -> "Resuming consumption from: " + this.consumer.paused());
 				Collection<TopicPartition> paused = new LinkedList<>(this.consumer.paused());
 				paused.removeAll(this.pausedPartitions);
@@ -2605,7 +2605,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private boolean checkImmediatePause(Iterator<ConsumerRecord<K, V>> iterator) {
-			if (isPaused() && this.pauseImmediate) {
+			if (isPauseRequested() && this.pauseImmediate) {
 				Map<TopicPartition, List<ConsumerRecord<K, V>>> remaining = new LinkedHashMap<>();
 				while (iterator.hasNext()) {
 					ConsumerRecord<K, V> next = iterator.next();
@@ -3622,7 +3622,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						pending = true;
 					}
 				}
-				if ((pending || isPaused() || ListenerConsumer.this.remainingRecords != null)
+				if ((pending || isPauseRequested() || ListenerConsumer.this.remainingRecords != null)
 						&& !partitions.isEmpty()) {
 
 					ListenerConsumer.this.consumer.pause(partitions);

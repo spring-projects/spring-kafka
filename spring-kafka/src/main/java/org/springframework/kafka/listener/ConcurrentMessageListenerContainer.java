@@ -58,6 +58,7 @@ import org.springframework.util.Assert;
  * @author Artem Bilan
  * @author Vladimir Tsanev
  * @author Tomaz Fernandes
+ * @author Wang Zhiyang
  */
 public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
 
@@ -185,7 +186,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	public boolean isContainerPaused() {
 		this.lifecycleLock.lock();
 		try {
-			boolean paused = isPaused();
+			boolean paused = isPauseRequested();
 			if (paused) {
 				for (AbstractMessageListenerContainer<K, V> container : this.containers) {
 					if (!container.isContainerPaused()) {
@@ -249,7 +250,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				KafkaMessageListenerContainer<K, V> container =
 						constructContainer(containerProperties, topicPartitions, i);
 				configureChildContainer(i, container);
-				if (isPaused()) {
+				if (isPauseRequested()) {
 					container.pause();
 				}
 				container.start();
