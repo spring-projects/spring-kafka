@@ -2,7 +2,7 @@
 = Enforcing Consumer Rebalance
 
 Kafka clients now support an option to trigger an https://cwiki.apache.org/confluence/display/KAFKA/KIP-568%3A+Explicit+rebalance+triggering+on+the+Consumer[enforced rebalance].
-Starting with version `3.1.2`, Spring for Apache Kafka provides an option to invoke this API on the Kafka consumer via the message listner container.
+Starting with version `3.1.2`, Spring for Apache Kafka provides an option to invoke this API on the Kafka consumer via the message listener container.
 When calling this API, it is simply alerting the Kafka consumer to trigger an enforced rebalance; the actual rebalance will only occur as part of the next `poll()` operation.
 If there is already a rebalance in progress, calling an enforced rebalance is a NO-OP.
 The caller must wait for the current rebalance to complete before invoking another one.
