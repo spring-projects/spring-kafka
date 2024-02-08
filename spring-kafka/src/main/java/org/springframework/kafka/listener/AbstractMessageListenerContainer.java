@@ -137,7 +137,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	@Nullable
 	private KafkaAdmin kafkaAdmin;
 
-	protected AtomicBoolean enforceRebalanceRequested = new AtomicBoolean();
+	protected final AtomicBoolean enforceRebalanceRequested = new AtomicBoolean();
 
 	/**
 	 * Construct an instance with the provided factory and properties.
@@ -626,10 +626,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	@Override
 	public void enforceRebalance() {
 		this.enforceRebalanceRequested.set(true);
-	}
-
-	protected boolean isEnforceRebalanceRequested() {
-		return this.enforceRebalanceRequested.get();
 	}
 
 	@Override

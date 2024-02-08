@@ -17,7 +17,9 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -48,6 +50,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 /**
  * @author Soby Chacko
+ * @since 3.1.2
  */
 @SpringJUnitConfig
 @DirtiesContext
@@ -68,6 +71,19 @@ public class ContainerEnforceRebalanceTests {
 		final List<? extends KafkaMessageListenerContainer<?, ?>> containers =
 				((ConcurrentMessageListenerContainer<?, ?>) listenerContainer).getContainers();
 		assertThat(containers.get(0).enforceRebalanceRequested).isFalse();
+		listenerContainer.pause();
+		await().timeout(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(listenerContainer.isPauseRequested()).isTrue());
+		await().timeout(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(listenerContainer.isContainerPaused()).isTrue());
+		// resetting the latches
+		config.partitionRevokedLatch = new CountDownLatch(1);
+		config.partitionAssignedLatch = new CountDownLatch(1);
+		listenerContainer.enforceRebalance();
+		assertThat(config.partitionRevokedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(config.partitionAssignedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		// Although the rebalance causes the consumer to resume again, since the container is paused,
+		// it will pause the rebalanced consumers again.
+		assertThat(listenerContainer.isPauseRequested()).isTrue();
+		assertThat(listenerContainer.isContainerPaused()).isTrue();
 	}
 
 	@Configuration
@@ -78,6 +94,7 @@ public class ContainerEnforceRebalanceTests {
 		EmbeddedKafkaBroker broker;
 
 		CountDownLatch partitionRevokedLatch = new CountDownLatch(1);
+
 		CountDownLatch partitionAssignedLatch = new CountDownLatch(2);
 
 		CountDownLatch listenerLatch = new CountDownLatch(1);

@@ -397,7 +397,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	public void enforceRebalance() {
 		this.lifecycleLock.lock();
 		try {
-			// Since enforceRebalance only needs to be applied against a single container, we randomly pick the first one.
+			// Since the rebalance is for the whole consumer group, there is no need to
+			// initiate this operation for every single container in the group.
 			final KafkaMessageListenerContainer<K, V> listenerContainer = this.containers.get(0);
 			listenerContainer.enforceRebalance();
 		}

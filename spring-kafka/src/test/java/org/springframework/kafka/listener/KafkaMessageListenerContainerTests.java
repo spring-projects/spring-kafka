@@ -2511,7 +2511,6 @@ public class KafkaMessageListenerContainerTests {
 
 		container.start();
 		container.enforceRebalance();
-		assertThat(container.isEnforceRebalanceRequested()).isTrue();
 		assertThat(enforceRebalanceLatch.await(10, TimeUnit.SECONDS)).isTrue();
 	}
 
