@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -68,6 +69,7 @@ import org.springframework.util.StringUtils;
  * @author Artem Bilan
  * @author Tomaz Fernandes
  * @author Wang Zhiyang
+ * @author Soby Chacko
  */
 public abstract class AbstractMessageListenerContainer<K, V>
 		implements GenericMessageListenerContainer<K, V>, BeanNameAware, ApplicationEventPublisherAware,
@@ -134,6 +136,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	@Nullable
 	private KafkaAdmin kafkaAdmin;
+
+	protected AtomicBoolean enforceRebalanceRequested = new AtomicBoolean();
 
 	/**
 	 * Construct an instance with the provided factory and properties.
@@ -617,6 +621,15 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		finally {
 			this.lifecycleLock.unlock();
 		}
+	}
+
+	@Override
+	public void enforceRebalance() {
+		this.enforceRebalanceRequested.set(true);
+	}
+
+	protected boolean isEnforceRebalanceRequested() {
+		return this.enforceRebalanceRequested.get();
 	}
 
 	@Override

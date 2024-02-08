@@ -21,6 +21,7 @@
 **** xref:kafka/receiving-messages/kafkalistener-lifecycle.adoc[]
 **** xref:kafka/receiving-messages/validation.adoc[]
 **** xref:kafka/receiving-messages/rebalance-listeners.adoc[]
+**** xref:kafka/receiving-messages/enforced-rebalance.adoc[]
 **** xref:kafka/receiving-messages/annotation-send-to.adoc[]
 **** xref:kafka/receiving-messages/filtering.adoc[]
 **** xref:kafka/receiving-messages/retrying-deliveries.adoc[]

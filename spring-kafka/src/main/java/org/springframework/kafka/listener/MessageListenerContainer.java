@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ import org.springframework.lang.Nullable;
  * @author Vladimir Tsanev
  * @author Tomaz Fernandes
  * @author Francois Rosiere
+ * @author Soby Chacko
  */
 public interface MessageListenerContainer extends SmartLifecycle, DisposableBean {
 
@@ -83,6 +84,16 @@ public interface MessageListenerContainer extends SmartLifecycle, DisposableBean
 	@Nullable
 	default Map<String, Collection<TopicPartition>> getAssignmentsByClientId() {
 		throw new UnsupportedOperationException("This container doesn't support retrieving its assigned partitions");
+	}
+
+	/**
+	 * Alerting the consumer to trigger an enforced rebalance. The actual enforce will happen
+	 * when the next poll() operation is invoked.
+	 * @since 3.1.2
+	 * @see org.apache.kafka.clients.consumer.KafkaConsumer#enforceRebalance()
+	 */
+	default void enforceRebalance() {
+		throw new UnsupportedOperationException("This container doesn't support enforced rebalance");
 	}
 
 	/**

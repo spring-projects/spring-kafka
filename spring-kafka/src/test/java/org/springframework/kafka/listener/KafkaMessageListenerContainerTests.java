@@ -2486,6 +2486,35 @@ public class KafkaMessageListenerContainerTests {
 		logger.info("Stop rebalance after failed record");
 	}
 
+	@Test
+	void enforceRabalanceOnTheConsumer() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock();
+		ContainerProperties containerProps = new ContainerProperties("foo");
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.RECORD);
+		containerProps.setClientId("clientId");
+		containerProps.setIdleBetweenPolls(10000L);
+
+		Consumer<Integer, String> consumer = mock();
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+
+		CountDownLatch enforceRebalanceLatch = new CountDownLatch(1);
+		containerProps.setMessageListener((MessageListener<Object, Object>) data -> {
+		});
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		willAnswer(i -> {
+			enforceRebalanceLatch.countDown();
+			container.stop();
+			return null;
+		}).given(consumer).enforceRebalance(any());
+
+		container.start();
+		container.enforceRebalance();
+		assertThat(container.isEnforceRebalanceRequested()).isTrue();
+		assertThat(enforceRebalanceLatch.await(10, TimeUnit.SECONDS)).isTrue();
+	}
+
 	@SuppressWarnings({ "unchecked" })
 	@Test
 	public void testPauseResumeAndConsumerSeekAware() throws Exception {
