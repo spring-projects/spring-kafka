@@ -316,7 +316,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	@Override
 	public void enforceRebalance() {
-		super.enforceRebalance();
+		this.thisOrParentContainer.enforceRebalanceRequested.set(true);
 		KafkaMessageListenerContainer<K, V>.ListenerConsumer consumer = this.listenerConsumer;
 		if (consumer != null) {
 			consumer.wakeIfNecessary();
@@ -1751,15 +1751,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void enforceRebalanceIfNecessary() {
 			try {
-				if (KafkaMessageListenerContainer.this.enforceRebalanceRequested.get()) {
+				if (KafkaMessageListenerContainer.this.thisOrParentContainer.enforceRebalanceRequested.get()) {
 					final String enforcedRebalanceReason = String.format("Enforced rebalance requested for container: %s",
 							KafkaMessageListenerContainer.this.getListenerId());
-					KafkaMessageListenerContainer.this.logger.info(enforcedRebalanceReason);
+					ListenerConsumer.this.logger.info(enforcedRebalanceReason);
 					this.consumer.enforceRebalance(enforcedRebalanceReason);
 				}
 			}
 			finally {
-				KafkaMessageListenerContainer.this.enforceRebalanceRequested.set(false);
+				KafkaMessageListenerContainer.this.thisOrParentContainer.enforceRebalanceRequested.set(false);
 			}
 		}
 

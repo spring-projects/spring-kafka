@@ -92,6 +92,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	protected final ReentrantLock lifecycleLock = new ReentrantLock(); // NOSONAR
 
+	protected final AtomicBoolean enforceRebalanceRequested = new AtomicBoolean();
+
 	private final Set<TopicPartition> pauseRequestedPartitions = ConcurrentHashMap.newKeySet();
 
 	@NonNull
@@ -137,7 +139,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	@Nullable
 	private KafkaAdmin kafkaAdmin;
 
-	protected final AtomicBoolean enforceRebalanceRequested = new AtomicBoolean();
 
 	/**
 	 * Construct an instance with the provided factory and properties.
@@ -625,7 +626,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	@Override
 	public void enforceRebalance() {
-		this.enforceRebalanceRequested.set(true);
+		throw new UnsupportedOperationException("enforceRebalance() is supposed to be implemented " +
+				"by concrete implementations only.");
 	}
 
 	@Override

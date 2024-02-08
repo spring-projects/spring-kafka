@@ -2489,7 +2489,7 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	void enforceRabalanceOnTheConsumer() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock();
-		ContainerProperties containerProps = new ContainerProperties("foo");
+		ContainerProperties containerProps = new ContainerProperties("enforce-rebalance-test-topic");
 		containerProps.setGroupId("grp");
 		containerProps.setAckMode(AckMode.RECORD);
 		containerProps.setClientId("clientId");
