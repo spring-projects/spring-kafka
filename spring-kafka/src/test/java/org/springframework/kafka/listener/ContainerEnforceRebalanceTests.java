@@ -21,7 +21,6 @@ import static org.awaitility.Awaitility.await;
 
 import java.time.Duration;
 import java.util.Collection;
-import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -65,12 +64,11 @@ public class ContainerEnforceRebalanceTests {
 		assertThat(config.listenerLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(listenerContainer).isNotNull();
 		listenerContainer.enforceRebalance();
+		assertThat(((ConcurrentMessageListenerContainer<?, ?>) listenerContainer).enforceRebalanceRequested).isTrue();
 		// The test is expecting partition revoke once and assign twice.
 		assertThat(config.partitionRevokedLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(config.partitionAssignedLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		final List<? extends KafkaMessageListenerContainer<?, ?>> containers =
-				((ConcurrentMessageListenerContainer<?, ?>) listenerContainer).getContainers();
-		assertThat(containers.get(0).enforceRebalanceRequested).isFalse();
+		assertThat(((ConcurrentMessageListenerContainer<?, ?>) listenerContainer).enforceRebalanceRequested).isFalse();
 		listenerContainer.pause();
 		await().timeout(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(listenerContainer.isPauseRequested()).isTrue());
 		await().timeout(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(listenerContainer.isContainerPaused()).isTrue());

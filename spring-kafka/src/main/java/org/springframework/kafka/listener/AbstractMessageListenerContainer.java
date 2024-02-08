@@ -625,12 +625,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	@Override
-	public void enforceRebalance() {
-		throw new UnsupportedOperationException("enforceRebalance() is supposed to be implemented " +
-				"by concrete implementations only.");
-	}
-
-	@Override
 	public void pause() {
 		this.paused = true;
 	}

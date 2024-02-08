@@ -1752,9 +1752,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void enforceRebalanceIfNecessary() {
 			try {
 				if (KafkaMessageListenerContainer.this.thisOrParentContainer.enforceRebalanceRequested.get()) {
-					final String enforcedRebalanceReason = String.format("Enforced rebalance requested for container: %s",
+					String enforcedRebalanceReason = String.format("Enforced rebalance requested for container: %s",
 							KafkaMessageListenerContainer.this.getListenerId());
-					ListenerConsumer.this.logger.info(enforcedRebalanceReason);
+					this.logger.info(enforcedRebalanceReason);
 					this.consumer.enforceRebalance(enforcedRebalanceReason);
 				}
 			}
