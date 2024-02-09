@@ -16,16 +16,11 @@
 
 package org.springframework.kafka.streams;
 
-import java.util.concurrent.atomic.AtomicReference;
-
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StoreQueryParameters;
 import org.apache.kafka.streams.state.QueryableStoreType;
 
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
-import org.springframework.retry.RetryPolicy;
-import org.springframework.retry.backoff.FixedBackOffPolicy;
-import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 
@@ -35,11 +30,10 @@ import org.springframework.util.Assert;
  * {@link KafkaStreams} under consideration.
  *
  * @author Soby Chacko
- * @since 3.2.0
+ * @since 3.2
  */
 public class KafkaStreamsInteractiveQueryService {
 
-	private static final int DEFAULT_MAX_ATTEMPTS = 1;
 	/**
 	 * {@link StreamsBuilderFactoryBean} that provides {@link KafkaStreams} where the state store is retrieved from.
 	 */
@@ -53,15 +47,24 @@ public class KafkaStreamsInteractiveQueryService {
 	/**
 	 * Underlying {@link KafkaStreams} from {@link StreamsBuilderFactoryBean}.
 	 */
-	private KafkaStreams kafkaStreams;
+	private volatile KafkaStreams kafkaStreams;
 
 	/**
-	 * Constructs an instance for querying state stores from the KafkaStreams in the {@link StreamsBuilderFactoryBean}.
-	 *
+	 * Construct an instance for querying state stores from the KafkaStreams in the {@link StreamsBuilderFactoryBean}.
 	 * @param streamsBuilderFactoryBean {@link StreamsBuilderFactoryBean} for {@link KafkaStreams}.
 	 */
 	public KafkaStreamsInteractiveQueryService(StreamsBuilderFactoryBean streamsBuilderFactoryBean) {
+		Assert.notNull(streamsBuilderFactoryBean, "StreamsBuildFactoryBean instance cannot be null.");
 		this.streamsBuilderFactoryBean = streamsBuilderFactoryBean;
+	}
+
+	/**
+	 * Custom {@link RetryTemplate} provided by the end users.
+	 * @param retryTemplate {@link RetryTemplate}
+	 */
+	public void setRetryTemplate(RetryTemplate retryTemplate) {
+		Assert.notNull(retryTemplate, "The provided RetryTemplate instance must not be null");
+		this.retryTemplate = retryTemplate;
 	}
 
 	/**
@@ -78,29 +81,14 @@ public class KafkaStreamsInteractiveQueryService {
 		}
 		Assert.notNull(this.kafkaStreams, "KafkaStreams cannot be null");
 		StoreQueryParameters<T> storeQueryParams = StoreQueryParameters.fromNameAndType(storeName, storeType);
-		AtomicReference<StoreQueryParameters<T>> storeQueryParametersReference = new AtomicReference<>(storeQueryParams);
 
-		return getRetryTemplate().execute(context -> {
+		return this.retryTemplate.execute(context -> {
 			try {
-				return this.kafkaStreams.store(storeQueryParametersReference.get());
+				return this.kafkaStreams.store(storeQueryParams);
 			}
 			catch (Exception e) {
 				throw new IllegalStateException("Error retrieving state store: " + storeName, e);
 			}
 		});
-	}
-
-	private RetryTemplate getRetryTemplate() {
-		if (this.retryTemplate == null) {
-			this.retryTemplate = new RetryTemplate();
-			retryTemplate.setBackOffPolicy(new FixedBackOffPolicy());
-			RetryPolicy retryPolicy = new SimpleRetryPolicy(DEFAULT_MAX_ATTEMPTS);
-			retryTemplate.setRetryPolicy(retryPolicy);
-		}
-		return this.retryTemplate;
-	}
-
-	public void setRetryTemplate(RetryTemplate retryTemplate) {
-		this.retryTemplate = retryTemplate;
 	}
 }

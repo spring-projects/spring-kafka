@@ -17,6 +17,7 @@
 package org.springframework.kafka.streams;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -83,8 +84,11 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 class KafkaStreamsInteractiveQueryServiceTests {
 
 	public static final String IQS_TEST_IN = "iqs-test-in";
+
 	public static final String IQS_TEST_OUT = "iqs-test-out";
+
 	public static final String STATE_STORE = "my-state-store";
+
 	public static final String NON_EXISTENT_STORE = "my-non-existent-store";
 
 	@Autowired
@@ -114,8 +118,7 @@ class KafkaStreamsInteractiveQueryServiceTests {
 				.retrieveQueryableStore(STATE_STORE,
 						QueryableStoreTypes.keyValueStore());
 
-		assertThat(objectObjectReadOnlyKeyValueStore.get(123)).isNotNull();
-		assertThat((Long) objectObjectReadOnlyKeyValueStore.get(123) >= 1L).isTrue();
+		assertThat((Long) objectObjectReadOnlyKeyValueStore.get(123)).isGreaterThanOrEqualTo(1);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -135,16 +138,12 @@ class KafkaStreamsInteractiveQueryServiceTests {
 		kafkaStreamsField.setAccessible(true);
 		kafkaStreamsField.set(interactiveQueryService, kafkaStreams);
 
-		Throwable exc = null;
-		try {
-			this.interactiveQueryService
+		assertThatExceptionOfType(IllegalStateException.class)
+				.isThrownBy(() -> {
+					this.interactiveQueryService
 					.retrieveQueryableStore(NON_EXISTENT_STORE, QueryableStoreTypes.keyValueStore());
-		}
-		catch (Exception e) {
-			exc = e;
-		}
-		assertThat(exc).isNotNull();
-		assertThat(exc.getMessage()).contains("Error retrieving state store: my-non-existent-store");
+				})
+				.withMessageContaining("Error retrieving state store: my-non-existent-store");
 
 		verify(kafkaStreams, times(3)).store(any(StoreQueryParameters.class));
 	}
