@@ -69,7 +69,6 @@ public class KafkaStreamsInteractiveQueryService {
 
 	/**
 	 * Retrieve and return a queryable store by name created in the application.
-	 *
 	 * @param storeName name of the queryable store
 	 * @param storeType type of the queryable store
 	 * @param <T> generic type for the queryable store
@@ -79,7 +78,8 @@ public class KafkaStreamsInteractiveQueryService {
 		if (this.kafkaStreams == null) {
 			this.kafkaStreams = this.streamsBuilderFactoryBean.getKafkaStreams();
 		}
-		Assert.notNull(this.kafkaStreams, "KafkaStreams cannot be null");
+		Assert.notNull(this.kafkaStreams, "KafkaStreams cannot be null. " +
+				"Make sure that the corresponding StreamsBuilderFactoryBean has started properly.");
 		StoreQueryParameters<T> storeQueryParams = StoreQueryParameters.fromNameAndType(storeName, storeType);
 
 		return this.retryTemplate.execute(context -> {
@@ -91,4 +91,5 @@ public class KafkaStreamsInteractiveQueryService {
 			}
 		});
 	}
+
 }

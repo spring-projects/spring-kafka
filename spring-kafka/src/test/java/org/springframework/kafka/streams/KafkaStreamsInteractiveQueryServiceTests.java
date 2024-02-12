@@ -241,5 +241,7 @@ class KafkaStreamsInteractiveQueryServiceTests {
 		public void listener(ConsumerRecord<?, String> payload) {
 			resultFuture().complete(payload);
 		}
+
 	}
+
 }
