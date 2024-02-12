@@ -114,7 +114,7 @@ class KafkaStreamsInteractiveQueryServiceTests {
 		ConsumerRecord<?, String> result = resultFuture.get(600, TimeUnit.SECONDS);
 		assertThat(result).isNotNull();
 
-		final ReadOnlyKeyValueStore<Object, Object> objectObjectReadOnlyKeyValueStore = this.interactiveQueryService
+		ReadOnlyKeyValueStore<Object, Object> objectObjectReadOnlyKeyValueStore = this.interactiveQueryService
 				.retrieveQueryableStore(STATE_STORE,
 						QueryableStoreTypes.keyValueStore());
 
@@ -131,7 +131,7 @@ class KafkaStreamsInteractiveQueryServiceTests {
 		assertThat(result).isNotNull();
 
 		assertThat(this.streamsBuilderFactoryBean.getKafkaStreams()).isNotNull();
-		final KafkaStreams kafkaStreams = spy(this.streamsBuilderFactoryBean.getKafkaStreams());
+		KafkaStreams kafkaStreams = spy(this.streamsBuilderFactoryBean.getKafkaStreams());
 		assertThat(kafkaStreams).isNotNull();
 
 		Field kafkaStreamsField = KafkaStreamsInteractiveQueryService.class.getDeclaredField("kafkaStreams");

@@ -315,10 +315,61 @@ public DeadLetterPublishingRecoverer recoverer() {
 
 Of course, the `recoverer()` bean can be your own implementation of `ConsumerRecordRecoverer`.
 
+[[kafka-streams-iq-support]]
+== Interactive Query Support
+
+Starting with version 3.2, Spring for Apache Kafka provides basic facilities required for interactive queries in Kafka Streams.
+Interactive queries are useful in stateful Kafka Streams applications since they provide a way to constantly query the stateful stores in the application.
+Thus, if an application wants to materialize the current view of the system under consideration, interactive queries provide a way to do that.
+To learn more about interacive queries, see this https://kafka.apache.org/36/documentation/streams/developer-guide/interactive-queries.html[article].
+The support in Spring for Apache Kafka is centered around an API called `KafkaStreamsInteractiveQueryService` which is a facade around interactive queries APIs in Kafka Streams library.
+An application can create an instance of this service as a bean and then later on use it to retrieve the state store by its name.
+
+The following code snippet shows an example.
+
+[source, java]
+----
+@Bean
+public KafkaStreamsInteractiveQueryService kafkaStreamsInteractiveQueryService(StreamsBuilderFactoryBean streamsBuilderFactoryBean) {
+    final KafkaStreamsInteractiveQueryService kafkaStreamsInteractiveQueryService =
+            new KafkaStreamsInteractiveQueryService(streamsBuilderFactoryBean);
+    return kafkaStreamsInteractiveQueryService;
+}
+----
+
+Assuming that a Kafka Streams application has a state store called `app-store`, then that store can be retrieved via the `KafkStreamsInteractiveQuery` API as show below.
+
+[source, java]
+----
+@Autowired
+private KafkaStreamsInteractiveQueryService interactiveQueryService;
+
+ReadOnlyKeyValueStore<Object, Object>  appStore = interactiveQueryService.retrieveQueryableStore("app-store", QueryableStoreTypes.keyValueStore());
+----
+
+Once an application gains access to the state store, then it can query from it for key-value information.
+
+In this case, the state store that the application uses is a read-only key value store.
+There are other types of state stores that a Kafka Streams application can use.
+For instance, if an application prefers to query a window based store, it can build that store in the Kafka Streams application business logic and then later on retrieve it.
+Because of this reason, the API to retrieve the queryable store in `KafkaStreamsInteractiveQueryService` has a generic store type signature, so that the end-user can assign the proper type.
+
+Here is the type signature from the API.
+
+[source, java]
+----
+public <T> T retrieveQueryableStore(String storeName, QueryableStoreType<T> storeType)
+----
+
+When calling this method, the user can specifially ask for the proper state store type, as we have done in the above example.
+
+NOTE: `KafkaStreamsInteractiveQueryService` API in Spring for Apache Kafka only supports providing access to local key-value stores at the moment.
+
+
 [[kafka-streams-example]]
 == Kafka Streams Example
 
-The following example combines all the topics we have covered in this chapter:
+The following example combines the various topics we have covered in this chapter:
 
 [source, java]
 ----
