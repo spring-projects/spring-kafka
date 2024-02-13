@@ -365,6 +365,30 @@ When calling this method, the user can specifially ask for the proper state stor
 
 NOTE: `KafkaStreamsInteractiveQueryService` API in Spring for Apache Kafka only supports providing access to local key-value stores at the moment.
 
+==== Retrying State Store Retrieval
+
+When trying to retrieve the state store using the `KafkaStreamsInteractiveQueryService`, there is a chance that the state store might not be found for various reasons.
+If those reasons are transitory, `KafkaStreamsInteractiveQueryService` provides an option to retry the retrieval of the state store by allowing to inject a custom `RetryTemplate`.
+By default, the `RetryTemmplate` that is used in `KafkaStreamsInteractiveQueryService` does not attempt any retries if the first attempt to retrieve the state store fails.
+
+
+Here is how you can inject a custom `RetryTemmplate` into `KafkaStreamsInteractiveQueryService`.
+This code sample uses a `FixedBackOffPolicy` with maximum attempts of three.
+
+[source, java]
+----
+@Bean
+public KafkaStreamsInteractiveQueryService kafkaStreamsInteractiveQueryService(StreamsBuilderFactoryBean streamsBuilderFactoryBean) {
+    final KafkaStreamsInteractiveQueryService kafkaStreamsInteractiveQueryService =
+            new KafkaStreamsInteractiveQueryService(streamsBuilderFactoryBean);
+    RetryTemplate retryTemplate = new RetryTemplate();
+    retryTemplate.setBackOffPolicy(new FixedBackOffPolicy());
+    RetryPolicy retryPolicy = new SimpleRetryPolicy(3);
+    retryTemplate.setRetryPolicy(retryPolicy);
+    kafkaStreamsInteractiveQueryService.setRetryTemplate(retryTemplate);
+    return kafkaStreamsInteractiveQueryService;
+}
+----
 
 [[kafka-streams-example]]
 == Kafka Streams Example
