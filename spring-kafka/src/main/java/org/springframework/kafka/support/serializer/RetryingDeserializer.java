@@ -53,6 +53,15 @@ public class RetryingDeserializer<T> implements Deserializer<T> {
 		this.retryOperations = retryOperations;
 	}
 
+	/**
+	 * Set a recovery callback to execute when the retries are exhausted.
+	 * @param recoveryCallback {@link RecoveryCallback} to execute
+	 * @since 3.1.2
+	 */
+	public void setRecoveryCallback(@Nullable RecoveryCallback<T> recoveryCallback) {
+		this.recoveryCallback = recoveryCallback;
+	}
+
 	@Override
 	public void configure(Map<String, ?> configs, boolean isKey) {
 		this.delegate.configure(configs, isKey);
@@ -76,15 +85,6 @@ public class RetryingDeserializer<T> implements Deserializer<T> {
 	@Override
 	public void close() {
 		this.delegate.close();
-	}
-
-	/**
-	 * Set a recovery callback to execute when the retries are exhausted.
-	 * @param recoveryCallback {@link RecoveryCallback} to execute
-	 * @since 3.1.2
-	 */
-	public void setRecoveryCallback(@Nullable RecoveryCallback<T> recoveryCallback) {
-		this.recoveryCallback = recoveryCallback;
 	}
 
 }

@@ -17,12 +17,14 @@
 package org.springframework.kafka.support.serializer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -30,6 +32,8 @@ import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.utils.Utils;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.retry.RecoveryCallback;
+import org.springframework.retry.RetryContext;
 import org.springframework.retry.support.RetryTemplate;
 
 /**
@@ -55,37 +59,17 @@ class RetryingDeserializerTests {
 		rdes.close();
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
-	void retryDeserializerWithRecoveryCallback() throws InterruptedException {
-		NonRecoverableDeser delegate = new NonRecoverableDeser();
-		RetryingDeserializer<String> rdes = new RetryingDeserializer<>(delegate, new RetryTemplate());
-		rdes.setRecoveryCallback(context -> {
-			delegate.latch.countDown();
-			return null;
-		});
-		assertThat(rdes.deserialize("my-topic", "my-data".getBytes())).isNull();
-		assertThat(delegate.latch.await(10, TimeUnit.SECONDS)).isTrue();
-		rdes.close();
-	}
-
-	public static class NonRecoverableDeser implements Deserializer<String> {
-
-		CountDownLatch latch = new CountDownLatch(4);
-
-		@Override
-		public void configure(Map<String, ?> configs, boolean isKey) {
-		}
-
-		@Override
-		public String deserialize(String topic, byte[] data) {
-			latch.countDown();
+	void retryingDeserializerWithRecoveryCallback() throws Exception {
+		RetryingDeserializer<String> rdes = new RetryingDeserializer<>((s, b) -> {
 			throw new RuntimeException();
-		}
-
-		@Override
-		public void close() {
-			// empty
-		}
+		}, new RetryTemplate());
+		RecoveryCallback<String> recoveryCallback = mock(RecoveryCallback.class);
+		rdes.setRecoveryCallback(recoveryCallback);
+		rdes.deserialize("my-topic", "my-data".getBytes());
+		verify(recoveryCallback, times(1)).recover(any(RetryContext.class));
+		rdes.close();
 	}
 
 	public static class Deser implements Deserializer<String> {
