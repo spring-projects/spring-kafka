@@ -19,7 +19,6 @@ package org.springframework.kafka.support.serializer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.nio.ByteBuffer;
@@ -59,17 +58,15 @@ class RetryingDeserializerTests {
 		rdes.close();
 	}
 
-	@SuppressWarnings("unchecked")
 	@Test
 	void retryingDeserializerWithRecoveryCallback() throws Exception {
 		RetryingDeserializer<String> rdes = new RetryingDeserializer<>((s, b) -> {
 			throw new RuntimeException();
 		}, new RetryTemplate());
-		RecoveryCallback<String> recoveryCallback = mock(RecoveryCallback.class);
+		RecoveryCallback<String> recoveryCallback = mock();
 		rdes.setRecoveryCallback(recoveryCallback);
 		rdes.deserialize("my-topic", "my-data".getBytes());
-		verify(recoveryCallback, times(1)).recover(any(RetryContext.class));
-		rdes.close();
+		verify(recoveryCallback).recover(any(RetryContext.class));
 	}
 
 	public static class Deser implements Deserializer<String> {
