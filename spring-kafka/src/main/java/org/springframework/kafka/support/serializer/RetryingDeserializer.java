@@ -22,6 +22,8 @@ import java.util.Map;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Deserializer;
 
+import org.springframework.lang.Nullable;
+import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.RetryOperations;
 import org.springframework.util.Assert;
 
@@ -30,18 +32,19 @@ import org.springframework.util.Assert;
  * deserialization in case of transient errors.
  *
  * @param <T> Type to be deserialized into.
- *
  * @author Gary Russell
  * @author Wang Zhiyang
- *
+ * @author Soby Chacko
  * @since 2.3
- *
  */
 public class RetryingDeserializer<T> implements Deserializer<T> {
 
 	private final Deserializer<T> delegate;
 
 	private final RetryOperations retryOperations;
+
+	@Nullable
+	private RecoveryCallback<T> recoveryCallback;
 
 	public RetryingDeserializer(Deserializer<T> delegate, RetryOperations retryOperations) {
 		Assert.notNull(delegate, "the 'delegate' deserializer cannot be null");
@@ -57,22 +60,31 @@ public class RetryingDeserializer<T> implements Deserializer<T> {
 
 	@Override
 	public T deserialize(String topic, byte[] data) {
-		return this.retryOperations.execute(context -> this.delegate.deserialize(topic, data));
+		return this.retryOperations.execute(context -> this.delegate.deserialize(topic, data), this.recoveryCallback);
 	}
 
 	@Override
 	public T deserialize(String topic, Headers headers, byte[] data) {
-		return this.retryOperations.execute(context -> this.delegate.deserialize(topic, headers, data));
+		return this.retryOperations.execute(context -> this.delegate.deserialize(topic, headers, data), this.recoveryCallback);
 	}
 
 	@Override
 	public T deserialize(String topic, Headers headers, ByteBuffer data) {
-		return this.retryOperations.execute(context -> this.delegate.deserialize(topic, headers, data));
+		return this.retryOperations.execute(context -> this.delegate.deserialize(topic, headers, data), this.recoveryCallback);
 	}
 
 	@Override
 	public void close() {
 		this.delegate.close();
+	}
+
+	/**
+	 * Set a recovery callback to execute when the retries are exhausted.
+	 * @param recoveryCallback {@link RecoveryCallback} to execute
+	 * @since 3.1.2
+	 */
+	public void setRecoveryCallback(@Nullable RecoveryCallback<T> recoveryCallback) {
+		this.recoveryCallback = recoveryCallback;
 	}
 
 }

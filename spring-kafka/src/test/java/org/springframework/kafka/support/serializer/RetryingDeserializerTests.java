@@ -21,6 +21,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -33,14 +35,13 @@ import org.springframework.retry.support.RetryTemplate;
 /**
  * @author Gary Russell
  * @author Wang Zhiyang
- *
+ * @author Soby Chacko
  * @since 2.3
- *
  */
-public class RetryingDeserializerTests {
+class RetryingDeserializerTests {
 
 	@Test
-	void testRetry() {
+	void basicRetryingDeserializer() {
 		Deser delegate = new Deser();
 		RetryingDeserializer<String> rdes = new RetryingDeserializer<>(delegate, new RetryTemplate());
 		assertThat(rdes.deserialize("foo", "bar".getBytes())).isEqualTo("bar");
@@ -52,6 +53,39 @@ public class RetryingDeserializerTests {
 		ByteBuffer byteBuffer = StandardCharsets.UTF_8.encode("byteBuffer");
 		assertThat(rdes.deserialize("foo", new RecordHeaders(), byteBuffer)).isEqualTo("byteBuffer");
 		rdes.close();
+	}
+
+	@Test
+	void retryDeserializerWithRecoveryCallback() throws InterruptedException {
+		NonRecoverableDeser delegate = new NonRecoverableDeser();
+		RetryingDeserializer<String> rdes = new RetryingDeserializer<>(delegate, new RetryTemplate());
+		rdes.setRecoveryCallback(context -> {
+			delegate.latch.countDown();
+			return null;
+		});
+		assertThat(rdes.deserialize("my-topic", "my-data".getBytes())).isNull();
+		assertThat(delegate.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		rdes.close();
+	}
+
+	public static class NonRecoverableDeser implements Deserializer<String> {
+
+		CountDownLatch latch = new CountDownLatch(4);
+
+		@Override
+		public void configure(Map<String, ?> configs, boolean isKey) {
+		}
+
+		@Override
+		public String deserialize(String topic, byte[] data) {
+			latch.countDown();
+			throw new RuntimeException();
+		}
+
+		@Override
+		public void close() {
+			// empty
+		}
 	}
 
 	public static class Deser implements Deserializer<String> {
