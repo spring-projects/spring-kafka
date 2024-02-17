@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2023 the original author or authors.
+ * Copyright 2019-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,6 +78,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 /**
  * @author Gary Russell
+ * @author Wang Zhiyang
+ *
  * @since 2.2.4
  *
  */
@@ -343,7 +345,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		verify(consumer).seekToEnd(Collections.singletonList(tp2));
 		verify(consumer).seek(tp2, 70L); // position - 30 (seekToEnd ignored by mock)
 		verify(consumer).seekToBeginning(Collections.singletonList(tp3));
-		verify(consumer).seek(tp3, 30L);
+		verify(consumer).seek(tp3, 130L); // position + 30 (seekToBeginning ignored by mock)
 		container.stop();
 	}
 
