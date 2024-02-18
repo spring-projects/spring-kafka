@@ -1059,6 +1059,7 @@ public class ContainerProperties extends ConsumerProperties {
 				+ "\n ackMode=" + this.ackMode
 				+ "\n ackCount=" + this.ackCount
 				+ "\n ackTime=" + this.ackTime
+				+ "\n consumerStartTimeout=" + this.consumerStartTimeout
 				+ "\n messageListener=" + this.messageListener
 				+ (this.listenerTaskExecutor != null
 						? "\n listenerTaskExecutor=" + this.listenerTaskExecutor
@@ -1074,16 +1075,21 @@ public class ContainerProperties extends ConsumerProperties {
 				+ "\n monitorInterval=" + this.monitorInterval
 				+ (this.scheduler != null ? "\n scheduler=" + this.scheduler : "")
 				+ "\n noPollThreshold=" + this.noPollThreshold
+				+ "\n pauseImmediate=" + this.pauseImmediate
 				+ "\n pollTimeoutWhilePaused=" + this.pollTimeoutWhilePaused
 				+ "\n subBatchPerPartition=" + this.subBatchPerPartition
 				+ "\n assignmentCommitOption=" + this.assignmentCommitOption
 				+ "\n deliveryAttemptHeader=" + this.deliveryAttemptHeader
+				+ "\n batchRecoverAfterRollback=" + this.batchRecoverAfterRollback
 				+ "\n eosMode=" + this.eosMode
 				+ "\n transactionDefinition=" + this.transactionDefinition
 				+ "\n stopContainerWhenFenced=" + this.stopContainerWhenFenced
 				+ "\n stopImmediate=" + this.stopImmediate
 				+ "\n asyncAcks=" + this.asyncAcks
+				+ "\n logContainerConfig=" + this.logContainerConfig
+				+ "\n missingTopicsFatal=" + this.missingTopicsFatal
 				+ "\n idleBeforeDataMultiplier=" + this.idleBeforeDataMultiplier
+				+ "\n idleBetweenPolls=" + this.idleBetweenPolls
 				+ "\n micrometerEnabled=" + this.micrometerEnabled
 				+ "\n observationEnabled=" + this.observationEnabled
 				+ (this.observationConvention != null
