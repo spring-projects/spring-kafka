@@ -273,14 +273,6 @@ See xref:kafka/annotation-error-handling.adoc#error-handlers[Container Error Han
 |`ContainerProperties`
 |The container properties instance.
 
-|[[errorHandler]]<<errorHandler,`errorHandler`>>
-|See desc.
-|Deprecated - see `commonErrorHandler`.
-
-|[[genericErrorHandler]]<<genericErrorHandler,`genericErrorHandler`>>
-|See desc.
-|Deprecated - see `commonErrorHandler`.
-
 |[[groupId2]]<<groupId2,`groupId`>>
 |See desc.
 |The `containerProperties.groupId`, if present, otherwise the `group.id` property from the consumer factory.
