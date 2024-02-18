@@ -758,6 +758,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final MicrometerHolder micrometerHolder;
 
+		private final boolean observationEnabled;
+
 		private final AtomicBoolean polling = new AtomicBoolean();
 
 		private final boolean subBatchPerPartition;
@@ -912,6 +914,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.isBatchListener = true;
 				this.wantsFullRecords = this.batchListener.wantsPollResult();
 				this.pollThreadStateProcessor = setUpPollProcessor(true);
+				this.observationEnabled = false;
 			}
 			else if (listener instanceof MessageListener) {
 				this.listener = (MessageListener<K, V>) listener;
@@ -919,6 +922,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.isBatchListener = false;
 				this.wantsFullRecords = false;
 				this.pollThreadStateProcessor = setUpPollProcessor(false);
+				this.observationEnabled = this.containerProperties.isObservationEnabled();
 			}
 			else {
 				throw new IllegalArgumentException("Listener must be one of 'MessageListener', "
@@ -999,7 +1003,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		@Nullable
 		private KafkaAdmin obtainAdmin() {
 			KafkaAdmin customAdmin = KafkaMessageListenerContainer.this.thisOrParentContainer.getKafkaAdmin();
-			if (customAdmin == null && this.containerProperties.isObservationEnabled()) {
+			if (customAdmin == null && this.observationEnabled) {
 				ApplicationContext applicationContext = getApplicationContext();
 				if (applicationContext != null) {
 					KafkaAdmin admin = applicationContext.getBeanProvider(KafkaAdmin.class).getIfUnique();
@@ -1279,7 +1283,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			MicrometerHolder holder = null;
 			try {
 				if (KafkaUtils.MICROMETER_PRESENT && this.containerProperties.isMicrometerEnabled()
-						&& !this.containerProperties.isObservationEnabled()) {
+						&& !this.observationEnabled) {
 
 					Function<Object, Map<String, String>> mergedProvider =
 							cr -> this.containerProperties.getMicrometerTags();
