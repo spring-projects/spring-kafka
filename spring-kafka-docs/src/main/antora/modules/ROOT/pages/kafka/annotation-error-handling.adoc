@@ -425,7 +425,7 @@ To replace any `BatchErrorHandler` implementation, you should implement `handleB
 You should also implement `handleOtherException()` - to handle exceptions that occur outside the scope of record processing (e.g. consumer errors).
 
 [[after-rollback]]
-== After-rollback Processor
+== After Rollback Processor
 
 When using transactions, if the listener throws an exception (and an error handler, if present, throws an exception), the transaction is rolled back.
 By default, any unprocessed records (including the failed record) are re-fetched on the next poll.
