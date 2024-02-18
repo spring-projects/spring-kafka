@@ -24,7 +24,7 @@ NOTE: With the concurrent container, timers are created for each thread and the 
 [[monitoring-kafkatemplate-performance]]
 == Monitoring KafkaTemplate Performance
 
-Starting with version 2.5, the template will automatically create and update Micrometer `Timer`+++s for send operations, if `Micrometer` is detected on the classpath, and a single `MeterRegistry` is present in the application context.
+Starting with version 2.5, the template will automatically create and update Micrometer `Timer`+++s+++ for send operations, if `Micrometer` is detected on the classpath, and a single `MeterRegistry` is present in the application context.
 The timers can be disabled by setting the template's `micrometerEnabled` property to `false`.
 
 Two timers are maintained - one for successful calls to the listener and one for failures.
@@ -95,7 +95,7 @@ Using Micrometer for observation is now supported, since version 3.0, for the `K
 
 Set `observationEnabled` to `true` on the `KafkaTemplate` and `ContainerProperties` to enable observation; this will disable xref:kafka/micrometer.adoc[Micrometer Timers] because the timers will now be managed with each observation.
 
-Refer to https://micrometer.io/docs/tracing[Micrometer Tracing] for more information.
+Refer to https://docs.micrometer.io/tracing/reference/index.html[Micrometer Tracing] for more information.
 
 To add tags to timers/traces, configure a custom `KafkaTemplateObservationConvention` or `KafkaListenerObservationConvention` to the template or listener container, respectively.
 
@@ -109,6 +109,6 @@ Starting with version 3.0.6, you can add dynamic tags to the timers and traces, 
 To do so, add a custom `KafkaListenerObservationConvention` and/or `KafkaTemplateObservationConvention` to the listener container properties or `KafkaTemplate` respectively.
 The `record` property in both observation contexts contains the `ConsumerRecord` or `ProducerRecord` respectively.
 
-The sender and receiver contexts' `remoteServiceName` properties are set to the Kafka `clusterId` property; this is retrieved by a `KafkaAdmin`.
+The sender and receiver contexts `remoteServiceName` properties are set to the Kafka `clusterId` property; this is retrieved by a `KafkaAdmin`.
 If, for some reason - perhaps lack of admin permissions, you cannot retrieve the cluster id, starting with version 3.1, you can set a manual `clusterId` on the `KafkaAdmin` and inject it into `KafkaTemplate` s and listener containers.
 When it is `null` (default), the admin will invoke the `describeCluster` admin operation to retrieve it from the broker.
