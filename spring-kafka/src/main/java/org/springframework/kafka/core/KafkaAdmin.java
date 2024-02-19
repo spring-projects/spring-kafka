@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2023 the original author or authors.
+ * Copyright 2017-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.AlterConfigOp;
 import org.apache.kafka.clients.admin.AlterConfigOp.OpType;
 import org.apache.kafka.clients.admin.AlterConfigsResult;
@@ -59,6 +60,7 @@ import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
+import org.springframework.core.env.EnvironmentCapable;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.TopicForRetryable;
@@ -71,6 +73,7 @@ import org.springframework.util.Assert;
  *
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Adrian Gygax
  *
  * @since 1.3
  */
@@ -85,6 +88,8 @@ public class KafkaAdmin extends KafkaResourceFactory
 	private static final int DEFAULT_OPERATION_TIMEOUT = 30;
 
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(KafkaAdmin.class));
+
+	private static final AtomicInteger CLIENT_ID_COUNTER = new AtomicInteger();
 
 	private final Map<String, Object> configs;
 
@@ -374,9 +379,23 @@ public class KafkaAdmin extends KafkaResourceFactory
 	}
 
 	AdminClient createAdmin() {
-		Map<String, Object> configs2 = new HashMap<>(this.configs);
+		return AdminClient.create(getAdminConfig());
+	}
+
+	protected Map<String, Object> getAdminConfig() {
+		final Map<String, Object> configs2 = new HashMap<>(this.configs);
 		checkBootstrap(configs2);
-		return AdminClient.create(configs2);
+
+		if (!configs2.containsKey(AdminClientConfig.CLIENT_ID_CONFIG)) {
+			Optional.ofNullable(this.applicationContext)
+					.map(EnvironmentCapable::getEnvironment)
+					.map(environment -> environment.getProperty("spring.application.name"))
+					.ifPresent(applicationName -> configs2.put(
+							AdminClientConfig.CLIENT_ID_CONFIG,
+							applicationName + "-admin-" + CLIENT_ID_COUNTER.getAndIncrement())
+					);
+		}
+		return configs2;
 	}
 
 	private void addOrModifyTopicsIfNeeded(AdminClient adminClient, Collection<NewTopic> topics) {

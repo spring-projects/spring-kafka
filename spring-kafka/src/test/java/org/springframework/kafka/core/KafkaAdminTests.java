@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2023 the original author or authors.
+ * Copyright 2017-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,8 +54,10 @@ import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.KafkaAdmin.NewTopics;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -66,6 +68,8 @@ import org.springframework.util.ReflectionUtils;
 
 /**
  * @author Gary Russell
+ * @author Adrian Gygax
+ *
  * @since 1.3
  */
 @SpringJUnitConfig
@@ -288,6 +292,31 @@ public class KafkaAdminTests {
 
 		};
 		assertThat(admin.clusterId()).isEqualTo("null");
+	}
+
+	@Test
+	void getAdminConfigWithNoClientId() {
+		KafkaAdmin kafkaAdmin = new KafkaAdmin(Map.of());
+		assertThat(kafkaAdmin.getAdminConfig()).isEmpty();
+	}
+
+	@Test
+	void getAdminConfigWithExplicitClientId() {
+		Map<String, Object> config = Map.of(AdminClientConfig.CLIENT_ID_CONFIG, "admin");
+		KafkaAdmin kafkaAdmin = new KafkaAdmin(config);
+		assertThat(kafkaAdmin.getAdminConfig()).containsExactlyInAnyOrderEntriesOf(config);
+	}
+
+	@Test
+	void getAdminConfigWithApplicationNameAsClientId() {
+		Map<String, Object> config = Map.of();
+		KafkaAdmin kafkaAdmin = new KafkaAdmin(config);
+		final Environment environment = mock(Environment.class);
+		given(environment.getProperty("spring.application.name")).willReturn("appname");
+		final ApplicationContext applicationContext = mock(ApplicationContext.class);
+		given(applicationContext.getEnvironment()).willReturn(environment);
+		kafkaAdmin.setApplicationContext(applicationContext);
+		assertThat(kafkaAdmin.getAdminConfig()).containsOnly(Map.entry(AdminClientConfig.CLIENT_ID_CONFIG, "appname-admin-0"));
 	}
 
 	@Configuration

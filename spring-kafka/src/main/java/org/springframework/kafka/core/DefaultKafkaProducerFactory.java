@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
@@ -59,6 +60,7 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.event.ContextStoppedEvent;
+import org.springframework.core.env.EnvironmentCapable;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.lang.Nullable;
@@ -110,6 +112,7 @@ import org.springframework.util.StringUtils;
  * @author Artem Bilan
  * @author Chris Gilbert
  * @author Thomas Strauß
+ * @author Adrian Gygax
  */
 public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		implements ProducerFactory<K, V>, ApplicationContextAware,
@@ -981,9 +984,22 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	protected Map<String, Object> getProducerConfigs() {
 		final Map<String, Object> newProducerConfigs = new HashMap<>(this.configs);
 		checkBootstrap(newProducerConfigs);
+
+		final String prefix;
 		if (this.clientIdPrefix != null) {
+			prefix = this.clientIdPrefix;
+		}
+		else {
+			prefix = Optional.ofNullable(this.applicationContext)
+					.map(EnvironmentCapable::getEnvironment)
+					.map(environment -> environment.getProperty("spring.application.name"))
+					.map(applicationName -> applicationName + "-producer")
+					.orElse(null);
+		}
+
+		if (prefix != null) {
 			newProducerConfigs.put(ProducerConfig.CLIENT_ID_CONFIG,
-					this.clientIdPrefix + "-" + this.clientIdCounter.incrementAndGet());
+					prefix + "-" + this.clientIdCounter.incrementAndGet());
 		}
 		return newProducerConfigs;
 	}

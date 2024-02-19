@@ -58,3 +58,37 @@ These listeners can be used, for example, to create and bind a Micrometer `Kafka
 
 The framework provides listeners that do exactly that; see xref:kafka/micrometer.adoc#micrometer-native[Micrometer Native Metrics].
 
+[[default-client-id-prefixes]]
+== Default client ID prefixes
+
+Starting with version 3.2, for Spring Boot applications which define an application name using the `spring.application.name` property, this name is now used
+as a default prefix for auto-generated client IDs for these client types:
+
+- consumer clients which don't use a consumer group
+- producer clients
+- admin clients
+
+This makes it easier to identify these clients at server side for troubleshooting or applying quotas.
+
+.Example client ids resulting for a Spring Boot application with `spring.application.name=myapp`
+[%autowidth]
+|===
+|Client Type |Without application name |With application name
+
+|consumer without consumer group
+|consumer-null-1
+|myapp-consumer-1
+
+|consumer with consumer group "mygroup"
+|consumer-mygroup-1
+|consumer-mygroup-1
+
+|producer
+|producer-1
+|myapp-producer-1
+
+|admin
+|adminclient-1
+|myapp-admin-1
+|===
+

@@ -17,6 +17,7 @@
 package org.springframework.kafka.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -43,7 +44,9 @@ import org.junit.jupiter.api.Test;
 
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.kafka.core.ConsumerFactory.Listener;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
@@ -60,6 +63,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  * @author Gary Russell
  * @author Chris Gilbert
  * @author Artem Bilan
+ * @author Adrian Gygax
  *
  * @since 1.0.6
  */
@@ -120,6 +124,7 @@ public class DefaultKafkaConsumerFactoryTests {
 						return null;
 					}
 				};
+		target.setApplicationContext(createApplicationContextWithApplicationName());
 		target.setBootstrapServersSupplier(() -> "foo");
 		target.createConsumer(null, null, null, null);
 		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG)).isEqualTo("foo");
@@ -143,6 +148,7 @@ public class DefaultKafkaConsumerFactoryTests {
 						return null;
 					}
 				};
+		target.setApplicationContext(createApplicationContextWithApplicationName());
 		target.createConsumer(null, null, null, overrides);
 		assertThat(configPassedToKafkaConsumer.get("config1")).isEqualTo("overridden");
 		assertThat(configPassedToKafkaConsumer.get("config2")).isSameAs(originalConfig.get("config2"));
@@ -165,6 +171,7 @@ public class DefaultKafkaConsumerFactoryTests {
 						return null;
 					}
 				};
+		target.setApplicationContext(createApplicationContextWithApplicationName());
 		target.createConsumer(null, null, "-1", null);
 		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.CLIENT_ID_CONFIG)).isEqualTo("original-1");
 	}
@@ -198,6 +205,7 @@ public class DefaultKafkaConsumerFactoryTests {
 						return null;
 					}
 				};
+		target.setApplicationContext(createApplicationContextWithApplicationName());
 		target.createConsumer(null, "overridden", null, null);
 		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.CLIENT_ID_CONFIG)).isEqualTo("overridden");
 	}
@@ -214,6 +222,7 @@ public class DefaultKafkaConsumerFactoryTests {
 						return null;
 					}
 				};
+		target.setApplicationContext(createApplicationContextWithApplicationName());
 		target.createConsumer(null, "overridden", null, null);
 		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.CLIENT_ID_CONFIG)).isEqualTo("overridden");
 	}
@@ -231,6 +240,7 @@ public class DefaultKafkaConsumerFactoryTests {
 						return null;
 					}
 				};
+		target.setApplicationContext(createApplicationContextWithApplicationName());
 		target.createConsumer(null, "overridden", "-1", null);
 		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.CLIENT_ID_CONFIG)).isEqualTo("overridden-1");
 	}
@@ -250,10 +260,27 @@ public class DefaultKafkaConsumerFactoryTests {
 						return null;
 					}
 				};
+		target.setApplicationContext(createApplicationContextWithApplicationName());
 		target.createConsumer(null, "overridden", "-1", overrides);
 		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.CLIENT_ID_CONFIG)).isEqualTo("overridden-1");
 	}
 
+	@Test
+	public void testApplicationNameIfNoGroupIdAsClientIdWhenCreatingConsumer() {
+		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
+		DefaultKafkaConsumerFactory<String, String> target =
+				new DefaultKafkaConsumerFactory<String, String>(Map.of()) {
+
+					@Override
+					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
+						configPassedToKafkaConsumer.putAll(configProps);
+						return null;
+					}
+				};
+		target.setApplicationContext(createApplicationContextWithApplicationName());
+		target.createConsumer(null, null, "-1", null);
+		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.CLIENT_ID_CONFIG)).isEqualTo("appname-consumer-1");
+	}
 
 	@Test
 	public void testOverriddenGroupIdWhenCreatingConsumer() {
@@ -474,6 +501,14 @@ public class DefaultKafkaConsumerFactoryTests {
 		Deserializer valueDeserializer = cf.getValueDeserializer();
 		assertThat(valueDeserializer).isSameAs(value);
 		verify(value).configure(config, false);
+	}
+
+	private static ApplicationContext createApplicationContextWithApplicationName() {
+		final Environment environment = mock(Environment.class);
+		given(environment.getProperty("spring.application.name")).willReturn("appname");
+		final ApplicationContext applicationContext = mock(ApplicationContext.class);
+		given(applicationContext.getEnvironment()).willReturn(environment);
+		return applicationContext;
 	}
 
 	@Configuration

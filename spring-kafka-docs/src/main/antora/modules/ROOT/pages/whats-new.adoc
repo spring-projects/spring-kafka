@@ -67,3 +67,9 @@ See xref:kafka/seek.adoc#seek[Seek API Docs] for more details.
 When this constructor is used, the framework calls the function with the input argument of the current consumer offset position.
 See xref:kafka/seek.adoc#seek[Seek API Docs] for more details.
 
+[[x32-default-clientid-prefix]]
+=== Spring Boot application name as default client ID prefix
+
+For Spring Boot applications which define an application name, this name is now used
+as a default prefix for auto-generated client IDs for certain client types.
+See xref:kafka/connecting.adoc#default-client-id-prefixes[Default client ID prefixes] for more details.

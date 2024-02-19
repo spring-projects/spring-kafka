@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,7 +37,11 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.serialization.Deserializer;
 
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanNameAware;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.core.env.EnvironmentCapable;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
@@ -66,9 +71,10 @@ import org.springframework.util.StringUtils;
  * @author Murali Reddy
  * @author Artem Bilan
  * @author Chris Gilbert
+ * @author Adrian Gygax
  */
 public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
-		implements ConsumerFactory<K, V>, BeanNameAware {
+		implements ConsumerFactory<K, V>, BeanNameAware, ApplicationContextAware {
 
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(DefaultKafkaConsumerFactory.class));
 
@@ -85,6 +91,8 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	private String beanName = "not.managed.by.Spring";
 
 	private boolean configureDeserializers = true;
+
+	private ApplicationContext applicationContext;
 
 	/**
 	 * Construct a factory with the provided configuration.
@@ -371,6 +379,22 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 		if (clientIdSuffix == null) {
 			clientIdSuffix = "";
 		}
+
+		final boolean hasGroupIdOrClientIdInProperties = properties != null
+				&& (properties.containsKey(ConsumerConfig.CLIENT_ID_CONFIG) || properties.containsKey(ConsumerConfig.GROUP_ID_CONFIG));
+		final boolean hasGroupIdOrClientIdInConfig = this.configs.containsKey(ConsumerConfig.CLIENT_ID_CONFIG)
+				|| this.configs.containsKey(ConsumerConfig.GROUP_ID_CONFIG);
+		if (!overrideClientIdPrefix && groupId == null && !hasGroupIdOrClientIdInProperties && !hasGroupIdOrClientIdInConfig) {
+			final String applicationName = Optional.ofNullable(this.applicationContext)
+					.map(EnvironmentCapable::getEnvironment)
+					.map(environment -> environment.getProperty("spring.application.name"))
+					.orElse(null);
+			if (applicationName != null) {
+				clientIdPrefix = applicationName + "-consumer";
+				overrideClientIdPrefix = true;
+			}
+		}
+
 		boolean shouldModifyClientId = (this.configs.containsKey(ConsumerConfig.CLIENT_ID_CONFIG)
 				&& StringUtils.hasText(clientIdSuffix)) || overrideClientIdPrefix;
 		if (groupId == null
@@ -467,6 +491,11 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 		return auto instanceof Boolean
 				? (Boolean) auto
 				: !(auto instanceof String) || Boolean.parseBoolean((String) auto);
+	}
+
+	@Override
+	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+		this.applicationContext = applicationContext;
 	}
 
 	protected class ExtendedKafkaConsumer extends KafkaConsumer<K, V> {

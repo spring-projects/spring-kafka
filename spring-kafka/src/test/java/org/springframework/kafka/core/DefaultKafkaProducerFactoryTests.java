@@ -55,6 +55,7 @@ import org.mockito.InOrder;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.ContextStoppedEvent;
+import org.springframework.core.env.Environment;
 import org.springframework.kafka.core.ProducerFactory.Listener;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
@@ -63,8 +64,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * @author Gary Russell
- * @since 1.3.5
+ * @author Adrian Gygax
  *
+ * @since 1.3.5
  */
 public class DefaultKafkaProducerFactoryTests {
 
@@ -776,6 +778,28 @@ public class DefaultKafkaProducerFactoryTests {
 		pf.createProducer();
 		assertThat(producerFactoryConfigs).containsEntry("linger.ms", 100);
 		assertThat(producerConfigs).containsEntry("linger.ms", 200);
+	}
+
+	@Test
+	void testDefaultClientIdPrefixIsSpringBootApplicationName() {
+		final DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(Map.of());
+		final Environment environment = mock(Environment.class);
+		given(environment.getProperty("spring.application.name")).willReturn("appname");
+		final ApplicationContext applicationContext = mock(ApplicationContext.class);
+		given(applicationContext.getEnvironment()).willReturn(environment);
+		pf.setApplicationContext(applicationContext);
+		assertThat(pf.getProducerConfigs()).containsEntry(ProducerConfig.CLIENT_ID_CONFIG, "appname-producer-1");
+	}
+
+	@Test
+	void testExplicitClientIdPrefixOverridesDefault() {
+		final DefaultKafkaProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(Map.of(ProducerConfig.CLIENT_ID_CONFIG, "clientId"));
+		final Environment environment = mock(Environment.class);
+		given(environment.getProperty("spring.application.name")).willReturn("appname");
+		final ApplicationContext applicationContext = mock(ApplicationContext.class);
+		given(applicationContext.getEnvironment()).willReturn(environment);
+		pf.setApplicationContext(applicationContext);
+		assertThat(pf.getProducerConfigs()).containsEntry(ProducerConfig.CLIENT_ID_CONFIG, "clientId-1");
 	}
 
 }
