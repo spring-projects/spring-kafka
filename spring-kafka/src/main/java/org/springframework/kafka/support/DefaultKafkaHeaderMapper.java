@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2023 the original author or authors.
+ * Copyright 2017-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,17 +34,10 @@ import org.apache.kafka.common.header.internals.RecordHeader;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
-import org.springframework.util.MimeType;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.deser.std.StdNodeBasedDeserializer;
-import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.fasterxml.jackson.databind.node.TextNode;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 
 /**
  * Default header mapper for Apache Kafka.
@@ -163,8 +156,6 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 		Assert.notNull(objectMapper, "'objectMapper' must not be null");
 		Assert.noNullElements(patterns, "'patterns' must not have null elements");
 		this.objectMapper = objectMapper;
-		this.objectMapper
-				.registerModule(new SimpleModule().addDeserializer(MimeType.class, new MimeTypeJsonDeserializer()));
 	}
 
 	/**
@@ -424,39 +415,6 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 			return false;
 		}
 		return true;
-	}
-
-
-	/**
-	 * The {@link StdNodeBasedDeserializer} extension for {@link MimeType} deserialization.
-	 * It is presented here for backward compatibility when older producers send {@link MimeType}
-	 * headers as serialization version.
-	 */
-	private class MimeTypeJsonDeserializer extends StdNodeBasedDeserializer<MimeType> {
-
-		private static final long serialVersionUID = 1L;
-
-		MimeTypeJsonDeserializer() {
-			super(MimeType.class);
-		}
-
-		@Override
-		public MimeType convert(JsonNode root, DeserializationContext ctxt) throws IOException {
-			if (root instanceof TextNode) {
-				return MimeType.valueOf(root.asText());
-			}
-			else {
-				JsonNode type = root.get("type");
-				JsonNode subType = root.get("subtype");
-				JsonNode parameters = root.get("parameters");
-				Map<String, String> params =
-						DefaultKafkaHeaderMapper.this.objectMapper.readValue(parameters.traverse(),
-								TypeFactory.defaultInstance()
-										.constructMapType(HashMap.class, String.class, String.class));
-				return new MimeType(type.asText(), subType.asText(), params);
-			}
-		}
-
 	}
 
 	/**
