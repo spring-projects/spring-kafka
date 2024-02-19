@@ -3898,6 +3898,9 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setMessageListener((MessageListener<?, ?>) msg -> {
 		});
 		containerProps.setClientId("clientId");
+		if (early) {
+			containerProps.setTransactionManager(mock(PlatformTransactionManager.class));
+		}
 
 		RecordInterceptor<Integer, String> recordInterceptor = spy(new RecordInterceptor<Integer, String>() {
 
@@ -3922,7 +3925,7 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(recordInterceptor).setupThreadState(eq(consumer));
 		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(recordInterceptor).intercept(eq(firstRecord), eq(consumer));
-		if (ackMode.equals(AckMode.RECORD)) {
+		if (AckMode.RECORD.equals(ackMode)) {
 			inOrder.verify(consumer).commitSync(eq(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(1L))),
 					any(Duration.class));
 		}
@@ -3930,9 +3933,19 @@ public class KafkaMessageListenerContainerTests {
 			verify(consumer, never()).commitSync(eq(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(1L))),
 					any(Duration.class));
 		}
+		inOrder.verify(recordInterceptor).success(eq(firstRecord), eq(consumer));
+		inOrder.verify(recordInterceptor).afterRecord(eq(firstRecord), eq(consumer));
 		inOrder.verify(recordInterceptor).intercept(eq(secondRecord), eq(consumer));
-		inOrder.verify(consumer).commitSync(eq(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(2L))),
-				any(Duration.class));
+		if (AckMode.RECORD.equals(ackMode)) {
+			inOrder.verify(consumer).commitSync(eq(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(2L))),
+					any(Duration.class));
+		}
+		inOrder.verify(recordInterceptor).success(eq(secondRecord), eq(consumer));
+		inOrder.verify(recordInterceptor).afterRecord(eq(secondRecord), eq(consumer));
+		if (AckMode.BATCH.equals(ackMode)) {
+			inOrder.verify(consumer).commitSync(eq(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(2L))),
+					any(Duration.class));
+		}
 		container.stop();
 	}
 
@@ -3968,7 +3981,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setMessageListener((BatchMessageListener<?, ?>) msgs -> {
 		});
 		containerProps.setClientId("clientId");
-		if (!early) {
+		if (early) {
 			containerProps.setTransactionManager(mock(PlatformTransactionManager.class));
 		}
 
@@ -3995,6 +4008,7 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(interceptor).setupThreadState(eq(consumer));
 		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(interceptor).intercept(any(), eq(consumer));
+		inOrder.verify(interceptor).success(any(), eq(consumer));
 		inOrder.verify(consumer).commitSync(eq(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(2L))),
 				any(Duration.class));
 		container.stop();

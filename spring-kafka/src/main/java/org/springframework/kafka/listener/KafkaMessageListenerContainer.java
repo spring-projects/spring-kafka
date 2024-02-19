@@ -2658,6 +2658,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					catch (InterruptedException e) {
 						Thread.currentThread().interrupt();
 					}
+					this.earlyBatchInterceptor.success(nextArg, this.consumer);
 				}
 			}
 			return next;
@@ -2673,6 +2674,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					this.logger.debug(() -> "RecordInterceptor returned null, skipping: "
 						+ KafkaUtils.format(recordArg));
 					ackCurrent(recordArg);
+					this.earlyRecordInterceptor.success(recordArg, this.consumer);
+					this.earlyRecordInterceptor.afterRecord(recordArg, this.consumer);
 				}
 			}
 			return cRecord;
