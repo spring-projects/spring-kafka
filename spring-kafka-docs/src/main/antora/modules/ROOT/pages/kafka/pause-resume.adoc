@@ -13,11 +13,11 @@ Starting with version 2.1.5, you can call `isPauseRequested()` to see if `pause(
 However, the consumers might not have actually paused yet.
 `isConsumerPaused()` returns true if all `Consumer` instances have actually paused.
 
-In addition (also since 2.1.5), `ConsumerPausedEvent` and `ConsumerResumedEvent` instances are published with the container as the `source` property and the `TopicPartition` instances involved in the `partitions` property.
+In addition(also since 2.1.5), `ConsumerPausedEvent` and `ConsumerResumedEvent` instances are published with the container as the `source` property and the `TopicPartition` instances involved in the `partitions` property.
 
 Starting with version 2.9, a new container property `pauseImmediate`, when set to true, causes the pause to take effect after the current record is processed.
-By default, the pause takes effect when all of the records from the previous poll have been processed.
-See <<pauseImmediate>>.
+By default, the pause takes effect when all the records from the previous poll have been processed.
+See xref:kafka/container-props.adoc#pauseImmediate[pauseImmediate].
 
 The following simple Spring Boot application demonstrates by using the container registry to get a reference to a `@KafkaListener` method's container and pausing or resuming its consumers as well as receiving the corresponding events:
 
