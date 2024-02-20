@@ -351,6 +351,8 @@ This is to cause the transaction to roll back (if transactions are enabled).
 The `CommonDelegatingErrorHandler` can delegate to different error handlers, depending on the exception type.
 For example, you may wish to invoke a `DefaultErrorHandler` for most exceptions, or a `CommonContainerStoppingErrorHandler` for others.
 
+All delegates must share the same compatible properties (`ackAfterHandle`, `seekAfterError` ...).
+
 [[log-eh]]
 == Logging Error Handler
 

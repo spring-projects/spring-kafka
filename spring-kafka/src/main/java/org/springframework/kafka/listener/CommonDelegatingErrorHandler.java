@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ import org.springframework.util.Assert;
  *
  * @author Gary Russell
  * @author Adrian Chlebosz
+ * @author Antonin Arquey
  * @since 2.8
  *
  */
@@ -65,6 +66,7 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 	 * Set the delegate error handlers; a {@link LinkedHashMap} argument is recommended so
 	 * that the delegates are searched in a known order.
 	 * @param delegates the delegates.
+	 * @throws IllegalArgumentException if any of the delegates is not compatible with the default error handler.
 	 */
 	public void setErrorHandlers(Map<Class<? extends Throwable>, CommonErrorHandler> delegates) {
 		Assert.notNull(delegates, "'delegates' cannot be null");
@@ -109,6 +111,7 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 	 * Add a delegate to the end of the current collection.
 	 * @param throwable the throwable for this handler.
 	 * @param handler the handler.
+	 * @throws IllegalArgumentException if the handler is not compatible with the default error handler.
 	 */
 	public void addDelegate(Class<? extends Throwable> throwable, CommonErrorHandler handler) {
 		Map<Class<? extends Throwable>, CommonErrorHandler> delegatesToCheck = new LinkedHashMap<>(this.delegates);
@@ -118,13 +121,12 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 		this.delegates.putAll(delegatesToCheck);
 	}
 
-	@SuppressWarnings("deprecation")
 	private void checkDelegatesAndUpdateClassifier(Map<Class<? extends Throwable>,
 			CommonErrorHandler> delegatesToCheck) {
 
 		boolean ackAfterHandle = this.defaultErrorHandler.isAckAfterHandle();
 		boolean seeksAfterHandling = this.defaultErrorHandler.seeksAfterHandling();
-		this.delegates.values().forEach(handler -> {
+		delegatesToCheck.values().forEach(handler -> {
 			Assert.isTrue(ackAfterHandle == handler.isAckAfterHandle(),
 					"All delegates must return the same value when calling 'isAckAfterHandle()'");
 			Assert.isTrue(seeksAfterHandling == handler.seeksAfterHandling(),

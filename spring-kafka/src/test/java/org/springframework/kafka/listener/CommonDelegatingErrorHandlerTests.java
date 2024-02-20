@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,9 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -39,6 +41,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
  *
  * @author Gary Russell
  * @author Adrian Chlebosz
+ * @author Antonin Arquey
  * @since 2.8
  *
  */
@@ -171,6 +174,48 @@ public class CommonDelegatingErrorHandlerTests {
 			mock(MessageListenerContainer.class));
 
 		verify(defaultHandler).handleRemaining(any(), any(), any(), any());
+	}
+
+	@Test
+	void testAddIncompatibleAckAfterHandleDelegate() {
+		var defaultHandler = mock(CommonErrorHandler.class);
+		given(defaultHandler.isAckAfterHandle()).willReturn(true);
+		var delegatingErrorHandler = new CommonDelegatingErrorHandler(defaultHandler);
+		var delegate = mock(CommonErrorHandler.class);
+		given(delegate.isAckAfterHandle()).willReturn(false);
+
+		assertThatThrownBy(() -> delegatingErrorHandler.addDelegate(IllegalStateException.class, delegate))
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessage("All delegates must return the same value when calling 'isAckAfterHandle()'");
+	}
+
+	@Test
+	void testAddIncompatibleSeeksAfterHandlingDelegate() {
+		var defaultHandler = mock(CommonErrorHandler.class);
+		given(defaultHandler.seeksAfterHandling()).willReturn(true);
+		var delegatingErrorHandler = new CommonDelegatingErrorHandler(defaultHandler);
+		var delegate = mock(CommonErrorHandler.class);
+		given(delegate.seeksAfterHandling()).willReturn(false);
+
+		assertThatThrownBy(() -> delegatingErrorHandler.addDelegate(IllegalStateException.class, delegate))
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessage("All delegates must return the same value when calling 'seeksAfterHandling()'");
+	}
+
+	@Test
+	void testAddMultipleDelegatesWithOneIncompatible() {
+		var defaultHandler = mock(CommonErrorHandler.class);
+		given(defaultHandler.seeksAfterHandling()).willReturn(true);
+		var delegatingErrorHandler = new CommonDelegatingErrorHandler(defaultHandler);
+		var one = mock(CommonErrorHandler.class);
+		given(one.seeksAfterHandling()).willReturn(true);
+		var two = mock(CommonErrorHandler.class);
+		given(one.seeksAfterHandling()).willReturn(false);
+		Map<Class<? extends Throwable>, CommonErrorHandler> delegates = Map.of(IllegalStateException.class, one, IOException.class, two);
+
+		assertThatThrownBy(() -> delegatingErrorHandler.setErrorHandlers(delegates))
+				.isInstanceOf(IllegalArgumentException.class)
+				.hasMessage("All delegates must return the same value when calling 'seeksAfterHandling()'");
 	}
 
 	private Exception wrap(Exception ex) {
