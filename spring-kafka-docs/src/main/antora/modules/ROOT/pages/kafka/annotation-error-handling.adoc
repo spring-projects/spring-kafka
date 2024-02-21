@@ -65,8 +65,7 @@ In either case, you should NOT perform any seeks on the consumer because the con
 
 Starting with version 2.8, the legacy `ErrorHandler` and `BatchErrorHandler` interfaces have been superseded by a new `CommonErrorHandler`.
 These error handlers can handle errors for both record and batch listeners, allowing a single listener container factory to create containers for both types of listener.
-`CommonErrorHandler` implementations to replace most legacy framework error handler implementations are provided and the legacy error handlers deprecated.
-The legacy interfaces are still supported by listener containers and listener container factories; they will be deprecated in a future release.
+`CommonErrorHandler` implementations to replace most legacy framework error handler implementations are provided.
 
 See xref:kafka/annotation-error-handling.adoc#migrating-legacy-eh[Migrating Custom Legacy Error Handler Implementations to `CommonErrorHandler`] for information to migrate custom error handlers to `CommonErrorHandler`.
 
@@ -425,7 +424,7 @@ To replace any `BatchErrorHandler` implementation, you should implement `handleB
 You should also implement `handleOtherException()` - to handle exceptions that occur outside the scope of record processing (e.g. consumer errors).
 
 [[after-rollback]]
-== After-rollback Processor
+== After Rollback Processor
 
 When using transactions, if the listener throws an exception (and an error handler, if present, throws an exception), the transaction is rolled back.
 By default, any unprocessed records (including the failed record) are re-fetched on the next poll.

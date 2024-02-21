@@ -30,13 +30,17 @@
 See the JavaDocs for `ContainerProperties.AssignmentCommitOption` for more information about the available options.
 
 |[[asyncAcks]]<<asyncAcks,`asyncAcks`>>
-|false
+|`false`
 |Enable out-of-order commits (see xref:kafka/receiving-messages/ooo-commits.adoc[Manually Committing Offsets]); the consumer is paused and commits are deferred until gaps are filled.
 
 |[[authExceptionRetryInterval]]<<authExceptionRetryInterval,`authExceptionRetryInterval`>>
 |`null`
 |When not null, a `Duration` to sleep between polls when an `AuthenticationException` or `AuthorizationException` is thrown by the Kafka client.
 When null, such exceptions are considered fatal and the container will stop.
+
+|[[batchRecoverAfterRollback]]<<batchRecoverAfterRollback,`batchRecoverAfterRollback`>>
+|`false`
+|Set to `true` to enable batch recovery, See xref:kafka/annotation-error-handling.adoc#after-rollback[After Rollback Processor].
 
 |[[clientId]]<<clientId,`clientId`>>
 |(empty string)
@@ -57,10 +61,6 @@ Useful when the consumer code cannot determine that an `ErrorHandlingDeserialize
 |`null`
 |When present and `syncCommits` is `false` a callback invoked after the commit completes.
 
-|[[offsetAndMetadataProvider]]<<offsetAndMetadataProvider,`offsetAndMetadataProvider`>>
-|`null`
-|A provider for `OffsetAndMetadata`; by default, the provider creates an offset and metadata with empty metadata. The provider gives a way to customize the metadata.
-
 |[[commitLogLevel]]<<commitLogLevel,`commitLogLevel`>>
 |DEBUG
 |The logging level for logs pertaining to committing offsets.
@@ -69,14 +69,14 @@ Useful when the consumer code cannot determine that an `ErrorHandlingDeserialize
 |`null`
 |A rebalance listener; see xref:kafka/receiving-messages/rebalance-listeners.adoc[Rebalancing Listeners].
 
-|[[consumerStartTimout]]<<consumerStartTimout,`consumerStartTimout`>>
+|[[commitRetries]]<<commitRetries,`commitRetries`>>
+|3
+|Set the number of retries `RetriableCommitFailedException` when using `syncCommits` set to true.
+Default 3 (4-attempt total).
+
+|[[consumerStartTimeout]]<<consumerStartTimeout,`consumerStartTimeout`>>
 |30s
 |The time to wait for the consumer to start before logging an error; this might happen if, say, you use a task executor with insufficient threads.
-
-|[[consumerTaskExecutor]]<<consumerTaskExecutor,`consumerTaskExecutor`>>
-|`SimpleAsyncTaskExecutor`
-|A task executor to run the consumer threads.
-The default executor creates threads named `<name>-C-n`; with the `KafkaMessageListenerContainer`, the name is the bean name; with the `ConcurrentMessageListenerContainer` the name is the bean name suffixed with `-n` where n is incremented for each child container.
 
 |[[deliveryAttemptHeader]]<<deliveryAttemptHeader,`deliveryAttemptHeader`>>
 |`false`
@@ -123,9 +123,14 @@ Also see `idleBeforeDataMultiplier`.
 |None
 |Used to override any arbitrary consumer properties configured on the consumer factory.
 
+|[[listenerTaskExecutor]]<<listenerTaskExecutor,`listenerTaskExecutor`>>
+|`SimpleAsyncTaskExecutor`
+|A task executor to run the consumer threads.
+The default executor creates threads named `<name>-C-n`; with the `KafkaMessageListenerContainer`, the name is the bean name; with the `ConcurrentMessageListenerContainer` the name is the bean name suffixed with `-n` where n is incremented for each child container.
+
 |[[logContainerConfig]]<<logContainerConfig,`logContainerConfig`>>
 |`false`
-|Set to true to log at INFO level all container properties.
+|Set to `true` to log at INFO level all container properties.
 
 |[[messageListener]]<<messageListener,`messageListener`>>
 |`null`
@@ -145,7 +150,7 @@ Also see `idleBeforeDataMultiplier`.
 
 |[[missingTopicsFatal]]<<missingTopicsFatal,`missingTopicsFatal`>>
 |`false`
-|When true prevents the container from starting if the confifgured topic(s) are not present on the broker.
+|When true prevents the container from starting if the configured topic(s) are not present on the broker.
 
 |[[monitorInterval]]<<monitorInterval,`monitorInterval`>>
 |30s
@@ -157,9 +162,21 @@ See `noPollThreshold` and `pollTimeout`.
 |Multiplied by `pollTimeOut` to determine whether to publish a `NonResponsiveConsumerEvent`.
 See `monitorInterval`.
 
+|[[observationConvention]]<<observationConvention,`observationConvention`>>
+|`null`
+|When set, add dynamic tags to the timers and traces, based on information in the consumer records.
+
+|[[observationEnabled]]<<observationEnabled,`observationEnabled`>>
+|`false`
+|Set to `true` to enable observation via Micrometer.
+
+|[[offsetAndMetadataProvider]]<<offsetAndMetadataProvider,`offsetAndMetadataProvider`>>
+|`null`
+|A provider for `OffsetAndMetadata`; by default, the provider creates an offset and metadata with empty metadata. The provider gives a way to customize the metadata.
+
 |[[onlyLogRecordMetadata]]<<onlyLogRecordMetadata,`onlyLogRecordMetadata`>>
 |`false`
-|Set to false to log the complete consumer record (in error, debug logs etc) instead of just `topic-partition@offset`.
+|Set to `false` to log the complete consumer record (in error, debug logs etc.) instead of just `topic-partition@offset`.
 
 |[[pauseImmediate]]<<pauseImmediate,`pauseImmediate`>>
 |`false`
@@ -255,14 +272,6 @@ See xref:kafka/annotation-error-handling.adoc#error-handlers[Container Error Han
 |[[containerProperties]]<<containerProperties,`containerProperties`>>
 |`ContainerProperties`
 |The container properties instance.
-
-|[[errorHandler]]<<errorHandler,`errorHandler`>>
-|See desc.
-|Deprecated - see `commonErrorHandler`.
-
-|[[genericErrorHandler]]<<genericErrorHandler,`genericErrorHandler`>>
-|See desc.
-|Deprecated - see `commonErrorHandler`.
 
 |[[groupId2]]<<groupId2,`groupId`>>
 |See desc.
