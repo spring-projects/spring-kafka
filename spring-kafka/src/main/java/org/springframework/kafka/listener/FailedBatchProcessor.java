@@ -229,49 +229,53 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 				remaining.add(datum);
 			}
 		}
-		if (offsets.size() > 0) {
-			commit(consumer, container, offsets);
-		}
-		if (isSeekAfterError()) {
-			if (remaining.size() > 0) {
-				SeekUtils.seekOrRecover(thrownException, remaining, consumer, container, false,
-						getFailureTracker(), this.logger, getLogLevel());
-				ConsumerRecord<?, ?> recovered = remaining.get(0);
-				commit(consumer, container,
-						Collections.singletonMap(new TopicPartition(recovered.topic(), recovered.partition()),
-								ListenerUtils.createOffsetAndMetadata(container, recovered.offset() + 1)));
-				if (remaining.size() > 1) {
-					throw new KafkaException("Seek to current after exception", getLogLevel(), thrownException);
-				}
+		try {
+			if (offsets.size() > 0) {
+				commit(consumer, container, offsets);
 			}
-			return ConsumerRecords.empty();
 		}
-		else {
-			if (remaining.size() > 0) {
-				try {
-					if (getFailureTracker().recovered(remaining.get(0), thrownException, container,
-							consumer)) {
-						remaining.remove(0);
+		finally {
+			if (isSeekAfterError()) {
+				if (remaining.size() > 0) {
+					SeekUtils.seekOrRecover(thrownException, remaining, consumer, container, false,
+							getFailureTracker(), this.logger, getLogLevel());
+					ConsumerRecord<?, ?> recovered = remaining.get(0);
+					commit(consumer, container,
+							Collections.singletonMap(new TopicPartition(recovered.topic(), recovered.partition()),
+									ListenerUtils.createOffsetAndMetadata(container, recovered.offset() + 1)));
+					if (remaining.size() > 1) {
+						throw new KafkaException("Seek to current after exception", getLogLevel(), thrownException);
 					}
 				}
-				catch (Exception e) {
-					if (SeekUtils.isBackoffException(thrownException)) {
-						this.logger.debug(e, () -> KafkaUtils.format(remaining.get(0))
-								+ " included in remaining due to retry back off " + thrownException);
-					}
-					else {
-						this.logger.error(e, KafkaUtils.format(remaining.get(0))
-								+ " included in remaining due to " + thrownException);
-					}
-				}
-			}
-			if (remaining.isEmpty()) {
 				return ConsumerRecords.empty();
 			}
-			Map<TopicPartition, List<ConsumerRecord<K, V>>> remains = new HashMap<>();
-			remaining.forEach(rec -> remains.computeIfAbsent(new TopicPartition(rec.topic(), rec.partition()),
-					tp -> new ArrayList<>()).add((ConsumerRecord<K, V>) rec));
-			return new ConsumerRecords<>(remains);
+			else {
+				if (remaining.size() > 0) {
+					try {
+						if (getFailureTracker().recovered(remaining.get(0), thrownException, container,
+								consumer)) {
+							remaining.remove(0);
+						}
+					}
+					catch (Exception e) {
+						if (SeekUtils.isBackoffException(thrownException)) {
+							this.logger.debug(e, () -> KafkaUtils.format(remaining.get(0))
+									+ " included in remaining due to retry back off " + thrownException);
+						}
+						else {
+							this.logger.error(e, KafkaUtils.format(remaining.get(0))
+									+ " included in remaining due to " + thrownException);
+						}
+					}
+				}
+				if (remaining.isEmpty()) {
+					return ConsumerRecords.empty();
+				}
+				Map<TopicPartition, List<ConsumerRecord<K, V>>> remains = new HashMap<>();
+				remaining.forEach(rec -> remains.computeIfAbsent(new TopicPartition(rec.topic(), rec.partition()),
+						tp -> new ArrayList<>()).add((ConsumerRecord<K, V>) rec));
+				return new ConsumerRecords<>(remains);
+			}
 		}
 	}
 
