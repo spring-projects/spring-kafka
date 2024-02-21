@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 the original author or authors.
+ * Copyright 2023-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,11 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
@@ -34,11 +37,13 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.RebalanceInProgressException;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.data.util.DirectFieldAccessFallbackBeanWrapper;
+import org.springframework.kafka.KafkaException;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.FixedBackOff;
 
@@ -52,15 +57,6 @@ public class FailedBatchProcessorTests {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
 	void indexOutOfBounds() {
-		class TestFBP extends FailedBatchProcessor {
-
-			TestFBP(BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
-					CommonErrorHandler fallbackHandler) {
-
-				super(recoverer, backOff, fallbackHandler);
-			}
-
-		}
 		CommonErrorHandler mockEH = mock(CommonErrorHandler.class);
 		willThrow(new IllegalStateException("fallback")).given(mockEH).handleBatch(any(), any(), any(), any(), any());
 
@@ -83,15 +79,6 @@ public class FailedBatchProcessorTests {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
 	void recordNotPresent() {
-		class TestFBP extends FailedBatchProcessor {
-
-			TestFBP(BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
-					CommonErrorHandler fallbackHandler) {
-
-				super(recoverer, backOff, fallbackHandler);
-			}
-
-		}
 		CommonErrorHandler mockEH = mock(CommonErrorHandler.class);
 		willThrow(new IllegalStateException("fallback")).given(mockEH).handleBatch(any(), any(), any(), any(), any());
 
@@ -114,4 +101,34 @@ public class FailedBatchProcessorTests {
 		assertThat(output).contains("Record not found in batch: topic-42@123;");
 	}
 
+	@Test
+	void testExceptionDuringCommit() {
+		CommonErrorHandler mockEH = mock(CommonErrorHandler.class);
+		willThrow(new IllegalStateException("ise")).given(mockEH).handleBatch(any(), any(), any(), any(), any());
+
+		ConsumerRecord rec1 = new ConsumerRecord("topic", 0, 0L, null, null);
+		ConsumerRecord rec2 = new ConsumerRecord("topic", 0, 1L, null, null);
+		ConsumerRecord rec3 = new ConsumerRecord("topic", 0, 2L, null, null);
+
+		ConsumerRecords records = new ConsumerRecords(Map.of(new TopicPartition("topic", 0), List.of(rec1, rec2, rec3)));
+		TestFBP testFBP = new TestFBP((rec, ex) -> { }, new FixedBackOff(2L, 2L), mockEH);
+		final Consumer consumer = mock(Consumer.class);
+		willThrow(new RebalanceInProgressException("rebalance in progress")).given(consumer).commitSync(anyMap(), any());
+		final MessageListenerContainer mockMLC = mock(MessageListenerContainer.class);
+		willReturn(new ContainerProperties("topic")).given(mockMLC).getContainerProperties();
+		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
+				testFBP.handle(new BatchListenerFailedException("topic", rec2),
+						records, consumer, mockMLC, mock(Runnable.class))
+		).withMessage("Seek to current after exception");
+	}
+
+	static class TestFBP extends FailedBatchProcessor {
+
+		TestFBP(BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
+				CommonErrorHandler fallbackHandler) {
+
+			super(recoverer, backOff, fallbackHandler);
+		}
+
+	}
 }
