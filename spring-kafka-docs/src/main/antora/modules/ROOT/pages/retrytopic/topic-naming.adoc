@@ -111,9 +111,17 @@ This "final" retry topic will be suffixed with the provided or default suffix, a
 
 NOTE: By opting to use a single topic for the retries with the `maxInterval` delay, it may become more viable to configure an exponential retry policy that keeps retrying for a long time, because in this approach you do not need a large amount of topics.
 
-The default behavior is to work with the number of retry topics equal to the configured `maxAttempts` minus 1 and, when using exponential backoff, the retry topics are suffixed with the delay values, with the last retry topic (corresponding to the `maxInterval` delay) being suffixed with an additional index.
+Starting 3.2, the default behavior is reuses the retry topic for the same intervals, when using exponential backoff, the retry topics are suffixed with the delay values, with the last retry topic reuses for the same intervals(corresponding to the `maxInterval` delay).
 
 For instance, when configuring the exponential backoff with `initialInterval=1_000`, `multiplier=2`, and `maxInterval=16_000`, in order to keep trying for one hour, one would need to configure `maxAttempts` as 229, and by default the needed retry topics would be:
+
+* -retry-1000
+* -retry-2000
+* -retry-4000
+* -retry-8000
+* -retry-16000
+
+When using the strategy that work with the number of retry topics equal to the configured `maxAttempts` minus 1, the last retry topic (corresponding to the `maxInterval` delay) being suffixed with an additional index would be:
 
 * -retry-1000
 * -retry-2000
@@ -125,21 +133,11 @@ For instance, when configuring the exponential backoff with `initialInterval=1_0
 * ...
 * -retry-16000-224
 
-When using the strategy that reuses the retry topic for the same intervals, in the same configuration above the needed retry topics would be:
-
-* -retry-1000
-* -retry-2000
-* -retry-4000
-* -retry-8000
-* -retry-16000
-
-This will be the default in a future release.
-
 [source, java]
 ----
 @RetryableTopic(attempts = 230,
     backoff = @Backoff(delay = 1_000, multiplier = 2, maxDelay = 16_000),
-    sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC)
+    sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS)
 @KafkaListener(topics = "my-annotated-topic")
 public void processMessage(MyPojo message) {
     // ... message processing

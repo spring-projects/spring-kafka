@@ -52,6 +52,8 @@ import org.springframework.util.ReflectionUtils;
  * @author Tomaz Fernandes
  * @author Gary Russell
  * @author Adrian Chlebosz
+ * @author Wang Zhiyang
+ *
  * @since 2.7
  */
 @SuppressWarnings("deprecation")
@@ -314,15 +316,13 @@ class RetryableTopicAnnotationProcessorTests {
 
 		// then
 		List<DestinationTopic.Properties> destinationTopicProperties = configuration.getDestinationTopicProperties();
+		assertThat(destinationTopicProperties.size()).isEqualTo(3);
 		DestinationTopic destinationTopic = new DestinationTopic("", destinationTopicProperties.get(0));
 		assertThat(destinationTopic.getDestinationDelay()).isEqualTo(0);
 		DestinationTopic destinationTopic2 = new DestinationTopic("", destinationTopicProperties.get(1));
 		assertThat(destinationTopic2.getDestinationDelay()).isEqualTo(1000);
 		DestinationTopic destinationTopic3 = new DestinationTopic("", destinationTopicProperties.get(2));
-		assertThat(destinationTopic3.getDestinationDelay()).isEqualTo(1000);
-		DestinationTopic destinationTopic4 = new DestinationTopic("", destinationTopicProperties.get(3));
-		assertThat(destinationTopic4.getDestinationDelay()).isEqualTo(0);
-
+		assertThat(destinationTopic3.getDestinationDelay()).isEqualTo(0);
 	}
 
 	@Test

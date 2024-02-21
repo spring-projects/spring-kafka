@@ -41,6 +41,8 @@ import org.springframework.retry.annotation.Backoff;
  * @author Fabio da Silva Jr.
  * @author João Lima
  * @author Adrian Chlebosz
+ * @author Wang Zhiyang
+ *
  * @since 2.7
  *
  * @see org.springframework.kafka.retrytopic.RetryTopicConfigurer
@@ -191,10 +193,12 @@ public @interface RetryableTopic {
 
 	/**
 	 * Topic reuse strategy for sequential attempts made with a same backoff interval.
+	 * Starting 3.2, change default behavior to {@code SameIntervalTopicReuseStrategy.SINGLE_TOPIC}.
+	 *
 	 * @return the strategy.
 	 * @since 3.0.4
 	 */
-	SameIntervalTopicReuseStrategy sameIntervalTopicReuseStrategy() default SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS;
+	SameIntervalTopicReuseStrategy sameIntervalTopicReuseStrategy() default SameIntervalTopicReuseStrategy.SINGLE_TOPIC;
 
 	/**
 	 * Whether or not create a DLT, and redeliver to the DLT if delivery fails or just give up.

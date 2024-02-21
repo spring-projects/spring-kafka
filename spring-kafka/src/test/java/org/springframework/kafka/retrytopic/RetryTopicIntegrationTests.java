@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -384,6 +384,7 @@ public class RetryTopicIntegrationTests {
 		CountDownLatchContainer container;
 
 		@RetryableTopic(dltStrategy = DltStrategy.NO_DLT, attempts = "4", backoff = @Backoff(300),
+				sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS,
 				kafkaTemplate = "${kafka.template}")
 		@KafkaListener(topics = FOURTH_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenNoDlt(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
@@ -410,6 +411,7 @@ public class RetryTopicIntegrationTests {
 				numPartitions = "2",
 				retryTopicSuffix = "-listener1", dltTopicSuffix = "-listener1-dlt",
 				topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
+				sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS,
 				kafkaTemplate = "${kafka.template}")
 		@KafkaListener(id = "fifthTopicId1", topicPartitions = {@TopicPartition(topic = TWO_LISTENERS_TOPIC,
 				partitionOffsets = @PartitionOffset(partition = "0", initialOffset = "0"))},
@@ -442,6 +444,7 @@ public class RetryTopicIntegrationTests {
 				numPartitions = "2",
 				retryTopicSuffix = "-listener2", dltTopicSuffix = "-listener2-dlt",
 				topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
+				sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS,
 				kafkaTemplate = "${kafka.template}")
 		@KafkaListener(id = "fifthTopicId2", topicPartitions = {@TopicPartition(topic = TWO_LISTENERS_TOPIC,
 				partitionOffsets = @PartitionOffset(partition = "1", initialOffset = "0"))},
@@ -468,7 +471,8 @@ public class RetryTopicIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@RetryableTopic(attempts = "4", backoff = @Backoff(50))
+		@RetryableTopic(attempts = "4", backoff = @Backoff(50),
+				sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS)
 		@KafkaListener(id = "manual", topics = MANUAL_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenNoDlt(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic,
 				@SuppressWarnings("unused") Acknowledgment ack) {
@@ -511,8 +515,7 @@ public class RetryTopicIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@RetryableTopic(attempts = "2", backoff = @Backoff(50),
-				sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC)
+		@RetryableTopic(attempts = "2", backoff = @Backoff(50))
 		@KafkaListener(id = "reuseRetry1", topics = FIRST_REUSE_RETRY_TOPIC,
 				containerFactory = "retryTopicListenerContainerFactory")
 		public void listen1(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
@@ -532,8 +535,7 @@ public class RetryTopicIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@RetryableTopic(attempts = "5", backoff = @Backoff(delay = 30, maxDelay = 100, multiplier = 2),
-				sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC)
+		@RetryableTopic(attempts = "5", backoff = @Backoff(delay = 30, maxDelay = 100, multiplier = 2))
 		@KafkaListener(id = "reuseRetry2", topics = SECOND_REUSE_RETRY_TOPIC,
 				containerFactory = "retryTopicListenerContainerFactory")
 		public void listen2(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
@@ -553,8 +555,7 @@ public class RetryTopicIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@RetryableTopic(attempts = "5", backoff = @Backoff(delay = 1, maxDelay = 5, multiplier = 1.4),
-				sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC)
+		@RetryableTopic(attempts = "5", backoff = @Backoff(delay = 1, maxDelay = 5, multiplier = 1.4))
 		@KafkaListener(id = "reuseRetry3", topics = THIRD_REUSE_RETRY_TOPIC,
 				containerFactory = "retryTopicListenerContainerFactory")
 		public void listen3(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {

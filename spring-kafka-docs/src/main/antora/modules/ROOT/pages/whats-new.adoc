@@ -46,3 +46,8 @@ Deprecating the `transactionManager` property in `ContainerProperties` in favor 
 
 A new `AfterRollbackProcessor` API `processBatch` is provided.
 See xref:kafka/annotation-error-handling.adoc#after-rollback[After-rollback Processor] for more information.
+
+[[x32-retry-topic]]
+=== Change @RetryableTopic SameIntervalTopicReuseStrategy default value
+Change `@RetryableTopic` property SameIntervalTopicReuseStrategy default value to SINGLE_TOPIC.
+See xref:retrytopic/topic-naming.adoc#single-topic-maxinterval-delay[Single Topic for maxInterval Exponential Delay].

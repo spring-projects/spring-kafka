@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,6 +65,8 @@ import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * @author Tomaz Fernandes
+ * @author Wang Zhiyang
+ *
  * @since 2.8.4
  */
 @SpringJUnitConfig
@@ -247,9 +249,7 @@ public class RetryTopicExceptionRoutingIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@SuppressWarnings("deprecation")
-		@RetryableTopic(sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC,
-				backoff = @Backoff(50))
+		@RetryableTopic(backoff = @Backoff(50))
 		@KafkaListener(topics = FRAMEWORK_FATAL_EXCEPTION_TOPIC)
 		public void listenWithAnnotation(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			container.fatalFrameworkLatch.countDown();

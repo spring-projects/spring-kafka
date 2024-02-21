@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -62,6 +62,8 @@ import org.springframework.util.backoff.FixedBackOff;
 /**
  * @author Tomaz Fernandes
  * @author Cenk Akin
+ * @author Wang Zhiyang
+ *
  * @since 2.8.3
  */
 @SpringJUnitConfig
@@ -121,7 +123,8 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 				attempts = "4",
 				backoff = @Backoff(delay = 1000, multiplier = 2.0),
 				autoCreateTopics = "false",
-				topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE)
+				topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
+				sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS)
 		@KafkaListener(topics = RetryTopicSameContainerFactoryIntegrationTests.FIRST_TOPIC)
 		public void listen(String in, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
 			countDownLatchContainer.countDownLatchFirstRetryable.countDown();
@@ -142,7 +145,7 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 		@Autowired
 		CountDownLatchContainer countDownLatchContainer;
 
-		@RetryableTopic
+		@RetryableTopic(sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS)
 		@KafkaListener(topics = RetryTopicSameContainerFactoryIntegrationTests.SECOND_TOPIC)
 		public void listen(String in, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
 			countDownLatchContainer.countDownLatchSecondRetryable.countDown();
