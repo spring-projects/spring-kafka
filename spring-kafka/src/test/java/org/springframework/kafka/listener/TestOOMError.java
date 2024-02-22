@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,7 +77,8 @@ public class TestOOMError {
 		containerProps.setClientId("clientId");
 		ConcurrentMessageListenerContainer<Integer, String> container =
 				new ConcurrentMessageListenerContainer<>(cf, containerProps);
-		CountDownLatch stopLatch = new CountDownLatch(1);
+		// concurrent container publishes one time, child container publishes concurrency time.
+		CountDownLatch stopLatch = new CountDownLatch(2);
 		container.setApplicationEventPublisher(e -> {
 			if (e instanceof ContainerStoppedEvent) {
 				stopLatch.countDown();
