@@ -125,10 +125,10 @@ import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
@@ -3899,7 +3899,7 @@ public class KafkaMessageListenerContainerTests {
 		});
 		containerProps.setClientId("clientId");
 		if (early) {
-			containerProps.setTransactionManager(mock(PlatformTransactionManager.class));
+			containerProps.setKafkaAwareTransactionManager(mock(KafkaAwareTransactionManager.class));
 		}
 
 		RecordInterceptor<Integer, String> recordInterceptor = spy(new RecordInterceptor<Integer, String>() {
@@ -3982,7 +3982,7 @@ public class KafkaMessageListenerContainerTests {
 		});
 		containerProps.setClientId("clientId");
 		if (early) {
-			containerProps.setTransactionManager(mock(PlatformTransactionManager.class));
+			containerProps.setKafkaAwareTransactionManager(mock(KafkaAwareTransactionManager.class));
 		}
 
 		BatchInterceptor<Integer, String> interceptor = spy(new BatchInterceptor<Integer, String>() {

@@ -72,12 +72,12 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
 import org.springframework.lang.Nullable;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * @author Gary Russell
  * @author Wang Zhiyang
+ * @author Soby Chacko
  *
  * @since 2.2.4
  *
@@ -656,103 +656,6 @@ public class ConcurrentMessageListenerContainerMockTests {
 			if (batch) {
 				assertThat(received.get()).hasSize(1);
 			}
-		}
-		finally {
-			container.stop();
-		}
-	}
-
-	@Test
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	void testInterceptInTxNonKafkaTM() throws InterruptedException {
-		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
-		final Consumer consumer = mock(Consumer.class);
-		TopicPartition tp0 = new TopicPartition("foo", 0);
-		ConsumerRecord record1 = new ConsumerRecord("foo", 0, 0L, "bar", "baz");
-		ConsumerRecords records = new ConsumerRecords(
-				Collections.singletonMap(tp0, Collections.singletonList(record1)));
-		ConsumerRecords empty = new ConsumerRecords(Collections.emptyMap());
-		AtomicInteger firstOrSecondPoll = new AtomicInteger();
-		willAnswer(invocation -> {
-			Thread.sleep(10);
-			return firstOrSecondPoll.incrementAndGet() < 2 ? records : empty;
-		}).given(consumer).poll(any());
-		List<TopicPartition> assignments = List.of(tp0);
-		willAnswer(invocation -> {
-			((ConsumerRebalanceListener) invocation.getArgument(1))
-				.onPartitionsAssigned(assignments);
-			return null;
-		}).given(consumer).subscribe(any(Collection.class), any());
-		given(consumer.position(any())).willReturn(0L);
-		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
-			.willReturn(consumer);
-		ContainerProperties containerProperties = new ContainerProperties("foo");
-		containerProperties.setGroupId("grp");
-		containerProperties.setMessageListener((MessageListener) rec -> {
-		});
-		containerProperties.setMissingTopicsFatal(false);
-		List<String> order = new ArrayList<>();
-		AtomicReference<CountDownLatch> latch = new AtomicReference<>(new CountDownLatch(2));
-		PlatformTransactionManager tm = mock(PlatformTransactionManager.class);
-		willAnswer(inv -> {
-			order.add("tx");
-			latch.get().countDown();
-			return null;
-		}).given(tm).getTransaction(any());
-		containerProperties.setTransactionManager(tm);
-		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(consumerFactory,
-				containerProperties);
-		AtomicReference<CountDownLatch> successCalled = new AtomicReference<>(new CountDownLatch(1));
-		container.setRecordInterceptor(new RecordInterceptor() {
-
-			@Override
-			@Nullable
-			public ConsumerRecord intercept(ConsumerRecord rec, Consumer consumer) {
-				order.add("interceptor");
-				latch.get().countDown();
-				return rec;
-			}
-
-			@Override
-			public void success(ConsumerRecord record, Consumer consumer) {
-				order.add("success");
-				successCalled.get().countDown();
-			}
-
-		});
-		container.setBatchInterceptor(new BatchInterceptor() {
-
-			@Override
-			@Nullable
-			public ConsumerRecords intercept(ConsumerRecords recs, Consumer consumer) {
-				order.add("b.interceptor");
-				latch.get().countDown();
-				return new ConsumerRecords(Collections.singletonMap(tp0, Collections.singletonList(record1)));
-			}
-
-			@Override
-			public void success(ConsumerRecords records, Consumer consumer) {
-				order.add("b.success");
-				successCalled.get().countDown();
-			}
-
-		});
-		container.setInterceptBeforeTx(false);
-		container.start();
-		try {
-			assertThat(latch.get().await(10, TimeUnit.SECONDS)).isTrue();
-			assertThat(successCalled.get().await(10, TimeUnit.SECONDS)).isTrue();
-			assertThat(order).containsExactly("tx", "interceptor", "success");
-			container.stop();
-			latch.set(new CountDownLatch(2));
-			successCalled.set(new CountDownLatch(1));
-			container.getContainerProperties().setMessageListener((BatchMessageListener) recs -> {
-			});
-			firstOrSecondPoll.set(0);
-			container.start();
-			assertThat(latch.get().await(10, TimeUnit.SECONDS)).isTrue();
-			assertThat(successCalled.get().await(10, TimeUnit.SECONDS)).isTrue();
-			assertThat(order).containsExactly("tx", "interceptor", "success", "tx", "b.interceptor", "b.success");
 		}
 		finally {
 			container.stop();

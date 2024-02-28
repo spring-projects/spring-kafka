@@ -95,16 +95,14 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.TransactionException;
-import org.springframework.transaction.support.AbstractPlatformTransactionManager;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
-import org.springframework.transaction.support.DefaultTransactionStatus;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * @author Gary Russell
  * @author Artem Bilan
  * @author Wang Zhiyang
+ * @author Soby Chacko
  *
  * @since 1.3
  *
@@ -462,7 +460,7 @@ public class TransactionalContainerTests {
 		given(pf.createProducer(isNull())).willReturn(producer);
 		ContainerProperties props = new ContainerProperties(new TopicPartitionOffset("foo", 0));
 		props.setGroupId("group");
-		props.setTransactionManager(new SomeOtherTransactionManager());
+		props.setKafkaAwareTransactionManager(new KafkaTransactionManager<>(pf));
 		final KafkaTemplate template = new KafkaTemplate(pf);
 		ConsumerGroupMetadata meta = mock(ConsumerGroupMetadata.class);
 		props.setMessageListener((MessageListener<String, String>) m -> {
@@ -595,11 +593,6 @@ public class TransactionalContainerTests {
 		testFixLagGuts(topic6, 1);
 	}
 
-	@Test
-	public void testFixLagOtherTM() throws InterruptedException {
-		testFixLagGuts(topic7, 2);
-	}
-
 	@SuppressWarnings({"unchecked"})
 	private void testFixLagGuts(String topic, int whichTm) throws InterruptedException {
 		Map<String, Object> props = KafkaTestUtils.consumerProps("txTest2", "false", embeddedKafka);
@@ -619,8 +612,6 @@ public class TransactionalContainerTests {
 		case 1:
 			containerProps.setKafkaAwareTransactionManager(new KafkaTransactionManager<>(pf));
 			break;
-		case 2:
-			containerProps.setTransactionManager(new SomeOtherTransactionManager());
 		}
 
 		final KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
@@ -1080,30 +1071,6 @@ public class TransactionalContainerTests {
 		container.stop();
 		def.setPropagationBehavior(TransactionDefinition.PROPAGATION_MANDATORY);
 		assertThatIllegalStateException().isThrownBy(container::start);
-	}
-
-	public static class SomeOtherTransactionManager extends AbstractPlatformTransactionManager {
-
-		@Override
-		protected Object doGetTransaction() throws TransactionException {
-			return new Object();
-		}
-
-		@Override
-		protected void doBegin(Object transaction, TransactionDefinition definition) throws TransactionException {
-			//noop
-		}
-
-		@Override
-		protected void doCommit(DefaultTransactionStatus status) throws TransactionException {
-			//noop
-		}
-
-		@Override
-		protected void doRollback(DefaultTransactionStatus status) throws TransactionException {
-			//noop
-		}
-
 	}
 
 }

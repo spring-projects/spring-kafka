@@ -102,6 +102,7 @@ public class FailedBatchProcessorTests {
 		assertThat(output).contains("Record not found in batch: topic-42@123;");
 	}
 
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
 	void testExceptionDuringCommit() {
 		CommonErrorHandler mockEH = mock(CommonErrorHandler.class);
