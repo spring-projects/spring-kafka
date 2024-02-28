@@ -110,7 +110,7 @@ import org.springframework.util.backoff.FixedBackOff;
 @EmbeddedKafka(topics = { TransactionalContainerTests.topic1, TransactionalContainerTests.topic2,
 		TransactionalContainerTests.topic3, TransactionalContainerTests.topic3DLT, TransactionalContainerTests.topic4,
 		TransactionalContainerTests.topic5, TransactionalContainerTests.topic6, TransactionalContainerTests.topic7,
-		TransactionalContainerTests.topic8, TransactionalContainerTests.topic8DLT },
+		TransactionalContainerTests.topic8, TransactionalContainerTests.topic8DLT, TransactionalContainerTests.topic9},
 		brokerProperties = { "transaction.state.log.replication.factor=1", "transaction.state.log.min.isr=1" })
 public class TransactionalContainerTests {
 
@@ -936,7 +936,8 @@ public class TransactionalContainerTests {
 
 	@Test
 	public void testBatchListenerRecoverAfterRollbackProcessorCrash() throws Exception {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("testBatchListenerRollbackNoRetries", "false", embeddedKafka);
+		String group = "testBatchListenerRollbackNoRetries";
+		Map<String, Object> props = KafkaTestUtils.consumerProps(group, "false", embeddedKafka);
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
@@ -949,15 +950,15 @@ public class TransactionalContainerTests {
 		pf.setTransactionIdPrefix("batchListener.noRetries.");
 		final KafkaTemplate<Object, Object> template = new KafkaTemplate<>(pf);
 		final CountDownLatch latch = new CountDownLatch(1);
-		AtomicReference<String> data = new AtomicReference<>();
+		AtomicReference<List<ConsumerRecord<Integer, String>>> data = new AtomicReference<>();
 		containerProps.setMessageListener((BatchMessageListener<Integer, String>) recordList -> {
 			for (ConsumerRecord<Integer, String> record : recordList) {
-				data.set(record.value());
 				if (record.offset() == 0) {
 					throw new BatchListenerFailedException("fail for no retry", record);
 				}
-				latch.countDown();
 			}
+			data.set(recordList);
+			latch.countDown();
 		});
 
 		KafkaTransactionManager<Object, Object> tm = new KafkaTransactionManager<>(pf);
@@ -965,7 +966,7 @@ public class TransactionalContainerTests {
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		container.setBeanName("testBatchListenerRollbackNoRetries");
-		final KafkaOperations<Object, Object> dlTemplate = spy(new KafkaTemplate<>(pf));
+		final KafkaOperations<Object, Object> dlTemplate = new KafkaTemplate<>(pf);
 		AtomicBoolean recovererShouldFail = new AtomicBoolean(true);
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(dlTemplate) {
 			@Override
@@ -977,7 +978,7 @@ public class TransactionalContainerTests {
 
 		};
 		DefaultAfterRollbackProcessor<Object, Object> afterRollbackProcessor =
-				spy(new DefaultAfterRollbackProcessor<>(recoverer, new FixedBackOff(0L, 0L), dlTemplate, true));
+				new DefaultAfterRollbackProcessor<>(recoverer, new FixedBackOff(0L, 0L), dlTemplate, true);
 		container.setAfterRollbackProcessor(afterRollbackProcessor);
 		final CountDownLatch stopLatch = new CountDownLatch(1);
 		container.setApplicationEventPublisher(e -> {
@@ -997,8 +998,16 @@ public class TransactionalContainerTests {
 			template.sendDefault(0, 0, "qux");
 			return null;
 		});
+
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(data.get()).isEqualTo("qux");
+		assertThat(data.get()).isNotNull();
+		ConsumerRecord<Integer, String> crBaz = data.get().get(0);
+		ConsumerRecord<Integer, String> crQux = data.get().get(1);
+		assertThat(crBaz.offset()).isEqualTo(2L);
+		assertThat(crBaz.value()).isEqualTo("baz");
+		assertThat(crQux.offset()).isEqualTo(3L);
+		assertThat(crQux.value()).isEqualTo("qux");
+
 		container.stop();
 		pf.destroy();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
