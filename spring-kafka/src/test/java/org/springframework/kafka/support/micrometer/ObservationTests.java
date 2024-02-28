@@ -253,7 +253,7 @@ public class ObservationTests {
 		assertThat(span.getTags().get("spring.kafka.template.name")).isEqualTo("runtimeExceptionTemplate");
 		span = spans.poll();
 		assertThat(span.getTags().get("spring.kafka.listener.id")).isEqualTo("obs4-0");
-		assertThat(span.getError().getCause().getCause())
+		assertThat(span.getError().getCause())
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessage("obs4 run time exception");
 	}
