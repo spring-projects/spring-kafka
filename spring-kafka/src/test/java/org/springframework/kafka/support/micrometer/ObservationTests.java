@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 the original author or authors.
+ * Copyright 2022-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.errors.InvalidTopicException;
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.junit.jupiter.api.Test;
 
@@ -54,7 +55,6 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
-import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservation.DefaultKafkaListenerObservationConvention;
 import org.springframework.kafka.support.micrometer.KafkaTemplateObservation.DefaultKafkaTemplateObservationConvention;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -85,13 +85,19 @@ import io.micrometer.tracing.test.simple.SimpleTracer;
 /**
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Wang Zhiyang
  *
  * @since 3.0
  */
 @SpringJUnitConfig
-@EmbeddedKafka(topics = { "observation.testT1", "observation.testT2", "ObservationTests.testT3" })
+@EmbeddedKafka(topics = { "observation.testT1", "observation.testT2", "observation.testT3",
+		ObservationTests.OBSERVATION_RUNTIME_EXCEPTION, ObservationTests.OBSERVATION_ERROR})
 @DirtiesContext
 public class ObservationTests {
+
+	public final static String OBSERVATION_RUNTIME_EXCEPTION = "observation.runtime-exception";
+
+	public final static String OBSERVATION_ERROR = "observation.error";
 
 	@Test
 	void endToEnd(@Autowired Listener listener, @Autowired KafkaTemplate<Integer, String> template,
@@ -106,8 +112,8 @@ public class ObservationTests {
 		assertThat(listener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(listener.record).isNotNull();
 		Headers headers = listener.record.headers();
-		assertThat(headers.lastHeader("foo")).extracting(hdr -> hdr.value()).isEqualTo("some foo value".getBytes());
-		assertThat(headers.lastHeader("bar")).extracting(hdr -> hdr.value()).isEqualTo("some bar value".getBytes());
+		assertThat(headers.lastHeader("foo")).extracting(Header::value).isEqualTo("some foo value".getBytes());
+		assertThat(headers.lastHeader("bar")).extracting(Header::value).isEqualTo("some bar value".getBytes());
 		Deque<SimpleSpan> spans = tracer.getSpans();
 		assertThat(spans).hasSize(4);
 		SimpleSpan span = spans.poll();
@@ -148,14 +154,15 @@ public class ObservationTests {
 					}
 
 				});
+
 		rler.getListenerContainer("obs1").stop();
 		rler.getListenerContainer("obs1").start();
 		template.send("observation.testT1", "test").get(10, TimeUnit.SECONDS);
 		assertThat(listener.latch2.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(listener.record).isNotNull();
 		headers = listener.record.headers();
-		assertThat(headers.lastHeader("foo")).extracting(hdr -> hdr.value()).isEqualTo("some foo value".getBytes());
-		assertThat(headers.lastHeader("bar")).extracting(hdr -> hdr.value()).isEqualTo("some bar value".getBytes());
+		assertThat(headers.lastHeader("foo")).extracting(Header::value).isEqualTo("some foo value".getBytes());
+		assertThat(headers.lastHeader("bar")).extracting(Header::value).isEqualTo("some bar value".getBytes());
 		assertThat(spans).hasSize(4);
 		span = spans.poll();
 		assertThat(span.getTags()).containsEntry("spring.kafka.template.name", "template");
@@ -230,6 +237,48 @@ public class ObservationTests {
 				.doesNotHaveMeterWithNameAndTags("spring.kafka.template", KeyValues.of("error", "KafkaException"));
 	}
 
+	@Test
+	void observationRuntimeException(@Autowired ExceptionListener listener, @Autowired SimpleTracer tracer,
+			@Autowired @Qualifier("runtimeExceptionTemplate") KafkaTemplate<Integer, String> runtimeExceptionTemplate,
+			@Autowired KafkaListenerEndpointRegistry endpointRegistry)
+					throws ExecutionException, InterruptedException, TimeoutException {
+
+		runtimeExceptionTemplate.send(OBSERVATION_RUNTIME_EXCEPTION, "testRuntimeException").get(10, TimeUnit.SECONDS);
+		assertThat(listener.latch4.await(10, TimeUnit.SECONDS)).isTrue();
+		endpointRegistry.getListenerContainer("obs4").stop();
+
+		Deque<SimpleSpan> spans = tracer.getSpans();
+		assertThat(spans).hasSize(2);
+		SimpleSpan span = spans.poll();
+		assertThat(span.getTags().get("spring.kafka.template.name")).isEqualTo("runtimeExceptionTemplate");
+		span = spans.poll();
+		assertThat(span.getTags().get("spring.kafka.listener.id")).isEqualTo("obs4-0");
+		assertThat(span.getError().getCause().getCause())
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessage("obs4 run time exception");
+	}
+
+	@Test
+	void observationErrorException(@Autowired ExceptionListener listener, @Autowired SimpleTracer tracer,
+			@Autowired @Qualifier("errorTemplate") KafkaTemplate<Integer, String> errorTemplate,
+			@Autowired KafkaListenerEndpointRegistry endpointRegistry)
+					throws ExecutionException, InterruptedException, TimeoutException {
+
+		errorTemplate.send(OBSERVATION_ERROR, "testError").get(10, TimeUnit.SECONDS);
+		assertThat(listener.latch5.await(10, TimeUnit.SECONDS)).isTrue();
+		endpointRegistry.getListenerContainer("obs5").stop();
+
+		Deque<SimpleSpan> spans = tracer.getSpans();
+		assertThat(spans).hasSize(2);
+		SimpleSpan span = spans.poll();
+		assertThat(span.getTags().get("spring.kafka.template.name")).isEqualTo("errorTemplate");
+		span = spans.poll();
+		assertThat(span.getTags().get("spring.kafka.listener.id")).isEqualTo("obs5-0");
+		assertThat(span.getError())
+				.isInstanceOf(Error.class)
+				.hasMessage("obs5 error");
+	}
+
 	@Configuration
 	@EnableKafka
 	public static class Config {
@@ -277,6 +326,20 @@ public class ObservationTests {
 		}
 
 		@Bean
+		KafkaTemplate<Integer, String> runtimeExceptionTemplate(ProducerFactory<Integer, String> pf) {
+			KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+			template.setObservationEnabled(true);
+			return template;
+		}
+
+		@Bean
+		KafkaTemplate<Integer, String> errorTemplate(ProducerFactory<Integer, String> pf) {
+			KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+			template.setObservationEnabled(true);
+			return template;
+		}
+
+		@Bean
 		ConcurrentKafkaListenerContainerFactory<Integer, String> kafkaListenerContainerFactory(
 				ConsumerFactory<Integer, String> cf) {
 
@@ -286,7 +349,7 @@ public class ObservationTests {
 			factory.getContainerProperties().setObservationEnabled(true);
 			factory.setContainerCustomizer(container -> {
 				if (container.getListenerId().equals("obs3")) {
-					((AbstractMessageListenerContainer<Integer, String>) container).setKafkaAdmin(this.mockAdmin);
+					container.setKafkaAdmin(this.mockAdmin);
 				}
 			});
 			return factory;
@@ -352,6 +415,11 @@ public class ObservationTests {
 			return new Listener(template);
 		}
 
+		@Bean
+		ExceptionListener exceptionListener() {
+			return new ExceptionListener();
+		}
+
 	}
 
 	public static class Listener {
@@ -383,6 +451,26 @@ public class ObservationTests {
 
 		@KafkaListener(id = "obs3", topics = "observation.testT3")
 		void listen3(ConsumerRecord<Integer, String> in) {
+		}
+
+	}
+
+	public static class ExceptionListener {
+
+		final CountDownLatch latch4 = new CountDownLatch(1);
+
+		final CountDownLatch latch5 = new CountDownLatch(1);
+
+		@KafkaListener(id = "obs4", topics = OBSERVATION_RUNTIME_EXCEPTION)
+		void listenRuntimeException(ConsumerRecord<Integer, String> in) {
+			this.latch4.countDown();
+			throw new IllegalStateException("obs4 run time exception");
+		}
+
+		@KafkaListener(id = "obs5", topics = OBSERVATION_ERROR)
+		void listenError(ConsumerRecord<Integer, String> in) {
+			this.latch5.countDown();
+			throw new Error("obs5 error");
 		}
 
 	}
