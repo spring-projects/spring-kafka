@@ -9,3 +9,4 @@ Since 2.7 Spring for Apache Kafka offers support for that via the `@RetryableTop
 
 IMPORTANT: Non-blocking retries are not supported with xref:kafka/receiving-messages/listener-annotation.adoc#batch-listeners[Batch Listeners].
 
+IMPORTANT: Non-Blocking Retries cannot combine with xref:kafka/transactions.adoc#container-transaction-manager[Container Transactions].

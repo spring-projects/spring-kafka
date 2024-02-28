@@ -79,6 +79,9 @@ Instead, use a `KafkaTransactionManager` in the container to start the Kafka tra
 
 See xref:tips.adoc#ex-jdbc-sync[Examples of Kafka Transactions with Other Transaction Managers] for an example application that chains JDBC and Kafka transactions.
 
+IMPORTANT: xref:retrytopic.adoc[Non-Blocking Retries] cannot combine with xref:kafka/transactions.adoc#container-transaction-manager[Container Transactions].
+When listener code threw exception, container transactions commit success and record sending to the retryable topic.
+
 [[kafkatemplate-local-transactions]]
 == `KafkaTemplate` Local Transactions
 
