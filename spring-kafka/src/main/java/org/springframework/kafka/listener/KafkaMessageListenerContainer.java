@@ -163,6 +163,7 @@ import io.micrometer.observation.ObservationRegistry;
  * @author Daniel Gentes
  * @author Soby Chacko
  * @author Wang Zhiyang
+ * @author Raphael Rösch
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -2276,13 +2277,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			catch (RuntimeException e) {
+				this.batchFailed = true;
 				failureTimer(sample, null);
 				batchInterceptAfter(records, e);
 				if (this.commonErrorHandler == null) {
 					throw e;
 				}
 				try {
-					this.batchFailed = true;
 					invokeBatchErrorHandler(records, recordList, e);
 					commitOffsetsIfNeededAfterHandlingError(records);
 				}
