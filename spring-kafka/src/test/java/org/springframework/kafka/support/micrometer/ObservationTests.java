@@ -239,7 +239,7 @@ public class ObservationTests {
 
 	@Test
 	void observationRuntimeException(@Autowired ExceptionListener listener, @Autowired SimpleTracer tracer,
-			@Autowired @Qualifier("runtimeExceptionTemplate") KafkaTemplate<Integer, String> runtimeExceptionTemplate,
+			@Autowired @Qualifier("throwableTemplate") KafkaTemplate<Integer, String> runtimeExceptionTemplate,
 			@Autowired KafkaListenerEndpointRegistry endpointRegistry)
 					throws ExecutionException, InterruptedException, TimeoutException {
 
@@ -250,7 +250,7 @@ public class ObservationTests {
 		Deque<SimpleSpan> spans = tracer.getSpans();
 		assertThat(spans).hasSize(2);
 		SimpleSpan span = spans.poll();
-		assertThat(span.getTags().get("spring.kafka.template.name")).isEqualTo("runtimeExceptionTemplate");
+		assertThat(span.getTags().get("spring.kafka.template.name")).isEqualTo("throwableTemplate");
 		span = spans.poll();
 		assertThat(span.getTags().get("spring.kafka.listener.id")).isEqualTo("obs4-0");
 		assertThat(span.getError().getCause())
@@ -260,7 +260,7 @@ public class ObservationTests {
 
 	@Test
 	void observationErrorException(@Autowired ExceptionListener listener, @Autowired SimpleTracer tracer,
-			@Autowired @Qualifier("errorTemplate") KafkaTemplate<Integer, String> errorTemplate,
+			@Autowired @Qualifier("throwableTemplate") KafkaTemplate<Integer, String> errorTemplate,
 			@Autowired KafkaListenerEndpointRegistry endpointRegistry)
 					throws ExecutionException, InterruptedException, TimeoutException {
 
@@ -271,7 +271,7 @@ public class ObservationTests {
 		Deque<SimpleSpan> spans = tracer.getSpans();
 		assertThat(spans).hasSize(2);
 		SimpleSpan span = spans.poll();
-		assertThat(span.getTags().get("spring.kafka.template.name")).isEqualTo("errorTemplate");
+		assertThat(span.getTags().get("spring.kafka.template.name")).isEqualTo("throwableTemplate");
 		span = spans.poll();
 		assertThat(span.getTags().get("spring.kafka.listener.id")).isEqualTo("obs5-0");
 		assertThat(span.getError())
@@ -326,14 +326,7 @@ public class ObservationTests {
 		}
 
 		@Bean
-		KafkaTemplate<Integer, String> runtimeExceptionTemplate(ProducerFactory<Integer, String> pf) {
-			KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
-			template.setObservationEnabled(true);
-			return template;
-		}
-
-		@Bean
-		KafkaTemplate<Integer, String> errorTemplate(ProducerFactory<Integer, String> pf) {
+		KafkaTemplate<Integer, String> throwableTemplate(ProducerFactory<Integer, String> pf) {
 			KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 			template.setObservationEnabled(true);
 			return template;
