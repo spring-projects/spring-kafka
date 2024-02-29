@@ -133,6 +133,8 @@ When using the strategy that work with the number of retry topics equal to the c
 * ...
 * -retry-16000-224
 
+If multiple topics are required, then that can be done using the following configuration.
+
 [source, java]
 ----
 @RetryableTopic(attempts = 230,
