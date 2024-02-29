@@ -72,8 +72,8 @@ public class ReactiveKafkaConsumerTemplate<K, V> {
 		return this.kafkaReceiver.receive();
 	}
 
-	public Flux<ReceiverRecord<K, V>> receiveBatch() {
-		return this.kafkaReceiver.receiveBatch().concatMap(Function.identity());
+	public Flux<Flux<ReceiverRecord<K, V>>> receiveBatch() {
+		return this.kafkaReceiver.receiveBatch();
 	}
 
 	public Flux<ConsumerRecord<K, V>> receiveAutoAck() {
