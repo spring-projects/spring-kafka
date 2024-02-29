@@ -363,8 +363,6 @@ public <T> T retrieveQueryableStore(String storeName, QueryableStoreType<T> stor
 
 When calling this method, the user can specifially ask for the proper state store type, as we have done in the above example.
 
-NOTE: `KafkaStreamsInteractiveQueryService` API in Spring for Apache Kafka only supports providing access to local key-value stores at the moment.
-
 === Retrying State Store Retrieval
 
 When trying to retrieve the state store using the `KafkaStreamsInteractiveQueryService`, there is a chance that the state store might not be found for various reasons.
@@ -387,6 +385,49 @@ public KafkaStreamsInteractiveQueryService kafkaStreamsInteractiveQueryService(S
     return kafkaStreamsInteractiveQueryService;
 }
 ----
+
+=== Querying Remote State Stores
+
+The API shown above for retrieving the state store - `retrieveQueryableStore` is intended for locally available key-value state stores.
+In productions settings, Kafka Streams applications are most likely distributed based on the number of partitions.
+If a topic has four partitions and there are four instances of the same Kafka Streams processor running, then each instance maybe responsible for processing a single partition from the topic.
+In this scenario, calling `retrieveQueryableStore` may not give the correct result that an instance is looking for, although it might return a valid store.
+Let's assume that the topic with four partitions has data about various keys and a single partition is always responsible for a specific key.
+If the instance that is calling `retrieveQueryableStore` is looking for information about a key that this instance does not host, then it will not receive any data.
+This is because the current Kafka Streams instance does not know anything about this key.
+To fix this, the calling instance first needs to make sure that they have the host information for the Kafka Streams processor instance where the particular key is hosted.
+This can be retrieved from any Kafka Streams instance under the same `application.id` as below.
+
+[source, java]
+----
+@Autowired
+private KafkaStreamsInteractiveQueryService interactiveQueryService;
+
+HostInfo kafkaStreamsApplicationHostInfo = this.interactiveQueryService.getKafkaStreamsApplicationHostInfo("app-store", 12345, new IntegerSerializer());
+----
+
+In the example code above, the calling instance is querying for a particular key `12345` from the state-store named `app-store`.
+The API also needs a corresponding key serializer, which in this case is the `IntegerSerializer`.
+Kafka Streams looks through all it's instances under the same `application.id` and tries to find which instance hosts this particular key,
+Once found, it returns that host information as a `HostInfo` object.
+
+This is how the API looks like:
+
+[source, java]
+----
+public <K> HostInfo getKafkaStreamsApplicationHostInfo(String store, K key, Serializer<K> serializer)
+----
+
+When using multiple instances of the Kafka Streams processors of the same `application.id` in a distributed way like this, the application is supposed to provide an RPC layer where the state stores can be queried over an RPC endpoint such as a REST one.
+See this https://kafka.apache.org/36/documentation/streams/developer-guide/interactive-queries.html#querying-remote-state-stores-for-the-entire-app[article] for more details on this.
+When using Spring for Apache Kafka, it is very easy to add a Spring based REST endpoint by using the spring-web technologies.
+Once there is a REST endpoint, then that can be used to query the state stores from any Kafka Streams instance, given the `HostInfo` where the key is hosted is known to the instance.
+
+If the key hosting the instance is the current instance, then the application does not need to call the RPC mechanism, but rather make an in-JVM call.
+However, the trouble is that an application may not know that the instance that is making the call is where the key is hosted because a particular server may lose a partition due to a consumer rebalance.
+To fix this issue, `KafkaStreamsInteractiveQueryService` provides a convenient API for querying the current host information via an API method `getCurrentKafkaStreamsApplicationHostInfo()` that returns the current `HostInfo`.
+The idea is that the application can first acquire information about where the key is held, and then compare the `HostInfo` with the one about the current instance.
+If the `HostInfo` data matches, then it can proceed with a simple JVM call via the `retrieveQueryableStore`, otherwise go with the RPC option.
 
 [[kafka-streams-example]]
 == Kafka Streams Example

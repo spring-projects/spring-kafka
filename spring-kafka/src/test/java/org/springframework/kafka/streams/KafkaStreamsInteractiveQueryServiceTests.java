@@ -27,9 +27,12 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyValue;
@@ -40,6 +43,7 @@ import org.apache.kafka.streams.kstream.Grouped;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.processor.WallclockTimestampExtractor;
+import org.apache.kafka.streams.state.HostInfo;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 import org.junit.jupiter.api.Test;
@@ -108,11 +112,7 @@ class KafkaStreamsInteractiveQueryServiceTests {
 
 	@Test
 	void retrieveQueryableStore() throws Exception {
-		this.kafkaTemplate.sendDefault(123, "123");
-		this.kafkaTemplate.flush();
-
-		ConsumerRecord<?, String> result = resultFuture.get(600, TimeUnit.SECONDS);
-		assertThat(result).isNotNull();
+		ensureKafkaStreamsProcessorIsUpAndRunning();
 
 		ReadOnlyKeyValueStore<Object, Object> objectObjectReadOnlyKeyValueStore = this.interactiveQueryService
 				.retrieveQueryableStore(STATE_STORE,
@@ -121,14 +121,18 @@ class KafkaStreamsInteractiveQueryServiceTests {
 		assertThat((Long) objectObjectReadOnlyKeyValueStore.get(123)).isGreaterThanOrEqualTo(1);
 	}
 
-	@SuppressWarnings("unchecked")
-	@Test
-	void retrieveNonExistentStateStoreAndVerifyRetries() throws Exception {
+	private void ensureKafkaStreamsProcessorIsUpAndRunning() throws InterruptedException, ExecutionException, TimeoutException {
 		this.kafkaTemplate.sendDefault(123, "123");
 		this.kafkaTemplate.flush();
 
 		ConsumerRecord<?, String> result = resultFuture.get(600, TimeUnit.SECONDS);
 		assertThat(result).isNotNull();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void retrieveNonExistentStateStoreAndVerifyRetries() throws Exception {
+		ensureKafkaStreamsProcessorIsUpAndRunning();
 
 		assertThat(this.streamsBuilderFactoryBean.getKafkaStreams()).isNotNull();
 		KafkaStreams kafkaStreams = spy(this.streamsBuilderFactoryBean.getKafkaStreams());
@@ -147,6 +151,55 @@ class KafkaStreamsInteractiveQueryServiceTests {
 
 		verify(kafkaStreams, times(3)).store(any(StoreQueryParameters.class));
 	}
+
+	@Test
+	void currentHostInfo() {
+		HostInfo currentKafkaStreamsApplicationHostInfo =
+				this.interactiveQueryService.getCurrentKafkaStreamsApplicationHostInfo();
+		assertThat(currentKafkaStreamsApplicationHostInfo.host()).isEqualTo("localhost");
+		assertThat(currentKafkaStreamsApplicationHostInfo.port()).isEqualTo(8080);
+	}
+
+	@Test
+	void hostInfoForKeyAndStore() throws Exception {
+		ensureKafkaStreamsProcessorIsUpAndRunning();
+
+		HostInfo kafkaStreamsApplicationHostInfo =
+				this.interactiveQueryService.getKafkaStreamsApplicationHostInfo(STATE_STORE, 123,
+						new IntegerSerializer());
+		// In real applications, the above call may return a different server than what is configured
+		// via application.server on the Kafka Streams where the call was invoked. However, in the case
+		// of this test, we only have a single Kafka Streams instance and even there, we provide a mock
+		// value for application.server (localhost:8080). Because of that, that is what we are verifying against.
+		assertThat(kafkaStreamsApplicationHostInfo.host()).isEqualTo("localhost");
+		assertThat(kafkaStreamsApplicationHostInfo.port()).isEqualTo(8080);
+	}
+
+	@Test
+	void hostInfoForNonExistentKeyAndStateStore() throws Exception {
+		ensureKafkaStreamsProcessorIsUpAndRunning();
+
+		assertThat(this.streamsBuilderFactoryBean.getKafkaStreams()).isNotNull();
+		KafkaStreams kafkaStreams = spy(this.streamsBuilderFactoryBean.getKafkaStreams());
+		assertThat(kafkaStreams).isNotNull();
+
+		Field kafkaStreamsField = KafkaStreamsInteractiveQueryService.class.getDeclaredField("kafkaStreams");
+		kafkaStreamsField.setAccessible(true);
+		kafkaStreamsField.set(interactiveQueryService, kafkaStreams);
+
+		IntegerSerializer serializer = new IntegerSerializer();
+
+		assertThatExceptionOfType(IllegalStateException.class)
+				.isThrownBy(() -> {
+					this.interactiveQueryService.getKafkaStreamsApplicationHostInfo(NON_EXISTENT_STORE, 12345,
+							serializer);
+				})
+				.withMessageContaining("Error when retrieving state store.");
+
+		verify(kafkaStreams, times(3)).queryMetadataForKey(NON_EXISTENT_STORE, 12345,
+				serializer);
+	}
+
 
 	@Configuration
 	@EnableKafka
@@ -204,6 +257,7 @@ class KafkaStreamsInteractiveQueryServiceTests {
 			props.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG,
 					WallclockTimestampExtractor.class.getName());
 			props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, "100");
+			props.put(StreamsConfig.APPLICATION_SERVER_CONFIG, "localhost:8080");
 			return new KafkaStreamsConfiguration(props);
 		}
 
