@@ -2920,14 +2920,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		public void ackCurrent(final ConsumerRecord<K, V> cRecord, boolean commitRecovered) {
-			if (this.producer != null) {
-				this.acks.add(cRecord);
-				sendOffsetsToTransaction();
-			}
-			else if (this.isRecordAck) {
+			if (this.isRecordAck && this.producer == null) {
 				Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = buildSingleCommits(cRecord);
 				this.commitLogger.log(() -> COMMITTING + offsetsToCommit);
 				commitOffsets(offsetsToCommit);
+			}
+			else if (this.producer != null) {
+				this.acks.add(cRecord);
+				sendOffsetsToTransaction();
 			}
 			else if (!this.autoCommit && (!this.isAnyManualAck || commitRecovered)) {
 				this.acks.add(cRecord);
