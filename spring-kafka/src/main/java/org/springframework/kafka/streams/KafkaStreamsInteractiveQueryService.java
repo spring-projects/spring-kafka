@@ -26,6 +26,7 @@ import org.apache.kafka.streams.state.HostInfo;
 import org.apache.kafka.streams.state.QueryableStoreType;
 
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
+import org.springframework.lang.Nullable;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -81,7 +82,7 @@ public class KafkaStreamsInteractiveQueryService {
 	 * @return queryable store.
 	 */
 	public <T> T retrieveQueryableStore(String storeName, QueryableStoreType<T> storeType) {
-		primeKafkaStreamsObject();
+		populateKafkaStreams();
 		StoreQueryParameters<T> storeQueryParams = StoreQueryParameters.fromNameAndType(storeName, storeType);
 
 		return this.retryTemplate.execute(context -> {
@@ -94,7 +95,7 @@ public class KafkaStreamsInteractiveQueryService {
 		});
 	}
 
-	private void primeKafkaStreamsObject() {
+	private void populateKafkaStreams() {
 		if (this.kafkaStreams == null) {
 			this.kafkaStreams = this.streamsBuilderFactoryBean.getKafkaStreams();
 		}
@@ -103,13 +104,14 @@ public class KafkaStreamsInteractiveQueryService {
 	}
 
 	/**
-	 * Gets the current {@link HostInfo} where this Kafka Streams application is running on.
+	 * Retrieve the current {@link HostInfo} where this Kafka Streams application is running on.
 	 * This {link @HostInfo} is different from the Kafka `bootstrap.server` property, and is based on
 	 * the Kafka Streams configuration property `application.server` where user-defined REST
 	 * endpoints can be invoked per each Kafka Streams application instance.
 	 * If this property - `application.server` - is not available from the end-user application, then null is returned.
 	 * @return the current {@link HostInfo}
 	 */
+	@Nullable
 	public HostInfo getCurrentKafkaStreamsApplicationHostInfo() {
 		Properties streamsConfiguration = this.streamsBuilderFactoryBean
 				.getStreamsConfiguration();
@@ -124,7 +126,7 @@ public class KafkaStreamsInteractiveQueryService {
 	}
 
 	/**
-	 * Gets the {@link HostInfo} where the provided store and key are hosted on. This may
+	 * Retrieve the {@link HostInfo} where the provided store and key are hosted on. This may
 	 * not be the current host that is running the application. Kafka Streams will look
 	 * through all the consumer instances under the same application id and retrieves the
 	 * proper host. Note that the end user applications must provide `application.server` as a
@@ -137,7 +139,7 @@ public class KafkaStreamsInteractiveQueryService {
 	 * @return the {@link HostInfo} where the key for the provided store is hosted currently
 	 */
 	public <K> HostInfo getKafkaStreamsApplicationHostInfo(String store, K key, Serializer<K> serializer) {
-		primeKafkaStreamsObject();
+		populateKafkaStreams();
 		return this.retryTemplate.execute(context -> {
 			Throwable throwable = null;
 			try {
