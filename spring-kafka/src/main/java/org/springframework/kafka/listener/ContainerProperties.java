@@ -783,7 +783,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * @since 2.3.2
 	 */
 	public boolean isSubBatchPerPartition() {
-		return this.subBatchPerPartition == null ? false : this.subBatchPerPartition;
+		return this.subBatchPerPartition != null && this.subBatchPerPartition;
 	}
 
 	/**

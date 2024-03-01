@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -49,6 +49,8 @@ import org.springframework.util.backoff.BackOffExecution;
  * @author Gary Russell
  * @author Andrii Pelesh
  * @author Antonio Tomac
+ * @author Wang Zhiyang
+ *
  * @since 2.8
  *
  */
@@ -245,7 +247,7 @@ public final class ErrorHandlingUtils {
 	 * @since 3.0.10
 	 */
 	public static <K, V> boolean checkDeserializer(ConsumerFactory<K, V> consumerFactory,
-			Properties consumerOverrides, boolean isValue, ClassLoader classLoader) {
+			Properties consumerOverrides, boolean isValue, @Nullable ClassLoader classLoader) {
 
 		Object deser = findDeserializerClass(consumerFactory, consumerOverrides, isValue);
 		Class<?> deserializer = null;

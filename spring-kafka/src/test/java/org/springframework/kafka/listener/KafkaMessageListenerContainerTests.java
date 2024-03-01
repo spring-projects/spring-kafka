@@ -1603,7 +1603,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setMessageListener(messageListener);
 		containerProps.setSyncCommits(true);
 		containerProps.setAckMode(AckMode.RECORD);
-		containerProps.setIdleEventInterval(60000L);
+		containerProps.setIdleEventInterval(100L);
 		containerProps.setIdleBeforeDataMultiplier(1.0);
 
 		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf,
