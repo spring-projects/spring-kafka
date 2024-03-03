@@ -44,6 +44,7 @@ import org.springframework.kafka.listener.ContainerGroup;
 import org.springframework.kafka.listener.ListenerContainerRegistry;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.support.EndpointHandlerMethod;
+import org.springframework.kafka.support.EndpointHandlerMultiMethod;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -274,7 +275,17 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	protected MessageListenerContainer createListenerContainer(KafkaListenerEndpoint endpoint,
 			KafkaListenerContainerFactory<?> factory) {
 
-		if (endpoint instanceof MethodKafkaListenerEndpoint<?, ?> mkle) {
+		if (endpoint instanceof MultiMethodKafkaListenerEndpoint<?, ?> mmkle) {
+			Object bean = mmkle.getBean();
+			if (bean instanceof EndpointHandlerMultiMethod ehmm) {
+				ehmm = new EndpointHandlerMultiMethod(ehmm.resolveBean(this.applicationContext),
+						ehmm.getDefaultMethod(), ehmm.getMethods());
+				mmkle.setBean(ehmm.resolveBean(this.applicationContext));
+				mmkle.setDefaultMethod(ehmm.getDefaultMethod());
+				mmkle.setMethods(ehmm.getMethods());
+			}
+		}
+		else if (endpoint instanceof MethodKafkaListenerEndpoint<?, ?> mkle) {
 			Object bean = mkle.getBean();
 			if (bean instanceof EndpointHandlerMethod ehm) {
 				ehm = new EndpointHandlerMethod(ehm.resolveBean(this.applicationContext), ehm.getMethodName());

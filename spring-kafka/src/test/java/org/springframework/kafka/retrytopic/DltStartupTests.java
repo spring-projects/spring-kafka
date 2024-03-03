@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -48,6 +49,8 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  * settings).
  *
  * @author Gary Russell
+ * @author Wang Zhiyang
+ *
  * @since 2.8
  *
  */
@@ -57,7 +60,7 @@ public class DltStartupTests {
 
 	@Test
 	void dltStartOverridesCorrect(@Autowired KafkaListenerEndpointRegistry registry) {
-		// using RetryTopicConfiguration
+		// using RetryTopicConfiguration support method level @KafkaListener
 		// factory with autostartup = true
 		assertThat(registry.getListenerContainer("shouldStartDlq1").isRunning()).isTrue();
 		assertThat(registry.getListenerContainer("shouldStartDlq1-dlt").isRunning()).isTrue();
@@ -69,7 +72,7 @@ public class DltStartupTests {
 		assertThat(registry.getListenerContainer("shouldStartDlq4").isRunning()).isFalse();
 		assertThat(registry.getListenerContainer("shouldStartDlq4-dlt").isRunning()).isTrue();
 
-		// using @RetryableTopic
+		// using method level @RetryableTopic
 		// factory with autostartup = true
 		assertThat(registry.getListenerContainer("shouldStartDlq5").isRunning()).isTrue();
 		assertThat(registry.getListenerContainer("shouldStartDlq5-dlt").isRunning()).isTrue();
@@ -80,6 +83,30 @@ public class DltStartupTests {
 		assertThat(registry.getListenerContainer("shouldNotStartDlq7-dlt").isRunning()).isFalse();
 		assertThat(registry.getListenerContainer("shouldStartDlq8").isRunning()).isFalse();
 		assertThat(registry.getListenerContainer("shouldStartDlq8-dlt").isRunning()).isTrue();
+
+		// using RetryTopicConfiguration support class level @KafkaListener
+		// factory with autoStartup = true
+		assertThat(registry.getListenerContainer("shouldStartClassLevelDlq1").isRunning()).isTrue();
+		assertThat(registry.getListenerContainer("shouldStartClassLevelDlq1-dlt").isRunning()).isTrue();
+		assertThat(registry.getListenerContainer("shouldNotStartClassLevelDlq2").isRunning()).isTrue();
+		assertThat(registry.getListenerContainer("shouldNotStartClassLevelDlq2-dlt").isRunning()).isFalse();
+		// factory with autoStartup = false
+		assertThat(registry.getListenerContainer("shouldNotStartClassLevelDlq3").isRunning()).isFalse();
+		assertThat(registry.getListenerContainer("shouldNotStartClassLevelDlq3-dlt").isRunning()).isFalse();
+		assertThat(registry.getListenerContainer("shouldStartClassLevelDlq4").isRunning()).isFalse();
+		assertThat(registry.getListenerContainer("shouldStartClassLevelDlq4-dlt").isRunning()).isTrue();
+
+		// using class level @RetryableTopic
+		// factory with autoStartup = true
+		assertThat(registry.getListenerContainer("shouldStartClassLevelDlq5").isRunning()).isTrue();
+		assertThat(registry.getListenerContainer("shouldStartClassLevelDlq5-dlt").isRunning()).isTrue();
+		assertThat(registry.getListenerContainer("shouldNotStartClassLevelDlq6").isRunning()).isTrue();
+		assertThat(registry.getListenerContainer("shouldNotStartClassLevelDlq6-dlt").isRunning()).isFalse();
+		// factory with autoStartup = false
+		assertThat(registry.getListenerContainer("shouldNotStartClassLevelDlq7").isRunning()).isFalse();
+		assertThat(registry.getListenerContainer("shouldNotStartClassLevelDlq7-dlt").isRunning()).isFalse();
+		assertThat(registry.getListenerContainer("shouldStartClassLevelDlq8").isRunning()).isFalse();
+		assertThat(registry.getListenerContainer("shouldStartClassLevelDlq8-dlt").isRunning()).isTrue();
 	}
 
 	@Configuration
@@ -123,11 +150,52 @@ public class DltStartupTests {
 		}
 
 		@Bean
+		ShouldStartClassLevelDlq1 shouldStartClassLevelDlq1() {
+			return new ShouldStartClassLevelDlq1();
+		}
+
+		@Bean
+		ShouldNotStartClassLevelDlq2 shouldNotStartClassLevelDlq2() {
+			return new ShouldNotStartClassLevelDlq2();
+		}
+
+		@Bean
+		ShouldNotStartClassLevelDlq3 shouldNotStartClassLevelDlq3() {
+			return new ShouldNotStartClassLevelDlq3();
+		}
+
+		@Bean
+		ShouldStartClassLevelDlq4 shouldStartClassLevelDlq4() {
+			return new ShouldStartClassLevelDlq4();
+		}
+
+		@Bean
+		ShouldStartClassLevelDlq5 shouldStartClassLevelDlq5() {
+			return new ShouldStartClassLevelDlq5();
+		}
+
+		@Bean
+		ShouldNotStartClassLevelDlq6 shouldNotStartClassLevelDlq6() {
+			return new ShouldNotStartClassLevelDlq6();
+		}
+
+		@Bean
+		ShouldNotStartClassLevelDlq7 shouldNotStartClassLevelDlq7() {
+			return new ShouldNotStartClassLevelDlq7();
+		}
+
+		@Bean
+		ShouldStartClassLevelDlq8 shouldStartClassLevelDlq8() {
+			return new ShouldStartClassLevelDlq8();
+		}
+
+		@Bean
 		RetryTopicConfiguration rtc1(KafkaOperations<Integer, String> template) {
 			return RetryTopicConfigurationBuilder
 					.newInstance()
 					.maxAttempts(1)
 					.includeTopic("DltStartupTests.1")
+					.includeTopic("ClassLevel.DltStartupTests.1")
 					.create(template);
 		}
 
@@ -137,6 +205,7 @@ public class DltStartupTests {
 					.newInstance()
 					.maxAttempts(1)
 					.includeTopic("DltStartupTests.2")
+					.includeTopic("ClassLevel.DltStartupTests.2")
 					.autoStartDltHandler(false) // override factory for DLT container
 					.create(template);
 		}
@@ -147,6 +216,7 @@ public class DltStartupTests {
 					.newInstance()
 					.maxAttempts(1)
 					.includeTopic("DltStartupTests.3")
+					.includeTopic("ClassLevel.DltStartupTests.3")
 					.create(template);
 		}
 
@@ -156,6 +226,7 @@ public class DltStartupTests {
 					.newInstance()
 					.maxAttempts(1)
 					.includeTopic("DltStartupTests.4")
+					.includeTopic("ClassLevel.DltStartupTests.4")
 					.autoStartDltHandler(true) // override factory for DLT container
 					.create(template);
 		}
@@ -196,6 +267,82 @@ public class DltStartupTests {
 		@Bean
 		TaskScheduler sched() {
 			return new ThreadPoolTaskScheduler();
+		}
+
+	}
+
+	@KafkaListener(id = "shouldStartClassLevelDlq1", topics = "ClassLevel.DltStartupTests.1", containerFactory = "cf1")
+	static class ShouldStartClassLevelDlq1 {
+
+		@KafkaHandler
+		void shouldStartClassLevelDlq1(String in) {
+		}
+
+	}
+
+	@KafkaListener(id = "shouldNotStartClassLevelDlq2", topics = "ClassLevel.DltStartupTests.2", containerFactory = "cf1")
+	static class ShouldNotStartClassLevelDlq2 {
+
+		@KafkaHandler
+		void shouldNotStartClassLevelDlq2(String in) {
+		}
+
+	}
+
+	@KafkaListener(id = "shouldNotStartClassLevelDlq3", topics = "ClassLevel.DltStartupTests.3", containerFactory = "cf2")
+	static class ShouldNotStartClassLevelDlq3 {
+
+		@KafkaHandler
+		void shouldNotStartClassLevelDlq3(String in) {
+		}
+
+	}
+
+	@KafkaListener(id = "shouldStartClassLevelDlq4", topics = "ClassLevel.DltStartupTests.4", containerFactory = "cf2")
+	static class ShouldStartClassLevelDlq4 {
+
+		@KafkaHandler
+		void shouldStartClassLevelDlq4(String in) {
+		}
+
+	}
+
+	@KafkaListener(id = "shouldStartClassLevelDlq5", topics = "ClassLevel.DltStartupTests.5", containerFactory = "cf1")
+	@RetryableTopic(attempts = "1", kafkaTemplate = "template")
+	static class ShouldStartClassLevelDlq5 {
+
+		@KafkaHandler
+		void shouldStartClassLevelDlq5(String in) {
+		}
+
+	}
+
+	@KafkaListener(id = "shouldNotStartClassLevelDlq6", topics = "ClassLevel.DltStartupTests.6", containerFactory = "cf1")
+	@RetryableTopic(attempts = "1", kafkaTemplate = "template", autoStartDltHandler = "false")
+	static class ShouldNotStartClassLevelDlq6 {
+
+		@KafkaHandler
+		void shouldNotStartClassLevelDlq6(String in) {
+		}
+
+	}
+
+	@KafkaListener(id = "shouldNotStartClassLevelDlq7", topics = "ClassLevel.DltStartupTests.7", containerFactory = "cf2")
+	@RetryableTopic(attempts = "1", kafkaTemplate = "template")
+	static class ShouldNotStartClassLevelDlq7 {
+
+		@KafkaHandler
+		void shouldNotStartClassLevelDlq7(String in) {
+		}
+
+	}
+
+	@KafkaListener(id = "shouldStartClassLevelDlq8", topics = "ClassLevel.DltStartupTests.8", containerFactory = "cf2")
+	@RetryableTopic(attempts = "1", kafkaTemplate = "template", autoStartDltHandler = "true")
+	static class ShouldStartClassLevelDlq8 {
+
+		@KafkaHandler
+		void shouldStartClassLevelDlq8(String in) {
 		}
 
 	}

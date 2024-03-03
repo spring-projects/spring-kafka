@@ -165,6 +165,19 @@ import org.springframework.lang.Nullable;
  *         }</code>
  *     }</code>
  *</pre>
+ * <p> Since 3.2 , {@link org.springframework.kafka.annotation.RetryableTopic} annotation support
+ * {@link org.springframework.kafka.annotation.KafkaListener} annotated class, such as:
+ * <pre>
+ *     <code>@RetryableTopic(attempts = 3,
+ *     		backoff = @Backoff(delay = 700, maxDelay = 12000, multiplier = 3))</code>
+ *     <code>@KafkaListener(topics = "my-annotated-topic")
+ *     static class ListenerBean {
+ *         <code> @KafkaHandler
+ *         public void processMessage(MyPojo message) {
+ *        		// ... message processing
+ *         }</code>
+ *     }</code>
+ *</pre>
  * <p> Or through meta-annotations, such as:
  * <pre>
  *     <code>@RetryableTopic(backoff = @Backoff(delay = 700, maxDelay = 12000, multiplier = 3))</code>

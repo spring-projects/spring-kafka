@@ -185,6 +185,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private String defaultContainerFactoryBeanName = DEFAULT_KAFKA_LISTENER_CONTAINER_FACTORY_BEAN_NAME;
 
+	@Nullable
 	private ApplicationContext applicationContext;
 
 	private BeanFactory beanFactory;
@@ -197,6 +198,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private AnnotationEnhancer enhancer;
 
+	@Nullable
 	private RetryTopicConfigurer retryTopicConfigurer;
 
 	@Override
@@ -273,9 +275,11 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	public synchronized void setBeanFactory(BeanFactory beanFactory) {
 		this.beanFactory = beanFactory;
 		if (beanFactory instanceof ConfigurableListableBeanFactory clbf) {
-			this.resolver = clbf.getBeanExpressionResolver();
-			this.expressionContext = new BeanExpressionContext((ConfigurableListableBeanFactory) beanFactory,
-					this.listenerScope);
+			BeanExpressionResolver beanExpressionResolver = clbf.getBeanExpressionResolver();
+			if (beanExpressionResolver != null) {
+				this.resolver = beanExpressionResolver;
+			}
+			this.expressionContext = new BeanExpressionContext(clbf, this.listenerScope);
 		}
 	}
 
@@ -333,9 +337,11 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 		// Actually register all listeners
 		this.registrar.afterPropertiesSet();
-		Map<String, ContainerGroupSequencer> sequencers =
-				this.applicationContext.getBeansOfType(ContainerGroupSequencer.class, false, false);
-		sequencers.values().forEach(ContainerGroupSequencer::initialize);
+		if (this.applicationContext != null) {
+			Map<String, ContainerGroupSequencer> sequencers =
+					this.applicationContext.getBeansOfType(ContainerGroupSequencer.class, false, false);
+			sequencers.values().forEach(ContainerGroupSequencer::initialize);
+		}
 	}
 
 	private void buildEnhancer() {
@@ -368,36 +374,36 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		if (!this.nonAnnotatedClasses.contains(bean.getClass())) {
 			Class<?> targetClass = AopUtils.getTargetClass(bean);
 			Collection<KafkaListener> classLevelListeners = findListenerAnnotations(targetClass);
-			final boolean hasClassLevelListeners = !classLevelListeners.isEmpty();
-			final List<Method> multiMethods = new ArrayList<>();
 			Map<Method, Set<KafkaListener>> annotatedMethods = MethodIntrospector.selectMethods(targetClass,
 					(MethodIntrospector.MetadataLookup<Set<KafkaListener>>) method -> {
 						Set<KafkaListener> listenerMethods = findListenerAnnotations(method);
 						return (!listenerMethods.isEmpty() ? listenerMethods : null);
 					});
-			if (hasClassLevelListeners) {
-				Set<Method> methodsWithHandler = MethodIntrospector.selectMethods(targetClass,
-						(ReflectionUtils.MethodFilter) method ->
-								AnnotationUtils.findAnnotation(method, KafkaHandler.class) != null);
-				multiMethods.addAll(methodsWithHandler);
-			}
-			if (annotatedMethods.isEmpty() && !hasClassLevelListeners) {
+			final boolean hasClassLevelListeners = !classLevelListeners.isEmpty();
+			final boolean hasMethodLevelListeners = !annotatedMethods.isEmpty();
+			if (!hasMethodLevelListeners && !hasClassLevelListeners) {
 				this.nonAnnotatedClasses.add(bean.getClass());
 				this.logger.trace(() -> "No @KafkaListener annotations found on bean type: " + bean.getClass());
 			}
 			else {
-				// Non-empty set of methods
-				for (Map.Entry<Method, Set<KafkaListener>> entry : annotatedMethods.entrySet()) {
-					Method method = entry.getKey();
-					for (KafkaListener listener : entry.getValue()) {
-						processKafkaListener(listener, method, bean, beanName);
+				if (hasMethodLevelListeners) {
+					// Non-empty set of methods
+					for (Map.Entry<Method, Set<KafkaListener>> entry : annotatedMethods.entrySet()) {
+						Method method = entry.getKey();
+						for (KafkaListener listener : entry.getValue()) {
+							processKafkaListener(listener, method, bean, beanName);
+						}
 					}
+					this.logger.debug(() -> annotatedMethods.size() + " @KafkaListener methods processed on bean '"
+							+ beanName + "': " + annotatedMethods);
 				}
-				this.logger.debug(() -> annotatedMethods.size() + " @KafkaListener methods processed on bean '"
-						+ beanName + "': " + annotatedMethods);
-			}
-			if (hasClassLevelListeners) {
-				processMultiMethodListeners(classLevelListeners, multiMethods, bean, beanName);
+				if (hasClassLevelListeners) {
+					Set<Method> methodsWithHandler = MethodIntrospector.selectMethods(targetClass,
+							(ReflectionUtils.MethodFilter) method ->
+									AnnotationUtils.findAnnotation(method, KafkaHandler.class) != null);
+					final List<Method> multiMethods = new ArrayList<>(methodsWithHandler);
+					processMultiMethodListeners(classLevelListeners, multiMethods, targetClass, bean, beanName);
+				}
 			}
 		}
 		return bean;
@@ -444,7 +450,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	}
 
 	private synchronized void processMultiMethodListeners(Collection<KafkaListener> classLevelListeners,
-			List<Method> multiMethods, Object bean, String beanName) {
+			List<Method> multiMethods, Class<?> clazz, Object bean, String beanName) {
 
 		List<Method> checkedMethods = new ArrayList<>();
 		Method defaultMethod = null;
@@ -454,7 +460,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			if (annotation != null && annotation.isDefault()) {
 				final Method toAssert = defaultMethod;
 				Assert.state(toAssert == null, () -> "Only one @KafkaHandler can be marked 'isDefault', found: "
-						+ toAssert.toString() + " and " + method.toString());
+						+ toAssert.toString() + " and " + method);
 				defaultMethod = checked;
 			}
 			checkedMethods.add(checked);
@@ -462,12 +468,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		for (KafkaListener classLevelListener : classLevelListeners) {
 			MultiMethodKafkaListenerEndpoint<K, V> endpoint =
 					new MultiMethodKafkaListenerEndpoint<>(checkedMethods, defaultMethod, bean);
-			String beanRef = classLevelListener.beanRef();
-			this.listenerScope.addListener(beanRef, bean);
-			endpoint.setId(getEndpointId(classLevelListener));
-			processListener(endpoint, classLevelListener, bean, beanName, resolveTopics(classLevelListener),
-					resolveTopicPartitions(classLevelListener));
-			this.listenerScope.removeListener(beanRef);
+			processMainAndRetryListeners(classLevelListener, bean, beanName, endpoint, null, clazz);
 		}
 	}
 
@@ -477,39 +478,34 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		Method methodToUse = checkProxy(method, bean);
 		MethodKafkaListenerEndpoint<K, V> endpoint = new MethodKafkaListenerEndpoint<>();
 		endpoint.setMethod(methodToUse);
+		processMainAndRetryListeners(kafkaListener, bean, beanName, endpoint, methodToUse, null);
+	}
+
+	private void processMainAndRetryListeners(KafkaListener kafkaListener, Object bean, String beanName,
+			MethodKafkaListenerEndpoint<K, V> endpoint, @Nullable Method methodToUse, @Nullable Class<?> clazz) {
 
 		String beanRef = kafkaListener.beanRef();
 		this.listenerScope.addListener(beanRef, bean);
 		endpoint.setId(getEndpointId(kafkaListener));
 		String[] topics = resolveTopics(kafkaListener);
 		TopicPartitionOffset[] tps = resolveTopicPartitions(kafkaListener);
-		if (!processMainAndRetryListeners(kafkaListener, bean, beanName, methodToUse, endpoint, topics, tps)) {
+		if (!processMainAndRetryListeners(kafkaListener, bean, beanName, endpoint, topics, tps, methodToUse, clazz)) {
 			processListener(endpoint, kafkaListener, bean, beanName, topics, tps);
 		}
 		this.listenerScope.removeListener(beanRef);
 	}
 
 	private boolean processMainAndRetryListeners(KafkaListener kafkaListener, Object bean, String beanName,
-			Method methodToUse, MethodKafkaListenerEndpoint<K, V> endpoint, String[] topics,
-			TopicPartitionOffset[] tps) {
+			MethodKafkaListenerEndpoint<K, V> endpoint, String[] topics, TopicPartitionOffset[] tps,
+			@Nullable Method methodToUse, @Nullable Class<?> clazz) {
 
-		String[] retryableCandidates = topics;
-		if (retryableCandidates.length == 0 && tps.length > 0) {
-			retryableCandidates = Arrays.stream(tps)
-					.map(tp -> tp.getTopic())
-					.distinct()
-					.toList()
-					.toArray(new String[0]);
-		}
-
+		String[] retryableCandidates = getTopicsFromTopicPartitionOffset(topics, tps);
 		RetryTopicConfiguration retryTopicConfiguration = new RetryTopicConfigurationProvider(this.beanFactory,
 				this.resolver, this.expressionContext)
-				.findRetryConfigurationFor(retryableCandidates, methodToUse, bean);
-
+				.findRetryConfigurationFor(retryableCandidates, methodToUse, clazz, bean);
 		if (retryTopicConfiguration == null) {
-			String[] candidates = retryableCandidates;
 			this.logger.debug(() ->
-					"No retry topic configuration found for topics " + Arrays.toString(candidates));
+					"No retry topic configuration found for topics " + Arrays.toString(retryableCandidates));
 			return false;
 		}
 
@@ -523,6 +519,18 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				.processMainAndRetryListeners(endpointProcessor, endpoint, retryTopicConfiguration,
 						this.registrar, factory, this.defaultContainerFactoryBeanName);
 		return true;
+	}
+
+	private String[] getTopicsFromTopicPartitionOffset(String[] topics, TopicPartitionOffset[] tps) {
+		String[] retryableCandidates = topics;
+		if (retryableCandidates.length == 0 && tps.length > 0) {
+			retryableCandidates = Arrays.stream(tps)
+					.map(TopicPartitionOffset::getTopic)
+					.distinct()
+					.toList()
+					.toArray(new String[0]);
+		}
+		return retryableCandidates;
 	}
 
 	private RetryTopicConfigurer getRetryTopicConfigurer() {
@@ -804,7 +812,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 	}
 
-	private String getEndpointGroupId(KafkaListener kafkaListener, String id) {
+	@Nullable
+	private String getEndpointGroupId(KafkaListener kafkaListener, @Nullable String id) {
 		String groupId = null;
 		if (StringUtils.hasText(kafkaListener.groupId())) {
 			groupId = resolveExpressionAsString(kafkaListener.groupId(), "groupId");
@@ -1086,8 +1095,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private <T> Collection<T> getBeansOfType(Class<T> type) {
 		if (KafkaListenerAnnotationBeanPostProcessor.this.beanFactory instanceof ListableBeanFactory lbf) {
-			return lbf.getBeansOfType(type)
-					.values();
+			return lbf.getBeansOfType(type).values();
 		}
 		else {
 			return Collections.emptySet();
@@ -1241,7 +1249,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	}
 
-	private final class BytesToNumberConverter implements ConditionalGenericConverter {
+	private static final class BytesToNumberConverter implements ConditionalGenericConverter {
 
 		BytesToNumberConverter() {
 		}
@@ -1265,6 +1273,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		@Nullable
 		public Object convert(@Nullable Object source, TypeDescriptor sourceType, TypeDescriptor targetType) {
 			byte[] bytes = (byte[]) source;
+			if (bytes == null) {
+				return null;
+			}
 			if (targetType.getType().equals(long.class) || targetType.getType().equals(Long.class)) {
 				Assert.state(bytes.length >= 8, "At least 8 bytes needed to convert a byte[] to a long"); // NOSONAR
 				return ByteBuffer.wrap(bytes).getLong();

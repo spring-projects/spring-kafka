@@ -28,6 +28,21 @@ public void processMessage(MyPojo message) {
 }
 ----
 
+Since 3.2, `@RetryableTopic` support @KafkaListener on a class would be:
+[source,java]
+----
+@RetryableTopic(listenerContainerFactory = "my-retry-topic-factory")
+@KafkaListener(topics = "my-annotated-topic")
+public class ClassLevelRetryListener {
+
+    @KafkaHandler
+    public void processMessage(MyPojo message) {
+        // ... message processing
+    }
+
+}
+----
+
 You can specify a method in the same class to process the dlt messages by annotating it with the `@DltHandler` annotation.
 If no DltHandler method is provided a default consumer is created which only logs the consumption.
 

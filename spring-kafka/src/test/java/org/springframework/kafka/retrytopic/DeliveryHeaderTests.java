@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 the original author or authors.
+ * Copyright 2022-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
@@ -52,24 +54,38 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
+ * Test delivery header, since 3.2 support class level {@link RetryableTopic}.
  * @author Gary Russell
+ * @author Wang Zhiyang
+ *
  * @since 2.8.11
  *
  */
 @SpringJUnitConfig
 @DirtiesContext
-@EmbeddedKafka(topics = "dh1")
+@EmbeddedKafka(topics = { "dh1", DeliveryHeaderTests.DH_CLASS_LEVEL_1 })
 public class DeliveryHeaderTests {
 
+	static final String DH_CLASS_LEVEL_1 = "dhClassLevel1";
+
 	@Test
-	void deliveryAttempts(@Autowired Config config, @Autowired KafkaTemplate<Integer, String> template)
+	void deliveryAttempts(@Autowired Config config, @Autowired KafkaTemplate<Integer, String> template,
+			@Autowired RetryTopicClassLevel retryTopicClassLevel)
 			throws InterruptedException {
 
 		template.send("dh1", "test");
+		template.send(DH_CLASS_LEVEL_1, "test");
 		assertThat(config.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(retryTopicClassLevel.latchClassLevel.await(10, TimeUnit.SECONDS)).isTrue();
+
 		assertThat(config.attempts.toString())
 				.isEqualTo("[[1, 1], [2, 1], [3, 1], [1, 2], [2, 2], [3, 2], [1, 3], [2, 3], [3, 3]]");
 		assertThat(config.accessorAttempts.toString())
+				.isEqualTo("[[1, 1], [2, 1], [3, 1], [1, 2], [2, 2], [3, 2], [1, 3], [2, 3], [3, 3]]");
+
+		assertThat(retryTopicClassLevel.attemptsClassLevel.toString())
+				.isEqualTo("[[1, 1], [2, 1], [3, 1], [1, 2], [2, 2], [3, 2], [1, 3], [2, 3], [3, 3]]");
+		assertThat(retryTopicClassLevel.accessorAttemptsClassLevel.toString())
 				.isEqualTo("[[1, 1], [2, 1], [3, 1], [1, 2], [2, 2], [3, 2], [1, 3], [2, 3], [3, 3]]");
 	}
 
@@ -94,7 +110,7 @@ public class DeliveryHeaderTests {
 
 		@Override
 		protected Consumer<DeadLetterPublishingRecovererFactory> configureDeadLetterPublishingContainerFactory() {
-			return factory -> factory.neverLogListenerException();
+			return DeadLetterPublishingRecovererFactory::neverLogListenerException;
 		}
 
 		@RetryableTopic(backoff = @Backoff(maxDelay = 0))
@@ -111,6 +127,11 @@ public class DeliveryHeaderTests {
 		}
 
 		@Bean
+		RetryTopicClassLevel retryTopicClassLevel() {
+			return new RetryTopicClassLevel();
+		}
+
+		@Bean
 		KafkaTemplate<Integer, String> template(ProducerFactory<Integer, String> pf) {
 			return new KafkaTemplate<>(pf);
 		}
@@ -121,6 +142,7 @@ public class DeliveryHeaderTests {
 		}
 
 		@Bean
+		@Primary
 		ConcurrentKafkaListenerContainerFactory<Integer, String> kafkaListenerContainerFactory(
 				ConsumerFactory<Integer, String> cf) {
 
@@ -132,6 +154,7 @@ public class DeliveryHeaderTests {
 		}
 
 		@Bean
+		@Primary
 		ConsumerFactory<Integer, String> cf() {
 			return new DefaultKafkaConsumerFactory<>(
 					KafkaTestUtils.consumerProps("dh1", "false", this.broker));
@@ -140,6 +163,30 @@ public class DeliveryHeaderTests {
 		@Bean
 		TaskScheduler sched() {
 			return new ThreadPoolTaskScheduler();
+		}
+
+	}
+
+	@RetryableTopic(backoff = @Backoff(maxDelay = 0))
+	@KafkaListener(id = "dhClassLevel1", topics = DH_CLASS_LEVEL_1)
+	static class RetryTopicClassLevel {
+
+		List<List<Integer>> attemptsClassLevel = new ArrayList<>();
+
+		List<List<Integer>> accessorAttemptsClassLevel = new ArrayList<>();
+
+		CountDownLatch latchClassLevel = new CountDownLatch(9);
+
+		@KafkaHandler
+		void listen(String in, @Header(KafkaHeaders.DELIVERY_ATTEMPT) int blockingAttempts,
+					@Header(name = RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS, required = false) Integer nonBlockingAttempts,
+					KafkaMessageHeaderAccessor accessor) {
+
+			this.attemptsClassLevel.add(List.of(blockingAttempts, nonBlockingAttempts == null ? 1 : nonBlockingAttempts));
+			this.accessorAttemptsClassLevel.add(List.of(accessor.getBlockingRetryDeliveryAttempt(),
+					accessor.getNonBlockingRetryDeliveryAttempt()));
+			this.latchClassLevel.countDown();
+			throw new RuntimeException("test");
 		}
 
 	}
