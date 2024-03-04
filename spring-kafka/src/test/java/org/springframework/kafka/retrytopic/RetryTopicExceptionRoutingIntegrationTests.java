@@ -332,7 +332,6 @@ public class RetryTopicExceptionRoutingIntegrationTests {
 		}
 
 		@Bean
-		@SuppressWarnings("deprecation")
 		public RetryTopicConfiguration onlyTopic(KafkaTemplate<String, String> template) {
 			return RetryTopicConfigurationBuilder
 					.newInstance()

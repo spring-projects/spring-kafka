@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,6 +56,8 @@ import org.springframework.util.backoff.BackOff;
 /**
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Wang Zhiyang
+ *
  * @since 2.9
  */
 class RetryTopicConfigurationSupportTests {
@@ -185,7 +187,6 @@ class RetryTopicConfigurationSupportTests {
 				ContainerPartitionPausingBackOffManagerFactory.class);
 		KafkaConsumerBackoffManager backoffManagerMock = mock(KafkaConsumerBackoffManager.class);
 		TaskScheduler taskSchedulerMock = mock(TaskScheduler.class);
-		Clock clock = mock(Clock.class);
 		ApplicationContext ctx = mock(ApplicationContext.class);
 		given(componentFactory.kafkaBackOffManagerFactory(registry, ctx)).willReturn(factory);
 		given(factory.create()).willReturn(backoffManagerMock);

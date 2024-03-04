@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,6 +47,8 @@ import org.springframework.kafka.core.KafkaOperations;
  * @author Tomaz Fernandes
  * @author Gary Russell
  * @author Fabio da Silva Jr.
+ * @author Wang Zhiyang
+ *
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
@@ -56,9 +58,7 @@ class RetryTopicConfigurationProviderTests {
 
 	{
 		this.beanFactory = mock(ConfigurableListableBeanFactory.class);
-		willAnswer(invoc -> {
-			return invoc.getArgument(0);
-		}).given(this.beanFactory).resolveEmbeddedValue(anyString());
+		willAnswer(invoc -> invoc.getArgument(0)).given(this.beanFactory).resolveEmbeddedValue(anyString());
 	}
 
 	private final String[] topics = {"topic1", "topic2"};
@@ -82,16 +82,10 @@ class RetryTopicConfigurationProviderTests {
 	Object bean;
 
 	@Mock
-	RetryableTopic annotation;
-
-	@Mock
 	KafkaOperations<?, ?> kafkaOperations;
 
 	@Mock
 	RetryTopicConfiguration retryTopicConfiguration;
-
-	@Mock
-	RetryTopicConfiguration retryTopicConfiguration2;
 
 	@Test
 	void shouldProvideFromAnnotation() {

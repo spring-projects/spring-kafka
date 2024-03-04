@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2023 the original author or authors.
+ * Copyright 2014-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,6 +66,7 @@ import org.springframework.util.StringUtils;
  * @author Artem Bilan
  * @author Gary Russell
  * @author Asi Bross
+ * @author Wang Zhiyang
  *
  * @see KafkaListenerEndpoint
  * @see MessageListenerContainer
@@ -94,8 +95,8 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
-		if (applicationContext instanceof ConfigurableApplicationContext) {
-			this.applicationContext = (ConfigurableApplicationContext) applicationContext;
+		if (applicationContext instanceof ConfigurableApplicationContext cac) {
+			this.applicationContext = cac;
 		}
 	}
 
@@ -170,8 +171,7 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	 */
 	@Override
 	public Collection<MessageListenerContainer> getAllListenerContainers() {
-		List<MessageListenerContainer> containers = new ArrayList<>();
-		containers.addAll(getListenerContainers());
+		List<MessageListenerContainer> containers = new ArrayList<>(getListenerContainers());
 		refreshContextContainers();
 		containers.addAll(this.unregisteredContainers.values());
 		return containers;
@@ -232,7 +232,7 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 					group = appContext.getBean(groupName + ".group", ContainerGroup.class);
 				}
 				else {
-					containerGroup = new ArrayList<MessageListenerContainer>();
+					containerGroup = new ArrayList<>();
 					appContext.getBeanFactory().registerSingleton(groupName, containerGroup); // NOSONAR - hasText
 					group = new ContainerGroup(groupName);
 					appContext.getBeanFactory().registerSingleton(groupName + ".group", group);
@@ -274,11 +274,9 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	protected MessageListenerContainer createListenerContainer(KafkaListenerEndpoint endpoint,
 			KafkaListenerContainerFactory<?> factory) {
 
-		if (endpoint instanceof MethodKafkaListenerEndpoint) {
-			MethodKafkaListenerEndpoint<?, ?> mkle = (MethodKafkaListenerEndpoint<?, ?>) endpoint;
+		if (endpoint instanceof MethodKafkaListenerEndpoint<?, ?> mkle) {
 			Object bean = mkle.getBean();
-			if (bean instanceof EndpointHandlerMethod) {
-				EndpointHandlerMethod ehm = (EndpointHandlerMethod) bean;
+			if (bean instanceof EndpointHandlerMethod ehm) {
 				ehm = new EndpointHandlerMethod(ehm.resolveBean(this.applicationContext), ehm.getMethodName());
 				mkle.setBean(ehm.resolveBean(this.applicationContext));
 				mkle.setMethod(ehm.getMethod());
@@ -286,9 +284,9 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 		}
 		MessageListenerContainer listenerContainer = factory.createListenerContainer(endpoint);
 
-		if (listenerContainer instanceof InitializingBean) {
+		if (listenerContainer instanceof InitializingBean initializingBean) {
 			try {
-				((InitializingBean) listenerContainer).afterPropertiesSet();
+				initializingBean.afterPropertiesSet();
 			}
 			catch (Exception ex) {
 				throw new BeanInitializationException("Failed to initialize message listener container", ex);
@@ -322,11 +320,6 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	@Override
 	public int getPhase() {
 		return this.phase;
-	}
-
-	@Override
-	public boolean isAutoStartup() {
-		return true;
 	}
 
 	@Override

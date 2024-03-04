@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +32,8 @@ import org.springframework.util.ReflectionUtils;
  *
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Wang Zhiyang
+ *
  * @since 2.7
  *
  */
@@ -66,15 +68,15 @@ public class EndpointHandlerMethod {
 	 * @return the method.
 	 */
 	public Method getMethod() {
-		if (this.beanOrClass instanceof Class) {
-			return forClass((Class<?>) this.beanOrClass);
+		if (this.beanOrClass instanceof Class<?> clazz) {
+			return forClass(clazz);
 		}
 		Assert.state(this.bean != null, "Bean must be resolved before accessing its method");
 		if (this.bean instanceof EndpointHandlerMethod) {
 			try {
 				return Object.class.getMethod("toString");
 			}
-			catch (NoSuchMethodException | SecurityException e) {
+			catch (NoSuchMethodException | SecurityException ignored) {
 			}
 		}
 		return forClass(this.bean.getClass());
@@ -91,13 +93,12 @@ public class EndpointHandlerMethod {
 	}
 
 	public Object resolveBean(BeanFactory beanFactory) {
-		if (this.bean instanceof EndpointHandlerMethod) {
-			return ((EndpointHandlerMethod) this.bean).beanOrClass;
+		if (this.bean instanceof EndpointHandlerMethod endpointHandlerMethod) {
+			return endpointHandlerMethod.beanOrClass;
 		}
 		if (this.bean == null) {
 			try {
-				if (this.beanOrClass instanceof Class) {
-					Class<?> clazz = (Class<?>) this.beanOrClass;
+				if (this.beanOrClass instanceof Class<?> clazz) {
 					try {
 						this.bean = beanFactory.getBean(clazz);
 					}

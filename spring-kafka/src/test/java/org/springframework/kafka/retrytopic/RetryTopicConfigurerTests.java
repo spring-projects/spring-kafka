@@ -294,15 +294,6 @@ class RetryTopicConfigurerTests {
 		assertThat(retryTopicName.get(index + 1)).isEqualTo(secondTopicName);
 	}
 
-	private void thenAssertEndpointProcessing(MethodKafkaListenerEndpoint<?, ?> endpoint) {
-		then(endpoint).should(times(1)).setTopics(topics.toArray(new String[]{}));
-		then(endpoint).should(times(1)).setId("testId");
-		then(endpoint).should(times(1)).setGroup("testGroup");
-		then(endpoint).should(times(1)).setGroupId("testGroupId");
-		then(endpoint).should(times(1)).setClientIdPrefix("testClientPrefix");
-		then(endpoint).should(times(1)).setBeanFactory(defaultListableBeanFactory);
-	}
-
 	public void noOpsMethod() {
 		// noOps
 	}
@@ -349,7 +340,6 @@ class RetryTopicConfigurerTests {
 
 	@LogLevels(classes = RetryTopicConfigurer.class, level = "info")
 	@Test
-	@SuppressWarnings("deprecation")
 	void shouldLogConsumerRecordMessage() {
 		RetryTopicConfigurer.LoggingDltListenerHandlerMethod method =
 				new RetryTopicConfigurer.LoggingDltListenerHandlerMethod();

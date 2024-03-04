@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package org.springframework.kafka.retrytopic;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.springframework.beans.factory.BeanFactory;
@@ -34,6 +33,8 @@ import org.springframework.kafka.support.TopicPartitionOffset;
  *
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Wang Zhiyang
+ *
  * @since 2.7.2
  *
  * @see RetryTopicConfigurer
@@ -124,7 +125,7 @@ public class EndpointCustomizerFactory {
 		return getTopics(endpoint)
 				.stream()
 				.map(topic -> new EndpointCustomizer.TopicNamesHolder(topic, namesProvider.getTopicName(topic)))
-				.collect(Collectors.toList());
+				.toList();
 	}
 
 	private Collection<String> getTopics(MethodKafkaListenerEndpoint<?, ?> endpoint) {
@@ -135,7 +136,7 @@ public class EndpointCustomizerFactory {
 				topics = Arrays.stream(topicPartitionsToAssign)
 						.map(TopicPartitionOffset::getTopic)
 						.distinct()
-						.collect(Collectors.toList());
+						.toList();
 			}
 		}
 

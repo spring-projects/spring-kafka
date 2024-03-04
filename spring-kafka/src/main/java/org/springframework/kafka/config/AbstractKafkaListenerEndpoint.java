@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2023 the original author or authors.
+ * Copyright 2014-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,6 +61,7 @@ import org.springframework.util.ObjectUtils;
  * @author Stephane Nicoll
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Wang Zhiyang
  *
  * @see MethodKafkaListenerEndpoint
  */
@@ -176,7 +177,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * @param groupId the group id.
 	 * @since 1.3
 	 */
-	public void setGroupId(String groupId) {
+	public void setGroupId(@Nullable String groupId) {
 		this.groupId = groupId;
 	}
 
