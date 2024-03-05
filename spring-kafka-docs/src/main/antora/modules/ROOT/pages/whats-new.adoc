@@ -55,5 +55,5 @@ See xref:retrytopic/topic-naming.adoc#single-topic-maxinterval-delay[Single Topi
 [[x32-seek-offset-compute-fn]]
 === New API method to seek to an offset based on a user provided function
 `ConsumerCallback` provides a new API to seek to an offset based on a user-defined function, which takes the current offset in the consumer as an argument.
-See xref:kafka/seek.adoc#seek/[Seek API Docs] for more details.
+See xref:kafka/seek.adoc#seek[Seek API Docs] for more details.
 
