@@ -51,3 +51,9 @@ See xref:kafka/annotation-error-handling.adoc#after-rollback[After-rollback Proc
 === Change @RetryableTopic SameIntervalTopicReuseStrategy default value
 Change `@RetryableTopic` property `SameIntervalTopicReuseStrategy` default value to `SINGLE_TOPIC`.
 See xref:retrytopic/topic-naming.adoc#single-topic-maxinterval-delay[Single Topic for maxInterval Exponential Delay].
+
+[[x32-seek-offset-compute-fn]]
+=== New API method to seek to an offset based on a user provided function
+`ConsumerCallback` provides a new API to seek to an offset based on a user-defined function, which takes the current offset in the consumer as an argument.
+See xref:kafka/seek.adoc#seek/[Seek API Docs] for more details.
+

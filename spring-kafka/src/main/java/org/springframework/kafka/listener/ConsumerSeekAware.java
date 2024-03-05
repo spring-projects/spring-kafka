@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.kafka.listener;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.function.Function;
 
 import org.apache.kafka.common.TopicPartition;
 
@@ -27,6 +28,7 @@ import org.apache.kafka.common.TopicPartition;
  * seek operation.
  *
  * @author Gary Russell
+ * @author Soby Chacko
  * @since 1.1
  *
  */
@@ -104,6 +106,23 @@ public interface ConsumerSeekAware {
 		 * @param offset the offset (absolute).
 		 */
 		void seek(String topic, int partition, long offset);
+
+		/**
+		 * Perform a seek operation based on the given function to compute the offset to seek to.
+		 * The function provides the user with access to the current offset in the consumer which
+		 * is the current position, i.e, the next offset to be fetched.
+		 * When called from {@link ConsumerSeekAware#onPartitionsAssigned(Map, ConsumerSeekCallback)}
+		 * or from {@link ConsumerSeekAware#onIdleContainer(Map, ConsumerSeekCallback)}
+		 * perform the seek immediately on the consumer. When called from elsewhere,
+		 * queue the seek operation to the consumer. The queued seek will occur after any
+		 * pending offset commits. The consumer must be currently assigned the specified
+		 * partition.
+		 * @param topic the topic.
+		 * @param partition the partition.
+		 * @param offsetComputeFunction function to compute the absolute offset to seek to.
+		 * @since 3.2.0
+		 */
+		void seek(String topic, int partition, Function<Long, Long> offsetComputeFunction);
 
 		/**
 		 * Perform a seek to beginning operation. When called from

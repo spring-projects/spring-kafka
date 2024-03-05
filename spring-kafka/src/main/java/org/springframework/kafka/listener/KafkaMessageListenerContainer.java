@@ -3324,6 +3324,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		@Override
+		public void seek(String topic, int partition, Function<Long, Long> offsetComputeFunction) {
+			this.seeks.add(new TopicPartitionOffset(topic, partition, offsetComputeFunction.apply(
+					this.consumer.position(new TopicPartition(topic, partition)))));
+		}
+
+		@Override
 		public void seekToBeginning(String topic, int partition) {
 			this.seeks.add(new TopicPartitionOffset(topic, partition, SeekPosition.BEGINNING));
 		}
@@ -3765,6 +3771,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			@Override
 			public void seek(String topic, int partition, long offset) {
 				ListenerConsumer.this.consumer.seek(new TopicPartition(topic, partition), offset);
+			}
+
+			@Override
+			public void seek(String topic, int partition, Function<Long, Long> offsetComputeFunction) {
+				ListenerConsumer.this.consumer.seek(new TopicPartition(topic, partition),
+						offsetComputeFunction.apply(
+								ListenerConsumer.this.consumer.position(new TopicPartition(topic, partition))));
 			}
 
 			@Override

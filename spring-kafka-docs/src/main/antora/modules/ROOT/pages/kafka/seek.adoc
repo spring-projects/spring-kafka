@@ -34,6 +34,8 @@ The callback has the following methods:
 ----
 void seek(String topic, int partition, long offset);
 
+void seek(String topic, int partition, Function<Long, Long> offsetComputeFunction);
+
 void seekToBeginning(String topic, int partition);
 
 void seekToBeginning(Collection<TopicPartitions> partitions);
@@ -48,6 +50,11 @@ void seekToTimestamp(String topic, int partition, long timestamp);
 
 void seekToTimestamp(Collection<TopicPartition> topicPartitions, long timestamp);
 ----
+
+The two different variants of the `seek` methods provide a way to seek to an arbitrary offset.
+The method that takes a `Function` as an argument to compute the offset was added in version `3.2` of the framework.
+This function provides access to the current offset (the current position returned by the consumer, which is the next offset to be fetched).
+The user can decide what offset to seek to based on the current offset in the consumer as part of the function definition.
 
 `seekRelative` was added in version 2.3, to perform relative seeks.
 

@@ -293,6 +293,106 @@ public class ConcurrentMessageListenerContainerMockTests {
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
+	void seekOffsetFromComputeFnOnInitAssignmentAndIdleContainer() throws InterruptedException {
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		final Consumer consumer = mock(Consumer.class);
+		TestMessageListener3 listener = new TestMessageListener3();
+		ConsumerRecords empty = new ConsumerRecords<>(Collections.emptyMap());
+		willAnswer(invocation -> {
+			Thread.sleep(10);
+			return empty;
+		}).given(consumer).poll(any());
+		TopicPartition tp0 = new TopicPartition("test-topic", 0);
+		TopicPartition tp1 = new TopicPartition("test-topic", 1);
+		TopicPartition tp2 = new TopicPartition("test-topic", 2);
+		TopicPartition tp3 = new TopicPartition("test-topic", 3);
+		List<TopicPartition> assignments = List.of(tp0, tp1, tp2, tp3);
+		willAnswer(invocation -> {
+			((ConsumerRebalanceListener) invocation.getArgument(1))
+					.onPartitionsAssigned(assignments);
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any());
+		given(consumer.position(any())).willReturn(30L); // current offset position is always 30
+		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
+				.willReturn(consumer);
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setGroupId("grp");
+		containerProperties.setMessageListener(listener);
+		containerProperties.setIdleEventInterval(10L);
+		containerProperties.setMissingTopicsFatal(false);
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(consumerFactory,
+				containerProperties);
+		container.start();
+		assertThat(listener.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		verify(consumer).seek(tp0, 20L);
+		verify(consumer).seek(tp1, 21L);
+		verify(consumer).seek(tp2, 22L);
+		verify(consumer).seek(tp3, 23L);
+
+		verify(consumer).seek(tp0, 30L);
+		verify(consumer).seek(tp1, 30L);
+		verify(consumer).seek(tp2, 30L);
+		verify(consumer).seek(tp3, 30L);
+		container.stop();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void seekOffsetFromComputeFnFromActiveListener() throws InterruptedException {
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		final Consumer consumer = mock(Consumer.class);
+		TestMessageListener4 listener = new TestMessageListener4();
+		CountDownLatch latch = new CountDownLatch(2);
+		TopicPartition tp0 = new TopicPartition("test-topic", 0);
+		TopicPartition tp1 = new TopicPartition("test-topic", 1);
+		TopicPartition tp2 = new TopicPartition("test-topic", 2);
+		TopicPartition tp3 = new TopicPartition("test-topic", 3);
+		List<TopicPartition> assignments = List.of(tp0, tp1, tp2, tp3);
+		Map<TopicPartition, List<ConsumerRecord<String, String>>> recordMap = new HashMap<>();
+		recordMap.put(tp0, Collections.singletonList(new ConsumerRecord("test-topic", 0, 0, null, "test-data")));
+		recordMap.put(tp1, Collections.singletonList(new ConsumerRecord("test-topic", 1, 0, null, "test-data")));
+		recordMap.put(tp2, Collections.singletonList(new ConsumerRecord("test-topic", 2, 0, null, "test-data")));
+		recordMap.put(tp3, Collections.singletonList(new ConsumerRecord("test-topic", 3, 0, null, "test-data")));
+		ConsumerRecords records = new ConsumerRecords<>(recordMap);
+		willAnswer(invocation -> {
+			Thread.sleep(10);
+			if (listener.latch.getCount() <= 0) {
+				latch.countDown();
+			}
+			return records;
+		}).given(consumer).poll(any());
+		willAnswer(invocation -> {
+			((ConsumerRebalanceListener) invocation.getArgument(1))
+					.onPartitionsAssigned(assignments);
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any());
+		given(consumer.position(tp0)).willReturn(30L); // current offset 30, target 20 (see hard-coded in onMessage)
+		given(consumer.position(tp1)).willReturn(10L); // current 10, target 21
+		given(consumer.position(tp2)).willReturn(22L); // current 22, target 22
+		given(consumer.position(tp3)).willReturn(22L); // current 22, target 23
+		given(consumer.beginningOffsets(any())).willReturn(assignments.stream()
+				.collect(Collectors.toMap(tp -> tp, tp -> 0L)));
+		given(consumer.endOffsets(any())).willReturn(assignments.stream()
+				.collect(Collectors.toMap(tp -> tp, tp -> 100L)));
+		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
+				.willReturn(consumer);
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setGroupId("grp");
+		containerProperties.setMessageListener(listener);
+		containerProperties.setMissingTopicsFatal(false);
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(consumerFactory,
+				containerProperties);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		verify(consumer).seek(tp0, 20L);
+		verify(consumer).seek(tp1, 10L);
+		verify(consumer).seek(tp2, 22L);
+		verify(consumer).seek(tp3, 22L);
+		container.stop();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
 	@DisplayName("Seek from activeListener")
 	void testAsyncRelativeSeeks() throws InterruptedException {
 		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
@@ -1278,6 +1378,83 @@ public class ConcurrentMessageListenerContainerMockTests {
 				callback.seekToTimestamp(assignments.keySet(), 43L);
 			}
 			this.latch.countDown();
+		}
+
+	}
+
+	public static class TestMessageListener3 implements MessageListener<String, String>, ConsumerSeekAware {
+
+		private static final ThreadLocal<ConsumerSeekCallback> callbacks = new ThreadLocal<>();
+
+		CountDownLatch latch = new CountDownLatch(2);
+
+		@Override
+		public void onMessage(ConsumerRecord<String, String> data) {
+
+		}
+
+		@Override
+		public void registerSeekCallback(ConsumerSeekCallback callback) {
+			callbacks.set(callback);
+		}
+
+		@Override
+		public void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+			if (latch.getCount() > 0) {
+				int absoluteTarget1 = 20;
+				int absoluteTarget2 = 21;
+				int absoluteTarget3 = 22;
+				int absoluteTarget4 = 23;
+				callback.seek("test-topic", 0, current -> current > absoluteTarget1 ? absoluteTarget1 : current);
+				callback.seek("test-topic", 1, current -> current > absoluteTarget2 ? absoluteTarget2 : current);
+				callback.seek("test-topic", 2, current -> current > absoluteTarget3 ? absoluteTarget3 : current);
+				callback.seek("test-topic", 3, current -> current > absoluteTarget4 ? absoluteTarget4 : current);
+			}
+			this.latch.countDown();
+		}
+
+
+		@Override
+		public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
+			if (latch.getCount() > 0) {
+				int absoluteTarget = 31;
+				callback.seek("test-topic", 0, current -> current > absoluteTarget ? absoluteTarget : current);
+				callback.seek("test-topic", 1, current -> current > absoluteTarget ? absoluteTarget : current);
+				callback.seek("test-topic", 2, current -> current > absoluteTarget ? absoluteTarget : current);
+				callback.seek("test-topic", 3, current -> current > absoluteTarget ? absoluteTarget : current);
+			}
+			this.latch.countDown();
+		}
+
+	}
+
+	public static class TestMessageListener4 implements MessageListener<String, String>, ConsumerSeekAware {
+
+		private static final ThreadLocal<ConsumerSeekCallback> callbacks = new ThreadLocal<>();
+
+		CountDownLatch latch = new CountDownLatch(1);
+
+		@Override
+		public void onMessage(ConsumerRecord<String, String> data) {
+			ConsumerSeekCallback callback = callbacks.get();
+			if (latch.getCount() > 0) {
+
+				int absoluteTarget1 = 20;
+				int absoluteTarget2 = 21;
+				int absoluteTarget3 = 22;
+				int absoluteTarget4 = 23;
+
+				callback.seek("test-topic", 0, current -> current > absoluteTarget1 ? absoluteTarget1 : current);
+				callback.seek("test-topic", 1, current -> current > absoluteTarget2 ? absoluteTarget2 : current);
+				callback.seek("test-topic", 2, current -> current > absoluteTarget3 ? absoluteTarget3 : current);
+				callback.seek("test-topic", 3, current -> current > absoluteTarget4 ? absoluteTarget4 : current);
+			}
+			this.latch.countDown();
+		}
+
+		@Override
+		public void registerSeekCallback(ConsumerSeekCallback callback) {
+			callbacks.set(callback);
 		}
 
 	}
