@@ -216,7 +216,7 @@ public class TopicPartitionOffset {
 	}
 
 	public Function<Long, Long> getOffsetComputeFunction() {
-		return offsetComputeFunction;
+		return this.offsetComputeFunction;
 	}
 
 	@Override
