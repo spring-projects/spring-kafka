@@ -106,6 +106,14 @@ public class RetryTopicConfigurationProvider {
 		return findRetryConfigurationFor(topics, method, null, bean);
 	}
 
+	/**
+	 * Find retry topic configuration.
+	 * @param topics the retryable topic list.
+	 * @param method the method that gets @RetryableTopic annotation.
+	 * @param clazz the class that gets @RetryableTopic annotation.
+	 * @param bean the bean.
+	 * @return the retry topic configuration.
+	 */
 	@Nullable
 	public RetryTopicConfiguration findRetryConfigurationFor(String[] topics, @Nullable Method method,
 			@Nullable Class<?> clazz, Object bean) {
