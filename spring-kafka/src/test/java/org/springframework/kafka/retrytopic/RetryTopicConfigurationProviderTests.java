@@ -25,10 +25,8 @@ import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 
-import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 import java.lang.reflect.Method;
 import java.util.Collections;
 
@@ -96,10 +94,13 @@ class RetryTopicConfigurationProviderTests {
 		// given
 		RetryTopicConfigurationProvider provider = new RetryTopicConfigurationProvider(beanFactory);
 		RetryTopicConfiguration configuration = provider.findRetryConfigurationFor(topics, annotatedMethod, bean);
+		RetryTopicConfiguration configurationFromClass = provider
+				.findRetryConfigurationFor(topics, null, AnnotatedClass.class, bean);
 
 		// then
 		then(this.beanFactory).should(times(0)).getBeansOfType(RetryTopicConfiguration.class);
-
+		assertThat(configuration).isNotNull();
+		assertThat(configurationFromClass).isNotNull();
 	}
 
 	@Test
@@ -113,10 +114,13 @@ class RetryTopicConfigurationProviderTests {
 		// given
 		RetryTopicConfigurationProvider provider = new RetryTopicConfigurationProvider(beanFactory);
 		RetryTopicConfiguration configuration = provider.findRetryConfigurationFor(topics, nonAnnotatedMethod, bean);
+		RetryTopicConfiguration configurationFromClass = provider
+				.findRetryConfigurationFor(topics, null, NonAnnotatedClass.class, bean);
 
 		// then
-		then(this.beanFactory).should(times(1)).getBeansOfType(RetryTopicConfiguration.class);
+		then(this.beanFactory).should(times(2)).getBeansOfType(RetryTopicConfiguration.class);
 		assertThat(configuration).isEqualTo(retryTopicConfiguration);
+		assertThat(configurationFromClass).isEqualTo(retryTopicConfiguration);
 
 	}
 
@@ -131,10 +135,13 @@ class RetryTopicConfigurationProviderTests {
 		// given
 		RetryTopicConfigurationProvider provider = new RetryTopicConfigurationProvider(beanFactory);
 		RetryTopicConfiguration configuration = provider.findRetryConfigurationFor(topics, nonAnnotatedMethod, bean);
+		RetryTopicConfiguration configurationFromClass = provider
+				.findRetryConfigurationFor(topics, null, NonAnnotatedClass.class, bean);
 
 		// then
-		then(this.beanFactory).should(times(1)).getBeansOfType(RetryTopicConfiguration.class);
+		then(this.beanFactory).should(times(2)).getBeansOfType(RetryTopicConfiguration.class);
 		assertThat(configuration).isNull();
+		assertThat(configurationFromClass).isNull();
 
 	}
 
@@ -147,10 +154,15 @@ class RetryTopicConfigurationProviderTests {
 		// given
 		RetryTopicConfigurationProvider provider = new RetryTopicConfigurationProvider(beanFactory);
 		RetryTopicConfiguration configuration = provider.findRetryConfigurationFor(topics, metaAnnotatedMethod, bean);
+		RetryTopicConfiguration configurationFromClass = provider
+				.findRetryConfigurationFor(topics, null, MetaAnnotatedClass.class, bean);
 
 		// then
 		then(this.beanFactory).should(times(0)).getBeansOfType(RetryTopicConfiguration.class);
+		assertThat(configuration).isNotNull();
 		assertThat(configuration.getConcurrency()).isEqualTo(3);
+		assertThat(configurationFromClass).isNotNull();
+		assertThat(configurationFromClass.getConcurrency()).isEqualTo(3);
 
 	}
 
@@ -160,9 +172,12 @@ class RetryTopicConfigurationProviderTests {
 		// given
 		RetryTopicConfigurationProvider provider = new RetryTopicConfigurationProvider(null);
 		RetryTopicConfiguration configuration = provider.findRetryConfigurationFor(topics, nonAnnotatedMethod, bean);
+		RetryTopicConfiguration configurationFromClass
+				= provider.findRetryConfigurationFor(topics, null, NonAnnotatedClass.class, bean);
 
 		// then
 		assertThat(configuration).isNull();
+		assertThat(configurationFromClass).isNull();
 
 	}
 
@@ -175,7 +190,6 @@ class RetryTopicConfigurationProviderTests {
 		// NoOps
 	}
 
-	@Target({ElementType.METHOD})
 	@Retention(RetentionPolicy.RUNTIME)
 	@RetryableTopic
 	@interface MetaAnnotatedRetryableTopic {
@@ -187,4 +201,19 @@ class RetryTopicConfigurationProviderTests {
 	public void metaAnnotatedMethod() {
 		// NoOps
 	}
+
+	@RetryableTopic
+	public static class AnnotatedClass {
+		// NoOps
+	}
+
+	public static class NonAnnotatedClass {
+		// NoOps
+	}
+
+	@MetaAnnotatedRetryableTopic
+	public static class MetaAnnotatedClass {
+		// NoOps
+	}
+
 }

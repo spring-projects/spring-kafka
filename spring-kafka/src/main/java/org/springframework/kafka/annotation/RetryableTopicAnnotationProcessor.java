@@ -63,6 +63,8 @@ import org.springframework.util.StringUtils;
  * @author Tomaz Fernandes
  * @author Gary Russell
  * @author Adrian Chlebosz
+ * @author Wang Zhiyang
+ *
  * @since 2.7
  *
  */
@@ -115,6 +117,13 @@ public class RetryableTopicAnnotationProcessor {
 	public RetryTopicConfiguration processAnnotation(String[] topics, Method method, RetryableTopic annotation,
 			Object bean) {
 
+		Class<?> clazz = method.getDeclaringClass();
+		return  processAnnotation(topics, clazz, annotation, bean);
+	}
+
+	public RetryTopicConfiguration processAnnotation(String[] topics, Class<?> clazz, RetryableTopic annotation,
+			Object bean) {
+
 		Long resolvedTimeout = resolveExpressionAsLong(annotation.timeout(), "timeout", false);
 		long timeout = RetryTopicConstants.NOT_SET;
 		if (resolvedTimeout != null) {
@@ -140,7 +149,7 @@ public class RetryableTopicAnnotationProcessor {
 				.customBackoff(createBackoffFromAnnotation(annotation.backoff(), this.beanFactory))
 				.retryTopicSuffix(resolveExpressionAsString(annotation.retryTopicSuffix(), "retryTopicSuffix"))
 				.dltSuffix(resolveExpressionAsString(annotation.dltTopicSuffix(), "dltTopicSuffix"))
-				.dltHandlerMethod(getDltProcessor(method, bean))
+				.dltHandlerMethod(getDltProcessor(clazz, bean))
 				.includeTopics(Arrays.asList(topics))
 				.listenerFactory(resolveExpressionAsString(annotation.listenerContainerFactory(), "listenerContainerFactory"))
 				.autoCreateTopics(resolveExpressionAsBoolean(annotation.autoCreateTopics(), "autoCreateTopics"),
@@ -218,9 +227,8 @@ public class RetryableTopicAnnotationProcessor {
 			.collect(Collectors.toMap(ExceptionBasedDltDestination::suffix, excBasedDestDlt -> Set.of(excBasedDestDlt.exceptions())));
 	}
 
-	private EndpointHandlerMethod getDltProcessor(Method listenerMethod, Object bean) {
-		Class<?> declaringClass = listenerMethod.getDeclaringClass();
-		return Arrays.stream(ReflectionUtils.getDeclaredMethods(declaringClass))
+	private EndpointHandlerMethod getDltProcessor(Class<?> clazz, Object bean) {
+		return Arrays.stream(ReflectionUtils.getDeclaredMethods(clazz))
 				.filter(method -> AnnotationUtils.findAnnotation(method, DltHandler.class) != null)
 				.map(method -> RetryTopicConfigurer.createHandlerMethodWith(bean, method))
 				.findFirst()

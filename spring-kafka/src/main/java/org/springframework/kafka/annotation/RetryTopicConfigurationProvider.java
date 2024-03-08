@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,10 @@
 
 package org.springframework.kafka.annotation;
 
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.commons.logging.LogFactory;
 
@@ -53,6 +55,8 @@ import org.springframework.lang.Nullable;
  *
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Wang Zhiyang
+ *
  * @since 2.7
  * @see org.springframework.kafka.retrytopic.RetryTopicConfigurer
  * @see RetryableTopic
@@ -96,17 +100,32 @@ public class RetryTopicConfigurationProvider {
 		this.resolver = resolver;
 		this.expressionContext = expressionContext;
 	}
+
 	@Nullable
 	public RetryTopicConfiguration findRetryConfigurationFor(String[] topics, Method method, Object bean) {
-		RetryableTopic annotation = MergedAnnotations.from(method, SearchStrategy.TYPE_HIERARCHY,
-					RepeatableContainers.none())
+		return findRetryConfigurationFor(topics, method, null, bean);
+	}
+
+	@Nullable
+	public RetryTopicConfiguration findRetryConfigurationFor(String[] topics, @Nullable Method method,
+			@Nullable Class<?> clazz, Object bean) {
+
+		RetryableTopic annotation = getRetryableTopicAnnotationFromAnnotatedElement(
+				Objects.requireNonNullElse(method, clazz));
+		Class<?> declaringClass = method != null ? method.getDeclaringClass() : clazz;
+		return annotation != null
+				? new RetryableTopicAnnotationProcessor(this.beanFactory, this.resolver, this.expressionContext)
+				.processAnnotation(topics, declaringClass, annotation, bean)
+				: maybeGetFromContext(topics);
+	}
+
+	@Nullable
+	private RetryableTopic getRetryableTopicAnnotationFromAnnotatedElement(AnnotatedElement element) {
+		return MergedAnnotations.from(element, SearchStrategy.TYPE_HIERARCHY,
+						RepeatableContainers.none())
 				.get(RetryableTopic.class)
 				.synthesize(MergedAnnotation::isPresent)
 				.orElse(null);
-		return annotation != null
-				? new RetryableTopicAnnotationProcessor(this.beanFactory, this.resolver, this.expressionContext)
-						.processAnnotation(topics, method, annotation, bean)
-				: maybeGetFromContext(topics);
 	}
 
 	@Nullable
