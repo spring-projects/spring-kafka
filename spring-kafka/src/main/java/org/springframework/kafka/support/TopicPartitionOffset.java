@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 the original author or authors.
+ * Copyright 2019-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package org.springframework.kafka.support;
 
 import java.util.Objects;
+import java.util.function.Function;
 
 import org.apache.kafka.common.TopicPartition;
 
@@ -41,6 +42,7 @@ import org.springframework.lang.Nullable;
  *
  * @author Artem Bilan
  * @author Gary Russell
+ * @author Soby Chacko
  *
  * @since 2.3
  */
@@ -77,6 +79,8 @@ public class TopicPartitionOffset {
 
 	private boolean relativeToCurrent;
 
+	private Function<Long, Long> offsetComputeFunction;
+
 	/**
 	 * Construct an instance with no initial offset management.
 	 * @param topic the topic.
@@ -96,6 +100,19 @@ public class TopicPartitionOffset {
 	 */
 	public TopicPartitionOffset(String topic, int partition, Long offset) {
 		this(topic, partition, offset, false);
+	}
+
+	/**
+	 * Construct an instance with the provided function to compute the offset.
+	 * @param topic the topic.
+	 * @param partition the partition.
+	 * @param offsetComputeFunction function to compute the offset.
+	 * @since 3.2.0
+	 */
+	public TopicPartitionOffset(String topic, int partition, Function<Long, Long> offsetComputeFunction) {
+		this.topicPartition = new TopicPartition(topic, partition);
+		this.offsetComputeFunction = offsetComputeFunction;
+		this.position = null;
 	}
 
 	/**
@@ -196,6 +213,10 @@ public class TopicPartitionOffset {
 
 	public SeekPosition getPosition() {
 		return this.position;
+	}
+
+	public Function<Long, Long> getOffsetComputeFunction() {
+		return offsetComputeFunction;
 	}
 
 	@Override

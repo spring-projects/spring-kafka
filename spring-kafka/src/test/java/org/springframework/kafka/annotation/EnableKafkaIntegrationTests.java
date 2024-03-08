@@ -50,6 +50,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.aopalliance.intercept.MethodInterceptor;
 import org.apache.commons.logging.Log;
@@ -189,7 +190,7 @@ import jakarta.validation.constraints.Max;
 		"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
 		"annotated34", "annotated35", "annotated36", "annotated37", "foo", "manualStart", "seekOnIdle",
 		"annotated38", "annotated38reply", "annotated39", "annotated40", "annotated41", "annotated42",
-		"annotated43", "annotated43reply"})
+		"annotated43", "annotated43reply", "seekToComputeFn"})
 @TestPropertySource(properties = "spel.props=fetch.min.bytes=420000,max.poll.records=10")
 public class EnableKafkaIntegrationTests {
 
@@ -247,6 +248,9 @@ public class EnableKafkaIntegrationTests {
 
 	@Autowired
 	private SeekToLastOnIdleListener seekOnIdleListener;
+
+	@Autowired
+	private SeekToOffsetFromComputeFunction seekToOffsetFromComputeFunction;
 
 	@Autowired
 	private MeterRegistry meterRegistry;
@@ -1069,6 +1073,13 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.registry.getListenerContainer("multiTwoTwo")).isNotNull();
 	}
 
+	@Test
+	void seekToOffsetComputedFromFunction() throws InterruptedException {
+		IntStream.range(0, 10).forEach(i -> template.send("seekToComputeFn", 0, i, "my-data"));
+		assertThat(this.seekToOffsetFromComputeFunction.latch1.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.seekToOffsetFromComputeFunction.latch2.await(10, TimeUnit.SECONDS)).isTrue();
+	}
+
 	@Configuration
 	@EnableKafka
 	@EnableTransactionManagement(proxyTargetClass = true)
@@ -1425,6 +1436,10 @@ public class EnableKafkaIntegrationTests {
 			return new SeekToLastOnIdleListener();
 		}
 
+		@Bean
+		public SeekToOffsetFromComputeFunction seekToOffsetFromComputeFunction() {
+			return new SeekToOffsetFromComputeFunction();
+		}
 		@Bean
 		public IfaceListener<String> ifaceListener() {
 			return new IfaceListenerImpl();
@@ -2330,6 +2345,31 @@ public class EnableKafkaIntegrationTests {
 				return proxyFactory.getProxy();
 			}
 			return bean;
+		}
+	}
+
+	public static class SeekToOffsetFromComputeFunction extends AbstractConsumerSeekAware {
+
+		CountDownLatch latch1 = new CountDownLatch(10);
+		CountDownLatch latch2 = new CountDownLatch(1);
+
+		@KafkaListener(id = "seekToComputeFn", topics = "seekToComputeFn")
+		public void listen(String in) throws InterruptedException {
+			if (latch2.getCount() > 0) { // if latch2 is zero, the test condition is met
+				if (latch1.getCount() == 0) { // Seek happened on the consumer
+					latch2.countDown();
+				}
+				if (latch1.getCount() > 0) {
+					latch1.countDown();
+					if (latch1.getCount() == 0) {
+						ConsumerSeekCallback seekToComputeFn = getSeekCallbackFor(
+								new org.apache.kafka.common.TopicPartition("seekToComputeFn", 0));
+						assertThat(seekToComputeFn).isNotNull();
+						seekToComputeFn.
+								seek("seekToComputeFn", 0, current -> 0L);
+					}
+				}
+			}
 		}
 	}
 

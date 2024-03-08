@@ -3005,10 +3005,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					SeekPosition position = offset.getPosition();
 					TopicPartition topicPartition = offset.getTopicPartition();
 					Long whereTo = offset.getOffset();
+					Function<Long, Long> offsetComputeFunction = offset.getOffsetComputeFunction();
 					if (position == null) {
 						if (offset.isRelativeToCurrent()) {
 							whereTo += this.consumer.position(topicPartition);
 							whereTo = Math.max(whereTo, 0);
+						}
+						else if (offsetComputeFunction != null) {
+							whereTo = offsetComputeFunction.apply(this.consumer.position(topicPartition));
 						}
 						this.consumer.seek(topicPartition, whereTo);
 					}
@@ -3262,8 +3266,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@Override
 		public void seek(String topic, int partition, Function<Long, Long> offsetComputeFunction) {
-			this.seeks.add(new TopicPartitionOffset(topic, partition, offsetComputeFunction.apply(
-					this.consumer.position(new TopicPartition(topic, partition)))));
+			this.seeks.add(new TopicPartitionOffset(topic, partition, offsetComputeFunction));
 		}
 
 		@Override
