@@ -62,7 +62,7 @@ static @interface MetaAnnotatedRetryableTopic {
 
 You can also configure the non-blocking retry support by creating `RetryTopicConfiguration` beans in a `@Configuration` annotated class.
 
-[source,    java]
+[source, java]
 ----
 @Bean
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, Object> template) {
@@ -197,3 +197,26 @@ You can return a specific partition number, or `null` to indicate that the `Kafk
 By default, all values of retry headers (number of attempts, timestamps) are retained when a record transitions through the retry topics.
 Starting with version 2.9.6, if you want to retain just the last value of these headers, use the `configureDeadLetterPublishingContainerFactory()` method shown above to set the factory's `retainAllRetryHeaderValues` property to `false`.
 
+[[find-retry-topic-config]]
+== Find RetryTopicConfiguration
+Attempts to provide an instance of `RetryTopicConfiguration` by either creating one from a `@RetryableTopic` annotation, or from the bean container if no annotation is available.
+
+If beans are found in the container, there's a check to determine whether the provided topics should be handled by any of such instances.
+
+If `@RetryableTopic` annotation is provided, a `DltHandler` annotated method is looked up.
+
+since 3.2, provide new API to Create `RetryTopicConfiguration` when `@RetryableTopic` annotated on a class:
+
+[source, java]
+----
+@Bean
+public RetryTopicConfiguration myRetryTopic() {
+    RetryTopicConfigurationProvider provider = new RetryTopicConfigurationProvider(beanFactory);
+    return provider.findRetryConfigurationFor(topics, null, AnnotatedClass.class, bean);
+}
+
+@RetryableTopic
+public static class AnnotatedClass {
+    // NoOps
+}
+----
