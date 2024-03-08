@@ -17,7 +17,6 @@
 package org.springframework.kafka.retrytopic;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -32,11 +31,15 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
@@ -75,16 +78,12 @@ class RetryTopicConfigurerTests {
 	@Mock
 	private BeanFactory beanFactory;
 
-	private DefaultListableBeanFactory defaultListableBeanFactory = new DefaultListableBeanFactory();
+	private final DefaultListableBeanFactory defaultListableBeanFactory = new DefaultListableBeanFactory();
 
-	@Mock
-	private RetryTopicConfigurer.EndpointProcessor endpointProcessor;
+	private static final MethodKafkaListenerEndpoint<?, ?> mainEndpoint = mock(MethodKafkaListenerEndpoint.class);
 
-	@Mock
-	private MethodKafkaListenerEndpoint<?, ?> mainEndpoint;
-
-	@Mock
-	private MultiMethodKafkaListenerEndpoint<?, ?> multiMethodEndpoint;
+	private static final MultiMethodKafkaListenerEndpoint<?, ?> mainMultiEndpoint =
+			mock(MultiMethodKafkaListenerEndpoint.class);
 
 	@Mock
 	private RetryTopicConfiguration configuration;
@@ -167,22 +166,15 @@ class RetryTopicConfigurerTests {
 		}
 	}
 
-	@Test
-	void shouldThrowIfMultiMethodEndpoint() {
-
-		// setup
-		RetryTopicConfigurer configurer = new RetryTopicConfigurer(destinationTopicProcessor, containerFactoryResolver,
-				listenerContainerFactoryConfigurer, new SuffixingRetryTopicNamesProviderFactory());
-		configurer.setBeanFactory(beanFactory);
-
-		// when - then
-		assertThatIllegalArgumentException().isThrownBy(
-				() -> configurer.processMainAndRetryListeners(endpointProcessor, multiMethodEndpoint, configuration,
-						registrar, containerFactory, defaultFactoryBeanName));
+	private static Stream<Arguments> paramsRetryEndpoints() {
+		return Stream.of(
+				Arguments.of(mainEndpoint),
+				Arguments.of(mainMultiEndpoint));
 	}
 
-	@Test
-	void shouldConfigureRetryEndpoints() {
+	@ParameterizedTest(name = "{index} shouldNotCustomizeEndpointForMainTopicWithTPO beanMethod is {0}, is multi {1}")
+	@MethodSource("paramsRetryEndpoints")
+	void shouldConfigureRetryEndpoints(MethodKafkaListenerEndpoint<?, ?> mainEndpoint) {
 
 		// given
 
@@ -204,7 +196,15 @@ class RetryTopicConfigurerTests {
 
 		given(configuration.getDestinationTopicProperties()).willReturn(destinationPropertiesList);
 		given(mainEndpoint.getBean()).willReturn(bean);
-		given(mainEndpoint.getMethod()).willReturn(endpointMethod);
+		if (mainEndpoint instanceof MultiMethodKafkaListenerEndpoint<?, ?> multiEndpoint) {
+			given(multiEndpoint.getDefaultMethod()).willReturn(endpointMethod);
+			given(multiEndpoint.getMethods()).willReturn(List.of(endpointMethod));
+		}
+		else {
+			given(mainEndpoint.getMethod()).willReturn(endpointMethod);
+		}
+		given(endpointHandlerMethod.resolveBean(any())).willReturn(bean);
+		given(endpointHandlerMethod.getMethod()).willReturn(noOpsDltMethod);
 		given(configuration.getDltHandlerMethod()).willReturn(endpointHandlerMethod);
 		given(configuration.forKafkaTopicAutoCreation()).willReturn(topicCreationConfig);
 		given(topicCreationConfig.shouldCreateTopics()).willReturn(true);
@@ -217,6 +217,7 @@ class RetryTopicConfigurerTests {
 		given(firstRetryDestinationProperties.suffix()).willReturn(firstRetrySuffix);
 		given(secondRetryDestinationProperties.suffix()).willReturn(secondRetrySuffix);
 		given(dltDestinationProperties.suffix()).willReturn(dltSuffix);
+		given(dltDestinationProperties.isDltTopic()).willReturn(true);
 		given(mainDestinationProperties.isMainEndpoint()).willReturn(true);
 		given(mainEndpoint.getTopics()).willReturn(topics);
 

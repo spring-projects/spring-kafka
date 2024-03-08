@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,15 +35,16 @@ import org.springframework.validation.Validator;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Wang Zhiyang
  *
  * @see org.springframework.kafka.annotation.KafkaHandler
  * @see DelegatingInvocableHandler
  */
 public class MultiMethodKafkaListenerEndpoint<K, V> extends MethodKafkaListenerEndpoint<K, V> {
 
-	private final List<Method> methods;
+	private List<Method> methods;
 
-	private final Method defaultMethod;
+	private Method defaultMethod;
 
 	private Validator validator;
 
@@ -58,6 +59,43 @@ public class MultiMethodKafkaListenerEndpoint<K, V> extends MethodKafkaListenerE
 		this.methods = methods;
 		this.defaultMethod = defaultMethod;
 		setBean(bean);
+	}
+
+
+	/**
+	 * Get a method list.
+	 * @return the method list.
+	 * @since 3.2
+	 */
+	public List<Method> getMethods() {
+		return this.methods;
+	}
+
+	/**
+	 * Set a method list.
+	 * @param methods the methods.
+	 * @since 3.2
+	 */
+	public void setMethods(List<Method> methods) {
+		this.methods = methods;
+	}
+
+	/**
+	 * Get a default method.
+	 * @return the default method.
+	 * @since 3.2
+	 */
+	public Method getDefaultMethod() {
+		return this.defaultMethod;
+	}
+
+	/**
+	 * Set a default method.
+	 * @param defaultMethod the default method.
+	 * @since 3.2
+	 */
+	public void setDefaultMethod(Method defaultMethod) {
+		this.defaultMethod = defaultMethod;
 	}
 
 	/**

@@ -16,14 +16,15 @@
 
 package org.springframework.kafka.retrytopic;
 
-import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.stream.Stream;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
+import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
 import org.springframework.kafka.support.EndpointHandlerMethod;
+import org.springframework.kafka.support.EndpointHandlerMultiMethod;
 import org.springframework.kafka.support.TopicPartitionOffset;
 
 /**
@@ -63,41 +64,58 @@ public class EndpointCustomizerFactory {
 		this.retryTopicNamesProviderFactory = retryTopicNamesProviderFactory;
 	}
 
-	public final EndpointCustomizer createEndpointCustomizer() {
-		return addSuffixesAndMethod(this.destinationProperties, this.beanMethod.resolveBean(this.beanFactory),
-				this.beanMethod.getMethod());
+	public final EndpointCustomizer<MethodKafkaListenerEndpoint<?, ?>> createEndpointCustomizer() {
+		return addSuffixesAndMethod(this.destinationProperties);
 	}
 
-	protected EndpointCustomizer addSuffixesAndMethod(DestinationTopic.Properties properties, Object bean, Method method) {
+	protected EndpointCustomizer<MethodKafkaListenerEndpoint<?, ?>> addSuffixesAndMethod(
+			DestinationTopic.Properties properties) {
+
 		RetryTopicNamesProviderFactory.RetryTopicNamesProvider namesProvider =
 				this.retryTopicNamesProviderFactory.createRetryTopicNamesProvider(properties);
 		return endpoint -> {
-			Collection<EndpointCustomizer.TopicNamesHolder> topics = customizeAndRegisterTopics(namesProvider, endpoint);
-			endpoint.setId(namesProvider.getEndpointId(endpoint));
-			endpoint.setGroupId(namesProvider.getGroupId(endpoint));
-			if (endpoint.getTopics().isEmpty() && endpoint.getTopicPartitionsToAssign() != null) {
-				endpoint.setTopicPartitions(getTopicPartitions(properties, namesProvider,
-						endpoint.getTopicPartitionsToAssign()));
+			Collection<EndpointCustomizer.TopicNamesHolder> topics =
+					customizeAndRegisterTopics(namesProvider, endpoint);
+			configurationEndpoint(endpoint, namesProvider, properties, this.beanMethod.resolveBean(this.beanFactory));
+			if (endpoint instanceof MultiMethodKafkaListenerEndpoint<?, ?> multiMethodEndpoint
+					&& this.beanMethod instanceof EndpointHandlerMultiMethod beanMultiMethod) {
+				multiMethodEndpoint.setDefaultMethod(beanMultiMethod.getDefaultMethod());
+				multiMethodEndpoint.setMethods(beanMultiMethod.getMethods());
 			}
 			else {
-				endpoint.setTopics(endpoint.getTopics().stream()
-						.map(namesProvider::getTopicName).toArray(String[]::new));
-			}
-			endpoint.setClientIdPrefix(namesProvider.getClientIdPrefix(endpoint));
-			endpoint.setGroup(namesProvider.getGroup(endpoint));
-			endpoint.setBean(bean);
-			endpoint.setMethod(method);
-			Boolean autoStartDltHandler = properties.autoStartDltHandler();
-			if (autoStartDltHandler != null && properties.isDltTopic()) {
-				endpoint.setAutoStartup(autoStartDltHandler);
+				endpoint.setMethod(this.beanMethod.getMethod());
 			}
 			return topics;
 		};
 	}
 
+	private void configurationEndpoint(MethodKafkaListenerEndpoint<?, ?> endpoint,
+			RetryTopicNamesProviderFactory.RetryTopicNamesProvider namesProvider,
+			DestinationTopic.Properties properties, Object bean) {
+
+		endpoint.setId(namesProvider.getEndpointId(endpoint));
+		endpoint.setGroupId(namesProvider.getGroupId(endpoint));
+		if (endpoint.getTopics().isEmpty() && endpoint.getTopicPartitionsToAssign() != null) {
+			endpoint.setTopicPartitions(getTopicPartitions(properties, namesProvider,
+					endpoint.getTopicPartitionsToAssign()));
+		}
+		else {
+			endpoint.setTopics(endpoint.getTopics().stream()
+					.map(namesProvider::getTopicName).toArray(String[]::new));
+		}
+		endpoint.setClientIdPrefix(namesProvider.getClientIdPrefix(endpoint));
+		endpoint.setGroup(namesProvider.getGroup(endpoint));
+		endpoint.setBean(bean);
+		Boolean autoStartDltHandler = properties.autoStartDltHandler();
+		if (autoStartDltHandler != null && properties.isDltTopic()) {
+			endpoint.setAutoStartup(autoStartDltHandler);
+		}
+	}
+
 	private static TopicPartitionOffset[] getTopicPartitions(DestinationTopic.Properties properties,
 													RetryTopicNamesProviderFactory.RetryTopicNamesProvider namesProvider,
 													TopicPartitionOffset[] topicPartitionOffsets) {
+
 		return Stream.of(topicPartitionOffsets)
 				.map(tpo -> properties.isMainEndpoint()
 						? getTPOForMainTopic(namesProvider, tpo)

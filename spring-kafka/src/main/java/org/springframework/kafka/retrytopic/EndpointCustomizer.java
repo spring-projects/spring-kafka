@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,21 +24,25 @@ import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
  * Customizes main, retry and DLT endpoints in the Retry Topic functionality
  * and returns the resulting topic names.
  *
+ * @param <T> the listener endpoint type.
+ *
  * @author Tomaz Fernandes
+ * @author Wang Zhiyang
+ *
  * @since 2.7.2
  *
  * @see EndpointCustomizerFactory
  *
  */
 @FunctionalInterface
-public interface EndpointCustomizer {
+public interface EndpointCustomizer<T extends MethodKafkaListenerEndpoint<?, ?>> {
 
 	/**
 	 * Customize the endpoint and return the topic names generated for this endpoint.
 	 * @param listenerEndpoint The main, retry or DLT endpoint to be customized.
 	 * @return A collection containing the topic names generated for this endpoint.
 	 */
-	Collection<TopicNamesHolder> customizeEndpointAndCollectTopics(MethodKafkaListenerEndpoint<?, ?> listenerEndpoint);
+	Collection<TopicNamesHolder> customizeEndpointAndCollectTopics(T listenerEndpoint);
 
 	class TopicNamesHolder {
 
