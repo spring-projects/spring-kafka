@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2022 the original author or authors.
+ * Copyright 2017-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,7 +34,11 @@ import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper.NonTrustedHeaderType;
+import org.springframework.kafka.support.serializer.DeserializationException;
+import org.springframework.kafka.support.serializer.SerializationTestUtils;
+import org.springframework.kafka.support.serializer.SerializationUtils;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.support.ExecutorSubscribableChannel;
@@ -46,6 +50,7 @@ import org.springframework.util.MimeTypeUtils;
 /**
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Soby Chacko
  *
  * @since 1.3
  *
@@ -319,6 +324,38 @@ public class DefaultKafkaHeaderMapperTests {
 				.doesNotContainKey("foa")
 				.containsKey(KafkaHeaders.DELIVERY_ATTEMPT)
 				.containsKey("baz");
+	}
+
+	@Test
+	void deserializationExceptionHeadersAreMappedAsNonByteArray() {
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+
+		byte[] keyDeserExceptionBytes = SerializationTestUtils.header(true);
+		Header keyHeader = SerializationTestUtils.deserializationHeader(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER,
+				keyDeserExceptionBytes);
+		byte[] valueDeserExceptionBytes = SerializationTestUtils.header(false);
+		Header valueHeader = SerializationTestUtils.deserializationHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER,
+				valueDeserExceptionBytes);
+		Headers headers = new RecordHeaders(
+				new Header[] { keyHeader, valueHeader });
+		Map<String, Object> springHeaders = new HashMap<>();
+		mapper.toHeaders(headers, springHeaders);
+		assertThat(springHeaders.get(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER)).isEqualTo(keyHeader);
+		assertThat(springHeaders.get(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER)).isEqualTo(valueHeader);
+
+		LogAccessor logger = new LogAccessor(this.getClass());
+
+		DeserializationException keyDeserializationException = SerializationUtils.byteArrayToDeserializationException(logger, keyHeader);
+		assertThat(keyDeserExceptionBytes).containsExactly(SerializationTestUtils.header(keyDeserializationException));
+
+		DeserializationException valueDeserializationException =
+				SerializationUtils.byteArrayToDeserializationException(logger, valueHeader);
+		assertThat(valueDeserExceptionBytes).containsExactly(SerializationTestUtils.header(valueDeserializationException));
+
+		headers = new RecordHeaders();
+		mapper.fromHeaders(new MessageHeaders(springHeaders), headers);
+		assertThat(headers.lastHeader(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER)).isNull();
+		assertThat(headers.lastHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER)).isNull();
 	}
 
 	public static final class Foo {

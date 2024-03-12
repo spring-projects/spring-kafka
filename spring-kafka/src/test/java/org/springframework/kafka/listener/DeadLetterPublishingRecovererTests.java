@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 the original author or authors.
+ * Copyright 2020-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,10 +33,6 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
@@ -80,6 +76,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 /**
  * @author Gary Russell
  * @author Tomaz Fernandes
+ * @author Soby Chacko
  * @since 2.4.3
  *
  */
@@ -174,9 +171,9 @@ public class DeadLetterPublishingRecovererTests {
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
 		Headers headers = new RecordHeaders();
 		headers.add(SerializationTestUtils.deserializationHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER,
-				header(false)));
+				SerializationTestUtils.header(false)));
 		headers.add(SerializationTestUtils.deserializationHeader(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER,
-				header(true)));
+				SerializationTestUtils.header(true)));
 		Headers custom = new RecordHeaders();
 		custom.add(new RecordHeader("foo", "bar".getBytes()));
 		recoverer.setHeadersFunction((rec, ex) -> custom);
@@ -206,7 +203,7 @@ public class DeadLetterPublishingRecovererTests {
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
 		Headers headers = new RecordHeaders();
 		headers.add(SerializationTestUtils.deserializationHeader(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER,
-				header(true)));
+				SerializationTestUtils.header(true)));
 		CompletableFuture future = new CompletableFuture();
 		future.complete(new Object());
 		willReturn(future).given(template).send(any(ProducerRecord.class));
@@ -225,9 +222,9 @@ public class DeadLetterPublishingRecovererTests {
 		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
 		Headers headers = new RecordHeaders();
-		DeserializationException deserEx = createDeserEx(true);
+		DeserializationException deserEx = SerializationTestUtils.createDeserEx(true);
 		headers.add(SerializationTestUtils.deserializationHeader(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER,
-				header(true, deserEx)));
+				SerializationTestUtils.header(deserEx)));
 		CompletableFuture future = new CompletableFuture();
 		future.complete(new Object());
 		willReturn(future).given(template).send(any(ProducerRecord.class));
@@ -250,9 +247,9 @@ public class DeadLetterPublishingRecovererTests {
 		recoverer.setRetainExceptionHeader(true);
 		Headers headers = new RecordHeaders();
 		headers.add(SerializationTestUtils.deserializationHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER,
-				header(false)));
+				SerializationTestUtils.header(false)));
 		headers.add(SerializationTestUtils.deserializationHeader(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER,
-				header(true)));
+				SerializationTestUtils.header(true)));
 		CompletableFuture future = new CompletableFuture();
 		future.complete(new Object());
 		willReturn(future).given(template).send(any(ProducerRecord.class));
@@ -300,27 +297,6 @@ public class DeadLetterPublishingRecovererTests {
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", null);
 		recoverer.accept(record, new RuntimeException());
 		verify(template2).send(any(ProducerRecord.class));
-	}
-
-	private byte[] header(boolean isKey) {
-		return header(isKey, createDeserEx(isKey));
-	}
-
-	private DeserializationException createDeserEx(boolean isKey) {
-		return new DeserializationException(
-				isKey ? "testK" : "testV",
-				isKey ? "key".getBytes() : "value".getBytes(), isKey, null);
-	}
-
-	private byte[] header(boolean isKey, DeserializationException deserEx) {
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		try {
-			new ObjectOutputStream(baos).writeObject(deserEx);
-		}
-		catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
-		return baos.toByteArray();
 	}
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
