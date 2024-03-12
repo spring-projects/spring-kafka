@@ -56,6 +56,13 @@ See xref:retrytopic/topic-naming.adoc#single-topic-maxinterval-delay[Single Topi
 Provides a new public API to find `RetryTopicConfiguration`.
 See xref:retrytopic/retry-config.adoc#find-retry-topic-config[Find RetryTopicConfiguration]
 
+=== RetryTopicConfigurer support process MultiMethodKafkaListenerEndpoint.
+The `RetryTopicConfigurer` support process and register `MultiMethodKafkaListenerEndpoint`.
+The `MultiMethodKafkaListenerEndpoint` provider `getter/setter` for properties `defaultMethod` and `methods`.
+Modify the `EndpointCustomizer` that strictly for `MethodKafkaListenerEndpoint` types.
+The `EndpointHandlerMethod` add new constructors construct an instance for the provided bean.
+Provides new class `EndpointHandlerMultiMethod` to handler multi method for retrying endpoints.
+
 [[x32-seek-offset-compute-fn]]
 === New API method to seek to an offset based on a user provided function
 `ConsumerCallback` provides a new API to seek to an offset based on a user-defined function, which takes the current offset in the consumer as an argument.

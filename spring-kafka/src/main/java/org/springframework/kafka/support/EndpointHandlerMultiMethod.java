@@ -33,25 +33,46 @@ public class EndpointHandlerMultiMethod extends EndpointHandlerMethod {
 
 	private List<Method> methods;
 
+	/**
+	 * Construct an instance for the provided bean, defaultMethod and methods.
+	 * @param bean the bean.
+	 * @param defaultMethod the defaultMethod.
+	 * @param methods the methods.
+	 */
 	public EndpointHandlerMultiMethod(Object bean, Method defaultMethod, List<Method> methods) {
 		super(bean);
 		this.defaultMethod = defaultMethod;
 		this.methods = methods;
 	}
 
-
+	/**
+	 * Return the method list.
+	 * @return the method list.
+	 */
 	public List<Method> getMethods() {
 		return this.methods;
 	}
 
+	/**
+	 * Set the method list.
+	 * @param methods the method list.
+	 */
 	public void setMethods(List<Method> methods) {
 		this.methods = methods;
 	}
 
+	/**
+	 * Return the default method.
+	 * @return the default method.
+	 */
 	public Method getDefaultMethod() {
 		return this.defaultMethod;
 	}
 
+	/**
+	 * Set the default method.
+	 * @param defaultMethod the default method.
+	 */
 	public void setDefaultMethod(Method defaultMethod) {
 		this.defaultMethod = defaultMethod;
 	}

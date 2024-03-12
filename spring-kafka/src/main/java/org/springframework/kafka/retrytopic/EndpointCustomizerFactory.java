@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.retrytopic;
 
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.stream.Stream;
@@ -68,6 +69,36 @@ public class EndpointCustomizerFactory {
 		return addSuffixesAndMethod(this.destinationProperties);
 	}
 
+	/**
+	 * Create MethodKafkaListenerEndpoint's EndpointCustomizer, but not support MultiMethodKafkaListenerEndpoint.
+	 * Replace by {@link #addSuffixesAndMethod(DestinationTopic.Properties)}
+	 * @param properties the destination-topic's properties.
+	 * @param bean the bean.
+	 * @param method the method.
+	 * @return the endpoint customizer.
+	 */
+	@Deprecated(since = "3.2", forRemoval = true)
+	@SuppressWarnings("rawtypes")
+	protected EndpointCustomizer addSuffixesAndMethod(DestinationTopic.Properties properties, Object bean,
+			Method method) {
+
+		RetryTopicNamesProviderFactory.RetryTopicNamesProvider namesProvider =
+				this.retryTopicNamesProviderFactory.createRetryTopicNamesProvider(properties);
+		return endpoint -> {
+			Collection<EndpointCustomizer.TopicNamesHolder> topics =
+					customizeAndRegisterTopics(namesProvider, endpoint);
+			configurationEndpoint(endpoint, namesProvider, properties, bean);
+			endpoint.setMethod(method);
+			return topics;
+		};
+	}
+
+	/**
+	 * Create MethodKafkaListenerEndpoint's EndpointCustomizer and support MultiMethodKafkaListenerEndpoint.
+	 * @param properties the destination-topic's properties.
+	 * @return the endpoint customizer.
+	 * @since 3.2
+	 */
 	protected EndpointCustomizer<MethodKafkaListenerEndpoint<?, ?>> addSuffixesAndMethod(
 			DestinationTopic.Properties properties) {
 

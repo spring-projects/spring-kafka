@@ -54,6 +54,11 @@ public class EndpointHandlerMethod {
 		this.methodName = methodName;
 	}
 
+	/**
+	 * Construct an instance for the provided bean.
+	 * @param bean the bean.
+	 * @since 3.2
+	 */
 	public EndpointHandlerMethod(Object bean) {
 		Assert.notNull(bean, () -> "No bean for destination provided!");
 		this.bean = bean;
