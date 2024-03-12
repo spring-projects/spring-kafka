@@ -58,7 +58,7 @@ See xref:retrytopic/retry-config.adoc#find-retry-topic-config[Find RetryTopicCon
 
 === RetryTopicConfigurer support process MultiMethodKafkaListenerEndpoint.
 The `RetryTopicConfigurer` support process and register `MultiMethodKafkaListenerEndpoint`.
-The `MultiMethodKafkaListenerEndpoint` provider `getter/setter` for properties `defaultMethod` and `methods`.
+The `MultiMethodKafkaListenerEndpoint` provides `getter/setter` for properties `defaultMethod` and `methods`.
 Modify the `EndpointCustomizer` that strictly for `MethodKafkaListenerEndpoint` types.
 The `EndpointHandlerMethod` add new constructors construct an instance for the provided bean.
 Provides new class `EndpointHandlerMultiMethod` to handler multi method for retrying endpoints.
