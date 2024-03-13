@@ -340,14 +340,14 @@ public class EnableKafkaIntegrationTests {
 				"listenerConsumer.consumer"));
 		assertThat(
 				KafkaTestUtils.getPropertyValue(this.listener.listen4Consumer,
-						"fetcher.fetchConfig.maxPollRecords", Integer.class))
+						"delegate.fetcher.fetchConfig.maxPollRecords", Integer.class))
 				.isEqualTo(100);
 		assertThat(this.quxGroup).hasSize(1);
 		assertThat(this.quxGroup.get(0)).isSameAs(manualContainer);
 		List<?> containers = KafkaTestUtils.getPropertyValue(manualContainer, "containers", List.class);
 		assertThat(KafkaTestUtils.getPropertyValue(containers.get(0), "listenerConsumer.consumerGroupId"))
 				.isEqualTo("qux");
-		assertThat(KafkaTestUtils.getPropertyValue(containers.get(0), "listenerConsumer.consumer.clientId"))
+		assertThat(KafkaTestUtils.getPropertyValue(containers.get(0), "listenerConsumer.consumer.delegate.clientId"))
 				.isEqualTo("clientIdViaProps3-0");
 
 		template.send("annotated4", 0, "foo");
@@ -371,15 +371,15 @@ public class EnableKafkaIntegrationTests {
 				TopicPartitionOffset[].class)[3];
 		assertThat(offset.isRelativeToCurrent()).isTrue();
 		assertThat(KafkaTestUtils.getPropertyValue(fizContainer,
-				"listenerConsumer.consumer.groupId", Optional.class).get())
+				"listenerConsumer.consumer.delegate.groupId", Optional.class).get())
 				.isEqualTo("fiz");
-		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.clientId"))
+		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.delegate.clientId"))
 				.isEqualTo("clientIdViaAnnotation-0");
 		assertThat(KafkaTestUtils.getPropertyValue(fizContainer,
-				"listenerConsumer.consumer.fetcher.fetchConfig.maxPollRecords"))
+				"listenerConsumer.consumer.delegate.fetcher.fetchConfig.maxPollRecords"))
 				.isEqualTo(10);
 		assertThat(KafkaTestUtils.getPropertyValue(fizContainer,
-				"listenerConsumer.consumer.fetcher.fetchConfig.minBytes"))
+				"listenerConsumer.consumer.delegate.fetcher.fetchConfig.minBytes"))
 				.isEqualTo(420000);
 
 		MessageListenerContainer rebalanceConcurrentContainer = registry.getListenerContainer("rebalanceListener");
@@ -402,9 +402,9 @@ public class EnableKafkaIntegrationTests {
 
 		MessageListenerContainer rebalanceContainer = (MessageListenerContainer) KafkaTestUtils
 				.getPropertyValue(rebalanceConcurrentContainer, "containers", List.class).get(0);
-		assertThat(KafkaTestUtils.getPropertyValue(rebalanceContainer, "listenerConsumer.consumer.groupId"))
+		assertThat(KafkaTestUtils.getPropertyValue(rebalanceContainer, "listenerConsumer.consumer.delegate.groupId"))
 				.isNotEqualTo("rebalanceListener");
-		String clientId = KafkaTestUtils.getPropertyValue(rebalanceContainer, "listenerConsumer.consumer.clientId",
+		String clientId = KafkaTestUtils.getPropertyValue(rebalanceContainer, "listenerConsumer.consumer.delegate.clientId",
 				String.class);
 		assertThat(clientId).startsWith("rebal-");
 		assertThat(clientId.indexOf('-')).isEqualTo(clientId.lastIndexOf('-'));
@@ -535,13 +535,13 @@ public class EnableKafkaIntegrationTests {
 		MessageListenerContainer buzContainer = (MessageListenerContainer) KafkaTestUtils
 				.getPropertyValue(buzConcurrentContainer, "containers", List.class).get(0);
 		assertThat(KafkaTestUtils.getPropertyValue(buzContainer,
-				"listenerConsumer.consumer.groupId", Optional.class).get())
+				"listenerConsumer.consumer.delegate.groupId", Optional.class).get())
 				.isEqualTo("buz.explicitGroupId");
 		assertThat(KafkaTestUtils.getPropertyValue(buzContainer,
-				"listenerConsumer.consumer.fetcher.fetchConfig.maxPollRecords"))
+				"listenerConsumer.consumer.delegate.fetcher.fetchConfig.maxPollRecords"))
 				.isEqualTo(5);
 		assertThat(KafkaTestUtils.getPropertyValue(buzContainer,
-				"listenerConsumer.consumer.fetcher.fetchConfig.minBytes"))
+				"listenerConsumer.consumer.delegate.fetcher.fetchConfig.minBytes"))
 				.isEqualTo(123456);
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,7 +63,8 @@ public class SerializationIntegrationTests {
 		props.setMessageListener(mock(MessageListener.class));
 		KafkaMessageListenerContainer<String, Object> container = new KafkaMessageListenerContainer<>(cFact, props);
 		container.start();
-		assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer.valueDeserializer"))
+		assertThat(KafkaTestUtils.getPropertyValue(container,
+				"listenerConsumer.consumer.delegate.deserializers.valueDeserializer"))
 				.isSameAs(delegating);
 		Map<?, ?> delegates = KafkaTestUtils.getPropertyValue(delegating, "delegates", Map.class);
 		assertThat(delegates).hasSize(1);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,6 +67,7 @@ import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.lang.Nullable;
 
 /**
  * @author Gary Russell
@@ -75,6 +76,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
  * @author Marius Bogoevici
  * @author Artem Yakshin
  * @author Vladimir Tsanev
+ * @author Soby Chacko
  */
 @EmbeddedKafka(topics = { ConcurrentMessageListenerContainerTests.topic1,
 		ConcurrentMessageListenerContainerTests.topic2,
@@ -230,13 +232,13 @@ public class ConcurrentMessageListenerContainerTests {
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props) {
 
 			@Override
-			protected Consumer<Integer, String> createKafkaConsumer(String groupId, String clientIdPrefix,
-					String clientIdSuffixArg, Properties properties) {
+			protected Consumer<Integer, String> createKafkaConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
+																	@Nullable String clientIdSuffixArg, @Nullable Properties properties) {
 
 				overrides.set(properties);
 				Consumer<Integer, String> created = super.createKafkaConsumer(groupId, clientIdPrefix,
 						clientIdSuffixArg, properties);
-				assertThat(KafkaTestUtils.getPropertyValue(created, "requestTimeoutMs", Long.class)).isEqualTo(23000L);
+				assertThat(KafkaTestUtils.getPropertyValue(created, "delegate.requestTimeoutMs", Integer.class)).isEqualTo(23000);
 				return created;
 			}
 

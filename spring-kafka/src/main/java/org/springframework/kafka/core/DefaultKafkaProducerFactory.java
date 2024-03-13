@@ -47,6 +47,7 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.Uuid;
 import org.apache.kafka.common.errors.OutOfOrderSequenceException;
 import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.errors.TimeoutException;
@@ -66,6 +67,8 @@ import org.springframework.kafka.KafkaException;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
+
+
 
 /**
  * The {@link ProducerFactory} implementation for a {@code singleton} shared {@link Producer} instance.
@@ -113,6 +116,7 @@ import org.springframework.util.StringUtils;
  * @author Chris Gilbert
  * @author Thomas Strauß
  * @author Adrian Gygax
+ * @author Soby Chacko
  */
 public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		implements ProducerFactory<K, V>, ApplicationContextAware,
@@ -1126,6 +1130,11 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		@Override
 		public Map<MetricName, ? extends Metric> metrics() {
 			return this.delegate.metrics();
+		}
+
+		@Override
+		public Uuid clientInstanceId(Duration timeout) {
+			return this.delegate.clientInstanceId(timeout);
 		}
 
 		@Override

@@ -21,6 +21,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import java.time.Duration;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -64,6 +65,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  * @author Chris Gilbert
  * @author Artem Bilan
  * @author Adrian Gygax
+ * @author Soby Chacko
  *
  * @since 1.0.6
  */
@@ -484,7 +486,7 @@ public class DefaultKafkaConsumerFactoryTests {
 		assertThat(adds).hasSize(1);
 		assertThat(adds.get(0)).isEqualTo("cf.foo-0");
 		assertThat(removals).hasSize(0);
-		consumer.close();
+		consumer.close(Duration.ofSeconds(10));
 		assertThat(removals).hasSize(1);
 	}
 
