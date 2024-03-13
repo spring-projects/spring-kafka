@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 the original author or authors.
+ * Copyright 2020-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,19 +50,19 @@ public final class SerializationUtils {
 	 * Header name for deserialization exceptions.
 	 * @since 2.8
 	 */
-	public static final String DESERIALIZER_EXCEPTION_HEADER_PREFIX = "springDeserializerException";
+	public static final String DESERIALIZER_EXCEPTION_HEADER_PREFIX = KafkaUtils.DESERIALIZER_EXCEPTION_HEADER_PREFIX;
 
 	/**
 	 * Header name for deserialization exceptions.
 	 * @since 2.8
 	 */
-	public static final String KEY_DESERIALIZER_EXCEPTION_HEADER = DESERIALIZER_EXCEPTION_HEADER_PREFIX + "Key";
+	public static final String KEY_DESERIALIZER_EXCEPTION_HEADER = KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER;
 
 	/**
 	 * Header name for deserialization exceptions.
 	 * @since 2.8
 	 */
-	public static final String VALUE_DESERIALIZER_EXCEPTION_HEADER = DESERIALIZER_EXCEPTION_HEADER_PREFIX + "Value";
+	public static final String VALUE_DESERIALIZER_EXCEPTION_HEADER = KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER;
 
 	private SerializationUtils() {
 	}
