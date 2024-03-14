@@ -47,19 +47,19 @@ public final class KafkaUtils {
 
 	/**
 	 * Header name for deserialization exceptions.
-	 * @since 3.2
+	 * @since 3.0.15
 	 */
 	public static final String DESERIALIZER_EXCEPTION_HEADER_PREFIX = "springDeserializerException";
 
 	/**
 	 * Header name for deserialization exceptions.
-	 * @since 3.2
+	 * @since 3.0.15
 	 */
 	public static final String KEY_DESERIALIZER_EXCEPTION_HEADER = DESERIALIZER_EXCEPTION_HEADER_PREFIX + "Key";
 
 	/**
 	 * Header name for deserialization exceptions.
-	 * @since 3.2
+	 * @since 3.0.15
 	 */
 	public static final String VALUE_DESERIALIZER_EXCEPTION_HEADER = DESERIALIZER_EXCEPTION_HEADER_PREFIX + "Value";
 
