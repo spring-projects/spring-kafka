@@ -75,6 +75,7 @@ public class KafkaListenerEndpointRegistryTests {
             .withMessage("'idMatcher' cannot be null");
     }
 
+	@DisplayName("getListenerContainersMatching should return unmodifiable list")
 	@Test
     void testGetListenerContainersMatchingReturnsUnmodifiableList() {
         // Given
