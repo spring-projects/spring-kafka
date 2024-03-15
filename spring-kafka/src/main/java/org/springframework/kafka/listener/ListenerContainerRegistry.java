@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.kafka.listener;
 
 import java.util.Collection;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import org.springframework.lang.Nullable;
 
@@ -40,6 +41,16 @@ public interface ListenerContainerRegistry {
 	 */
 	@Nullable
 	MessageListenerContainer getListenerContainer(String id);
+
+	/**
+	 * Return all {@link MessageListenerContainer} instances with id matching the predicate or
+	 * empty {@link Collection} if no such container exists.
+	 * @param idMatcher the predicate to match the container id with
+	 * @return the containers or empty {@link Collection} if no container with that id exists
+	 * @see #getListenerContainerIds()
+	 * @see #getListenerContainer(String)
+	 */
+	Collection<MessageListenerContainer> getListenerContainersMatching(Predicate<String> idMatcher);
 
 	/**
 	 * Return the {@link MessageListenerContainer} with the specified id or {@code null}

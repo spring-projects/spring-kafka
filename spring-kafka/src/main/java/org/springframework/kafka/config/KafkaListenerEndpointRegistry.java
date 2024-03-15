@@ -25,6 +25,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
 
@@ -67,6 +69,7 @@ import org.springframework.util.StringUtils;
  * @author Gary Russell
  * @author Asi Bross
  * @author Wang Zhiyang
+ * @author Joo Hyuk Kim
  *
  * @see KafkaListenerEndpoint
  * @see MessageListenerContainer
@@ -113,6 +116,25 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	public MessageListenerContainer getListenerContainer(String id) {
 		Assert.hasText(id, "Container identifier must not be empty");
 		return this.listenerContainers.get(id);
+	}
+
+	/**
+	 * Return all {@link MessageListenerContainer} instances with id matching the predicate or
+	 * empty {@link Collection} if no such container exists.
+	 * @param idMatcher the predicate to match container id with
+	 * @return the containers or empty {@link Collection} if no container with that id exists
+	 * @see #getListenerContainerIds()
+	 * @see #getListenerContainer(String)
+	 */
+	@Override
+	public Collection<MessageListenerContainer> getListenerContainersMatching(Predicate<String> idMatcher) {
+		Assert.notNull(idMatcher, "'idMatcher' cannot be null");
+		List<MessageListenerContainer> matchingContainers = this.listenerContainers.entrySet()
+			.stream()
+			.filter(entry -> idMatcher.test(entry.getKey()))
+			.map(Map.Entry::getValue)
+			.collect(Collectors.toList());
+		return Collections.unmodifiableCollection(matchingContainers);
 	}
 
 	@Override
