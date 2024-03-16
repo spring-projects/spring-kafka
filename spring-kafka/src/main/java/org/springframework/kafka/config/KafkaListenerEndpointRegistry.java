@@ -122,9 +122,9 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	 * empty {@link Collection} if no such container exists.
 	 * @param idMatcher the predicate to match container id with
 	 * @return the containers or empty {@link Collection} if no container with that id exists
+	 * @since 3.2
 	 * @see #getListenerContainerIds()
 	 * @see #getListenerContainer(String)
-	 * @since 3.2
 	 */
 	@Override
 	public Collection<MessageListenerContainer> getListenerContainersMatching(Predicate<String> idMatcher) {
