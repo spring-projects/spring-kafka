@@ -53,7 +53,7 @@ ext {
 	modifiedFiles.finalizeValueOnRead()
 
 	assertjVersion = '3.24.2'
-	awaitilityVersion = '4.2.0'
+	awaitilityVersion = '4.2.1'
 	googleJsr305Version = '3.0.2'
 	hamcrestVersion = '2.2'
 	hibernateValidationVersion = '8.0.1.Final'
