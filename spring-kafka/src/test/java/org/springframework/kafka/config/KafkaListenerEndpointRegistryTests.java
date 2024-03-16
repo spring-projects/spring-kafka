@@ -16,34 +16,30 @@
 
 package org.springframework.kafka.config;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Predicate;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.function.Predicate;
+import java.util.stream.Stream;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.kafka.listener.ListenerContainerRegistry;
+
 import org.springframework.kafka.listener.MessageListenerContainer;
 
 /**
  * @author Gary Russell
  * @author Joo Hyuk Kim
  * @since 2.8.9
- *
  */
 public class KafkaListenerEndpointRegistryTests {
 
@@ -64,30 +60,29 @@ public class KafkaListenerEndpointRegistryTests {
 	}
 
 	@DisplayName("getListenerContainersMatching throws on null predicate")
-    @Test
-    void getListenerContainersMatchingThrowsOnNullPredicate() {
+	@Test
+	void getListenerContainersMatchingThrowsOnNullPredicate() {
 		// Given
-        KafkaListenerEndpointRegistry registry = new KafkaListenerEndpointRegistry();
+		KafkaListenerEndpointRegistry registry = new KafkaListenerEndpointRegistry();
 		// When
 		// Then
-        assertThatIllegalArgumentException()
+		assertThatIllegalArgumentException()
 			.isThrownBy(() -> registry.getListenerContainersMatching(null))
-            .withMessage("'idMatcher' cannot be null");
-    }
+			.withMessage("'idMatcher' cannot be null");
+	}
 
 	@DisplayName("getListenerContainersMatching should return unmodifiable list")
 	@Test
-    void testGetListenerContainersMatchingReturnsUnmodifiableList() {
-        // Given
-        KafkaListenerEndpointRegistry registry = new KafkaListenerEndpointRegistry();
-        registerListenerWithId(registry, "foo");
-        // When
-        Collection<MessageListenerContainer> listeners = registry.getListenerContainersMatching(s -> true);
-        // Then
+	void testGetListenerContainersMatchingReturnsUnmodifiableList() {
+		// Given
+		KafkaListenerEndpointRegistry registry = new KafkaListenerEndpointRegistry();
+		registerListenerWithId(registry, "foo");
+		// When
+		Collection<MessageListenerContainer> listeners = registry.getListenerContainersMatching(s -> true);
+		// Then
 		assertThatExceptionOfType(UnsupportedOperationException.class)
 			.isThrownBy(() -> listeners.add(mock(MessageListenerContainer.class)));
-    }
-
+	}
 
 
 	@ParameterizedTest(name = "getListenerContainersMatching({0}, {1}) = {2}")
