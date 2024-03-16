@@ -42,20 +42,18 @@ An example of late registration is a bean with a `@KafkaListener` in prototype s
 Starting with version 2.8.7, you can set the registry's `alwaysStartAfterRefresh` property to `false` and then the container's `autoStartup` property will define whether or not the container is started.
 
 [[get-listener-containers-matching]]
-== Retrieve MessageListenerContainer instances Matching a Predicate
+== Retrieve MessageListenerContainers with by matching a Predicate
 
-Starting with version 3.2, the `ListenerContainerRegistry` interface and `KafkaListenerEndpointRegistry`
-implementation provides a method to retrieve all `MessageListenerContainer` instances that match a given predicate.
-The `idMatcher` parameter is a `Predicate<String>` that defines the condition to match the container ID.
+Introduced in version 3.2, the `KafkaListenerEndpointRegistry` now includes a method
+`getListenerContainersMatching` to fetch `MessageListenerContainer` instances based on specific ID criteria.
+This method accepts a `Predicate<String>` as the `idMatcher` argument, allowing for dynamic filtering based on container IDs.
 
-Usage scenarios include filtering and modifying containers for specific configuration characteristics,
-operational states, implemented in the container IDs.
+This functionality is useful for managing listener containers that meet certain conditions, such as
+specific configuration settings or operational states reflected in their IDs.
 
-For example, the following code retrieves all containers that have an ID that starts with `"productListener-retry-"`:
+For instance, to select listener containers for retry whose IDs begin with `"productListener-retry-"`, use:
 
-[source, java]
-----
-Collection<MessageListenerContainer> listeners =
-            registry.getListenerContainersMatching(id -> id.startsWith("-retry-"));
-----
-
+```java
+Collection<MessageListenerContainer> matchingContainers =
+    registry.getListenerContainersMatching(id -> id.startsWith("productListener-retry-"));
+```

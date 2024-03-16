@@ -85,10 +85,11 @@ as a default prefix for auto-generated client IDs for certain client types.
 See xref:kafka/connecting.adoc#default-client-id-prefixes[Default client ID prefixes] for more details.
 
 [[get-listener-containers-matching]]
-=== ListenerContainerRegistry's new getListenerContainersMatching(Predicate<String> idMatcher) method
+== Retrieve MessageListenerContainers with by matching a Predicate
 
-Introduces a new method `getListenerContainersMatching` since version 3.2, which returns all `MessageListenerContainer`
-instances whose ID matches a specified (non-null) `Predicate<String>`. This addition provides a flexible way to
-retrieve containers by more complex criteria than just a direct ID match.
+Starting with version 3.2, the `ListenerContainerRegistry` introduces the `getListenerContainersMatching` method.
+This method filters `MessageListenerContainer` instances based on a `Predicate<String>` applied to their IDs.
+It's designed for scenarios requiring more nuanced selection than simple ID matching,
+offering a powerful tool for dynamic container management.
 
-See xref:kafka/receiving-messages/kafkalistener-lifecycle.adoc#get-listener-containers-matching[ `@KafkaListener` Lifecycle Management API Docs] for more details.
+See xref:kafka/receiving-messages/kafkalistener-lifecycle.adoc#get-listener-containers-matching[`@KafkaListener` Lifecycle Management's API Docs] for more information.
