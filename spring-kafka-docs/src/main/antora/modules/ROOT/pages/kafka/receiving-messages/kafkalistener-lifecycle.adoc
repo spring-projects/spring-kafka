@@ -41,19 +41,38 @@ IMPORTANT: Endpoints registered after the application context has been refreshed
 An example of late registration is a bean with a `@KafkaListener` in prototype scope where an instance is created after the context is initialized.
 Starting with version 2.8.7, you can set the registry's `alwaysStartAfterRefresh` property to `false` and then the container's `autoStartup` property will define whether or not the container is started.
 
-[[get-listener-containers-matching]]
-== Retrieve MessageListenerContainers with by matching a Predicate
+[[retrieving-message-listener-containers]]
 
-Introduced in version 3.2, the `KafkaListenerEndpointRegistry` now includes a method
-`getListenerContainersMatching` to fetch `MessageListenerContainer` instances based on specific ID criteria.
-This method accepts a `Predicate<String>` as the `idMatcher` argument, allowing for dynamic filtering based on container IDs.
+== Retrieving MessageListenerContainers from KafkaListenerEndpointRegistry
 
-This functionality is useful for managing listener containers that meet certain conditions, such as
-specific configuration settings or operational states reflected in their IDs.
+The `KafkaListenerEndpointRegistry` provides methods for retrieving `MessageListenerContainer` instances to accommodate a range of management scenarios:
 
-For instance, to select listener containers for retry whose IDs begin with `"productListener-retry-"`, use:
+**All Containers**: For operations that cover all listener containers, use `getListenerContainers()` to retrieve a comprehensive collection.
 
-```java
-Collection<MessageListenerContainer> matchingContainers =
-    registry.getListenerContainersMatching(id -> id.startsWith("productListener-retry-"));
-```
+[source, java]
+----
+Collection<MessageListenerContainer> allContainers = registry.getListenerContainers();
+----
+
+**Specific Container by ID**: To manage an individual container, `getListenerContainer(String id)` enables retrieval by its id.
+
+[source, java]
+----
+MessageListenerContainer specificContainer = registry.getListenerContainer("myContainerId");
+----
+
+**Containers Matching Predicate**: Introduced in version 3.2, `getListenerContainersMatching(Predicate<String> idMatcher)` allows for dynamic filtering of containers.
+This method is useful for selecting containers that adhere to specific criteria, such as configuration settings or operational states.
+For example, to find containers designated for retries:
+
+[source, java]
+----
+// Prefix matching?
+Collection<MessageListenerContainer> filteredContainers = registry.getListenerContainersMatching(id -> id.startsWith("productListener-retry-"));
+// Regex matching?
+Collection<MessageListenerContainer> filteredContainers = registry.getListenerContainersMatching(myPattern::matches);
+// Pre-built Set of IDs?
+Collection<MessageListenerContainer> filteredContainers = registry.getListenerContainersMatching(myIdSet::contains);
+----
+
+Utilize these methods to efficiently manage and query `MessageListenerContainer` instances within your application.
