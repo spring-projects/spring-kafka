@@ -26,7 +26,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
 
@@ -125,16 +124,16 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	 * @return the containers or empty {@link Collection} if no container with that id exists
 	 * @see #getListenerContainerIds()
 	 * @see #getListenerContainer(String)
+	 * @since 3.2
 	 */
 	@Override
 	public Collection<MessageListenerContainer> getListenerContainersMatching(Predicate<String> idMatcher) {
 		Assert.notNull(idMatcher, "'idMatcher' cannot be null");
-		List<MessageListenerContainer> matchingContainers = this.listenerContainers.entrySet()
+		return this.listenerContainers.entrySet()
 			.stream()
 			.filter(entry -> idMatcher.test(entry.getKey()))
 			.map(Map.Entry::getValue)
-			.collect(Collectors.toList());
-		return Collections.unmodifiableCollection(matchingContainers);
+			.toList();
 	}
 
 	@Override

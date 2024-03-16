@@ -23,8 +23,7 @@ import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
@@ -42,6 +41,7 @@ import org.springframework.kafka.listener.MessageListenerContainer;
 
 /**
  * @author Gary Russell
+ * @author Joo Hyuk Kim
  * @since 2.8.9
  *
  */
@@ -84,7 +84,8 @@ public class KafkaListenerEndpointRegistryTests {
         // When
         Collection<MessageListenerContainer> listeners = registry.getListenerContainersMatching(s -> true);
         // Then
-        assertThrows(UnsupportedOperationException.class, () -> listeners.add(mock(MessageListenerContainer.class)));
+		assertThatExceptionOfType(UnsupportedOperationException.class)
+			.isThrownBy(() -> listeners.add(mock(MessageListenerContainer.class)));
     }
 
 
@@ -123,11 +124,11 @@ public class KafkaListenerEndpointRegistryTests {
 		);
 	}
 
-	private void registerWithListenerIds(KafkaListenerEndpointRegistry registry, List<String> names) {
+	private static void registerWithListenerIds(KafkaListenerEndpointRegistry registry, List<String> names) {
 		names.forEach(name -> registerListenerWithId(registry, name));
 	}
 
-	private void registerListenerWithId(KafkaListenerEndpointRegistry registry, String id) {
+	private static void registerListenerWithId(KafkaListenerEndpointRegistry registry, String id) {
 		KafkaListenerEndpoint endpoint = mock(KafkaListenerEndpoint.class);
 		@SuppressWarnings("unchecked")
 		KafkaListenerContainerFactory<MessageListenerContainer> factory = mock(KafkaListenerContainerFactory.class);

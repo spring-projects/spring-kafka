@@ -26,6 +26,7 @@ import org.springframework.lang.Nullable;
  * A registry for listener containers.
  *
  * @author Gary Russell
+ * @author Joo Hyuk Kim
  * @since 2.7
  *
  */
@@ -49,6 +50,7 @@ public interface ListenerContainerRegistry {
 	 * @return the containers or empty {@link Collection} if no container with that id exists
 	 * @see #getListenerContainerIds()
 	 * @see #getListenerContainer(String)
+	 * @since 3.2
 	 */
 	Collection<MessageListenerContainer> getListenerContainersMatching(Predicate<String> idMatcher);
 
