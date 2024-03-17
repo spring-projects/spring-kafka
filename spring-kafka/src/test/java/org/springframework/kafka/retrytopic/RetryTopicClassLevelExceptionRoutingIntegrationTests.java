@@ -72,13 +72,13 @@ import org.springframework.util.backoff.FixedBackOff;
 @SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka
-public class RetryTopicClassLevelExceptionRoutingIntegrationTests {
+class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 
-	public final static String BLOCKING_AND_TOPIC_RETRY = "blocking-and-topic-retry";
-	public final static String ONLY_RETRY_VIA_BLOCKING = "only-retry-blocking-topic";
-	public final static String ONLY_RETRY_VIA_TOPIC = "only-retry-topic";
-	public final static String USER_FATAL_EXCEPTION_TOPIC = "user-fatal-topic";
-	public final static String FRAMEWORK_FATAL_EXCEPTION_TOPIC = "framework-fatal-topic";
+	final static String BLOCKING_AND_TOPIC_RETRY = "blocking-and-topic-retry";
+	final static String ONLY_RETRY_VIA_BLOCKING = "only-retry-blocking-topic";
+	final static String ONLY_RETRY_VIA_TOPIC = "only-retry-topic";
+	final static String USER_FATAL_EXCEPTION_TOPIC = "user-fatal-topic";
+	final static String FRAMEWORK_FATAL_EXCEPTION_TOPIC = "framework-fatal-topic";
 
 	@Autowired
 	private KafkaTemplate<String, String> kafkaTemplate;
@@ -108,14 +108,14 @@ public class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 	}
 
 	@Test
-	public void shouldGoStraightToDltIfUserProvidedFatal() {
+	void shouldGoStraightToDltIfUserProvidedFatal() {
 		kafkaTemplate.send(USER_FATAL_EXCEPTION_TOPIC, "Test message to " + USER_FATAL_EXCEPTION_TOPIC);
 		assertThat(awaitLatch(latchContainer.fatalUserLatch)).isTrue();
 		assertThat(awaitLatch(latchContainer.annotatedDltUserFatalLatch)).isTrue();
 	}
 
 	@Test
-	public void shouldGoStraightToDltIfFrameworkProvidedFatal() {
+	void shouldGoStraightToDltIfFrameworkProvidedFatal() {
 		kafkaTemplate.send(FRAMEWORK_FATAL_EXCEPTION_TOPIC, "Testing topic with annotation 1");
 		assertThat(awaitLatch(latchContainer.fatalFrameworkLatch)).isTrue();
 		assertThat(awaitLatch(latchContainer.annotatedDltFrameworkFatalLatch)).isTrue();
@@ -275,26 +275,26 @@ public class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 
 	}
 
-	public static class ShouldRetryOnlyByTopicException extends RuntimeException {
-		public ShouldRetryOnlyByTopicException(String msg) {
+	static class ShouldRetryOnlyByTopicException extends RuntimeException {
+		ShouldRetryOnlyByTopicException(String msg) {
 			super(msg);
 		}
 	}
 
-	public static class ShouldSkipBothRetriesException extends RuntimeException {
-		public ShouldSkipBothRetriesException(String msg) {
+	static class ShouldSkipBothRetriesException extends RuntimeException {
+		ShouldSkipBothRetriesException(String msg) {
 			super(msg);
 		}
 	}
 
-	public static class ShouldRetryOnlyBlockingException extends RuntimeException {
-		public ShouldRetryOnlyBlockingException(String msg) {
+	static class ShouldRetryOnlyBlockingException extends RuntimeException {
+		ShouldRetryOnlyBlockingException(String msg) {
 			super(msg);
 		}
 	}
 
-	public static class ShouldRetryViaBothException extends RuntimeException {
-		public ShouldRetryViaBothException(String msg) {
+	static class ShouldRetryViaBothException extends RuntimeException {
+		ShouldRetryViaBothException(String msg) {
 			super(msg);
 		}
 	}
@@ -305,7 +305,7 @@ public class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 		private static final String DLT_METHOD_NAME = "processDltMessage";
 
 		@Bean
-		public RetryTopicConfiguration blockingAndTopic(KafkaTemplate<String, String> template) {
+		RetryTopicConfiguration blockingAndTopic(KafkaTemplate<String, String> template) {
 			return RetryTopicConfigurationBuilder
 					.newInstance()
 					.fixedBackOff(50)
@@ -315,7 +315,7 @@ public class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 		}
 
 		@Bean
-		public RetryTopicConfiguration onlyTopic(KafkaTemplate<String, String> template) {
+		RetryTopicConfiguration onlyTopic(KafkaTemplate<String, String> template) {
 			return RetryTopicConfigurationBuilder
 					.newInstance()
 					.fixedBackOff(50)
@@ -327,27 +327,27 @@ public class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 		}
 
 		@Bean
-		public BlockingAndTopicRetriesListener blockingAndTopicRetriesListener() {
+		BlockingAndTopicRetriesListener blockingAndTopicRetriesListener() {
 			return new BlockingAndTopicRetriesListener();
 		}
 
 		@Bean
-		public OnlyRetryViaTopicListener onlyRetryViaTopicListener() {
+		OnlyRetryViaTopicListener onlyRetryViaTopicListener() {
 			return new OnlyRetryViaTopicListener();
 		}
 
 		@Bean
-		public UserFatalTopicListener userFatalTopicListener() {
+		UserFatalTopicListener userFatalTopicListener() {
 			return new UserFatalTopicListener();
 		}
 
 		@Bean
-		public OnlyRetryBlockingListener onlyRetryBlockingListener() {
+		OnlyRetryBlockingListener onlyRetryBlockingListener() {
 			return new OnlyRetryBlockingListener();
 		}
 
 		@Bean
-		public FrameworkFatalTopicListener frameworkFatalTopicListener() {
+		FrameworkFatalTopicListener frameworkFatalTopicListener() {
 			return new FrameworkFatalTopicListener();
 		}
 
@@ -374,7 +374,7 @@ public class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 	}
 
 	@Configuration
-	public static class RoutingTestsConfigurationSupport extends RetryTopicConfigurationSupport {
+	static class RoutingTestsConfigurationSupport extends RetryTopicConfigurationSupport {
 
 		@Override
 		protected void configureBlockingRetries(BlockingRetriesConfigurer blockingRetries) {
@@ -390,13 +390,13 @@ public class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 	}
 
 	@Configuration
-	public static class KafkaProducerConfig {
+	static class KafkaProducerConfig {
 
 		@Autowired
 		EmbeddedKafkaBroker broker;
 
 		@Bean
-		public ProducerFactory<String, String> producerFactory() {
+		ProducerFactory<String, String> producerFactory() {
 			Map<String, Object> configProps = new HashMap<>();
 			configProps.put(
 					ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
@@ -411,27 +411,27 @@ public class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 		}
 
 		@Bean
-		public KafkaTemplate<String, String> kafkaTemplate() {
+		KafkaTemplate<String, String> kafkaTemplate() {
 			return new KafkaTemplate<>(producerFactory());
 		}
 	}
 
 	@EnableKafka
 	@Configuration
-	public static class KafkaConsumerConfig {
+	static class KafkaConsumerConfig {
 
 		@Autowired
 		EmbeddedKafkaBroker broker;
 
 		@Bean
-		public KafkaAdmin kafkaAdmin() {
+		KafkaAdmin kafkaAdmin() {
 			Map<String, Object> configs = new HashMap<>();
 			configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, this.broker.getBrokersAsString());
 			return new KafkaAdmin(configs);
 		}
 
 		@Bean
-		public ConsumerFactory<String, String> consumerFactory() {
+		ConsumerFactory<String, String> consumerFactory() {
 			Map<String, Object> props = new HashMap<>();
 			props.put(
 					ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
@@ -453,7 +453,7 @@ public class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 		}
 
 		@Bean
-		public ConcurrentKafkaListenerContainerFactory<String, String> retryTopicListenerContainerFactory(
+		ConcurrentKafkaListenerContainerFactory<String, String> retryTopicListenerContainerFactory(
 				ConsumerFactory<String, String> consumerFactory) {
 
 			ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
@@ -469,7 +469,7 @@ public class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 		}
 
 		@Bean
-		public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
+		ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
 				ConsumerFactory<String, String> consumerFactory) {
 
 			ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();

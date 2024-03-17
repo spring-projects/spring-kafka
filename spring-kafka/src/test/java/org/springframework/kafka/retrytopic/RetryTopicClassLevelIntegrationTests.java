@@ -105,7 +105,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 		RetryTopicClassLevelIntegrationTests.TWO_LISTENERS_TOPIC,
 		RetryTopicClassLevelIntegrationTests.MANUAL_TOPIC })
 @TestPropertySource(properties = { "five.attempts=5", "kafka.template=customKafkaTemplate"})
-public class RetryTopicClassLevelIntegrationTests {
+class RetryTopicClassLevelIntegrationTests {
 
 	public final static String FIRST_TOPIC = "myRetryTopic1";
 
@@ -288,7 +288,7 @@ public class RetryTopicClassLevelIntegrationTests {
 	}
 
 	@Test
-	public void shouldGoStraightToDlt() {
+	void shouldGoStraightToDlt() {
 		kafkaTemplate.send(NOT_RETRYABLE_EXCEPTION_TOPIC, "Testing topic with annotation 1");
 		assertThat(awaitLatch(latchContainer.countDownLatchNoRetry)).isTrue();
 		assertThat(awaitLatch(latchContainer.countDownLatchDltTwo)).isTrue();
@@ -603,15 +603,15 @@ public class RetryTopicClassLevelIntegrationTests {
 	}
 
 	@SuppressWarnings("serial")
-	public static class MyRetryException extends RuntimeException {
-		public MyRetryException(String msg) {
+	static class MyRetryException extends RuntimeException {
+		MyRetryException(String msg) {
 			super(msg);
 		}
 	}
 
 	@SuppressWarnings("serial")
-	public static class MyDontRetryException extends RuntimeException {
-		public MyDontRetryException(String msg) {
+	static class MyDontRetryException extends RuntimeException {
+		MyDontRetryException(String msg) {
 			super(msg);
 		}
 	}
@@ -622,7 +622,7 @@ public class RetryTopicClassLevelIntegrationTests {
 		private static final String DLT_METHOD_NAME = "processDltMessage";
 
 		@Bean
-		public RetryTopicConfiguration firstRetryTopic(KafkaTemplate<String, String> template) {
+		RetryTopicConfiguration firstRetryTopic(KafkaTemplate<String, String> template) {
 			return RetryTopicConfigurationBuilder
 					.newInstance()
 					.fixedBackOff(50)
@@ -636,7 +636,7 @@ public class RetryTopicClassLevelIntegrationTests {
 		}
 
 		@Bean
-		public RetryTopicConfiguration secondRetryTopic(KafkaTemplate<String, String> template) {
+		RetryTopicConfiguration secondRetryTopic(KafkaTemplate<String, String> template) {
 			return RetryTopicConfigurationBuilder
 					.newInstance()
 					.exponentialBackoff(500, 2, 10000)
@@ -649,12 +649,12 @@ public class RetryTopicClassLevelIntegrationTests {
 		}
 
 		@Bean
-		public FirstTopicListener firstTopicListener() {
+		FirstTopicListener firstTopicListener() {
 			return new FirstTopicListener();
 		}
 
 		@Bean
-		public KafkaListenerErrorHandler myCustomErrorHandler(CountDownLatchContainer container) {
+		KafkaListenerErrorHandler myCustomErrorHandler(CountDownLatchContainer container) {
 			return (message, exception) -> {
 				container.customErrorHandlerCountdownLatch.countDown();
 				throw exception;
@@ -662,7 +662,7 @@ public class RetryTopicClassLevelIntegrationTests {
 		}
 
 		@Bean
-		public SmartMessageConverter myCustomMessageConverter(CountDownLatchContainer container) {
+		SmartMessageConverter myCustomMessageConverter(CountDownLatchContainer container) {
 			return new CompositeMessageConverter(Collections.singletonList(new GenericMessageConverter())) {
 
 				@Override
@@ -674,27 +674,27 @@ public class RetryTopicClassLevelIntegrationTests {
 		}
 
 		@Bean
-		public SecondTopicListener secondTopicListener() {
+		SecondTopicListener secondTopicListener() {
 			return new SecondTopicListener();
 		}
 
 		@Bean
-		public ThirdTopicListener thirdTopicListener() {
+		ThirdTopicListener thirdTopicListener() {
 			return new ThirdTopicListener();
 		}
 
 		@Bean
-		public FourthTopicListener fourthTopicListener() {
+		FourthTopicListener fourthTopicListener() {
 			return new FourthTopicListener();
 		}
 
 		@Bean
-		public FifthTopicListener1 fifthTopicListener1() {
+		FifthTopicListener1 fifthTopicListener1() {
 			return new FifthTopicListener1();
 		}
 
 		@Bean
-		public FifthTopicListener2 fifthTopicListener2() {
+		FifthTopicListener2 fifthTopicListener2() {
 			return new FifthTopicListener2();
 		}
 
@@ -704,22 +704,22 @@ public class RetryTopicClassLevelIntegrationTests {
 		}
 
 		@Bean
-		public NoRetryTopicListener noRetryTopicListener() {
+		NoRetryTopicListener noRetryTopicListener() {
 			return new NoRetryTopicListener();
 		}
 
 		@Bean
-		public FirstReuseRetryTopicListener firstReuseRetryTopicListener() {
+		FirstReuseRetryTopicListener firstReuseRetryTopicListener() {
 			return new FirstReuseRetryTopicListener();
 		}
 
 		@Bean
-		public SecondReuseRetryTopicListener secondReuseRetryTopicListener() {
+		SecondReuseRetryTopicListener secondReuseRetryTopicListener() {
 			return new SecondReuseRetryTopicListener();
 		}
 
 		@Bean
-		public ThirdReuseRetryTopicListener thirdReuseRetryTopicListener() {
+		ThirdReuseRetryTopicListener thirdReuseRetryTopicListener() {
 			return new ThirdReuseRetryTopicListener();
 		}
 
@@ -735,13 +735,13 @@ public class RetryTopicClassLevelIntegrationTests {
 	}
 
 	@Configuration
-	public static class KafkaProducerConfig {
+	static class KafkaProducerConfig {
 
 		@Autowired
 		EmbeddedKafkaBroker broker;
 
 		@Bean
-		public ProducerFactory<String, String> producerFactory() {
+		ProducerFactory<String, String> producerFactory() {
 			Map<String, Object> configProps = new HashMap<>();
 			configProps.put(
 					ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
@@ -756,37 +756,37 @@ public class RetryTopicClassLevelIntegrationTests {
 		}
 
 		@Bean("customKafkaTemplate")
-		public KafkaTemplate<String, String> kafkaTemplate() {
+		KafkaTemplate<String, String> kafkaTemplate() {
 			return new KafkaTemplate<>(producerFactory());
 		}
 	}
 
 	@EnableKafka
 	@Configuration
-	public static class KafkaConsumerConfig {
+	static class KafkaConsumerConfig {
 
 		@Autowired
 		EmbeddedKafkaBroker broker;
 
 		@Bean
-		public KafkaAdmin kafkaAdmin() {
+		KafkaAdmin kafkaAdmin() {
 			Map<String, Object> configs = new HashMap<>();
 			configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, this.broker.getBrokersAsString());
 			return new KafkaAdmin(configs);
 		}
 
 		@Bean
-		public NewTopic topic() {
+		NewTopic topic() {
 			return TopicBuilder.name(THIRD_TOPIC).partitions(2).replicas(1).build();
 		}
 
 		@Bean
-		public NewTopics topics() {
+		NewTopics topics() {
 			return new NewTopics(TopicBuilder.name(FOURTH_TOPIC).partitions(2).replicas(1).build());
 		}
 
 		@Bean
-		public ConsumerFactory<String, String> consumerFactory() {
+		ConsumerFactory<String, String> consumerFactory() {
 			Map<String, Object> props = new HashMap<>();
 			props.put(
 					ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
@@ -808,7 +808,7 @@ public class RetryTopicClassLevelIntegrationTests {
 		}
 
 		@Bean
-		public ConcurrentKafkaListenerContainerFactory<String, String> retryTopicListenerContainerFactory(
+		ConcurrentKafkaListenerContainerFactory<String, String> retryTopicListenerContainerFactory(
 				ConsumerFactory<String, String> consumerFactory) {
 
 			ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
@@ -824,7 +824,7 @@ public class RetryTopicClassLevelIntegrationTests {
 		}
 
 		@Bean
-		public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
+		ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
 				ConsumerFactory<String, String> consumerFactory) {
 
 			ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();

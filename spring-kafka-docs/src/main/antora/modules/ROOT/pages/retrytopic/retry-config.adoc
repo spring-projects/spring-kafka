@@ -28,7 +28,7 @@ public void processMessage(MyPojo message) {
 }
 ----
 
-Since 3.2, `@RetryableTopic` support @KafkaListener on a class would be:
+Since 3.2, `@RetryableTopic` support for @KafkaListener on a class would be:
 [source,java]
 ----
 @RetryableTopic(listenerContainerFactory = "my-retry-topic-factory")

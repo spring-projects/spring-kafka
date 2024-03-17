@@ -7,7 +7,7 @@ Version 2.9 changed the mechanism to bootstrap infrastructure beans; see xref:re
 Achieving non-blocking retry / dlt functionality with Kafka usually requires setting up extra topics and creating and configuring the corresponding listeners.
 Since 2.7 Spring for Apache Kafka offers support for that via the `@RetryableTopic` annotation and `RetryTopicConfiguration` class to simplify that bootstrapping.
 
-Since 3.2 Non-Blocking Retries support xref:kafka/receiving-messages/class-level-kafkalistener.adoc[@KafkaListener on a Class].
+Since 3.2, Spring for Apache Kafka supports non-blocking retries with xref:kafka/receiving-messages/class-level-kafkalistener.adoc[@KafkaListener on a Class].
 
 IMPORTANT: Non-blocking retries are not supported with xref:kafka/receiving-messages/listener-annotation.adoc#batch-listeners[Batch Listeners].
 

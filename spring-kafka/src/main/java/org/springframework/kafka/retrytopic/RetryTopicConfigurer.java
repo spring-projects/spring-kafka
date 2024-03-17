@@ -165,7 +165,7 @@ import org.springframework.lang.Nullable;
  *         }</code>
  *     }</code>
  *</pre>
- * <p> Since 3.2 , {@link org.springframework.kafka.annotation.RetryableTopic} annotation support
+ * <p> Since 3.2, {@link org.springframework.kafka.annotation.RetryableTopic} annotation supports
  * {@link org.springframework.kafka.annotation.KafkaListener} annotated class, such as:
  * <pre>
  *     <code>@RetryableTopic(attempts = 3,

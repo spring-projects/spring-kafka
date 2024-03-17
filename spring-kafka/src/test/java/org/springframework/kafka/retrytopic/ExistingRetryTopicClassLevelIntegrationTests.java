@@ -77,7 +77,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 		ExistingRetryTopicClassLevelIntegrationTests.MAIN_TOPIC_WITH_PARTITION_INFO,
 		ExistingRetryTopicClassLevelIntegrationTests.RETRY_TOPIC_WITH_PARTITION_INFO}, partitions = 4)
 @TestPropertySource(properties = "two.attempts=2")
-public class ExistingRetryTopicClassLevelIntegrationTests {
+class ExistingRetryTopicClassLevelIntegrationTests {
 
 	public final static String MAIN_TOPIC_WITH_NO_PARTITION_INFO = "main-topic-1";
 
@@ -216,12 +216,12 @@ public class ExistingRetryTopicClassLevelIntegrationTests {
 	static class RetryTopicConfigurations {
 
 		@Bean
-		public MainTopicListenerWithPartition mainTopicListenerWithPartition() {
+		MainTopicListenerWithPartition mainTopicListenerWithPartition() {
 			return new MainTopicListenerWithPartition();
 		}
 
 		@Bean
-		public MainTopicListenerWithoutPartition mainTopicListenerWithoutPartition() {
+		MainTopicListenerWithoutPartition mainTopicListenerWithoutPartition() {
 			return new MainTopicListenerWithoutPartition();
 		}
 
@@ -242,20 +242,20 @@ public class ExistingRetryTopicClassLevelIntegrationTests {
 	}
 
 	@Configuration
-	public static class RuntimeConfig {
+	static class RuntimeConfig {
 
 		@Bean(name = "internalBackOffClock")
-		public Clock clock() {
+		Clock clock() {
 			return Clock.systemUTC();
 		}
 
 		@Bean
-		public TaskExecutor taskExecutor() {
+		TaskExecutor taskExecutor() {
 			return new ThreadPoolTaskExecutor();
 		}
 
 		@Bean(destroyMethod = "destroy")
-		public TaskExecutorManager taskExecutorManager(ThreadPoolTaskExecutor taskExecutor) {
+		TaskExecutorManager taskExecutorManager(ThreadPoolTaskExecutor taskExecutor) {
 			return new TaskExecutorManager(taskExecutor);
 		}
 	}
@@ -273,13 +273,13 @@ public class ExistingRetryTopicClassLevelIntegrationTests {
 	}
 
 	@Configuration
-	public static class KafkaProducerConfig {
+	static class KafkaProducerConfig {
 
 		@Autowired
 		EmbeddedKafkaBroker broker;
 
 		@Bean
-		public ProducerFactory<String, String> producerFactory() {
+		ProducerFactory<String, String> producerFactory() {
 			Map<String, Object> configProps = new HashMap<>();
 			configProps.put(
 					ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
@@ -294,27 +294,27 @@ public class ExistingRetryTopicClassLevelIntegrationTests {
 		}
 
 		@Bean
-		public KafkaTemplate<String, String> kafkaTemplate() {
+		KafkaTemplate<String, String> kafkaTemplate() {
 			return new KafkaTemplate<>(producerFactory());
 		}
 	}
 
 	@EnableKafka
 	@Configuration
-	public static class KafkaConsumerConfig extends RetryTopicConfigurationSupport {
+	static class KafkaConsumerConfig extends RetryTopicConfigurationSupport {
 
 		@Autowired
 		EmbeddedKafkaBroker broker;
 
 		@Bean
-		public KafkaAdmin kafkaAdmin() {
+		KafkaAdmin kafkaAdmin() {
 			Map<String, Object> configs = new HashMap<>();
 			configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, this.broker.getBrokersAsString());
 			return new KafkaAdmin(configs);
 		}
 
 		@Bean
-		public ConsumerFactory<String, String> consumerFactory() {
+		ConsumerFactory<String, String> consumerFactory() {
 			Map<String, Object> props = new HashMap<>();
 			props.put(
 					ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
@@ -336,7 +336,7 @@ public class ExistingRetryTopicClassLevelIntegrationTests {
 		}
 
 		@Bean
-		public ConcurrentKafkaListenerContainerFactory<String, String> retryTopicListenerContainerFactory(
+		ConcurrentKafkaListenerContainerFactory<String, String> retryTopicListenerContainerFactory(
 				ConsumerFactory<String, String> consumerFactory) {
 
 			ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
@@ -352,7 +352,7 @@ public class ExistingRetryTopicClassLevelIntegrationTests {
 		}
 
 		@Bean
-		public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
+		ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
 				ConsumerFactory<String, String> consumerFactory) {
 
 			ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();

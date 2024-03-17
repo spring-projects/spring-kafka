@@ -379,8 +379,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 						Set<KafkaListener> listenerMethods = findListenerAnnotations(method);
 						return (!listenerMethods.isEmpty() ? listenerMethods : null);
 					});
-			final boolean hasClassLevelListeners = !classLevelListeners.isEmpty();
-			final boolean hasMethodLevelListeners = !annotatedMethods.isEmpty();
+			boolean hasClassLevelListeners = !classLevelListeners.isEmpty();
+			boolean hasMethodLevelListeners = !annotatedMethods.isEmpty();
 			if (!hasMethodLevelListeners && !hasClassLevelListeners) {
 				this.nonAnnotatedClasses.add(bean.getClass());
 				this.logger.trace(() -> "No @KafkaListener annotations found on bean type: " + bean.getClass());
@@ -401,7 +401,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 					Set<Method> methodsWithHandler = MethodIntrospector.selectMethods(targetClass,
 							(ReflectionUtils.MethodFilter) method ->
 									AnnotationUtils.findAnnotation(method, KafkaHandler.class) != null);
-					final List<Method> multiMethods = new ArrayList<>(methodsWithHandler);
+					List<Method> multiMethods = new ArrayList<>(methodsWithHandler);
 					processMultiMethodListeners(classLevelListeners, multiMethods, targetClass, bean, beanName);
 				}
 			}
@@ -458,7 +458,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			Method checked = checkProxy(method, bean);
 			KafkaHandler annotation = AnnotationUtils.findAnnotation(method, KafkaHandler.class);
 			if (annotation != null && annotation.isDefault()) {
-				final Method toAssert = defaultMethod;
+				Method toAssert = defaultMethod;
 				Assert.state(toAssert == null, () -> "Only one @KafkaHandler can be marked 'isDefault', found: "
 						+ toAssert.toString() + " and " + method);
 				defaultMethod = checked;
@@ -745,7 +745,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	private void resolveContainerPostProcessor(MethodKafkaListenerEndpoint<?, ?> endpoint,
 			KafkaListener kafkaListener) {
 
-		final String containerPostProcessor = kafkaListener.containerPostProcessor();
+		String containerPostProcessor = kafkaListener.containerPostProcessor();
 		if (StringUtils.hasText(containerPostProcessor)) {
 			endpoint.setContainerPostProcessor(this.beanFactory.getBean(containerPostProcessor,
 					ContainerPostProcessor.class));
