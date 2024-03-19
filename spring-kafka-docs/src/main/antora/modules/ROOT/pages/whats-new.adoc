@@ -105,4 +105,4 @@ Collection<MessageListenerContainer> advancedFilteredContainers =
     registry.getListenerContainersMatching((id, container) -> id.startsWith("specificPrefix-") && container.isRunning());
 ```
 
-Refer to the [`@KafkaListener` Lifecycle Management's API Docs](kafka/receiving-messages/kafkalistener-lifecycle.adoc#get-listener-containers-matching) for detailed usage and further information.
+See xref:kafka/receiving-messages/kafkalistener-lifecycle.adoc#retrieving-message-listener-containers[`@KafkaListener` Lifecycle Management's API Docs] for more information.

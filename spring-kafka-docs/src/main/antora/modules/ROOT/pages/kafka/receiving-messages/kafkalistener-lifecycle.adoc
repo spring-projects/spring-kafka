@@ -61,18 +61,29 @@ Collection<MessageListenerContainer> allContainers = registry.getListenerContain
 MessageListenerContainer specificContainer = registry.getListenerContainer("myContainerId");
 ----
 
-**Containers Matching Predicate**: Introduced in version 3.2, `getListenerContainersMatching(Predicate<String> idMatcher)` allows for dynamic filtering of containers.
-This method is useful for selecting containers that adhere to specific criteria, such as configuration settings or operational states.
-For example, to find containers designated for retries:
+**Dynamic Container Filtering**: Introduced in version 3.2, two overloaded `getListenerContainersMatching` methods enable refined selection of containers.
+One method takes a `Predicate<String>` for ID-based filtering as a parameter, while the other takes a `BiPredicate<String, MessageListenerContainer>`
+for more advanced criteria that may include container properties or state as a parameter.
 
 [source, java]
 ----
-// Prefix matching?
-Collection<MessageListenerContainer> filteredContainers = registry.getListenerContainersMatching(id -> id.startsWith("productListener-retry-"));
-// Regex matching?
-Collection<MessageListenerContainer> filteredContainers = registry.getListenerContainersMatching(myPattern::matches);
-// Pre-built Set of IDs?
-Collection<MessageListenerContainer> filteredContainers = registry.getListenerContainersMatching(myIdSet::contains);
+// Prefix matching (Predicate<String>)
+Collection<MessageListenerContainer> filteredContainers =
+    registry.getListenerContainersMatching(id -> id.startsWith("productListener-retry-"));
+
+// Regex matching (Predicate<String>)
+Collection<MessageListenerContainer> regexFilteredContainers =
+    registry.getListenerContainersMatching(myPattern::matches);
+
+// Pre-built Set of IDs (Predicate<String>)
+Collection<MessageListenerContainer> setFilteredContainers =
+    registry.getListenerContainersMatching(myIdSet::contains);
+
+// Advanced Filtering: ID prefix and running state (BiPredicate<String, MessageListenerContainer>)
+Collection<MessageListenerContainer> advancedFilteredContainers =
+    registry.getListenerContainersMatching(
+        (id, container) -> id.startsWith("specificPrefix-") && container.isRunning()
+    );
 ----
 
 Utilize these methods to efficiently manage and query `MessageListenerContainer` instances within your application.
