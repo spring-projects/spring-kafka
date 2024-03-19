@@ -25,6 +25,7 @@ import static org.mockito.Mockito.mock;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
@@ -64,11 +65,22 @@ public class KafkaListenerEndpointRegistryTests {
 	void getListenerContainersMatchingThrowsOnNullPredicate() {
 		// Given
 		KafkaListenerEndpointRegistry registry = new KafkaListenerEndpointRegistry();
-		// When
-		// Then
+		// When & Then
 		assertThatIllegalArgumentException()
-			.isThrownBy(() -> registry.getListenerContainersMatching(null))
+			.isThrownBy(() -> registry.getListenerContainersMatching((Predicate<String>) null))
 			.withMessage("'idMatcher' cannot be null");
+	}
+
+
+	@DisplayName("getListenerContainersMatching with BiPredicate throws on null biPredicate")
+	@Test
+	void getListenerContainersMatchingBiPredicateThrowsOnNullBiPredicate() {
+		// Given
+		KafkaListenerEndpointRegistry registry = new KafkaListenerEndpointRegistry();
+		// When & Then
+		assertThatIllegalArgumentException()
+			.isThrownBy(() -> registry.getListenerContainersMatching((BiPredicate<String, MessageListenerContainer>) null))
+			.withMessage("'idAndContainerMatcher' cannot be null");
 	}
 
 	@DisplayName("getListenerContainersMatching should return unmodifiable list")
@@ -83,7 +95,6 @@ public class KafkaListenerEndpointRegistryTests {
 		assertThatExceptionOfType(UnsupportedOperationException.class)
 			.isThrownBy(() -> listeners.add(mock(MessageListenerContainer.class)));
 	}
-
 
 	@ParameterizedTest(name = "getListenerContainersMatching({0}, {1}) = {2}")
 	@MethodSource("paramsForGetListenerContainersMatching")
@@ -100,22 +111,57 @@ public class KafkaListenerEndpointRegistryTests {
 	/**
 	 * Provides parameters for the getListenerContainersMatching test.
 	 * Each set of parameters includes a list of names, a predicate, and the expected count of matching containers.
-	 *
-	 * @return Stream of Arguments for the parameterized test.
 	 */
 	private static Stream<Arguments> paramsForGetListenerContainersMatching() {
 		List<String> names = List.of("foo", "bar", "baz");
 		return Stream.of(
-			// Test case: Two names start with "b"
+			// Case : Two names start with "b"
 			Arguments.of(names, (Predicate<String>) id -> id.startsWith("b"), 2),
-			// Test case: One name starts with "f"
+			// Case : One name starts with "f"
 			Arguments.of(names, (Predicate<String>) id -> id.startsWith("f"), 1),
-			// Corner case: Empty list
+			// Case : Empty list
 			Arguments.of(new ArrayList<>(), (Predicate<String>) id -> id.startsWith("b"), 0),
-			// Corner case: All names match as the predicate always returns true
+			// Case : All names match as the predicate always returns true
 			Arguments.of(names, (Predicate<String>) id -> true, 3),
-			// Corner case: No names match as the predicate always returns false
+			// Case : No names match as the predicate always returns false
 			Arguments.of(names, (Predicate<String>) id -> false, 0)
+		);
+	}
+
+	@ParameterizedTest(name = "getListenerContainersMatching with BiPredicate for {0}, expecting {2} matches")
+	@MethodSource("paramsForGetListenerContainersMatchingBiPredicate")
+	void getListenerContainersMatchingBiPredicate(List<String> names, BiPredicate<String, MessageListenerContainer> idAndContainerMatcher, int expectedCount) {
+		// Given
+		KafkaListenerEndpointRegistry registry = new KafkaListenerEndpointRegistry();
+		registerWithListenerIds(registry, names);
+		// When
+		Collection<MessageListenerContainer> listeners = registry.getListenerContainersMatching(idAndContainerMatcher);
+		// Then
+		assertThat(listeners).hasSize(expectedCount);
+	}
+
+	/**
+	 * Provides parameters for the getListenerContainersMatchingBiPredicate test.
+	 * Each set of parameters includes a list of names, a bi-predicate, and the expected count of matching containers.
+	 */
+	private static Stream<Arguments> paramsForGetListenerContainersMatchingBiPredicate() {
+		List<String> names = List.of("foo", "bar", "baz");
+		return Stream.of(
+			// Case : Filters for names starting with "b" and containers that are "running"
+			Arguments.of(names,
+				(BiPredicate<String, MessageListenerContainer>) (id, container) -> id.startsWith("b") && container.isRunning(), 2),
+			// Case : Filters for names starting with "f" and containers that are "running"
+			Arguments.of(names,
+				(BiPredicate<String, MessageListenerContainer>) (id, container) -> id.startsWith("f") && container.isRunning(), 1),
+			// Case : Filters in an empty list of names
+			Arguments.of(new ArrayList<>(),
+				(BiPredicate<String, MessageListenerContainer>) (id, container) -> id.startsWith("b") && container.isRunning(), 0),
+			// Case : Filters where all containers are considered "running"
+			Arguments.of(names,
+				(BiPredicate<String, MessageListenerContainer>) (id, container) -> container.isRunning(), 3),
+			// Case : Filters where no containers are considered "running"
+			Arguments.of(names,
+				(BiPredicate<String, MessageListenerContainer>) (id, container) -> !container.isRunning(), 0)
 		);
 	}
 
@@ -129,6 +175,7 @@ public class KafkaListenerEndpointRegistryTests {
 		KafkaListenerContainerFactory<MessageListenerContainer> factory = mock(KafkaListenerContainerFactory.class);
 		given(endpoint.getId()).willReturn(id);
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.isRunning()).willReturn(true);
 		given(factory.createListenerContainer(endpoint)).willReturn(container);
 		registry.registerListenerContainer(endpoint, factory);
 	}

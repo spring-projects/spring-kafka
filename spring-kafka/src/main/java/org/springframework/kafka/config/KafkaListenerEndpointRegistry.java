@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 
 import org.apache.commons.logging.LogFactory;
@@ -135,6 +136,29 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 			.map(Map.Entry::getValue)
 			.toList();
 	}
+
+	/**
+	 * Return all {@link MessageListenerContainer} instances that satisfy the given bi-predicate.
+	 * The {@code BiPredicate<String, MessageListenerContainer>} takes the container id and the container itself as arguments.
+	 * This allows for more sophisticated filtering, including properties or state of the container itself.
+	 * @param idAndContainerMatcher the bi-predicate to match the container id and the container
+	 * @return the containers that match the bi-predicate criteria or an empty {@link Collection} if no matching containers exist
+	 * @since 3.2
+	 * @see #getListenerContainerIds()
+	 * @see #getListenerContainersMatching(Predicate)
+	 */
+	@Override
+	public Collection<MessageListenerContainer> getListenerContainersMatching(
+		BiPredicate<String, MessageListenerContainer> idAndContainerMatcher
+	) {
+		Assert.notNull(idAndContainerMatcher, "'idAndContainerMatcher' cannot be null");
+		return this.listenerContainers.entrySet()
+			.stream()
+			.filter(entry -> idAndContainerMatcher.test(entry.getKey(), entry.getValue()))
+			.map(Map.Entry::getValue)
+			.toList();
+	}
+
 
 	@Override
 	@Nullable
