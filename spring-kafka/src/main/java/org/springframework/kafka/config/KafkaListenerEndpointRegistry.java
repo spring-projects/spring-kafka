@@ -159,7 +159,6 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 			.toList();
 	}
 
-
 	@Override
 	@Nullable
 	public MessageListenerContainer getUnregisteredListenerContainer(String id) {
