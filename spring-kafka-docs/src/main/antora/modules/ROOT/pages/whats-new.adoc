@@ -85,11 +85,24 @@ as a default prefix for auto-generated client IDs for certain client types.
 See xref:kafka/connecting.adoc#default-client-id-prefixes[Default client ID prefixes] for more details.
 
 [[get-listener-containers-matching]]
-== Retrieve MessageListenerContainers with by matching a Predicate
+== Enhanced Retrieval of MessageListenerContainers
 
-Starting with version 3.2, the `ListenerContainerRegistry` introduces the `getListenerContainersMatching` method.
-This method filters `MessageListenerContainer` instances based on a `Predicate<String>` applied to their IDs.
-It's designed for scenarios requiring more nuanced selection than simple ID matching,
-offering a powerful tool for dynamic container management.
+Introduced in version 3.2, the `ListenerContainerRegistry` provides advanced methods for dynamically filtering `MessageListenerContainer` instances, enhancing management capabilities.
 
-See xref:kafka/receiving-messages/kafkalistener-lifecycle.adoc#get-listener-containers-matching[`@KafkaListener` Lifecycle Management's API Docs] for more information.
+Two filtering methods are available:
+
+- **Filter by ID**: Using `getListenerContainersMatching(Predicate<String> idMatcher)`, you can filter containers by their IDs, ideal for ID-centric selection criteria.
+
+- **Advanced Filter by ID and Properties**: The `getListenerContainersMatching(BiPredicate<String, MessageListenerContainer>)` method allows for more sophisticated filtering, taking into account both the container's ID and its properties. This enables detailed filtering based on the container's state, configuration, or other relevant characteristics.
+
+```java
+// Example: Filter containers by ID
+Collection<MessageListenerContainer> filteredContainers =
+    registry.getListenerContainersMatching(id -> id.startsWith("specificPrefix-"));
+
+// Example: Advanced filter by ID and container state
+Collection<MessageListenerContainer> advancedFilteredContainers =
+    registry.getListenerContainersMatching((id, container) -> id.startsWith("specificPrefix-") && container.isRunning());
+```
+
+Refer to the [`@KafkaListener` Lifecycle Management's API Docs](kafka/receiving-messages/kafkalistener-lifecycle.adoc#get-listener-containers-matching) for detailed usage and further information.
