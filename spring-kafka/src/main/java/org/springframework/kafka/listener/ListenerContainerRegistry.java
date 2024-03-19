@@ -65,7 +65,8 @@ public interface ListenerContainerRegistry {
 	 * @see #getListenerContainerIds()
 	 * @see #getListenerContainersMatching(Predicate)
 	 */
-	Collection<MessageListenerContainer> getListenerContainersMatching(BiPredicate<String, MessageListenerContainer> idAndContainerMatcher);
+	Collection<MessageListenerContainer> getListenerContainersMatching(
+		BiPredicate<String, MessageListenerContainer> idAndContainerMatcher);
 
 	/**
 	 * Return the {@link MessageListenerContainer} with the specified id or {@code null}

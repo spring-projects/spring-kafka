@@ -179,4 +179,5 @@ public class KafkaListenerEndpointRegistryTests {
 		given(factory.createListenerContainer(endpoint)).willReturn(container);
 		registry.registerListenerContainer(endpoint, factory);
 	}
+
 }
