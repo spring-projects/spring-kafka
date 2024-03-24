@@ -73,6 +73,7 @@ ext {
 	springRetryVersion = '2.0.5'
 	springVersion = '6.1.5'
 	zookeeperVersion = '3.8.4'
+	parallelConsumerVersion = '0.5.2.8'
 
 	idPrefix = 'kafka'
 
@@ -288,6 +289,9 @@ project ('spring-kafka') {
 		optionalApi ('com.fasterxml.jackson.module:jackson-module-kotlin') {
 			exclude group: 'org.jetbrains.kotlin'
 		}
+
+		// Parallel Consumer
+		api "io.confluent.parallelconsumer:parallel-consumer-core:$parallelConsumerVersion"
 
 		// Spring Data projection message binding support
 		optionalApi ("org.springframework.data:spring-data-commons") {
