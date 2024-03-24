@@ -827,6 +827,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		return producerRecord;
 	}
 
+	@SuppressWarnings("try")
 	private Callback buildCallback(final ProducerRecord<K, V> producerRecord, final Producer<K, V> producer,
 			final CompletableFuture<SendResult<K, V>> future, @Nullable Object sample, Observation observation) {
 
@@ -839,10 +840,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 			catch (Exception e) {
 				this.logger.warn(e, () ->  "Error executing interceptor onAcknowledgement callback");
 			}
-			try {
+			try (Observation.Scope ignored = observation.openScope()) {
 				if (exception == null) {
 					successTimer(sample, producerRecord);
-					observation.stop();
 					future.complete(new SendResult<>(producerRecord, metadata));
 					if (this.producerListener != null) {
 						this.producerListener.onSuccess(producerRecord, metadata);
@@ -853,7 +853,6 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 				else {
 					failureTimer(sample, exception, producerRecord);
 					observation.error(exception);
-					observation.stop();
 					future.completeExceptionally(
 							new KafkaProducerException(producerRecord, "Failed to send", exception));
 					if (this.producerListener != null) {
@@ -863,6 +862,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 				}
 			}
 			finally {
+				observation.stop();
 				closeProducer(producer, this.transactional);
 			}
 		};

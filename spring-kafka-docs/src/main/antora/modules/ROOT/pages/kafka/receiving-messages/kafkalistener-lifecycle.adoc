@@ -41,3 +41,49 @@ IMPORTANT: Endpoints registered after the application context has been refreshed
 An example of late registration is a bean with a `@KafkaListener` in prototype scope where an instance is created after the context is initialized.
 Starting with version 2.8.7, you can set the registry's `alwaysStartAfterRefresh` property to `false` and then the container's `autoStartup` property will define whether or not the container is started.
 
+[[retrieving-message-listener-containers]]
+
+== Retrieving MessageListenerContainers from KafkaListenerEndpointRegistry
+
+The `KafkaListenerEndpointRegistry` provides methods for retrieving `MessageListenerContainer` instances to accommodate a range of management scenarios:
+
+**All Containers**: For operations that cover all listener containers, use `getListenerContainers()` to retrieve a comprehensive collection.
+
+[source, java]
+----
+Collection<MessageListenerContainer> allContainers = registry.getListenerContainers();
+----
+
+**Specific Container by ID**: To manage an individual container, `getListenerContainer(String id)` enables retrieval by its id.
+
+[source, java]
+----
+MessageListenerContainer specificContainer = registry.getListenerContainer("myContainerId");
+----
+
+**Dynamic Container Filtering**: Introduced in version 3.2, two overloaded `getListenerContainersMatching` methods enable refined selection of containers.
+One method takes a `Predicate<String>` for ID-based filtering as a parameter, while the other takes a `BiPredicate<String, MessageListenerContainer>`
+for more advanced criteria that may include container properties or state as a parameter.
+
+[source, java]
+----
+// Prefix matching (Predicate<String>)
+Collection<MessageListenerContainer> filteredContainers =
+    registry.getListenerContainersMatching(id -> id.startsWith("productListener-retry-"));
+
+// Regex matching (Predicate<String>)
+Collection<MessageListenerContainer> regexFilteredContainers =
+    registry.getListenerContainersMatching(myPattern::matches);
+
+// Pre-built Set of IDs (Predicate<String>)
+Collection<MessageListenerContainer> setFilteredContainers =
+    registry.getListenerContainersMatching(myIdSet::contains);
+
+// Advanced Filtering: ID prefix and running state (BiPredicate<String, MessageListenerContainer>)
+Collection<MessageListenerContainer> advancedFilteredContainers =
+    registry.getListenerContainersMatching(
+        (id, container) -> id.startsWith("specificPrefix-") && container.isRunning()
+    );
+----
+
+Utilize these methods to efficiently manage and query `MessageListenerContainer` instances within your application.

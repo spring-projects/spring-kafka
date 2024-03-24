@@ -29,6 +29,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -108,7 +109,14 @@ public class ObservationTests {
 			@Autowired Config config)
 					throws InterruptedException, ExecutionException, TimeoutException {
 
-		template.send("observation.testT1", "test").get(10, TimeUnit.SECONDS);
+		AtomicReference<SimpleSpan> spanFromCallback = new AtomicReference<>();
+
+		template.send("observation.testT1", "test")
+				.thenAccept((sendResult) -> spanFromCallback.set(tracer.currentSpan()))
+				.get(10, TimeUnit.SECONDS);
+
+		assertThat(spanFromCallback.get()).isNotNull();
+
 		assertThat(listener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(listener.record).isNotNull();
 		Headers headers = listener.record.headers();

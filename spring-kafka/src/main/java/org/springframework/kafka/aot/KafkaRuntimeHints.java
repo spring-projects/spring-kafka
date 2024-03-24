@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 the original author or authors.
+ * Copyright 2022-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,33 +21,10 @@ import java.util.zip.CRC32C;
 
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.CooperativeStickyAssignor;
-import org.apache.kafka.clients.consumer.RangeAssignor;
-import org.apache.kafka.clients.consumer.RoundRobinAssignor;
-import org.apache.kafka.clients.consumer.StickyAssignor;
 import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.RoundRobinPartitioner;
 import org.apache.kafka.common.message.CreateTopicsRequestData.CreatableTopic;
 import org.apache.kafka.common.protocol.Message;
-import org.apache.kafka.common.serialization.ByteArrayDeserializer;
-import org.apache.kafka.common.serialization.ByteArraySerializer;
-import org.apache.kafka.common.serialization.ByteBufferDeserializer;
-import org.apache.kafka.common.serialization.ByteBufferSerializer;
-import org.apache.kafka.common.serialization.BytesDeserializer;
-import org.apache.kafka.common.serialization.BytesSerializer;
-import org.apache.kafka.common.serialization.DoubleDeserializer;
-import org.apache.kafka.common.serialization.DoubleSerializer;
-import org.apache.kafka.common.serialization.FloatDeserializer;
-import org.apache.kafka.common.serialization.FloatSerializer;
-import org.apache.kafka.common.serialization.IntegerDeserializer;
-import org.apache.kafka.common.serialization.IntegerSerializer;
-import org.apache.kafka.common.serialization.ListDeserializer;
-import org.apache.kafka.common.serialization.ListSerializer;
-import org.apache.kafka.common.serialization.LongDeserializer;
-import org.apache.kafka.common.serialization.LongSerializer;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.utils.AppInfoParser.AppInfo;
 import org.apache.kafka.common.utils.ImplicitLinkedHashCollection;
 
@@ -91,6 +68,7 @@ import org.springframework.lang.Nullable;
  * {@link RuntimeHintsRegistrar} for Spring for Apache Kafka.
  *
  * @author Gary Russell
+ * @author Soby Chacko
  * @since 3.0
  *
  */
@@ -139,34 +117,10 @@ public class KafkaRuntimeHints implements RuntimeHintsRegistrar {
 
 		Stream.of(
 					AppInfo.class,
-					// standard assignors
-					CooperativeStickyAssignor.class,
-					RangeAssignor.class,
-					RoundRobinAssignor.class,
-					StickyAssignor.class,
 					// standard partitioners
 					org.apache.kafka.clients.producer.internals.DefaultPartitioner.class,
-					RoundRobinPartitioner.class,
 					org.apache.kafka.clients.producer.UniformStickyPartitioner.class,
 					// standard serialization
-					ByteArrayDeserializer.class,
-					ByteArraySerializer.class,
-					ByteBufferDeserializer.class,
-					ByteBufferSerializer.class,
-					BytesDeserializer.class,
-					BytesSerializer.class,
-					DoubleSerializer.class,
-					DoubleDeserializer.class,
-					FloatSerializer.class,
-					FloatDeserializer.class,
-					IntegerSerializer.class,
-					IntegerDeserializer.class,
-					ListDeserializer.class,
-					ListSerializer.class,
-					LongSerializer.class,
-					LongDeserializer.class,
-					StringDeserializer.class,
-					StringSerializer.class,
 					// Spring serialization
 					DelegatingByTopicDeserializer.class,
 					DelegatingByTypeSerializer.class,
@@ -179,17 +133,6 @@ public class KafkaRuntimeHints implements RuntimeHintsRegistrar {
 					StringOrBytesSerializer.class,
 					ToStringSerializer.class,
 					Serdes.class,
-					Serdes.ByteArraySerde.class,
-					Serdes.BytesSerde.class,
-					Serdes.ByteBufferSerde.class,
-					Serdes.DoubleSerde.class,
-					Serdes.FloatSerde.class,
-					Serdes.IntegerSerde.class,
-					Serdes.LongSerde.class,
-					Serdes.ShortSerde.class,
-					Serdes.StringSerde.class,
-					Serdes.UUIDSerde.class,
-					Serdes.VoidSerde.class,
 					CRC32C.class)
 				.forEach(type -> reflectionHints.registerType(type, builder ->
 						builder.withMembers(MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS)));
@@ -199,13 +142,10 @@ public class KafkaRuntimeHints implements RuntimeHintsRegistrar {
 
 		Stream.of(
 				"sun.security.provider.ConfigFile",
-				"org.apache.kafka.streams.processor.internals.StreamsPartitionAssignor",
-				"org.apache.kafka.streams.errors.DefaultProductionExceptionHandler",
-				"org.apache.kafka.streams.processor.FailOnInvalidTimestamp",
-				"org.apache.kafka.streams.processor.internals.assignment.HighAvailabilityTaskAssignor",
 				"org.apache.kafka.streams.processor.internals.assignment.StickyTaskAssignor",
 				"org.apache.kafka.streams.processor.internals.assignment.FallbackPriorTaskAssignor",
-				"org.apache.kafka.streams.errors.LogAndFailExceptionHandler")
+				"org.apache.kafka.streams.state.BuiltInDslStoreSuppliers$RocksDBDslStoreSuppliers",
+				"org.apache.kafka.streams.state.BuiltInDslStoreSuppliers$InMemoryDslStoreSuppliers")
 			.forEach(type -> reflectionHints.registerTypeIfPresent(classLoader, type, builder ->
 					builder.withMembers(MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS)));
 	}

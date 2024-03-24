@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package org.springframework.kafka.listener;
 
 import java.util.Collection;
 import java.util.Set;
+import java.util.function.BiPredicate;
+import java.util.function.Predicate;
 
 import org.springframework.lang.Nullable;
 
@@ -25,6 +27,7 @@ import org.springframework.lang.Nullable;
  * A registry for listener containers.
  *
  * @author Gary Russell
+ * @author Joo Hyuk Kim
  * @since 2.7
  *
  */
@@ -40,6 +43,30 @@ public interface ListenerContainerRegistry {
 	 */
 	@Nullable
 	MessageListenerContainer getListenerContainer(String id);
+
+	/**
+	 * Return all {@link MessageListenerContainer} instances with id matching the predicate or
+	 * empty {@link Collection} if no such container exists.
+	 * @param idMatcher the predicate to match the container id with
+	 * @return the containers or empty {@link Collection} if no container with that id exists
+	 * @since 3.2
+	 * @see #getListenerContainerIds()
+	 * @see #getListenerContainer(String)
+	 */
+	Collection<MessageListenerContainer> getListenerContainersMatching(Predicate<String> idMatcher);
+
+	/**
+	 * Return all {@link MessageListenerContainer} instances that satisfy the given bi-predicate.
+	 * The {@code BiPredicate<String, MessageListenerContainer>} takes the container id and the container itself as arguments.
+	 * This allows for more sophisticated filtering, including properties or state of the container itself.
+	 * @param idAndContainerMatcher the bi-predicate to match the container id and the container
+	 * @return the containers that match the bi-predicate criteria or an empty {@link Collection} if no matching containers exist
+	 * @since 3.2
+	 * @see #getListenerContainerIds()
+	 * @see #getListenerContainersMatching(Predicate)
+	 */
+	Collection<MessageListenerContainer> getListenerContainersMatching(
+		BiPredicate<String, MessageListenerContainer> idAndContainerMatcher);
 
 	/**
 	 * Return the {@link MessageListenerContainer} with the specified id or {@code null}

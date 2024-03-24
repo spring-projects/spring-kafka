@@ -2689,37 +2689,38 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					DefaultKafkaListenerObservationConvention.INSTANCE,
 					() -> new KafkaRecordReceiverContext(cRecord, getListenerId(), this::clusterId),
 					this.observationRegistry);
-			try {
-				observation.observe(() -> {
+			return observation.observe(() -> {
+				try {
 					invokeOnMessage(cRecord);
 					successTimer(sample, cRecord);
 					recordInterceptAfter(cRecord, null);
-				});
-			}
-			catch (RuntimeException e) {
-				failureTimer(sample, cRecord);
-				recordInterceptAfter(cRecord, e);
-				if (this.commonErrorHandler == null) {
-					throw e;
 				}
-				try {
-					invokeErrorHandler(cRecord, iterator, e);
-					commitOffsetsIfNeededAfterHandlingError(cRecord);
+				catch (RuntimeException e) {
+					failureTimer(sample, cRecord);
+					recordInterceptAfter(cRecord, e);
+					if (this.commonErrorHandler == null) {
+						throw e;
+					}
+					observation.error(e);
+					try {
+						invokeErrorHandler(cRecord, iterator, e);
+						commitOffsetsIfNeededAfterHandlingError(cRecord);
+					}
+					catch (KafkaException ke) {
+						ke.selfLog(ERROR_HANDLER_THREW_AN_EXCEPTION, this.logger);
+						return ke;
+					}
+					catch (RuntimeException ee) {
+						this.logger.error(ee, ERROR_HANDLER_THREW_AN_EXCEPTION);
+						return ee;
+					}
+					catch (Error er) { // NOSONAR
+						this.logger.error(er, "Error handler threw an error");
+						throw er;
+					}
 				}
-				catch (KafkaException ke) {
-					ke.selfLog(ERROR_HANDLER_THREW_AN_EXCEPTION, this.logger);
-					return ke;
-				}
-				catch (RuntimeException ee) {
-					this.logger.error(ee, ERROR_HANDLER_THREW_AN_EXCEPTION);
-					return ee;
-				}
-				catch (Error er) { // NOSONAR
-					this.logger.error(er, "Error handler threw an error");
-					throw er;
-				}
-			}
-			return null;
+				return null;
+			});
 		}
 
 		private void commitOffsetsIfNeededAfterHandlingError(final ConsumerRecord<K, V> cRecord) {
