@@ -357,6 +357,7 @@ class RetryTopicConfigurerTests {
 	}
 
 	static class NoOpsClass {
-		void noOpsMethod() { };
+		void noOpsMethod() { }
 	}
+
 }

@@ -401,7 +401,6 @@ public class RetryTopicConfigurationBuilder {
 		return this;
 	}
 
-
 	/**
 	 * Configure a {@link FixedBackOffPolicy}.
 	 * @param interval the interval.

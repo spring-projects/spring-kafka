@@ -706,7 +706,6 @@ public class DefaultKafkaProducerFactoryTests {
 		assertThat(configPassedToKafkaConsumer.get(ProducerConfig.TRANSACTIONAL_ID_CONFIG)).isEqualTo("tx.1");
 	}
 
-
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
 	void configUpdates() {

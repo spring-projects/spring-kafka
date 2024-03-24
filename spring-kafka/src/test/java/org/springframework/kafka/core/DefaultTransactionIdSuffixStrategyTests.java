@@ -50,7 +50,6 @@ class DefaultTransactionIdSuffixStrategyTests {
 		assertThat(suffix).isNotNull();
 	}
 
-
 	@Test
 	void acquireSuffixWithCacheExhausted() {
 		String txIdPrefix = "txIdPrefix";

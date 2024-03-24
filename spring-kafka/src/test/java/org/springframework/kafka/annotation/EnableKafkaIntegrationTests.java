@@ -1440,6 +1440,7 @@ public class EnableKafkaIntegrationTests {
 		public SeekToOffsetFromComputeFunction seekToOffsetFromComputeFunction() {
 			return new SeekToOffsetFromComputeFunction();
 		}
+
 		@Bean
 		public IfaceListener<String> ifaceListener() {
 			return new IfaceListenerImpl();
@@ -2650,7 +2651,6 @@ public class EnableKafkaIntegrationTests {
 	public static class Foo implements Bar {
 
 		private String bar;
-
 
 		public Foo() {
 		}

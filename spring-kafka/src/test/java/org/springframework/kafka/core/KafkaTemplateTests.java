@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -131,7 +131,6 @@ public class KafkaTemplateTests {
 	};
 
 	private static final ProducerPostProcessor<String, String> noopProducerPostProcessor = processor -> processor;
-
 
 	@BeforeAll
 	public static void setUp() {
@@ -349,6 +348,7 @@ public class KafkaTemplateTests {
 			}
 
 		}
+
 		PL pl1 = new PL();
 		PL pl2 = new PL();
 		CompositeProducerListener<Integer, String> cpl = new CompositeProducerListener<>(new PL[]{ pl1, pl2 });
@@ -637,6 +637,5 @@ public class KafkaTemplateTests {
 				.isThrownBy(() -> template.receive(Collections.singleton(tpoWithNullOffset)))
 				.withMessage("Offset supplied in TopicPartitionOffset is invalid: " + tpoWithNullOffset);
 	}
-
 
 }

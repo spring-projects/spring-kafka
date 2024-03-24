@@ -37,7 +37,6 @@ import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
 import org.springframework.lang.Nullable;
 
-
 /**
  *
  * Attempts to provide an instance of

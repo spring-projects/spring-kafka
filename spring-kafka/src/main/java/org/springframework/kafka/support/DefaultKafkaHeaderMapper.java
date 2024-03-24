@@ -439,7 +439,6 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 			this.untrustedType = untrustedType;
 		}
 
-
 		public void setHeaderValue(byte[] headerValue) { // NOSONAR
 			this.headerValue = headerValue; // NOSONAR array reference
 		}

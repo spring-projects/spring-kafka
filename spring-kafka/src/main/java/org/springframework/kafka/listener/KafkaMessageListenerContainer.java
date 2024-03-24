@@ -137,7 +137,6 @@ import org.springframework.util.StringUtils;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 
-
 /**
  * Single-threaded Message listener container using the Java {@link Consumer} supporting
  * auto-partition assignment or user-configured assignment.
@@ -592,7 +591,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				+ (getAssignedPartitions() == null ? "none assigned" : getAssignedPartitions())
 				+ "]";
 	}
-
 
 	private final class ListenerConsumer implements SchedulingAwareRunnable, ConsumerSeekCallback {
 

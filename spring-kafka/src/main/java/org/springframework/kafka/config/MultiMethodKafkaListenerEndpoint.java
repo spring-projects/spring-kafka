@@ -61,7 +61,6 @@ public class MultiMethodKafkaListenerEndpoint<K, V> extends MethodKafkaListenerE
 		setBean(bean);
 	}
 
-
 	/**
 	 * Get a method list.
 	 * @return the method list.

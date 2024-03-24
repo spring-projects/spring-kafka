@@ -200,7 +200,6 @@ class KafkaStreamsInteractiveQueryServiceTests {
 				serializer);
 	}
 
-
 	@Configuration
 	@EnableKafka
 	@EnableKafkaStreams

@@ -308,7 +308,6 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		((MessagingMessageConverter) this.messageConverter).setMessagingConverter(messageConverter);
 	}
 
-
 	@Override
 	public boolean isTransactional() {
 		return this.transactional;
@@ -589,7 +588,6 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		}
 		return observeSend((ProducerRecord<K, V>) producerRecord);
 	}
-
 
 	@Override
 	public List<PartitionInfo> partitionsFor(String topic) {

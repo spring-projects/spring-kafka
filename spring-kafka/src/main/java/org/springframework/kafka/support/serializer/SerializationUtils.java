@@ -241,7 +241,6 @@ public final class SerializationUtils {
 					return super.resolveClass(desc);
 				}
 
-
 			};
 			return (DeserializationException) ois.readObject();
 		}

@@ -39,7 +39,6 @@ import org.springframework.kafka.retrytopic.DestinationTopic.Type;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
-
 /**
  *
  * Default implementation of the {@link DestinationTopicResolver} interface.

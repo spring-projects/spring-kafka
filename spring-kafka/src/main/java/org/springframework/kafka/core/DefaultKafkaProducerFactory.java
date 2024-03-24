@@ -68,8 +68,6 @@ import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
-
-
 /**
  * The {@link ProducerFactory} implementation for a {@code singleton} shared {@link Producer} instance.
  * <p>
@@ -566,7 +564,6 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		}
 		return newFactory;
 	}
-
 
 	/**
 	 * Ensures that the returned properties map contains a transaction id prefix.

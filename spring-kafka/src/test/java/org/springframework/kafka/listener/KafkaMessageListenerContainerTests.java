@@ -1448,7 +1448,6 @@ public class KafkaMessageListenerContainerTests {
 						throw new IllegalStateException();
 					}
 
-
 				});
 
 		final CountDownLatch commitLatch = new CountDownLatch(1);
@@ -1520,6 +1519,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}
+
 		Listener messageListener = new Listener();
 		containerProps.setMessageListener(messageListener);
 		containerProps.setSyncCommits(true);
@@ -1599,6 +1599,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}
+
 		Listener messageListener = new Listener();
 		containerProps.setMessageListener(messageListener);
 		containerProps.setSyncCommits(true);
@@ -2607,6 +2608,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}
+
 		Listener messageListener = new Listener();
 		containerProps.setMessageListener(messageListener);
 		containerProps.setMissingTopicsFatal(false);
@@ -2935,6 +2937,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 
 		}
+
 		containerProps.setMessageListener(new Listener());
 		containerProps.setMissingTopicsFatal(false);
 		KafkaMessageListenerContainer<Integer, String> container =

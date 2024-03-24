@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2023 the original author or authors.
+ * Copyright 2017-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,7 +33,6 @@ import org.apache.kafka.common.TopicPartition;
  *
  */
 public interface ConsumerAwareRebalanceListener extends ConsumerRebalanceListener {
-
 
 	/**
 	 * The same as {@link #onPartitionsRevoked(Collection)} with the additional consumer

@@ -139,7 +139,6 @@ class ListenerContainerFactoryConfigurerTests {
 	@Mock
 	private KafkaListenerEndpoint endpoint;
 
-
 	@Test
 	void shouldSetupErrorHandling() {
 

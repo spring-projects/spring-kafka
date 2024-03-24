@@ -1086,7 +1086,6 @@ public class TransactionalContainerTests {
 		assertThatIllegalStateException().isThrownBy(container::start);
 	}
 
-
 	@Test
 	void testArbpWithoutRecovery() throws InterruptedException {
 		// init producer

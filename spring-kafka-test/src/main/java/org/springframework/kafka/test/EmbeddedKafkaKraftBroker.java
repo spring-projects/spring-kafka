@@ -204,7 +204,6 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 		}
 	}
 
-
 	private void start() {
 		if (this.cluster != null) {
 			return;

@@ -1190,7 +1190,6 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private record BytesToStringConverter(Charset charset) implements Converter<byte[], String> {
 
-
 		@Override
 		public String convert(byte[] source) {
 			return new String(source, this.charset);

@@ -252,7 +252,6 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 		this.valueDeserializerSupplier = valueDeserializerSupplier(valueDeserializerSupplier);
 	}
 
-
 	/**
 	 * Set to false (default true) to prevent programmatically provided deserializers (via
 	 * constructor or setters) from being configured using the producer configuration,

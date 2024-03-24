@@ -1413,7 +1413,6 @@ public class ConcurrentMessageListenerContainerMockTests {
 			this.latch.countDown();
 		}
 
-
 		@Override
 		public void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
 			if (latch.getCount() > 0) {

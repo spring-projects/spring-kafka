@@ -480,7 +480,6 @@ class RetryTopicClassLevelIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-
 		@KafkaHandler
 		public void listenWithAnnotation2(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			container.countDownIfNotKnown(receivedTopic, container.countDownLatchNoRetry);

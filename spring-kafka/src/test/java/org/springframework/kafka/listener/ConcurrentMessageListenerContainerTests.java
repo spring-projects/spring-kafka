@@ -652,7 +652,6 @@ public class ConcurrentMessageListenerContainerTests {
 
 	}
 
-
 	@Test
 	public void testAckOnErrorRecord() throws Exception {
 		logger.info("Start ack on error");

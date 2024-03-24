@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2023 the original author or authors.
+ * Copyright 2017-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,14 +48,12 @@ public class EmbeddedKafkaContextCustomizerTests {
 				AnnotationUtils.findAnnotation(SecondTestWithEmbeddedKafka.class, EmbeddedKafka.class);
 	}
 
-
 	@Test
 	void testHashCode() {
 		assertThat(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass).hashCode()).isNotEqualTo(0);
 		assertThat(new EmbeddedKafkaContextCustomizer(annotationFromFirstClass).hashCode())
 				.isEqualTo(new EmbeddedKafkaContextCustomizer(annotationFromSecondClass).hashCode());
 	}
-
 
 	@Test
 	void testEquals() {
@@ -92,7 +90,6 @@ public class EmbeddedKafkaContextCustomizerTests {
 		assertThat(context.getBean(EmbeddedKafkaBroker.class).getBrokersAsString())
 				.matches("127.0.0.1:[0-9]+,127.0.0.1:[0-9]+");
 	}
-
 
 	@EmbeddedKafka(kraft = false)
 	private static final class TestWithEmbeddedKafka {

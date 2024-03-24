@@ -47,7 +47,6 @@ import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 import org.springframework.util.Assert;
 import org.springframework.validation.Validator;
 
-
 /**
  * Delegates to an {@link InvocableHandlerMethod} based on the message payload type.
  * Matches a single, non-annotated parameter or one that is annotated with

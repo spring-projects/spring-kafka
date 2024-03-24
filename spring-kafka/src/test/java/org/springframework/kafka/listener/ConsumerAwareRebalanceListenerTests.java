@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +46,6 @@ public class ConsumerAwareRebalanceListenerTests {
 		assertThat(called.get()).isTrue();
 	}
 
-
 	@Test
 	void nonConsumerAwareTestRevoked() {
 		AtomicBoolean called = new AtomicBoolean();
@@ -60,7 +59,6 @@ public class ConsumerAwareRebalanceListenerTests {
 		}.onPartitionsRevokedBeforeCommit(null, null);
 		assertThat(called.get()).isTrue();
 	}
-
 
 	@Test
 	void nonConsumerAwareTestLost() {

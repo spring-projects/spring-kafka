@@ -43,7 +43,6 @@ import org.springframework.kafka.support.TopicForRetryable;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 
-
 /**
  *
  * <p>Configures main, retry and DLT topics based on a main endpoint and provided

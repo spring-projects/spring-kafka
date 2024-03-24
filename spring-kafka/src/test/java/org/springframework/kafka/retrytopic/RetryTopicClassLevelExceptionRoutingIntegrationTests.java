@@ -238,7 +238,6 @@ class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-
 		@KafkaHandler
 		public void listenWithAnnotation(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			container.fatalFrameworkLatch.countDown();

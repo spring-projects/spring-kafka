@@ -119,7 +119,6 @@ public class DefaultKafkaConsumerFactoryTests {
 		DefaultKafkaConsumerFactory<String, String> target =
 				new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
 
-
 					@Override
 					protected Consumer<String, String> createRawConsumer(Map<String, Object> configProps) {
 						configPassedToKafkaConsumer.putAll(configProps);

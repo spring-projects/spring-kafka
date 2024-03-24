@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2023 the original author or authors.
+ * Copyright 2015-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -177,7 +177,6 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	public JsonDeserializer(@Nullable TypeReference<? super T> targetType) {
 		this(targetType, true);
 	}
-
 
 	/**
 	 * Construct an instance with the provided target type, and a default {@link ObjectMapper}.

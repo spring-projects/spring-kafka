@@ -62,6 +62,7 @@ public class MessagingMessageListenerAdapterTests {
 			}
 
 		}
+
 		MyAdapter adapter = new MyAdapter();
 		adapter.setFallbackType(String.class);
 		RecordMessageConverter converter = mock(RecordMessageConverter.class);
