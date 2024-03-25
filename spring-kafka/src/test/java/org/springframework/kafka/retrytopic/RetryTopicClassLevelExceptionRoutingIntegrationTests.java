@@ -75,9 +75,13 @@ import org.springframework.util.backoff.FixedBackOff;
 class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 
 	final static String BLOCKING_AND_TOPIC_RETRY = "blocking-and-topic-retry";
+
 	final static String ONLY_RETRY_VIA_BLOCKING = "only-retry-blocking-topic";
+
 	final static String ONLY_RETRY_VIA_TOPIC = "only-retry-topic";
+
 	final static String USER_FATAL_EXCEPTION_TOPIC = "user-fatal-topic";
+
 	final static String FRAMEWORK_FATAL_EXCEPTION_TOPIC = "framework-fatal-topic";
 
 	@Autowired
@@ -256,20 +260,33 @@ class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 	static class CountDownLatchContainer {
 
 		CountDownLatch blockingAndTopicsLatch = new CountDownLatch(12);
+
 		CountDownLatch onlyRetryViaBlockingLatch = new CountDownLatch(4);
+
 		CountDownLatch onlyRetryViaTopicLatch = new CountDownLatch(3);
+
 		CountDownLatch fatalUserLatch = new CountDownLatch(1);
+
 		CountDownLatch fatalFrameworkLatch = new CountDownLatch(1);
+
 		CountDownLatch annotatedDltOnlyBlockingLatch = new CountDownLatch(1);
+
 		CountDownLatch annotatedDltUserFatalLatch = new CountDownLatch(1);
+
 		CountDownLatch annotatedDltFrameworkFatalLatch = new CountDownLatch(1);
+
 		CountDownLatch dltProcessorLatch = new CountDownLatch(1);
+
 		CountDownLatch dltProcessorWithErrorLatch = new CountDownLatch(1);
 
 		AtomicInteger blockingAndTopicsListenerInvocations = new AtomicInteger();
+
 		AtomicInteger onlyRetryViaTopicListenerInvocations = new AtomicInteger();
+
 		AtomicInteger onlyRetryViaBlockingListenerInvocations = new AtomicInteger();
+
 		AtomicInteger userFatalListenerInvocations = new AtomicInteger();
+
 		AtomicInteger fatalFrameworkListenerInvocations = new AtomicInteger();
 
 	}

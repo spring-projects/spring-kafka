@@ -203,13 +203,17 @@ class ExistingRetryTopicClassLevelIntegrationTests {
 	static class CountDownLatchContainer {
 
 		CountDownLatch countDownLatch1 = new CountDownLatch(12);
+
 		CountDownLatch countDownLatch2 = new CountDownLatch(12);
+
 	}
 
 	static class CountByPartitionContainer {
 
 		Map<String, Integer> mainTopicMessageCountByPartition = new HashMap<>();
+
 		Map<String, Integer> retryTopicMessageCountByPartition = new HashMap<>();
+
 	}
 
 	@Configuration

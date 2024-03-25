@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -200,13 +200,17 @@ public class ExistingRetryTopicIntegrationTests {
 	static class CountDownLatchContainer {
 
 		CountDownLatch countDownLatch1 = new CountDownLatch(40);
+
 		CountDownLatch countDownLatch2 = new CountDownLatch(40);
+
 	}
 
 	static class CountByPartitionContainer {
 
 		Map<String, Integer> mainTopicMessageCountByPartition = new HashMap<>();
+
 		Map<String, Integer> retryTopicMessageCountByPartition = new HashMap<>();
+
 	}
 
 	@Configuration

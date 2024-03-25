@@ -246,20 +246,29 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 	static class CountDownLatchContainer {
 
 		CountDownLatch countDownLatchFirstRetryable = new CountDownLatch(4);
+
 		CountDownLatch countDownLatchSecondRetryable = new CountDownLatch(3);
+
 		CountDownLatch countDownLatchDltOne = new CountDownLatch(1);
+
 		CountDownLatch countDownLatchDltSecond = new CountDownLatch(1);
 
 		CountDownLatch countDownLatchBasic = new CountDownLatch(1);
+
 		CountDownLatch customizerLatch = new CountDownLatch(10);
 
 		CountDownLatch countDownLatchClassLevelFirstRetryable = new CountDownLatch(4);
+
 		CountDownLatch countDownLatchClassLevelSecondRetryable = new CountDownLatch(3);
+
 		CountDownLatch countDownLatchClassLevelDltOne = new CountDownLatch(1);
+
 		CountDownLatch countDownLatchClassLevelDltSecond = new CountDownLatch(1);
 
 		CountDownLatch countDownLatchClassLevelBasic = new CountDownLatch(1);
+
 		CountDownLatch customizerClassLevelLatch = new CountDownLatch(10);
+
 	}
 
 	@EnableKafka

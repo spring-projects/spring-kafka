@@ -148,6 +148,7 @@ public class DestinationTopic {
 
 		@Nullable
 		private final Boolean autoStartDltHandler;
+
 		/**
 		 * Create an instance with the provided properties with the DLT container starting
 		 * automatically (if the container factory is so configured).

@@ -91,7 +91,9 @@ public class RetryTopicConfiguration {
 	static class TopicCreation {
 
 		private final boolean shouldCreateTopics;
+
 		private final int numPartitions;
+
 		private final short replicationFactor;
 
 		TopicCreation(@Nullable Boolean shouldCreate, @Nullable Integer numPartitions, @Nullable Short replicationFactor) {

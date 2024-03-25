@@ -2352,6 +2352,7 @@ public class EnableKafkaIntegrationTests {
 	public static class SeekToOffsetFromComputeFunction extends AbstractConsumerSeekAware {
 
 		CountDownLatch latch1 = new CountDownLatch(10);
+
 		CountDownLatch latch2 = new CountDownLatch(1);
 
 		@KafkaListener(id = "seekToComputeFn", topics = "seekToComputeFn")

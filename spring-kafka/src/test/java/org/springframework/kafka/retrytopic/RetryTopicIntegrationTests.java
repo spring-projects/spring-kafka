@@ -571,22 +571,39 @@ public class RetryTopicIntegrationTests {
 	static class CountDownLatchContainer {
 
 		CountDownLatch countDownLatch1 = new CountDownLatch(5);
+
 		CountDownLatch countDownLatch2 = new CountDownLatch(3);
+
 		CountDownLatch countDownLatch3 = new CountDownLatch(3);
+
 		CountDownLatch countDownLatch4 = new CountDownLatch(4);
+
 		CountDownLatch countDownLatch51 = new CountDownLatch(4);
+
 		CountDownLatch countDownLatch52 = new CountDownLatch(4);
+
 		CountDownLatch countDownLatch6 = new CountDownLatch(4);
+
 		CountDownLatch countDownLatchNoRetry = new CountDownLatch(1);
+
 		CountDownLatch countDownLatchDltOne = new CountDownLatch(1);
+
 		CountDownLatch countDownLatchDltTwo = new CountDownLatch(1);
+
 		CountDownLatch countDownLatchDltThree = new CountDownLatch(1);
+
 		CountDownLatch countDownLatchDltFour = new CountDownLatch(1);
+
 		CountDownLatch countDownLatchReuseOne = new CountDownLatch(2);
+
 		CountDownLatch countDownLatchReuseTwo = new CountDownLatch(5);
+
 		CountDownLatch countDownLatchReuseThree = new CountDownLatch(5);
+
 		CountDownLatch customDltCountdownLatch = new CountDownLatch(1);
+
 		CountDownLatch customErrorHandlerCountdownLatch = new CountDownLatch(6);
+
 		CountDownLatch customMessageConverterCountdownLatch = new CountDownLatch(6);
 
 		final List<String> knownTopics = new ArrayList<>();

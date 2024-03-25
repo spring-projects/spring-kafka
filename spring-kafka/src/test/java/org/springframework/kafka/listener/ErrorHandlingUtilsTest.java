@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2023 the original author or authors.
+ * Copyright 2017-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,15 +53,24 @@ import org.springframework.util.backoff.FixedBackOff;
 class ErrorHandlingUtilsTest {
 
 	private final Exception thrownException = new RuntimeException("initial cause");
+
 	private final Consumer<?, ?> consumer = mock(Consumer.class);
+
 	private final MessageListenerContainer container = mock(MessageListenerContainer.class);
+
 	private final Runnable listener = mock(Runnable.class);
+
 	private final BackOff backOff = new FixedBackOff(1000, 3);
+
 	private final CommonErrorHandler seeker = mock(CommonErrorHandler.class);
+
 	@SuppressWarnings("unchecked")
 	private final BiConsumer<ConsumerRecords<?, ?>, Exception> recoverer = mock(BiConsumer.class);
+
 	private final LogAccessor logger = new LogAccessor(LogFactory.getLog(ErrorHandlingUtilsTest.class));
+
 	private final List<RetryListener> retryListeners = new ArrayList<>();
+
 	private final BinaryExceptionClassifier classifier = BinaryExceptionClassifier.defaultClassifier();
 
 	private final ConsumerRecords<?, ?> consumerRecords = recordsOf(

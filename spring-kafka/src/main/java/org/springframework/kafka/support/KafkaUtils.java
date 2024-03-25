@@ -63,7 +63,6 @@ public final class KafkaUtils {
 	 */
 	public static final String VALUE_DESERIALIZER_EXCEPTION_HEADER = DESERIALIZER_EXCEPTION_HEADER_PREFIX + "Value";
 
-
 	private static Function<ProducerRecord<?, ?>, String> prFormatter = ProducerRecord::toString;
 
 	private static Function<ConsumerRecord<?, ?>, String> crFormatter =

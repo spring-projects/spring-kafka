@@ -72,7 +72,6 @@ public class RetryTopicConfigurationBuilder {
 
 	private RetryTopicConfiguration.TopicCreation topicCreationConfiguration = new RetryTopicConfiguration.TopicCreation();
 
-
 	private ConcurrentKafkaListenerContainerFactory<?, ?> listenerContainerFactory;
 
 	@Nullable
