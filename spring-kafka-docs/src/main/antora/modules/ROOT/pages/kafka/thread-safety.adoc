@@ -17,3 +17,10 @@ Note that `SimpleThreadScope` does not destroy beans that have a destruction int
 IMPORTANT: By default, the application context's event multicaster invokes event listeners on the calling thread.
 If you change the multicaster to use an async executor, thread cleanup is not effective.
 
+== Special Note on Virtual Threads and Concurrent Message Listener Containers
+
+Because of certain limitations in the underlying library classes still using `synchronized` blocks for thread coordination, applications need to be cautious when using virtual threads with concurrent message listener containers.
+When virtual threads are enabled, if the concurrency exceeds the available number of platform threads, it is very likely for the virtual threads to be pinned on the platform threads and possible race conditions.
+Therefore, as the 3rd party libraries that Spring for Apache Kafka uses evolves to fully support virtual threads, it is recommended to keep the concurrency on the message listener container to be equal to or less than the number of platform threads.
+This way, the applications avoid any race conditions between the threads and the virtual threads being pinned on platform threads.
+
