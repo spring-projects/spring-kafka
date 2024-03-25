@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 the original author or authors.
+ * Copyright 2022-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.annotation.EnableKafkaRetryTopic;
 import org.springframework.kafka.annotation.KafkaListenerAnnotationBeanPostProcessor;
-import org.springframework.kafka.config.KafkaListenerConfigUtils;
+import org.springframework.kafka.config.KafkaListenerConfigTypes;
 import org.springframework.kafka.config.KafkaListenerEndpoint;
 import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
@@ -111,7 +111,7 @@ public class RetryTopicConfigurationSupport implements ApplicationContextAware, 
 	 * @see KafkaListenerAnnotationBeanPostProcessor
 	 */
 	@Bean(name = RetryTopicBeanNames.RETRY_TOPIC_CONFIGURER_BEAN_NAME)
-	public RetryTopicConfigurer retryTopicConfigurer(@Qualifier(KafkaListenerConfigUtils.KAFKA_CONSUMER_BACK_OFF_MANAGER_BEAN_NAME)
+	public RetryTopicConfigurer retryTopicConfigurer(@Qualifier(KafkaListenerConfigTypes.KAFKA_CONFIG_PATH.KAFKA_CONSUMER_BACK_OFF_MANAGER_BEAN_NAME)
 			KafkaConsumerBackoffManager kafkaConsumerBackoffManager,
 			@Qualifier(RetryTopicBeanNames.DESTINATION_TOPIC_RESOLVER_BEAN_NAME)
 			DestinationTopicResolver destinationTopicResolver,
@@ -307,9 +307,9 @@ public class RetryTopicConfigurationSupport implements ApplicationContextAware, 
 	 * @param taskScheduler a {@link TaskScheduler}.
 	 * @return the instance.
 	 */
-	@Bean(name = KafkaListenerConfigUtils.KAFKA_CONSUMER_BACK_OFF_MANAGER_BEAN_NAME)
+	@Bean(name = KafkaListenerConfigTypes.KAFKA_CONFIG_PATH.KAFKA_CONSUMER_BACK_OFF_MANAGER_BEAN_NAME)
 	public KafkaConsumerBackoffManager kafkaConsumerBackoffManager(ApplicationContext applicationContext,
-			@Qualifier(KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)
+			@Qualifier(KafkaListenerConfigTypes.KAFKA_CONFIG_PATH.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)
 					@Nullable ListenerContainerRegistry registry,
 					ObjectProvider<RetryTopicComponentFactory> componentFactoryProvider,
 					@Nullable RetryTopicSchedulerWrapper wrapper,

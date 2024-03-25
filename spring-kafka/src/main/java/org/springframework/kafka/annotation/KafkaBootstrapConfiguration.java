@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.type.AnnotationMetadata;
-import org.springframework.kafka.config.KafkaListenerConfigUtils;
+import org.springframework.kafka.config.KafkaListenerConfigTypes;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 
 /**
@@ -44,14 +44,14 @@ public class KafkaBootstrapConfiguration implements ImportBeanDefinitionRegistra
 	@Override
 	public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
 		if (!registry.containsBeanDefinition(
-				KafkaListenerConfigUtils.KAFKA_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME)) {
+				KafkaListenerConfigTypes.KAFKA_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME.getBeanName())) {
 
-			registry.registerBeanDefinition(KafkaListenerConfigUtils.KAFKA_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME,
+			registry.registerBeanDefinition(KafkaListenerConfigTypes.KAFKA_LISTENER_ANNOTATION_PROCESSOR_BEAN_NAME.getBeanName(),
 					new RootBeanDefinition(KafkaListenerAnnotationBeanPostProcessor.class));
 		}
 
-		if (!registry.containsBeanDefinition(KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)) {
-			registry.registerBeanDefinition(KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME,
+		if (!registry.containsBeanDefinition(KafkaListenerConfigTypes.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME.getBeanName())) {
+			registry.registerBeanDefinition(KafkaListenerConfigTypes.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME.getBeanName(),
 					new RootBeanDefinition(KafkaListenerEndpointRegistry.class));
 		}
 	}
