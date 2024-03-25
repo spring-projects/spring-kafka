@@ -71,7 +71,6 @@ public class KafkaListenerEndpointRegistryTests {
 			.withMessage("'idMatcher' cannot be null");
 	}
 
-
 	@DisplayName("getListenerContainersMatching with BiPredicate throws on null biPredicate")
 	@Test
 	void getListenerContainersMatchingBiPredicateThrowsOnNullBiPredicate() {
