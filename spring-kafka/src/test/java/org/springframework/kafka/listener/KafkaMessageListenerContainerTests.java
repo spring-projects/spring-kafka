@@ -4252,9 +4252,7 @@ public class KafkaMessageListenerContainerTests {
 		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
 		AtomicInteger invocation = new AtomicInteger(0);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
-			Thread.sleep(50);
-			if (invocation.get() == 0) {
-				invocation.getAndIncrement();
+			if (invocation.getAndIncrement() == 0) {
 				return consumerRecords;
 			}
 			else {
