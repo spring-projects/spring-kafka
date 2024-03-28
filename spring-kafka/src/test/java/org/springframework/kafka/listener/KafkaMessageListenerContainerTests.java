@@ -4019,7 +4019,6 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(interceptor).setupThreadState(eq(consumer));
 		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 		inOrder.verify(interceptor).intercept(any(), eq(consumer));
-		inOrder.verify(interceptor).success(any(), eq(consumer));
 		inOrder.verify(consumer).commitSync(eq(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(2L))),
 				any(Duration.class));
 		container.stop();
@@ -4237,6 +4236,82 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(batchMessageListener).onMessage(eq(List.of(firstRecord, secondRecord)));
 		inOrder.verify(batchInterceptor).failure(eq(consumerRecords), any(), eq(consumer));
 		inOrder.verify(batchInterceptor).clearThreadState(eq(consumer));
+		container.stop();
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	public void invokeBatchInterceptorSuccessFailureOnRetry() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		ConsumerRecord<Integer, String> firstRecord = new ConsumerRecord<>("test-topic", 0, 0L, 1, "data-1");
+		ConsumerRecord<Integer, String> secondRecord = new ConsumerRecord<>("test-topic", 0, 1L, 1, "data-2");
+		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("test-topic", 0), List.of(firstRecord, secondRecord));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		AtomicInteger invocation = new AtomicInteger(0);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			if (invocation.get() == 0) {
+				invocation.getAndIncrement();
+				return consumerRecords;
+			}
+			else {
+				// Subsequent polls after the first one returns empty records.
+				return new ConsumerRecords<Integer, String>(Map.of());
+			}
+		});
+		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("test-topic", 0) };
+
+		CountDownLatch latch = new CountDownLatch(4); // 3 failures, 1 success
+		BatchMessageListener<Integer, String> batchMessageListener = spy(
+				new BatchMessageListener<Integer, String>() { // Cannot be lambda: Mockito doesn't mock final classes
+
+					@Override
+					public void onMessage(List<ConsumerRecord<Integer, String>> data) {
+						latch.countDown();
+						if (latch.getCount() > 0) {
+							throw new IllegalArgumentException("Failed record");
+						}
+					}
+
+				});
+
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(ContainerProperties.AckMode.BATCH);
+		containerProps.setMissingTopicsFatal(false);
+		containerProps.setMessageListener(batchMessageListener);
+		containerProps.setClientId("clientId");
+
+		BatchInterceptor<Integer, String> batchInterceptor = spy(new BatchInterceptor<Integer, String>() {
+
+			@Override
+			public ConsumerRecords<Integer, String> intercept(ConsumerRecords<Integer, String> records,
+															Consumer<Integer, String> consumer) {
+				return records;
+			}
+
+		});
+
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(0, 3)));
+		container.setBatchInterceptor(batchInterceptor);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+
+		InOrder inOrder = inOrder(batchInterceptor, batchMessageListener, consumer);
+		for (int i = 0; i < 3; i++) {
+			inOrder.verify(batchInterceptor).intercept(eq(consumerRecords), eq(consumer));
+			inOrder.verify(batchMessageListener).onMessage(eq(List.of(firstRecord, secondRecord)));
+			inOrder.verify(batchInterceptor).failure(eq(consumerRecords), any(), eq(consumer));
+		}
+		inOrder.verify(batchInterceptor).intercept(eq(consumerRecords), eq(consumer));
+		inOrder.verify(batchMessageListener).onMessage(eq(List.of(firstRecord, secondRecord)));
+		inOrder.verify(batchInterceptor).success(eq(consumerRecords), eq(consumer));
 		container.stop();
 	}
 
