@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.support.micrometer;
 
+import org.springframework.lang.NonNull;
 import org.springframework.util.StringUtils;
 
 import io.micrometer.common.KeyValues;
@@ -28,6 +29,9 @@ import io.micrometer.observation.docs.ObservationDocumentation;
  * Spring for Apache Kafka Observation for listeners.
  *
  * @author Gary Russell
+ * @author Christian Mergenthaler
+ * @author Wang Zhiyang
+ *
  * @since 3.0
  *
  */
@@ -44,19 +48,32 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		}
 
 		@Override
+		@NonNull
 		public String getPrefix() {
 			return "spring.kafka.listener";
 		}
 
 		@Override
+		@NonNull
 		public KeyName[] getLowCardinalityKeyNames() {
 			return ListenerLowCardinalityTags.values();
+		}
+
+		@Override
+		@NonNull
+		public KeyName[] getHighCardinalityKeyNames() {
+			return ListenerHighCardinalityTags.values();
 		}
 
 	};
 
 	/**
 	 * Low cardinality tags.
+	 *
+	 * @author Christian Mergenthaler
+	 * @author Wang Zhiyang
+	 *
+	 * @since 3.2
 	 */
 	public enum ListenerLowCardinalityTags implements KeyName {
 
@@ -66,6 +83,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		LISTENER_ID {
 
 			@Override
+			@NonNull
 			public String asString() {
 				return "spring.kafka.listener.id";
 			}
@@ -78,6 +96,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		MESSAGING_SYSTEM {
 
 			@Override
+			@NonNull
 			public String asString() {
 				return "messaging.system";
 			}
@@ -90,20 +109,9 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		MESSAGING_OPERATION {
 
 			@Override
+			@NonNull
 			public String asString() {
 				return "messaging.operation";
-			}
-
-		},
-
-		/**
-		 * Messaging consumer id.
-		 */
-		MESSAGING_CONSUMER_ID {
-
-			@Override
-			public String asString() {
-				return "messaging.consumer.id";
 			}
 
 		},
@@ -114,6 +122,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		MESSAGING_SOURCE_NAME {
 
 			@Override
+			@NonNull
 			public String asString() {
 				return "messaging.source.name";
 			}
@@ -126,6 +135,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		MESSAGING_SOURCE_KIND {
 
 			@Override
+			@NonNull
 			public String asString() {
 				return "messaging.source.kind";
 			}
@@ -133,16 +143,29 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		},
 
 		/**
-		 * Messaging consumer group.
+		 * Messaging the consumer group.
 		 */
 		MESSAGING_CONSUMER_GROUP {
 
 			@Override
+			@NonNull
 			public String asString() {
 				return "messaging.kafka.consumer.group";
 			}
 
 		},
+
+	}
+
+	/**
+	 * High cardinality tags.
+	 *
+	 * @author Wang Zhiyang
+	 * @author Christian Mergenthaler
+	 *
+	 * @since 3.2
+	 */
+	public enum ListenerHighCardinalityTags implements KeyName {
 
 		/**
 		 * Messaging client id.
@@ -150,8 +173,22 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		MESSAGING_CLIENT_ID {
 
 			@Override
+			@NonNull
 			public String asString() {
 				return "messaging.kafka.client_id";
+			}
+
+		},
+
+		/**
+		 * Messaging consumer id (consumer group and client id).
+		 */
+		MESSAGING_CONSUMER_ID {
+
+			@Override
+			@NonNull
+			public String asString() {
+				return "messaging.consumer.id";
 			}
 
 		},
@@ -162,6 +199,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		MESSAGING_PARTITION {
 
 			@Override
+			@NonNull
 			public String asString() {
 				return "messaging.kafka.source.partition";
 			}
@@ -174,11 +212,12 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		MESSAGING_OFFSET {
 
 			@Override
+			@NonNull
 			public String asString() {
 				return "messaging.kafka.message.offset";
 			}
 
-		}
+		},
 
 	}
 
@@ -186,6 +225,9 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 	 * Default {@link KafkaListenerObservationConvention} for Kafka listener key values.
 	 *
 	 * @author Gary Russell
+	 * @author Christian Mergenthaler
+	 * @author Wang Zhiyang
+	 *
 	 * @since 3.0
 	 *
 	 */
@@ -199,29 +241,30 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 
 		@Override
 		public KeyValues getLowCardinalityKeyValues(KafkaRecordReceiverContext context) {
-			KeyValues keyValues = KeyValues.of(
+
+			return KeyValues.of(
 					ListenerLowCardinalityTags.LISTENER_ID.withValue(context.getListenerId()),
-					ListenerLowCardinalityTags.MESSAGING_CONSUMER_ID.withValue(getConsumerId(context)),
 					ListenerLowCardinalityTags.MESSAGING_SYSTEM.withValue("kafka"),
 					ListenerLowCardinalityTags.MESSAGING_OPERATION.withValue("receive"),
 					ListenerLowCardinalityTags.MESSAGING_SOURCE_NAME.withValue(context.getSource()),
 					ListenerLowCardinalityTags.MESSAGING_SOURCE_KIND.withValue("topic"),
 					ListenerLowCardinalityTags.MESSAGING_CONSUMER_GROUP.withValue(context.getGroupId())
 			);
-
-			if (StringUtils.hasText(context.getClientId())) {
-				keyValues = keyValues.and(ListenerLowCardinalityTags.MESSAGING_CLIENT_ID.withValue(context.getClientId()));
-			}
-
-			return keyValues;
 		}
 
 		@Override
+		@NonNull
 		public KeyValues getHighCardinalityKeyValues(KafkaRecordReceiverContext context) {
 			KeyValues keyValues = KeyValues.of(
-					ListenerLowCardinalityTags.MESSAGING_PARTITION.withValue(context.getPartition()),
-					ListenerLowCardinalityTags.MESSAGING_OFFSET.withValue(context.getOffset())
+					ListenerHighCardinalityTags.MESSAGING_PARTITION.withValue(context.getPartition()),
+					ListenerHighCardinalityTags.MESSAGING_OFFSET.withValue(context.getOffset())
 			);
+
+			if (StringUtils.hasText(context.getClientId())) {
+				keyValues = keyValues
+						.and(ListenerHighCardinalityTags.MESSAGING_CLIENT_ID.withValue(context.getClientId()))
+						.and(ListenerHighCardinalityTags.MESSAGING_CONSUMER_ID.withValue(getConsumerId(context)));
+			}
 
 			return keyValues;
 		}
@@ -229,11 +272,6 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		@Override
 		public String getContextualName(KafkaRecordReceiverContext context) {
 			return context.getSource() + " receive";
-		}
-
-		@Override
-		public String getName() {
-			return "spring.kafka.listener";
 		}
 
 		private String getConsumerId(KafkaRecordReceiverContext context) {

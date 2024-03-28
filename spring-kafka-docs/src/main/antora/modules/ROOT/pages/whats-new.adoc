@@ -96,3 +96,10 @@ See xref:kafka/connecting.adoc#default-client-id-prefixes[Default client ID pref
 `getListenerContainersMatching(BiPredicate<String, MessageListenerContainer> matcher)` to filter by ID and container properties.
 
 See xref:kafka/receiving-messages/kafkalistener-lifecycle.adoc#retrieving-message-listener-containers[`@KafkaListener` Lifecycle Management's API Docs] for more information.
+
+[[x32-observation]]
+== Enhanced observation by providing more tracing tags
+
+`KafkaTemplateObservation` provides more tracing tags(low cardinality).
+`KafkaListenerObservation` provides a new API to find high cardinality key names and more tracing tags(high or low cardinality).
+See xref:kafka/micrometer.adoc#observation[Micrometer Observation]

@@ -56,6 +56,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservation.DefaultKafkaListenerObservationConvention;
 import org.springframework.kafka.support.micrometer.KafkaTemplateObservation.DefaultKafkaTemplateObservationConvention;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -92,11 +93,17 @@ import io.micrometer.tracing.test.simple.SimpleTracer;
  * @since 3.0
  */
 @SpringJUnitConfig
-@EmbeddedKafka(topics = { "observation.testT1", "observation.testT2", "observation.testT3",
-		ObservationTests.OBSERVATION_RUNTIME_EXCEPTION, ObservationTests.OBSERVATION_ERROR}
-		, partitions = 1)
+@EmbeddedKafka(topics = { ObservationTests.OBSERVATION_TEST_1, ObservationTests.OBSERVATION_TEST_2,
+		ObservationTests.OBSERVATION_TEST_3, ObservationTests.OBSERVATION_RUNTIME_EXCEPTION,
+		ObservationTests.OBSERVATION_ERROR }, partitions = 1)
 @DirtiesContext
 public class ObservationTests {
+
+	public final static String OBSERVATION_TEST_1 = "observation.testT1";
+
+	public final static String OBSERVATION_TEST_2 = "observation.testT2";
+
+	public final static String OBSERVATION_TEST_3 = "observation.testT3";
 
 	public final static String OBSERVATION_RUNTIME_EXCEPTION = "observation.runtime-exception";
 
@@ -113,72 +120,36 @@ public class ObservationTests {
 
 		AtomicReference<SimpleSpan> spanFromCallback = new AtomicReference<>();
 
-		template.send("observation.testT1", "test")
+		template.send(OBSERVATION_TEST_1, "test")
 				.thenAccept((sendResult) -> spanFromCallback.set(tracer.currentSpan()))
 				.get(10, TimeUnit.SECONDS);
 
 		assertThat(spanFromCallback.get()).isNotNull();
+		MessageListenerContainer listenerContainer1 = rler.getListenerContainer("obs1");
+		MessageListenerContainer listenerContainer2 = rler.getListenerContainer("obs2");
+		assertThat(listenerContainer1).isNotNull();
+		assertThat(listenerContainer2).isNotNull();
+		// consumer factory broker different to admin
+		assertThatContainerAdmin(listenerContainer1, admin,
+				broker.getBrokersAsString() + "," + broker.getBrokersAsString() + ","
+						+ broker.getBrokersAsString());
+		// broker override in annotation
+		assertThatContainerAdmin(listenerContainer2, admin, broker.getBrokersAsString());
 
 		assertThat(listener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
+		listenerContainer1.stop();
+		listenerContainer2.stop();
+
 		assertThat(listener.record).isNotNull();
 		Headers headers = listener.record.headers();
 		assertThat(headers.lastHeader("foo")).extracting(Header::value).isEqualTo("some foo value".getBytes());
 		assertThat(headers.lastHeader("bar")).extracting(Header::value).isEqualTo("some bar value".getBytes());
 		Deque<SimpleSpan> spans = tracer.getSpans();
 		assertThat(spans).hasSize(4);
-		SimpleSpan span = spans.poll();
-		assertThat(span.getTags())
-				.containsAllEntriesOf(Map.of("spring.kafka.template.name", "template",
-						"messaging.operation", "publish",
-						"messaging.system", "kafka",
-						"messaging.destination.kind", "topic",
-						"messaging.destination.name", "observation.testT1"));
-		assertThat(span.getName()).isEqualTo("observation.testT1 send");
-		assertThat(span.getRemoteServiceName()).startsWith("Apache Kafka: ");
-		await().until(() -> spans.peekFirst().getTags().size() == 12);
-		span = spans.poll();
-		assertThat(span.getTags())
-				.containsAllEntriesOf(
-						Map.ofEntries(Map.entry("spring.kafka.listener.id", "obs1-0"),
-								Map.entry("foo", "some foo value"),
-								Map.entry("bar", "some bar value"),
-								Map.entry("messaging.consumer.id", "obs1 - consumer-obs1-3"),
-								Map.entry("messaging.kafka.client_id", "consumer-obs1-3"),
-								Map.entry("messaging.kafka.consumer.group", "obs1"),
-								Map.entry("messaging.kafka.message.offset", "0"),
-								Map.entry("messaging.kafka.source.partition", "0"),
-								Map.entry("messaging.operation", "receive"),
-								Map.entry("messaging.source.kind", "topic"),
-								Map.entry("messaging.source.name", "observation.testT1"),
-								Map.entry("messaging.system", "kafka")));
-		assertThat(span.getName()).isEqualTo("observation.testT1 receive");
-		assertThat(span.getRemoteServiceName()).startsWith("Apache Kafka: ");
-		await().until(() -> spans.peekFirst().getTags().size() == 5);
-		span = spans.poll();
-		assertThat(span.getTags())
-				.containsAllEntriesOf(Map.of("spring.kafka.template.name", "template",
-						"messaging.operation", "publish",
-						"messaging.system", "kafka",
-						"messaging.destination.kind", "topic",
-						"messaging.destination.name", "observation.testT2"));
-		assertThat(span.getName()).isEqualTo("observation.testT2 send");
-		await().until(() -> spans.peekFirst().getTags().size() == 12);
-		span = spans.poll();
-		assertThat(span.getTags())
-				.containsAllEntriesOf(
-						Map.ofEntries(Map.entry("spring.kafka.listener.id", "obs2-0"),
-								Map.entry("foo", "some foo value"),
-								Map.entry("bar", "some bar value"),
-								Map.entry("messaging.consumer.id", "obs2 - consumer-obs2-2"),
-								Map.entry("messaging.kafka.client_id", "consumer-obs2-2"),
-								Map.entry("messaging.kafka.consumer.group", "obs2"),
-								Map.entry("messaging.kafka.message.offset", "0"),
-								Map.entry("messaging.kafka.source.partition", "0"),
-								Map.entry("messaging.operation", "receive"),
-								Map.entry("messaging.source.kind", "topic"),
-								Map.entry("messaging.source.name", "observation.testT2"),
-								Map.entry("messaging.system", "kafka")));
-		assertThat(span.getName()).isEqualTo("observation.testT2 receive");
+		assertThatTemplateSpanTags(spans, 5, OBSERVATION_TEST_1);
+		assertThatListenerSpanTags(spans, 12, OBSERVATION_TEST_1, "obs1-0", "obs1", "0", "0");
+		assertThatTemplateSpanTags(spans, 5, OBSERVATION_TEST_2);
+		assertThatListenerSpanTags(spans, 12, OBSERVATION_TEST_2, "obs2-0", "obs2", "0", "0");
 		template.setObservationConvention(new DefaultKafkaTemplateObservationConvention() {
 
 			@Override
@@ -187,7 +158,9 @@ public class ObservationTests {
 			}
 
 		});
-		rler.getListenerContainer("obs1").getContainerProperties().setObservationConvention(
+		template.send(OBSERVATION_TEST_1, "test").get(10, TimeUnit.SECONDS);
+
+		listenerContainer1.getContainerProperties().setObservationConvention(
 				new DefaultKafkaListenerObservationConvention() {
 
 					@Override
@@ -197,130 +170,43 @@ public class ObservationTests {
 
 				});
 
-		rler.getListenerContainer("obs1").stop();
-		rler.getListenerContainer("obs1").start();
-		template.send("observation.testT1", "test").get(10, TimeUnit.SECONDS);
+		listenerContainer2.start();
+		listenerContainer1.start();
 		assertThat(listener.latch2.await(10, TimeUnit.SECONDS)).isTrue();
+		listenerContainer1.stop();
+		listenerContainer2.stop();
+
 		assertThat(listener.record).isNotNull();
 		headers = listener.record.headers();
 		assertThat(headers.lastHeader("foo")).extracting(Header::value).isEqualTo("some foo value".getBytes());
 		assertThat(headers.lastHeader("bar")).extracting(Header::value).isEqualTo("some bar value".getBytes());
 		assertThat(spans).hasSize(4);
-		span = spans.poll();
-		assertThat(span.getTags())
-				.containsAllEntriesOf(Map.of("spring.kafka.template.name", "template",
-						"foo", "bar",
-						"messaging.operation", "publish",
-						"messaging.system", "kafka",
-						"messaging.destination.kind", "topic",
-						"messaging.destination.name", "observation.testT1"));
-		assertThat(span.getName()).isEqualTo("observation.testT1 send");
-		await().until(() -> spans.peekFirst().getTags().size() == 13);
-		span = spans.poll();
-		assertThat(span.getTags())
-				.containsAllEntriesOf(Map.of("spring.kafka.listener.id", "obs1-0", "foo", "some foo value", "bar",
-						"some bar value", "baz", "qux"));
-		assertThat(span.getName()).isEqualTo("observation.testT1 receive");
-		await().until(() -> spans.peekFirst().getTags().size() == 6);
-		span = spans.poll();
-		assertThat(span.getTags())
-				.containsAllEntriesOf(Map.of("spring.kafka.template.name", "template",
-						"foo", "bar",
-						"messaging.operation", "publish",
-						"messaging.system", "kafka",
-						"messaging.destination.kind", "topic",
-						"messaging.destination.name", "observation.testT2"));
-		assertThat(span.getName()).isEqualTo("observation.testT2 send");
-		await().until(() -> spans.peekFirst().getTags().size() == 12);
-		span = spans.poll();
-		assertThat(span.getTags())
-				.containsAllEntriesOf(
-						Map.ofEntries(Map.entry("spring.kafka.listener.id", "obs2-0"),
-								Map.entry("foo", "some foo value"),
-								Map.entry("bar", "some bar value"),
-								Map.entry("messaging.consumer.id", "obs2 - consumer-obs2-2"),
-								Map.entry("messaging.kafka.client_id", "consumer-obs2-2"),
-								Map.entry("messaging.kafka.consumer.group", "obs2"),
-								Map.entry("messaging.kafka.message.offset", "1"),
-								Map.entry("messaging.kafka.source.partition", "0"),
-								Map.entry("messaging.operation", "receive"),
-								Map.entry("messaging.source.kind", "topic"),
-								Map.entry("messaging.source.name", "observation.testT2"),
-								Map.entry("messaging.system", "kafka")));
+		assertThatTemplateSpanTags(spans, 6, OBSERVATION_TEST_1, Map.entry("foo", "bar"));
+		assertThatListenerSpanTags(spans, 13, OBSERVATION_TEST_1, "obs1-0", "obs1", "1", "0", Map.entry("baz", "qux"));
+		assertThatTemplateSpanTags(spans, 6, OBSERVATION_TEST_2, Map.entry("foo", "bar"));
+		SimpleSpan span = assertThatListenerSpanTags(spans, 12, OBSERVATION_TEST_2, "obs2-0", "obs2", "1", "0");
 		assertThat(span.getTags()).doesNotContainEntry("baz", "qux");
-		assertThat(span.getName()).isEqualTo("observation.testT2 receive");
-		MeterRegistryAssert.assertThat(meterRegistry)
-				.hasTimerWithNameAndTags("spring.kafka.template",
-						KeyValues.of("spring.kafka.template.name", "template",
-								"messaging.operation", "publish",
-								"messaging.system", "kafka",
-								"messaging.destination.kind", "topic",
-								"messaging.destination.name", "observation.testT1"))
-				.hasTimerWithNameAndTags("spring.kafka.template",
-						KeyValues.of("spring.kafka.template.name", "template", "foo", "bar",
-								"messaging.operation", "publish",
-								"messaging.system", "kafka",
-								"messaging.destination.kind", "topic",
-								"messaging.destination.name", "observation.testT2"))
-				.hasTimerWithNameAndTags("spring.kafka.listener",
-						KeyValues.of("spring.kafka.listener.id", "obs1-0",
-								"messaging.consumer.id", "obs1 - consumer-obs1-3",
-								"messaging.kafka.client_id", "consumer-obs1-3",
-								"messaging.kafka.consumer.group", "obs1",
-								"messaging.operation", "receive",
-								"messaging.source.kind", "topic",
-								"messaging.source.name", "observation.testT1",
-								"messaging.system", "kafka"))
-				.hasTimerWithNameAndTags("spring.kafka.listener",
-						KeyValues.of("spring.kafka.listener.id", "obs1-0",
-								"baz", "qux",
-								"messaging.consumer.id", "obs1 - consumer-obs1-4",
-								"messaging.kafka.client_id", "consumer-obs1-4",
-								"messaging.kafka.consumer.group", "obs1",
-								"messaging.operation", "receive",
-								"messaging.source.kind", "topic",
-								"messaging.source.name", "observation.testT1",
-								"messaging.system", "kafka"))
-				.hasTimerWithNameAndTags("spring.kafka.listener",
-						KeyValues.of("spring.kafka.listener.id", "obs2-0",
-								"messaging.consumer.id", "obs2 - consumer-obs2-2",
-								"messaging.kafka.client_id", "consumer-obs2-2",
-								"messaging.kafka.consumer.group", "obs2",
-								"messaging.operation", "receive",
-								"messaging.source.kind", "topic",
-								"messaging.source.name", "observation.testT2",
-								"messaging.system", "kafka"));
+		MeterRegistryAssert meterRegistryAssert = MeterRegistryAssert.assertThat(meterRegistry);
+		assertThatTemplateHasTimerWithNameAndTags(meterRegistryAssert, OBSERVATION_TEST_1);
+		assertThatListenerHasTimerWithNameAndTags(meterRegistryAssert, OBSERVATION_TEST_1, "obs1", "obs1-0");
+		assertThatTemplateHasTimerWithNameAndTags(meterRegistryAssert, OBSERVATION_TEST_2, "foo", "bar");
+		assertThatListenerHasTimerWithNameAndTags(meterRegistryAssert, OBSERVATION_TEST_1, "obs1", "obs1-0",
+				"baz", "qux");
+		assertThatListenerHasTimerWithNameAndTags(meterRegistryAssert, OBSERVATION_TEST_2, "obs2", "obs2-0");
+
 		assertThat(admin.getConfigurationProperties())
 				.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString());
 		// producer factory broker different to admin
-		KafkaAdmin pAdmin = KafkaTestUtils.getPropertyValue(template, "kafkaAdmin", KafkaAdmin.class);
-		assertThat(pAdmin.getOperationTimeout()).isEqualTo(admin.getOperationTimeout());
-		assertThat(pAdmin.getConfigurationProperties())
-				.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
-						broker.getBrokersAsString() + "," + broker.getBrokersAsString());
+		assertThatAdmin(template, admin, broker.getBrokersAsString() + "," + broker.getBrokersAsString(),
+				"kafkaAdmin");
 		// custom admin
 		assertThat(customTemplate.getKafkaAdmin()).isSameAs(config.mockAdmin);
 
-		// consumer factory broker different to admin
-		Object container = KafkaTestUtils
-				.getPropertyValue(endpointRegistry.getListenerContainer("obs1"), "containers", List.class).get(0);
-		KafkaAdmin cAdmin = KafkaTestUtils.getPropertyValue(container, "listenerConsumer.kafkaAdmin", KafkaAdmin.class);
-		assertThat(cAdmin.getOperationTimeout()).isEqualTo(admin.getOperationTimeout());
-		assertThat(cAdmin.getConfigurationProperties())
-				.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
-						broker.getBrokersAsString() + "," + broker.getBrokersAsString() + ","
-								+ broker.getBrokersAsString());
-		// broker override in annotation
-		container = KafkaTestUtils
-				.getPropertyValue(endpointRegistry.getListenerContainer("obs2"), "containers", List.class).get(0);
-		cAdmin = KafkaTestUtils.getPropertyValue(container, "listenerConsumer.kafkaAdmin", KafkaAdmin.class);
-		assertThat(cAdmin.getOperationTimeout()).isEqualTo(admin.getOperationTimeout());
-		assertThat(cAdmin.getConfigurationProperties())
-				.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString());
 		// custom admin
-		container = KafkaTestUtils
-				.getPropertyValue(endpointRegistry.getListenerContainer("obs3"), "containers", List.class).get(0);
-		cAdmin = KafkaTestUtils.getPropertyValue(container, "listenerConsumer.kafkaAdmin", KafkaAdmin.class);
+		Object container = KafkaTestUtils.getPropertyValue(
+				endpointRegistry.getListenerContainer("obs3"), "containers", List.class).get(0);
+		KafkaAdmin cAdmin = KafkaTestUtils.getPropertyValue(
+				container, "listenerConsumer.kafkaAdmin", KafkaAdmin.class);
 		assertThat(cAdmin).isSameAs(config.mockAdmin);
 
 		assertThatExceptionOfType(KafkaException.class)
@@ -330,6 +216,97 @@ public class ObservationTests {
 		MeterRegistryAssert.assertThat(meterRegistry)
 				.hasTimerWithNameAndTags("spring.kafka.template", KeyValues.of("error", "InvalidTopicException"))
 				.doesNotHaveMeterWithNameAndTags("spring.kafka.template", KeyValues.of("error", "KafkaException"));
+	}
+
+	@SafeVarargs
+	@SuppressWarnings("varargs")
+	private void assertThatTemplateSpanTags(Deque<SimpleSpan> spans, int tagSize, String destName,
+			Map.Entry<String, String>... keyValues) {
+
+		SimpleSpan span = spans.poll();
+		assertThat(span).isNotNull();
+		await().until(() -> span.getTags().size() == tagSize);
+		assertThat(span.getTags()).containsAllEntriesOf(Map.of(
+				"spring.kafka.template.name", "template",
+				"messaging.operation", "publish",
+				"messaging.system", "kafka",
+				"messaging.destination.kind", "topic",
+				"messaging.destination.name", destName));
+		if (keyValues != null && keyValues.length > 0) {
+			Arrays.stream(keyValues).forEach(entry -> assertThat(span.getTags()).contains(entry));
+		}
+		assertThat(span.getName()).isEqualTo(destName + " send");
+		assertThat(span.getRemoteServiceName()).startsWith("Apache Kafka: ");
+	}
+
+	@SafeVarargs
+	@SuppressWarnings("varargs")
+	private SimpleSpan assertThatListenerSpanTags(Deque<SimpleSpan> spans, int tagSize, String sourceName,
+			String listenerId, String consumerGroup, String offset, String partition,
+			Map.Entry<String, String>... keyValues) {
+
+		SimpleSpan span = spans.poll();
+		assertThat(span).isNotNull();
+		await().until(() -> span.getTags().size() == tagSize);
+		String clientId = span.getTags().get("messaging.kafka.client_id");
+		assertThat(span.getTags())
+				.containsAllEntriesOf(
+						Map.ofEntries(Map.entry("spring.kafka.listener.id", listenerId),
+								Map.entry("foo", "some foo value"),
+								Map.entry("bar", "some bar value"),
+								Map.entry("messaging.consumer.id", consumerGroup + " - " + clientId),
+								Map.entry("messaging.kafka.consumer.group", consumerGroup),
+								Map.entry("messaging.kafka.message.offset", offset),
+								Map.entry("messaging.kafka.source.partition", partition),
+								Map.entry("messaging.operation", "receive"),
+								Map.entry("messaging.source.kind", "topic"),
+								Map.entry("messaging.source.name", sourceName),
+								Map.entry("messaging.system", "kafka")));
+		if (keyValues != null && keyValues.length > 0) {
+			Arrays.stream(keyValues).forEach(entry -> assertThat(span.getTags()).contains(entry));
+		}
+		assertThat(span.getName()).isEqualTo(sourceName + " receive");
+		return span;
+	}
+
+	private void assertThatTemplateHasTimerWithNameAndTags(MeterRegistryAssert meterRegistryAssert, String destName,
+			String... keyValues) {
+
+		meterRegistryAssert.hasTimerWithNameAndTags("spring.kafka.template",
+				KeyValues.of("spring.kafka.template.name", "template",
+						"messaging.operation", "publish",
+						"messaging.system", "kafka",
+						"messaging.destination.kind", "topic",
+						"messaging.destination.name", destName)
+						.and(keyValues));
+	}
+
+	private void assertThatListenerHasTimerWithNameAndTags(MeterRegistryAssert meterRegistryAssert, String destName,
+			String consumerGroup, String listenerId, String... keyValues) {
+
+		meterRegistryAssert.hasTimerWithNameAndTags("spring.kafka.listener",
+				KeyValues.of(
+						"messaging.kafka.consumer.group", consumerGroup,
+						"messaging.operation", "receive",
+						"messaging.source.kind", "topic",
+						"messaging.source.name", destName,
+						"messaging.system", "kafka",
+						"spring.kafka.listener.id", listenerId)
+						.and(keyValues));
+	}
+
+	private void assertThatContainerAdmin(MessageListenerContainer listenerContainer, KafkaAdmin admin,
+			String brokersString) {
+
+		Object container = KafkaTestUtils.getPropertyValue(listenerContainer, "containers", List.class).get(0);
+		assertThatAdmin(container, admin, brokersString, "listenerConsumer.kafkaAdmin");
+	}
+
+	private void assertThatAdmin(Object object, KafkaAdmin admin, String brokersString, String key) {
+		KafkaAdmin cAdmin = KafkaTestUtils.getPropertyValue(object, key, KafkaAdmin.class);
+		assertThat(cAdmin.getOperationTimeout()).isEqualTo(admin.getOperationTimeout());
+		assertThat(cAdmin.getConfigurationProperties())
+				.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, brokersString);
 	}
 
 	@Test
@@ -524,12 +501,12 @@ public class ObservationTests {
 			this.template = template;
 		}
 
-		@KafkaListener(id = "obs1", topics = "observation.testT1")
+		@KafkaListener(id = "obs1", topics = OBSERVATION_TEST_1)
 		void listen1(ConsumerRecord<Integer, String> in) {
-			this.template.send("observation.testT2", in.value());
+			this.template.send(OBSERVATION_TEST_2, in.value());
 		}
 
-		@KafkaListener(id = "obs2", topics = "observation.testT2",
+		@KafkaListener(id = "obs2", topics = OBSERVATION_TEST_2,
 				properties = ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG + ":" + "#{@embeddedKafka.brokersAsString}")
 		void listen2(ConsumerRecord<?, ?> in) {
 			this.record = in;
@@ -537,7 +514,7 @@ public class ObservationTests {
 			this.latch2.countDown();
 		}
 
-		@KafkaListener(id = "obs3", topics = "observation.testT3")
+		@KafkaListener(id = "obs3", topics = OBSERVATION_TEST_3)
 		void listen3(ConsumerRecord<Integer, String> in) {
 		}
 

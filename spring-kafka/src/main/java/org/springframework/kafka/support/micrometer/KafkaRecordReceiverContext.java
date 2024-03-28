@@ -29,13 +29,17 @@ import io.micrometer.observation.transport.ReceiverContext;
  *
  * @author Gary Russell
  * @author Christian Mergenthaler
+ * @author Wang Zhiyang
+ *
  * @since 3.0
  *
  */
 public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?, ?>> {
 
 	private final String listenerId;
+
 	private final String clientId;
+
 	private final String groupId;
 
 	private final ConsumerRecord<?, ?> record;
@@ -84,7 +88,7 @@ public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?
 
 	/**
 	 * Return the consumer record.
-	 * @return the record the record.
+	 * @return the record.
 	 * @since 3.0.6
 	 */
 	public ConsumerRecord<?, ?> getRecord() {
