@@ -55,6 +55,7 @@ import org.springframework.util.Assert;
  * @author Nurettin Yilmaz
  * @author Denis Washington
  * @author Gary Russell
+ * @author Julien Wittouck
  *
  * @since 1.1.4
  */
@@ -99,6 +100,8 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	private int phase = Integer.MAX_VALUE - 1000; // NOSONAR magic #
 
 	private Duration closeTimeout = DEFAULT_CLOSE_TIMEOUT;
+
+	private boolean leaveGroupOnClose = false;
 
 	private KafkaStreams kafkaStreams;
 
@@ -223,6 +226,15 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 */
 	public void setCloseTimeout(int closeTimeout) {
 		this.closeTimeout = Duration.ofSeconds(closeTimeout); // NOSONAR (sync)
+	}
+
+	/**
+	 * Specify if the consumer should leave the group when stopping Kafka Streams. Defaults to false.
+	 * @param leaveGroupOnClose true to leave the group when stopping the Streams
+	 * @since 3.2.0
+	 */
+	public void setLeaveGroupOnClose(boolean leaveGroupOnClose) {
+		this.leaveGroupOnClose = leaveGroupOnClose;
 	}
 
 	/**
@@ -383,7 +395,10 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 			if (this.running) {
 				try {
 					if (this.kafkaStreams != null) {
-						this.kafkaStreams.close(this.closeTimeout);
+						this.kafkaStreams.close(new KafkaStreams.CloseOptions()
+								.timeout(this.closeTimeout)
+								.leaveGroup(this.leaveGroupOnClose)
+						);
 						if (this.cleanupConfig.cleanupOnStop()) {
 							this.kafkaStreams.cleanUp();
 						}

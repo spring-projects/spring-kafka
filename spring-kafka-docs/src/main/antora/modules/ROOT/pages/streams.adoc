@@ -213,6 +213,14 @@ You can declare and use any additional `StreamsBuilderFactoryBean` beans as well
 You can perform additional customization of that bean, by providing a bean that implements `StreamsBuilderFactoryBeanConfigurer`.
 If there are multiple such beans, they will be applied according to their `Ordered.order` property.
 
+
+=== Cleanup & Stop configuration
+
+When the factory is stopped, the `KafkaStreams.close()` is called with 2 parameters :
+
+* closeTimeout : how long to to wait for the threads to shutdown (defaults to `DEFAULT_CLOSE_TIMEOUT` set to 10 seconds). Can be configured using `StreamsBuilderFactoryBean.setCloseTimeout()`.
+* leaveGroupOnClose : to trigger consumer leave call from the group (defaults to `false`). Can be configured using `StreamsBuilderFactoryBean.setLeaveGroupOnClose()`.
+
 By default, when the factory bean is stopped, the `KafkaStreams.cleanUp()` method is called.
 Starting with version 2.1.2, the factory bean has additional constructors, taking a `CleanupConfig` object that has properties to let you control whether the `cleanUp()` method is called during `start()` or `stop()` or neither.
 Starting with version 2.7, the default is to never clean up local state.
