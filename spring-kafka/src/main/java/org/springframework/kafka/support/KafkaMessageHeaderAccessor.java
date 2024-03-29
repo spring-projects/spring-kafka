@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 the original author or authors.
+ * Copyright 2023-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@
 package org.springframework.kafka.support;
 
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import org.springframework.kafka.retrytopic.RetryTopicHeaders;
 import org.springframework.lang.Nullable;
@@ -64,8 +65,25 @@ public class KafkaMessageHeaderAccessor extends MessageHeaderAccessor {
 	}
 
 	private int fromBytes(String headerName) {
-		byte[] header = getHeader(headerName, byte[].class);
+		byte[] header = getFirstHeaderIfIterable(headerName, byte[].class);
 		return header == null ? 1 : ByteBuffer.wrap(header).getInt();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Nullable
+	public <T> T getFirstHeaderIfIterable(String key, Class<T> type) {
+		Object value = getHeader(key);
+		if (value == null) {
+			return null;
+		}
+		if (value instanceof List<?> iterable) {
+			value = iterable.get(0);
+		}
+		if (!type.isAssignableFrom(value.getClass())) {
+			throw new IllegalArgumentException("Incorrect type specified for header '" + key + "'. Expected [" + type
+					+ "] but actual type is [" + value.getClass() + "]");
+		}
+		return (T) value;
 	}
 
 	/**
