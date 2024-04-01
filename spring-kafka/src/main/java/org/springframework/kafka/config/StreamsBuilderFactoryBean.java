@@ -56,6 +56,7 @@ import org.springframework.util.Assert;
  * @author Denis Washington
  * @author Gary Russell
  * @author Julien Wittouck
+ * @author Sanghyeok An
  *
  * @since 1.1.4
  */
