@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,20 +92,56 @@ public class StreamsBuilderFactoryBeanTests {
 	}
 
 	@Test
-	public void testBuildWithProperties() throws Exception {
+	public void testBuildWithPropertiesAndAutoStartUp() throws Exception {
+		boolean autoStartUp = true;
 		streamsBuilderFactoryBean = new StreamsBuilderFactoryBean(kafkaStreamsConfiguration) {
 			@Override
 			protected StreamsBuilder createInstance() {
 				return spy(super.createInstance());
 			}
 		};
+		streamsBuilderFactoryBean.setAutoStartup(autoStartUp);
 		streamsBuilderFactoryBean.afterPropertiesSet();
 		StreamsBuilder builder = streamsBuilderFactoryBean.getObject();
 		builder.stream(Pattern.compile("foo"));
-		streamsBuilderFactoryBean.start();
+
+
+		boolean isAutoStartUp = streamsBuilderFactoryBean.isAutoStartup();
+		if (isAutoStartUp) {
+			streamsBuilderFactoryBean.start();
+		}
+
 		StreamsBuilder streamsBuilder = streamsBuilderFactoryBean.getObject();
 		verify(streamsBuilder).build(kafkaStreamsConfiguration.asProperties());
 		assertThat(streamsBuilderFactoryBean.getTopology()).isNotNull();
+		assertThat(isAutoStartUp).isTrue();
+		assertThat(streamsBuilderFactoryBean.isRunning()).isTrue();
+	}
+
+	@Test
+	public void testBuildWithPropertiesAndNoAutoStartUp() throws Exception {
+		boolean autoStartUp = false;
+		streamsBuilderFactoryBean = new StreamsBuilderFactoryBean(kafkaStreamsConfiguration) {
+			@Override
+			protected StreamsBuilder createInstance() {
+				return spy(super.createInstance());
+			}
+		};
+		streamsBuilderFactoryBean.setAutoStartup(autoStartUp);
+		streamsBuilderFactoryBean.afterPropertiesSet();
+		StreamsBuilder builder = streamsBuilderFactoryBean.getObject();
+		builder.stream(Pattern.compile("foo"));
+
+		boolean isAutoStartUp = streamsBuilderFactoryBean.isAutoStartup();
+		if (isAutoStartUp) {
+			streamsBuilderFactoryBean.start();
+		}
+
+		StreamsBuilder streamsBuilder = streamsBuilderFactoryBean.getObject();
+		verify(streamsBuilder).build(kafkaStreamsConfiguration.asProperties());
+		assertThat(streamsBuilderFactoryBean.getTopology()).isNotNull();
+		assertThat(isAutoStartUp).isFalse();
+		assertThat(streamsBuilderFactoryBean.isRunning()).isFalse();
 	}
 
 	@Configuration

@@ -339,7 +339,8 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	public boolean isAutoStartup() {
 		try {
 			this.topology = getObject().build(this.properties);
-		} catch (Exception e) {
+		}
+		catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 		return this.autoStartup;
