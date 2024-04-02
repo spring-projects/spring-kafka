@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2020 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,14 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.springframework.kafka.support.TopicPartitionOffset.SeekPosition;
+
 /**
  * Used to add partition/initial offset information to a {@code KafkaListener}.
  *
  * @author Artem Bilan
  * @author Gary Russell
+ * @author Wang Zhiyang
  */
 @Target({})
 @Retention(RetentionPolicy.RUNTIME)
@@ -59,5 +62,17 @@ public @interface PartitionOffset {
 	 * @since 1.1
 	 */
 	String relativeToCurrent() default "false";
+
+	/**
+	 * Providers seek position strategy, by default, seek by offset.
+	 * Upper case {@link SeekPosition} seek position enum name to match "special" seeks.
+	 * If seekPosition set 'BEGINNING' or 'END', ignore {@code relativeToCurrent}
+	 * and {@code initialOffset}.
+	 * If seekPosition set 'TIMESTAMP', initialOffset means time stamp, ignore {@code relativeToCurrent}.
+	 * @return special seeks.
+	 * @since 3.2
+	 * @see SeekPosition
+	 */
+	String seekPosition() default "";
 
 }

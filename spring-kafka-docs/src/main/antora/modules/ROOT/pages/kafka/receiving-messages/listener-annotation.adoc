@@ -150,6 +150,25 @@ public void listen(ConsumerRecord<?, ?> record) {
 
 The initial offset will be applied to all 6 partitions.
 
+Since 3.2, `@PartitionOffset` support `SeekPosition.END`, `SeekPosition.BEGINNING`, `SeekPosition.TIMESTAMP`, `seekPosition` match `SeekPosition` enum name:
+
+[source, java]
+----
+@KafkaListener(id = "seekPositionTime", topicPartitions = {
+        @TopicPartition(topic = TOPIC_SEEK_POSITION, partitionOffsets = {
+                @PartitionOffset(partition = "0", initialOffset = "723916800000", seekPosition = "TIMESTAMP"),
+                @PartitionOffset(partition = "1", initialOffset = "0", seekPosition = "BEGINNING"),
+                @PartitionOffset(partition = "2", initialOffset = "0", seekPosition = "END")
+        })
+})
+public void listen(ConsumerRecord<?, ?> record) {
+    ...
+}
+----
+
+If seekPosition set `END` or `BEGINNING` will ignore `initialOffset` and `relativeToCurrent`.
+If seekPosition set `TIMESTAMP`, `initialOffset` means timestamp.
+
 [[manual-acknowledgment]]
 == Manual Acknowledgment
 

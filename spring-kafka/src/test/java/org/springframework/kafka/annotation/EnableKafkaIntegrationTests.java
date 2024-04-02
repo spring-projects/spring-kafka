@@ -77,6 +77,7 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Role;
@@ -99,6 +100,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.MicrometerConsumerListener;
 import org.springframework.kafka.core.MicrometerProducerListener;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.event.ConsumerStartedEvent;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.event.ListenerContainerNoLongerIdleEvent;
 import org.springframework.kafka.listener.AbstractConsumerSeekAware;
@@ -177,12 +179,15 @@ import jakarta.validation.constraints.Max;
  * @author Dimitri Penner
  * @author Nakul Mishra
  * @author Soby Chacko
+ * @author Wang Zhiyang
  */
 @SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka(topics = {"annotated1", "annotated2", "annotated3", "annotated3x",
 		"annotated4", "annotated5", "annotated6", "annotated7", "annotated8", "annotated8reply",
-		"annotated9", "annotated10",
+		"annotated9", "annotated10", EnableKafkaIntegrationTests.ANNO_TOPIC_PARTITION_SPEL_ONE,
+		EnableKafkaIntegrationTests.ANNO_TOPIC_PARTITION_SPEL_TWO,
+		EnableKafkaIntegrationTests.TOPIC_SEEK_POSITION, EnableKafkaIntegrationTests.TOPIC_SEEK_POSITION_TIMESTAMP,
 		"annotated11", "annotated12", "annotated13", "annotated14", "annotated15", "annotated16", "annotated17",
 		"annotated18", "annotated19", "annotated20", "annotated21", "annotated21reply", "annotated22",
 		"annotated22reply", "annotated23", "annotated23reply", "annotated24", "annotated24reply",
@@ -195,6 +200,26 @@ import jakarta.validation.constraints.Max;
 public class EnableKafkaIntegrationTests {
 
 	private static final String DEFAULT_TEST_GROUP_ID = "testAnnot";
+
+	private static final String LISTENER_ID_SEEK_POSITION_BEGINNING = "seekPositionBeginning";
+
+	private static final String LISTENER_ID_SEEK_POSITION_END = "seekPositionEnd";
+
+	private static final String LISTENER_ID_SEEK_POSITION_TIMESTAMP_0 = "seekPositionTimestamp0";
+
+	private static final String LISTENER_ID_SEEK_POSITION_TIMESTAMP_1 = "seekPositionTimestamp1";
+
+	private static final String LISTENER_ID_TOPIC_PARTITION_SPEL_ONE = "seekTopicPartitionSpel1";
+
+	private static final String LISTENER_ID_TOPIC_PARTITION_SPEL_TWO = "seekTopicPartitionSpel2";
+
+	public static final String TOPIC_SEEK_POSITION = "annotatedPartitionOffset1";
+
+	public static final String TOPIC_SEEK_POSITION_TIMESTAMP = "annotatedPartitionOffset2";
+
+	public static final String ANNO_TOPIC_PARTITION_SPEL_ONE = "annotatedTopicPartitionSpel1";
+
+	public static final String ANNO_TOPIC_PARTITION_SPEL_TWO = "annotatedTopicPartitionSpel2";
 
 	private static final Log logger = LogFactory.getLog(EnableKafkaIntegrationTests.class);
 
@@ -277,7 +302,7 @@ public class EnableKafkaIntegrationTests {
 	}
 
 	@Test
-	public void manyTests() throws Exception {
+	void manyTests() throws Exception {
 		this.recordFilter.called = false;
 		template.send("annotated1", 0, "foo");
 		template.send("annotated1", 0, "bar");
@@ -354,34 +379,6 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.listener.noLongerIdleEventLatch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.noLongerIdleEvent.getListenerId()).startsWith("qux-");
 
-		template.send("annotated5", 0, 0, "foo");
-		template.send("annotated5", 1, 0, "bar");
-		template.send("annotated6", 0, 0, "baz");
-		template.send("annotated6", 1, 0, "qux");
-		template.flush();
-		assertThat(this.listener.latch5.await(60, TimeUnit.SECONDS)).isTrue();
-		MessageListenerContainer fizConcurrentContainer = registry.getListenerContainer("fiz");
-		assertThat(fizConcurrentContainer).isNotNull();
-		MessageListenerContainer fizContainer = (MessageListenerContainer) KafkaTestUtils
-				.getPropertyValue(fizConcurrentContainer, "containers", List.class).get(0);
-		TopicPartitionOffset offset = KafkaTestUtils.getPropertyValue(fizContainer, "topicPartitions",
-				TopicPartitionOffset[].class)[2];
-		assertThat(offset.isRelativeToCurrent()).isFalse();
-		offset = KafkaTestUtils.getPropertyValue(fizContainer, "topicPartitions",
-				TopicPartitionOffset[].class)[3];
-		assertThat(offset.isRelativeToCurrent()).isTrue();
-		assertThat(KafkaTestUtils.getPropertyValue(fizContainer,
-				"listenerConsumer.consumer.delegate.groupId", Optional.class).get())
-				.isEqualTo("fiz");
-		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.delegate.clientId"))
-				.isEqualTo("clientIdViaAnnotation-0");
-		assertThat(KafkaTestUtils.getPropertyValue(fizContainer,
-				"listenerConsumer.consumer.delegate.fetcher.fetchConfig.maxPollRecords"))
-				.isEqualTo(10);
-		assertThat(KafkaTestUtils.getPropertyValue(fizContainer,
-				"listenerConsumer.consumer.delegate.fetcher.fetchConfig.minBytes"))
-				.isEqualTo(420000);
-
 		MessageListenerContainer rebalanceConcurrentContainer = registry.getListenerContainer("rebalanceListener");
 		assertThat(rebalanceConcurrentContainer).isNotNull();
 		assertThat(rebalanceConcurrentContainer.isAutoStartup()).isFalse();
@@ -414,6 +411,89 @@ public class EnableKafkaIntegrationTests {
 		adapter = (FilteringMessageListenerAdapter<?, ?>) registry
 				.getListenerContainer("bar").getContainerProperties().getMessageListener();
 		assertThat(adapter).extracting("recordFilterStrategy").isSameAs(this.lambdaAll);
+	}
+
+	@Test
+	void testAnnotationTopicPartitionOffset() throws Exception {
+		template.send("annotated5", 0, 0, "foo");
+		template.send("annotated5", 1, 0, "bar");
+		template.send("annotated6", 0, 0, "baz");
+		template.send("annotated6", 1, 0, "qux");
+		template.flush();
+		MessageListenerContainer fizConcurrentContainer = registry.getListenerContainer("fiz");
+		assertThat(fizConcurrentContainer).isNotNull();
+		fizConcurrentContainer.start();
+		assertThat(this.listener.latch5.await(60, TimeUnit.SECONDS)).isTrue();
+
+		MessageListenerContainer fizContainer = (MessageListenerContainer) KafkaTestUtils
+				.getPropertyValue(fizConcurrentContainer, "containers", List.class).get(0);
+		TopicPartitionOffset offset = KafkaTestUtils.getPropertyValue(fizContainer, "topicPartitions",
+				TopicPartitionOffset[].class)[2];
+		assertThat(offset.isRelativeToCurrent()).isFalse();
+		offset = KafkaTestUtils.getPropertyValue(fizContainer, "topicPartitions",
+				TopicPartitionOffset[].class)[3];
+		assertThat(offset.isRelativeToCurrent()).isTrue();
+		assertThat(KafkaTestUtils.getPropertyValue(fizContainer,
+				"listenerConsumer.consumer.delegate.groupId", Optional.class).get())
+				.isEqualTo("fiz");
+		assertThat(KafkaTestUtils.getPropertyValue(fizContainer, "listenerConsumer.consumer.delegate.clientId"))
+				.isEqualTo("clientIdViaAnnotation-0");
+		assertThat(KafkaTestUtils.getPropertyValue(fizContainer,
+				"listenerConsumer.consumer.delegate.fetcher.fetchConfig.maxPollRecords"))
+				.isEqualTo(10);
+		assertThat(KafkaTestUtils.getPropertyValue(fizContainer,
+				"listenerConsumer.consumer.delegate.fetcher.fetchConfig.minBytes"))
+				.isEqualTo(420000);
+
+		template.send(ANNO_TOPIC_PARTITION_SPEL_ONE, 0, 0, "annoTopicPartitionOne0");
+		template.send(ANNO_TOPIC_PARTITION_SPEL_ONE, 1, 1, "annoTopicPartitionOne1");
+		template.flush();
+		MessageListenerContainer spel1 = registry.getListenerContainer(LISTENER_ID_TOPIC_PARTITION_SPEL_ONE);
+		assertThat(spel1).isNotNull();
+		spel1.start();
+		assertThat(this.listener.latchSpel1.await(60, TimeUnit.SECONDS)).isTrue();
+
+		template.send(ANNO_TOPIC_PARTITION_SPEL_TWO, 0, 0, "annoTopicPartitionTwo0");
+		template.send(ANNO_TOPIC_PARTITION_SPEL_TWO, 1, 1, "annoTopicPartitionTwo1");
+		template.flush();
+		MessageListenerContainer spel2 = registry.getListenerContainer(LISTENER_ID_TOPIC_PARTITION_SPEL_ONE);
+		assertThat(spel2).isNotNull();
+		spel2.start();
+		assertThat(this.listener.latchSpel2.await(60, TimeUnit.SECONDS)).isTrue();
+
+		template.send(TOPIC_SEEK_POSITION, 1, 1, "seekPosition2");
+		template.flush();
+		MessageListenerContainer seekPositionBeginning = registry.getListenerContainer(LISTENER_ID_SEEK_POSITION_BEGINNING);
+		assertThat(seekPositionBeginning).isNotNull();
+		seekPositionBeginning.start();
+		assertThat(this.listener.latchSpBeginning.await(60, TimeUnit.SECONDS)).isTrue();
+
+		template.send(TOPIC_SEEK_POSITION, 0, 0, "seekPosition1");
+		template.flush();
+		MessageListenerContainer seekPositionEnd = registry.getListenerContainer(LISTENER_ID_SEEK_POSITION_END);
+		assertThat(seekPositionEnd).isNotNull();
+		seekPositionEnd.start();
+		assertThat(this.listener.latchSpEndConsumerStarted.await(60, TimeUnit.SECONDS)).isTrue();
+		template.send(TOPIC_SEEK_POSITION, 0, 0, "seekPosition2");
+		template.flush();
+		assertThat(this.listener.latchSpEnd.await(60, TimeUnit.SECONDS)).isTrue();
+
+		template.send(TOPIC_SEEK_POSITION_TIMESTAMP, 0, 0, "sp3");
+		template.flush();
+		MessageListenerContainer seekPositionTimestamp0 = registry.getListenerContainer(LISTENER_ID_SEEK_POSITION_TIMESTAMP_0);
+		assertThat(seekPositionTimestamp0).isNotNull();
+		seekPositionTimestamp0.start();
+		assertThat(this.listener.latchSpTimestamp0ConsumerStarted.await(60, TimeUnit.SECONDS)).isTrue();
+		template.send(TOPIC_SEEK_POSITION_TIMESTAMP, 0, 0, "sp4");
+		template.flush();
+		assertThat(this.listener.latchSpTimestamp0.await(60, TimeUnit.SECONDS)).isTrue();
+
+		template.send(TOPIC_SEEK_POSITION_TIMESTAMP, 1, 1, "sp5");
+		template.flush();
+		MessageListenerContainer seekPositionTimestamp1 = registry.getListenerContainer(LISTENER_ID_SEEK_POSITION_TIMESTAMP_1);
+		assertThat(seekPositionTimestamp1).isNotNull();
+		seekPositionTimestamp1.start();
+		assertThat(this.listener.latchSpTimestamp1.await(60, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@Test
@@ -1846,7 +1926,7 @@ public class EnableKafkaIntegrationTests {
 	}
 
 	@Component
-	static class Listener implements ConsumerSeekAware {
+	static class Listener implements ConsumerSeekAware, ApplicationListener<ConsumerStartedEvent> {
 
 		private final ThreadLocal<ConsumerSeekCallback> seekCallBack = new ThreadLocal<>();
 
@@ -1862,7 +1942,23 @@ public class EnableKafkaIntegrationTests {
 
 		final CountDownLatch latch4 = new CountDownLatch(1);
 
-		final CountDownLatch latch5 = new CountDownLatch(1);
+		final CountDownLatch latch5 = new CountDownLatch(4);
+
+		final CountDownLatch latchSpel1 = new CountDownLatch(2);
+
+		final CountDownLatch latchSpel2 = new CountDownLatch(2);
+
+		final CountDownLatch latchSpBeginning = new CountDownLatch(1);
+
+		final CountDownLatch latchSpEnd = new CountDownLatch(1);
+
+		final CountDownLatch latchSpEndConsumerStarted = new CountDownLatch(1);
+
+		final CountDownLatch latchSpTimestamp0 = new CountDownLatch(1);
+
+		final CountDownLatch latchSpTimestamp0ConsumerStarted = new CountDownLatch(1);
+
+		final CountDownLatch latchSpTimestamp1 = new CountDownLatch(1);
 
 		final CountDownLatch latch6 = new CountDownLatch(1);
 
@@ -2071,15 +2167,65 @@ public class EnableKafkaIntegrationTests {
 			noLongerIdleEventLatch.countDown();
 		}
 
-		@KafkaListener(id = "fiz", topicPartitions = {
+		@KafkaListener(id = "fiz", autoStartup = "false", topicPartitions = {
 				@TopicPartition(topic = "annotated5", partitions = {"#{'${foo:0,1}'.split(',')}"}),
 				@TopicPartition(topic = "annotated6", partitions = "0",
 						partitionOffsets = @PartitionOffset(partition = "${xxx:1}", initialOffset = "${yyy:0}",
 								relativeToCurrent = "${zzz:true}"))
 		}, clientIdPrefix = "${foo.xxx:clientIdViaAnnotation}", properties = "#{'${spel.props}'.split(',')}")
-		public void listen5(ConsumerRecord<?, ?> record) {
+		void listen5(ConsumerRecord<?, ?> record) {
 			this.capturedRecord = record;
 			this.latch5.countDown();
+		}
+
+		@KafkaListener(id = LISTENER_ID_TOPIC_PARTITION_SPEL_ONE, topicPartitions = {
+				@TopicPartition(topic = ANNO_TOPIC_PARTITION_SPEL_ONE, partitions = "#{0 + 0}, #{0 + 1}")
+		})
+		void annotationTopicPartitionSpelOne(ConsumerRecord<?, ?> record) {
+			this.latchSpel1.countDown();
+		}
+
+		@KafkaListener(id = LISTENER_ID_TOPIC_PARTITION_SPEL_TWO, topicPartitions = {
+				@TopicPartition(topic = ANNO_TOPIC_PARTITION_SPEL_TWO, partitions = "#{new Integer[]{0,1}}")
+		})
+		void annotationTopicPartitionSpelTwo(ConsumerRecord<?, ?> record) {
+			this.latchSpel2.countDown();
+		}
+
+		@KafkaListener(id = LISTENER_ID_SEEK_POSITION_END, autoStartup = "false", topicPartitions = {
+				@TopicPartition(topic = TOPIC_SEEK_POSITION, partitionOffsets =
+						@PartitionOffset(partition = "${p:0}", initialOffset = "1", seekPosition = "END")
+				)
+		})
+		void annotationPartitionOffsetSeekPositionEnd(ConsumerRecord<?, ?> record) {
+			this.latchSpEnd.countDown();
+		}
+
+		@KafkaListener(id = LISTENER_ID_SEEK_POSITION_BEGINNING, autoStartup = "false", topicPartitions = {
+				@TopicPartition(topic = TOPIC_SEEK_POSITION, partitionOffsets =
+						@PartitionOffset(partition = "${p:1}", initialOffset = "1", seekPosition = "${sp:BEGINNING}")
+				)
+		})
+		void annotationPartitionOffsetSeekPositionBeginning(ConsumerRecord<?, ?> record) {
+			this.latchSpBeginning.countDown();
+		}
+
+		@KafkaListener(id = LISTENER_ID_SEEK_POSITION_TIMESTAMP_0, autoStartup = "false", topicPartitions = {
+				@TopicPartition(topic = TOPIC_SEEK_POSITION_TIMESTAMP, partitionOffsets =
+						@PartitionOffset(partition = "0", initialOffset = "9999999999000", seekPosition = "TIMESTAMP")
+				)
+		})
+		void annotationPartitionOffsetSeekPositionTimestampNoMatch(ConsumerRecord<?, ?> record) {
+			this.latchSpTimestamp0.countDown();
+		}
+
+		@KafkaListener(id = LISTENER_ID_SEEK_POSITION_TIMESTAMP_1, autoStartup = "false", topicPartitions = {
+				@TopicPartition(topic = TOPIC_SEEK_POSITION_TIMESTAMP, partitionOffsets =
+						@PartitionOffset(partition = "1", initialOffset = "723916800000", seekPosition = "TIMESTAMP")
+				)
+		})
+		void annotationPartitionOffsetSeekPositionTimestamp(ConsumerRecord<?, ?> record) {
+			this.latchSpTimestamp1.countDown();
 		}
 
 		@KafkaListener(id = "buz", topics = "annotated10", containerFactory = "kafkaJsonListenerContainerFactory",
@@ -2327,6 +2473,19 @@ public class EnableKafkaIntegrationTests {
 		@Override
 		public void registerSeekCallback(ConsumerSeekCallback callback) {
 			this.seekCallBack.set(callback);
+		}
+
+		@Override
+		@SuppressWarnings("rawtypes")
+		public void onApplicationEvent(ConsumerStartedEvent event) {
+			KafkaMessageListenerContainer container = event.getSource(KafkaMessageListenerContainer.class);
+			String listenerId = container.getListenerId();
+			if ((LISTENER_ID_SEEK_POSITION_END + "-0").equals(listenerId)) {
+				this.latchSpEndConsumerStarted.countDown();
+			}
+			else if ((LISTENER_ID_SEEK_POSITION_TIMESTAMP_0 + "-0").equals(listenerId)) {
+				this.latchSpTimestamp0ConsumerStarted.countDown();
+			}
 		}
 
 	}

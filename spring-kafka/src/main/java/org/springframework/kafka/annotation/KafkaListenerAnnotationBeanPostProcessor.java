@@ -97,6 +97,7 @@ import org.springframework.kafka.retrytopic.RetryTopicConfigurationSupport;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
 import org.springframework.kafka.retrytopic.RetryTopicSchedulerWrapper;
 import org.springframework.kafka.support.TopicPartitionOffset;
+import org.springframework.kafka.support.TopicPartitionOffset.SeekPosition;
 import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.GenericMessageConverter;
 import org.springframework.messaging.converter.SmartMessageConverter;
@@ -827,10 +828,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	private TopicPartitionOffset[] resolveTopicPartitions(KafkaListener kafkaListener) {
 		TopicPartition[] topicPartitions = kafkaListener.topicPartitions();
 		List<TopicPartitionOffset> result = new ArrayList<>();
-		if (topicPartitions.length > 0) {
-			for (TopicPartition topicPartition : topicPartitions) {
-				result.addAll(resolveTopicPartitionsList(topicPartition));
-			}
+		for (TopicPartition topicPartition : topicPartitions) {
+			result.addAll(resolveTopicPartitionsList(topicPartition));
 		}
 		return result.toArray(new TopicPartitionOffset[0]);
 	}
@@ -877,7 +876,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				() -> "At least one 'partition' or 'partitionOffset' required in @TopicPartition for topic '" + topic + "'");
 		List<TopicPartitionOffset> result = new ArrayList<>();
 		for (String partition : partitions) {
-			resolvePartitionAsInteger((String) topic, resolveExpression(partition), result, null, false, false);
+			resolvePartitionAsInteger((String) topic, resolveExpression(partition), result);
 		}
 		if (partitionOffsets.length == 1 && resolveExpression(partitionOffsets[0].partition()).equals("*")) {
 			result.forEach(tpo -> {
@@ -890,7 +889,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				Assert.isTrue(!partitionOffset.partition().equals("*"), () ->
 						"Partition wildcard '*' is only allowed in a single @PartitionOffset in " + result);
 				resolvePartitionAsInteger((String) topic, resolveExpression(partitionOffset.partition()), result,
-						resolveInitialOffset(topic, partitionOffset), isRelative(topic, partitionOffset), true);
+						resolveInitialOffset(topic, partitionOffset), isRelative(topic, partitionOffset), true,
+						resolveExpression(partitionOffset.seekPosition()));
 			}
 		}
 		Assert.isTrue(!result.isEmpty(), () -> "At least one partition required for " + topic);
@@ -899,11 +899,11 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private Long resolveInitialOffset(Object topic, PartitionOffset partitionOffset) {
 		Object initialOffsetValue = resolveExpression(partitionOffset.initialOffset());
-		Long initialOffset;
+		long initialOffset;
 		if (initialOffsetValue instanceof String str) {
 			Assert.state(StringUtils.hasText(str),
 					() -> "'initialOffset' in @PartitionOffset for topic '" + topic + "' cannot be empty");
-			initialOffset = Long.valueOf(str);
+			initialOffset = Long.parseLong(str);
 		}
 		else if (initialOffsetValue instanceof Long lng) {
 			initialOffset = lng;
@@ -954,20 +954,33 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 	}
 
+	private void resolvePartitionAsInteger(String topic, Object resolvedValue, List<TopicPartitionOffset> result) {
+		resolvePartitionAsInteger(topic, resolvedValue, result, null, false, false, null);
+	}
+
 	@SuppressWarnings(UNCHECKED)
-	private void resolvePartitionAsInteger(String topic, Object resolvedValue,
-			List<TopicPartitionOffset> result, @Nullable Long offset, boolean isRelative, boolean checkDups) {
+	private void resolvePartitionAsInteger(String topic, Object resolvedValue, List<TopicPartitionOffset> result,
+			@Nullable Long offset, boolean isRelative, boolean checkDups, @Nullable Object seekPosition) {
 
 		if (resolvedValue instanceof String[] strArr) {
 			for (Object object : strArr) {
-				resolvePartitionAsInteger(topic, object, result, offset, isRelative, checkDups);
+				resolvePartitionAsInteger(topic, object, result, offset, isRelative, checkDups, seekPosition);
 			}
+			return;
 		}
-		else if (resolvedValue instanceof String str) {
+		else if (resolvedValue instanceof Iterable) {
+			for (Object object : (Iterable<Object>) resolvedValue) {
+				resolvePartitionAsInteger(topic, object, result, offset, isRelative, checkDups, seekPosition);
+			}
+			return;
+		}
+
+		TopicPartitionOffset.SeekPosition tpoSp = resloveTopicPartitionOffsetSeekPosition(seekPosition);
+		if (resolvedValue instanceof String str) {
 			Assert.state(StringUtils.hasText(str),
 					() -> "partition in @TopicPartition for topic '" + topic + "' cannot be empty");
 			List<TopicPartitionOffset> collected = parsePartitions(str)
-					.map(part -> new TopicPartitionOffset(topic, part, offset, isRelative))
+					.map(part -> createTopicPartitionOffset(topic, part, offset, isRelative, tpoSp))
 					.toList();
 			if (checkDups) {
 				collected.forEach(tpo -> {
@@ -980,20 +993,43 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 		else if (resolvedValue instanceof Integer[] intArr) {
 			for (Integer partition : intArr) {
-				result.add(new TopicPartitionOffset(topic, partition));
+				result.add(createTopicPartitionOffset(topic, partition, offset, isRelative, tpoSp));
 			}
 		}
 		else if (resolvedValue instanceof Integer intgr) {
-			result.add(new TopicPartitionOffset(topic, intgr));
-		}
-		else if (resolvedValue instanceof Iterable) {
-			for (Object object : (Iterable<Object>) resolvedValue) {
-				resolvePartitionAsInteger(topic, object, result, offset, isRelative, checkDups);
-			}
+			result.add(createTopicPartitionOffset(topic, intgr, offset, isRelative, tpoSp));
 		}
 		else {
 			throw new IllegalArgumentException(String.format(
 					"@KafKaListener for topic '%s' can't resolve '%s' as an Integer or String", topic, resolvedValue));
+		}
+	}
+
+	@Nullable
+	private TopicPartitionOffset.SeekPosition resloveTopicPartitionOffsetSeekPosition(@Nullable Object seekPosition) {
+		TopicPartitionOffset.SeekPosition resloveTpoSp = null;
+		if (seekPosition instanceof String string) {
+			if (SeekPosition.BEGINNING.name().equals(string.toUpperCase())) {
+				resloveTpoSp = SeekPosition.BEGINNING;
+			}
+			else if (SeekPosition.END.name().equals(string.toUpperCase())) {
+				resloveTpoSp = SeekPosition.END;
+			}
+			else if (SeekPosition.TIMESTAMP.name().equals(string.toUpperCase())) {
+				resloveTpoSp = SeekPosition.TIMESTAMP;
+			}
+		}
+		return resloveTpoSp;
+	}
+
+	private TopicPartitionOffset createTopicPartitionOffset(String topic, int partition, @Nullable Long offset,
+			boolean isRelative, @Nullable SeekPosition seekPosition) {
+
+		if (seekPosition != null) {
+			return new TopicPartitionOffset(topic, partition, offset, seekPosition);
+		}
+		else {
+			return new TopicPartitionOffset(topic, partition, offset, isRelative);
 		}
 	}
 

@@ -75,6 +75,12 @@ Provides new class `EndpointHandlerMultiMethod` to handler multi method for retr
 `ConsumerCallback` provides a new API to seek to an offset based on a user-defined function, which takes the current offset in the consumer as an argument.
 See xref:kafka/seek.adoc#seek[Seek API Docs] for more details.
 
+[[x32-annotation-partition-offset-seek-position]]
+=== @PartitionOffset support SeekPosition
+`@PartitionOffset` support `TopicPartitionOffset.SeekPosition`.
+`@PartitionOffset` add new properties `seekPosition`.
+See xref:kafka/receiving-messages/listener-annotation.adoc#manual-assignment[manual-assignment] for more details.
+
 [[x32-topic-partition-offset-constructor]]
 === New constructor in TopicPartitionOffset that accepts a function to compute the offset to seek to
 `TopicPartitionOffset` has a new constructor that takes a user-provided function to compute the offset to seek to.

@@ -3103,6 +3103,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					.filter(e -> SeekPosition.TIMESTAMP.equals(e.getValue().seekPosition))
 					.collect(Collectors.toMap(Entry::getKey, entry -> entry.getValue().offset));
 			if (!times.isEmpty()) {
+				times.forEach((key, value) -> partitions.remove(key));
 				Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes = this.consumer.offsetsForTimes(times);
 				offsetsForTimes.forEach((tp, off) -> {
 					if (off == null) {
@@ -3117,7 +3118,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.consumerSeekAwareListener != null) {
 				this.consumerSeekAwareListener.onPartitionsAssigned(this.definedPartitions.keySet().stream()
 							.map(tp -> new SimpleEntry<>(tp, this.consumer.position(tp)))
-							.collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue())),
+							.collect(Collectors.toMap(SimpleEntry::getKey, SimpleEntry::getValue)),
 						this.seekCallback);
 			}
 		}
