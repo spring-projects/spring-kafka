@@ -44,6 +44,25 @@ public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?
 
 	private final ConsumerRecord<?, ?> record;
 
+	/**
+	 * Construct a kafka record receiver context.
+	 * @param record 		the consumer record.
+	 * @param listenerId	the container listener id.
+	 * @param clusterId		the kafka cluster id.
+	 */
+	public KafkaRecordReceiverContext(ConsumerRecord<?, ?> record, String listenerId, Supplier<String> clusterId) {
+		this(record, listenerId, null, null, clusterId);
+	}
+
+	/**
+	 * Construct a kafka record receiver context.
+	 * @param record 		the consumer record.
+	 * @param listenerId	the container listener id.
+	 * @param clientId		the kafka client id.
+	 * @param groupId		the consumer group id.
+	 * @param clusterId		the kafka cluster id.
+	 * @since 3.2
+	 */
 	public KafkaRecordReceiverContext(ConsumerRecord<?, ?> record, String listenerId, String clientId, String groupId,
 			Supplier<String> clusterId) {
 		super((carrier, key) -> {

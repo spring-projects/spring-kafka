@@ -17,6 +17,7 @@
 package org.springframework.kafka.support.micrometer;
 
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.util.StringUtils;
 
 import io.micrometer.common.KeyValues;
@@ -255,15 +256,16 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		@Override
 		@NonNull
 		public KeyValues getHighCardinalityKeyValues(KafkaRecordReceiverContext context) {
+			String clientId = context.getClientId();
 			KeyValues keyValues = KeyValues.of(
 					ListenerHighCardinalityTags.MESSAGING_PARTITION.withValue(context.getPartition()),
-					ListenerHighCardinalityTags.MESSAGING_OFFSET.withValue(context.getOffset())
+					ListenerHighCardinalityTags.MESSAGING_OFFSET.withValue(context.getOffset()),
+					ListenerHighCardinalityTags.MESSAGING_CONSUMER_ID.withValue(getConsumerId(context, clientId))
 			);
 
-			if (StringUtils.hasText(context.getClientId())) {
+			if (StringUtils.hasText(clientId)) {
 				keyValues = keyValues
-						.and(ListenerHighCardinalityTags.MESSAGING_CLIENT_ID.withValue(context.getClientId()))
-						.and(ListenerHighCardinalityTags.MESSAGING_CONSUMER_ID.withValue(getConsumerId(context)));
+						.and(ListenerHighCardinalityTags.MESSAGING_CLIENT_ID.withValue(clientId));
 			}
 
 			return keyValues;
@@ -274,9 +276,9 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 			return context.getSource() + " receive";
 		}
 
-		private String getConsumerId(KafkaRecordReceiverContext context) {
-			if (StringUtils.hasText(context.getClientId())) {
-				return context.getGroupId() + " - " + context.getClientId();
+		private String getConsumerId(KafkaRecordReceiverContext context, @Nullable String clientId) {
+			if (StringUtils.hasText(clientId)) {
+				return context.getGroupId() + " - " + clientId;
 			}
 			return context.getGroupId();
 		}
