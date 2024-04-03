@@ -70,11 +70,6 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 
 	/**
 	 * Low cardinality tags.
-	 *
-	 * @author Christian Mergenthaler
-	 * @author Wang Zhiyang
-	 *
-	 * @since 3.2
 	 */
 	public enum ListenerLowCardinalityTags implements KeyName {
 
@@ -93,6 +88,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 
 		/**
 		 * Messaging system.
+		 * @since 3.2
 		 */
 		MESSAGING_SYSTEM {
 
@@ -106,6 +102,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 
 		/**
 		 * Messaging operation.
+		 * @since 3.2
 		 */
 		MESSAGING_OPERATION {
 
@@ -119,6 +116,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 
 		/**
 		 * Messaging source name.
+		 * @since 3.2
 		 */
 		MESSAGING_SOURCE_NAME {
 
@@ -132,6 +130,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 
 		/**
 		 * Messaging source kind.
+		 * @since 3.2
 		 */
 		MESSAGING_SOURCE_KIND {
 
@@ -145,6 +144,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 
 		/**
 		 * Messaging the consumer group.
+		 * @since 3.2
 		 */
 		MESSAGING_CONSUMER_GROUP {
 
@@ -160,10 +160,6 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 
 	/**
 	 * High cardinality tags.
-	 *
-	 * @author Wang Zhiyang
-	 * @author Christian Mergenthaler
-	 *
 	 * @since 3.2
 	 */
 	public enum ListenerHighCardinalityTags implements KeyName {
@@ -224,13 +220,6 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 
 	/**
 	 * Default {@link KafkaListenerObservationConvention} for Kafka listener key values.
-	 *
-	 * @author Gary Russell
-	 * @author Christian Mergenthaler
-	 * @author Wang Zhiyang
-	 *
-	 * @since 3.0
-	 *
 	 */
 	public static class DefaultKafkaListenerObservationConvention implements KafkaListenerObservationConvention {
 
@@ -276,7 +265,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 			return context.getSource() + " receive";
 		}
 
-		private String getConsumerId(KafkaRecordReceiverContext context, @Nullable String clientId) {
+		private static String getConsumerId(KafkaRecordReceiverContext context, @Nullable String clientId) {
 			if (StringUtils.hasText(clientId)) {
 				return context.getGroupId() + " - " + clientId;
 			}

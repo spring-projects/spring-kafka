@@ -22,6 +22,8 @@ import java.util.function.Supplier;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
 
+import org.springframework.lang.Nullable;
+
 import io.micrometer.observation.transport.ReceiverContext;
 
 /**
@@ -89,10 +91,21 @@ public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?
 		return this.listenerId;
 	}
 
+	/**
+	 * Return the consumer group id.
+	 * @return the consumer group id.
+	 * @since 3.2
+	 */
 	public String getGroupId() {
 		return this.groupId;
 	}
 
+	/**
+	 * Return the client id.
+	 * @return the client id.
+	 * @since 3.2
+	 */
+	@Nullable
 	public String getClientId() {
 		return this.clientId;
 	}
