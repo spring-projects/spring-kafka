@@ -93,57 +93,44 @@ public class StreamsBuilderFactoryBeanTests {
 	}
 
 	@Test
-	public void testBuildWithPropertiesAndAutoStartUp() throws Exception {
-		boolean autoStartUp = true;
+	public void testBuildWithProperties() throws Exception {
 		streamsBuilderFactoryBean = new StreamsBuilderFactoryBean(kafkaStreamsConfiguration) {
 			@Override
 			protected StreamsBuilder createInstance() {
 				return spy(super.createInstance());
 			}
 		};
-		streamsBuilderFactoryBean.setAutoStartup(autoStartUp);
 		streamsBuilderFactoryBean.afterPropertiesSet();
 		StreamsBuilder builder = streamsBuilderFactoryBean.getObject();
 		builder.stream(Pattern.compile("foo"));
-
-
-		boolean isAutoStartUp = streamsBuilderFactoryBean.isAutoStartup();
-		if (isAutoStartUp) {
-			streamsBuilderFactoryBean.start();
-		}
-
+		streamsBuilderFactoryBean.afterSingletonsInstantiated();
+		streamsBuilderFactoryBean.start();
 		StreamsBuilder streamsBuilder = streamsBuilderFactoryBean.getObject();
 		verify(streamsBuilder).build(kafkaStreamsConfiguration.asProperties());
 		assertThat(streamsBuilderFactoryBean.getTopology()).isNotNull();
-		assertThat(isAutoStartUp).isTrue();
-		assertThat(streamsBuilderFactoryBean.isRunning()).isTrue();
 	}
 
 	@Test
-	public void testBuildWithPropertiesAndNoAutoStartUp() throws Exception {
-		boolean autoStartUp = false;
+	public void testGetTopologyBeforeKafkaStreamsStart() throws Exception {
+		// Given
 		streamsBuilderFactoryBean = new StreamsBuilderFactoryBean(kafkaStreamsConfiguration) {
 			@Override
 			protected StreamsBuilder createInstance() {
 				return spy(super.createInstance());
 			}
 		};
-		streamsBuilderFactoryBean.setAutoStartup(autoStartUp);
 		streamsBuilderFactoryBean.afterPropertiesSet();
 		StreamsBuilder builder = streamsBuilderFactoryBean.getObject();
 		builder.stream(Pattern.compile("foo"));
 
-		boolean isAutoStartUp = streamsBuilderFactoryBean.isAutoStartup();
-		if (isAutoStartUp) {
-			streamsBuilderFactoryBean.start();
-		}
+		// When
+		streamsBuilderFactoryBean.afterSingletonsInstantiated();
 
-		StreamsBuilder streamsBuilder = streamsBuilderFactoryBean.getObject();
-		verify(streamsBuilder).build(kafkaStreamsConfiguration.asProperties());
+		// Then
 		assertThat(streamsBuilderFactoryBean.getTopology()).isNotNull();
-		assertThat(isAutoStartUp).isFalse();
 		assertThat(streamsBuilderFactoryBean.isRunning()).isFalse();
 	}
+
 
 	@Configuration
 	@EnableKafkaStreams

@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import java.util.Properties;
 import java.util.regex.Pattern;
 
+import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.Test;
 
@@ -79,13 +80,10 @@ public class StreamsBuilderFactoryLateConfigTests {
 		props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.brokerAddresses);
 		streamsBuilderFactoryBean.setStreamsConfiguration(props);
 		streamsBuilderFactoryBean.setAutoStartup(isAutoStartUp);
-		streamsBuilderFactoryBean.getObject().stream(Pattern.compile("foo"));
 
 		assertThat(streamsBuilderFactoryBean.isRunning()).isFalse();
-		boolean shouldAutoStartUp = streamsBuilderFactoryBean.isAutoStartup();
 		streamsBuilderFactoryBean.start();
 		assertThat(streamsBuilderFactoryBean.isRunning()).isTrue();
-		assertThat(shouldAutoStartUp).isEqualTo(isAutoStartUp);
 	}
 
 	@Configuration
@@ -100,6 +98,23 @@ public class StreamsBuilderFactoryLateConfigTests {
 			return streamsBuilderFactoryBean;
 		}
 
+		@Bean
+		public KafkaStreamsService kafkaStreamsService(StreamsBuilder streamsBuilder) {
+			return new KafkaStreamsService(streamsBuilder);
+		}
+
 	}
 
+	static class KafkaStreamsService {
+		private final StreamsBuilder streamsBuilder;
+
+		public KafkaStreamsService(StreamsBuilder streamsBuilder) {
+			this.streamsBuilder = streamsBuilder;
+			buildPipeline();
+		}
+
+		public void buildPipeline() {
+			this.streamsBuilder.stream("foo");
+		}
+	}
 }

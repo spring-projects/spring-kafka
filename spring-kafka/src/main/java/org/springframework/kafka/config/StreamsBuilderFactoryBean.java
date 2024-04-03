@@ -33,6 +33,7 @@ import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.processor.internals.DefaultKafkaClientSupplier;
 
 import org.springframework.beans.factory.BeanNameAware;
+import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.config.AbstractFactoryBean;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.core.log.LogAccessor;
@@ -61,7 +62,7 @@ import org.springframework.util.Assert;
  * @since 1.1.4
  */
 public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilder>
-		implements SmartLifecycle, BeanNameAware {
+		implements SmartLifecycle, BeanNameAware, SmartInitializingSingleton {
 
 	/**
 	 * The default {@link Duration} of {@code 10 seconds} for close timeout.
@@ -338,12 +339,6 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	@Override
 	public boolean isAutoStartup() {
-		try {
-			this.topology = getObject().build(this.properties);
-		}
-		catch (Exception e) {
-			throw new RuntimeException(e);
-		}
 		return this.autoStartup;
 	}
 
@@ -363,8 +358,6 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 				try {
 					Assert.state(this.properties != null,
 							"streams configuration properties must not be null");
-					this.infrastructureCustomizer.configureTopology(this.topology);
-					LOGGER.debug(() -> this.topology.describe().toString());
 					this.kafkaStreams = new KafkaStreams(this.topology, this.properties, this.clientSupplier);
 					this.kafkaStreams.setStateListener(this.stateListener);
 					this.kafkaStreams.setGlobalStateRestoreListener(this.stateRestoreListener);
@@ -434,6 +427,18 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		}
 		finally {
 			this.lifecycleLock.unlock();
+		}
+	}
+
+	@Override
+	public void afterSingletonsInstantiated() {
+		try {
+			this.topology = getObject().build(this.properties);
+			this.infrastructureCustomizer.configureTopology(this.topology);
+			LOGGER.debug(() -> this.topology.describe().toString());
+		}
+		catch (Exception e) {
+			throw new RuntimeException(e);
 		}
 	}
 
