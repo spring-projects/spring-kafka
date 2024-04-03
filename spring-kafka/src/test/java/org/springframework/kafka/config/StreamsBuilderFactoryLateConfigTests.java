@@ -21,7 +21,6 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 import java.util.Properties;
-import java.util.regex.Pattern;
 
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
@@ -108,13 +107,13 @@ public class StreamsBuilderFactoryLateConfigTests {
 	static class KafkaStreamsService {
 		private final StreamsBuilder streamsBuilder;
 
-		public KafkaStreamsService(StreamsBuilder streamsBuilder) {
+		KafkaStreamsService(StreamsBuilder streamsBuilder) {
 			this.streamsBuilder = streamsBuilder;
 			buildPipeline();
 		}
 
-		public void buildPipeline() {
-			this.streamsBuilder.stream("foo");
+		void buildPipeline() {
+			this.streamsBuilder.stream("test-topic");
 		}
 	}
 }

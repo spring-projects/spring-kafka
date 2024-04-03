@@ -121,7 +121,7 @@ public class StreamsBuilderFactoryBeanTests {
 		};
 		streamsBuilderFactoryBean.afterPropertiesSet();
 		StreamsBuilder builder = streamsBuilderFactoryBean.getObject();
-		builder.stream(Pattern.compile("foo"));
+		builder.stream(Pattern.compile("test-topic"));
 
 		// When
 		streamsBuilderFactoryBean.afterSingletonsInstantiated();
@@ -130,7 +130,6 @@ public class StreamsBuilderFactoryBeanTests {
 		assertThat(streamsBuilderFactoryBean.getTopology()).isNotNull();
 		assertThat(streamsBuilderFactoryBean.isRunning()).isFalse();
 	}
-
 
 	@Configuration
 	@EnableKafkaStreams
