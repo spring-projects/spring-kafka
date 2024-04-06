@@ -58,6 +58,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.PartitionOffset;
 import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.annotation.TopicPartition;
+import org.springframework.kafka.annotation.DltHandlerMethod;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.config.TopicBuilder;
@@ -94,7 +95,10 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  * @author Tomaz Fernandes
  * @author Gary Russell
  * @author Wang Zhiyang
+ * @author Joo Hyuk Kim
+ *
  * @since 2.7
+ *
  */
 @SpringJUnitConfig
 @DirtiesContext
@@ -120,6 +124,8 @@ public class RetryTopicIntegrationTests {
 	public final static String TWO_LISTENERS_TOPIC = "myRetryTopic5";
 
 	public final static String MANUAL_TOPIC = "myRetryTopic6";
+
+	public final static String ANNOTATION_DLT_HANDLER_TOPIC = "myRetryTopic7-dlt";
 
 	public final static String NOT_RETRYABLE_EXCEPTION_TOPIC = "noRetryTopic";
 
@@ -303,6 +309,13 @@ public class RetryTopicIntegrationTests {
 		kafkaTemplate.send(NOT_RETRYABLE_EXCEPTION_TOPIC, "Testing topic with annotation 1");
 		assertThat(awaitLatch(latchContainer.countDownLatchNoRetry)).isTrue();
 		assertThat(awaitLatch(latchContainer.countDownLatchDltTwo)).isTrue();
+	}
+
+	@Test
+	public void shouldGoStraightToAnnotatedDlt() {
+		logger.debug("Sending message to topic " + ANNOTATION_DLT_HANDLER_TOPIC);
+		kafkaTemplate.send(ANNOTATION_DLT_HANDLER_TOPIC, "Testing topic with annotation");
+		assertThat(awaitLatch(latchContainer.countDownLatchAnnotationDltHandlerFive)).isTrue();
 	}
 
 	private boolean awaitLatch(CountDownLatch latch) {
@@ -508,6 +521,32 @@ public class RetryTopicIntegrationTests {
 	}
 
 	@Component
+	static class AnnotatedDltHandlerListener {
+
+		@Autowired
+		CountDownLatchContainer container;
+
+		@RetryableTopic(dltHandlerMethod = @DltHandlerMethod(beanName = "annotationDltHandlerService", methodName = "handle"))
+		@KafkaListener(topics = ANNOTATION_DLT_HANDLER_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
+		public void listenWithAnnotation3(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
+			logger.info("Message {} received by AnnotatedDltHandlerListener in topic {} ", message, receivedTopic);
+			throw new MyDontRetryException(ANNOTATION_DLT_HANDLER_TOPIC + " dlt handler woooops... " + receivedTopic);
+		}
+	}
+
+	@Component
+	static class AnnotationDltHandlerService {
+
+		@Autowired
+		CountDownLatchContainer container;
+
+		public void handle(Object message) {
+			logger.info("Received message in AnnotationDltHandlerService!");
+			container.countDownLatchAnnotationDltHandlerFive.countDown();
+		}
+	}
+
+	@Component
 	static class FirstReuseRetryTopicListener {
 
 		final List<String> topics = Collections.synchronizedList(new ArrayList<>());
@@ -593,6 +632,8 @@ public class RetryTopicIntegrationTests {
 		CountDownLatch countDownLatchDltThree = new CountDownLatch(1);
 
 		CountDownLatch countDownLatchDltFour = new CountDownLatch(1);
+
+		CountDownLatch countDownLatchAnnotationDltHandlerFive = new CountDownLatch(1);
 
 		CountDownLatch countDownLatchReuseOne = new CountDownLatch(2);
 
@@ -765,6 +806,16 @@ public class RetryTopicIntegrationTests {
 		@Bean
 		MyCustomDltProcessor myCustomDltProcessor() {
 			return new MyCustomDltProcessor();
+		}
+
+		@Bean
+		AnnotatedDltHandlerListener annotatedDltHandlerListener() {
+			return new AnnotatedDltHandlerListener();
+		}
+
+		@Bean
+		AnnotationDltHandlerService annotatedDltHandlerService() {
+			return new AnnotationDltHandlerService();
 		}
 	}
 

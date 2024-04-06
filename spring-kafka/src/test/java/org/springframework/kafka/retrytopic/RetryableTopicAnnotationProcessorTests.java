@@ -42,6 +42,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.kafka.annotation.DltHandler;
+import org.springframework.kafka.annotation.DltHandlerMethod;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.annotation.RetryableTopicAnnotationProcessor;
@@ -57,6 +58,7 @@ import org.springframework.util.ReflectionUtils;
  * @author Gary Russell
  * @author Adrian Chlebosz
  * @author Wang Zhiyang
+ * @author Joo Hyuk Kim
  *
  * @since 2.7
  */
@@ -94,6 +96,15 @@ class RetryableTopicAnnotationProcessorTests {
 			RetryableTopic.class);
 
 	private final Object beanWithDlt = createBean();
+
+	// Retry including DLT annotation
+	private final Method retryIncludingDlt = ReflectionUtils
+			.findMethod(RetryableTopicIncludingDlt.class, listenerMethodName);
+
+	private final RetryableTopic annotationIncludingDlt = AnnotationUtils.findAnnotation(retryIncludingDlt,
+			RetryableTopic.class);
+
+	private final Object beanIncludingDlt = createBean();
 
 	// Retry without DLT
 	private final Method listenWithRetry = ReflectionUtils.findMethod(RetryableTopicAnnotationFactory.class,
@@ -377,6 +388,22 @@ class RetryableTopicAnnotationProcessorTests {
 		assertThat(destinationTopicProperties.get(2).suffix()).isEqualTo("-dlt");
 	}
 
+	@Test
+	void dltHandlerMethodInsideRetryableTopicShouldOverrideDltHandlerAnnotatedMethod() {
+		// setup
+		given(this.beanFactory.getBean(RetryTopicBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME, KafkaOperations.class))
+			.willReturn(kafkaOperationsFromDefaultName);
+		RetryableTopicAnnotationProcessor processor = new RetryableTopicAnnotationProcessor(beanFactory);
+
+		// given
+		RetryTopicConfiguration configuration = processor.processAnnotation(topics, retryIncludingDlt,
+				annotationIncludingDlt, beanIncludingDlt);
+
+		// then
+		EndpointHandlerMethod dltHandlerMethod = configuration.getDltHandlerMethod();
+		assertThat(dltHandlerMethod.getMethodName()).isEqualTo("yesHandleDlt");
+	}
+
 	static class RetryableTopicAnnotationFactory {
 
 		@KafkaListener
@@ -417,6 +444,20 @@ class RetryableTopicAnnotationProcessorTests {
 			// NoOps
 		}
 
+	}
+
+	static class RetryableTopicIncludingDlt {
+
+		@KafkaListener
+		@RetryableTopic(dltHandlerMethod = @DltHandlerMethod(beanName = "dltHandlerBean", methodName = "yesHandleDlt"))
+		void listenWithRetry() {
+			// NoOps
+		}
+
+		@DltHandler
+		void noHandleDlt() {
+			// NoOps
+		}
 	}
 
 	static class RetryableTopicAnnotationFactoryWithCustomDltRouting {

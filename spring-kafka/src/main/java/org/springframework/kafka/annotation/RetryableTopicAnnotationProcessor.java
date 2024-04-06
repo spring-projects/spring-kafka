@@ -64,6 +64,7 @@ import org.springframework.util.StringUtils;
  * @author Gary Russell
  * @author Adrian Chlebosz
  * @author Wang Zhiyang
+ * @author Joo Hyuk Kim
  *
  * @since 2.7
  *
@@ -149,7 +150,7 @@ public class RetryableTopicAnnotationProcessor {
 				.customBackoff(createBackoffFromAnnotation(annotation.backoff(), this.beanFactory))
 				.retryTopicSuffix(resolveExpressionAsString(annotation.retryTopicSuffix(), "retryTopicSuffix"))
 				.dltSuffix(resolveExpressionAsString(annotation.dltTopicSuffix(), "dltTopicSuffix"))
-				.dltHandlerMethod(getDltProcessor(clazz, bean))
+				.dltHandlerMethod(getDltProcessor(annotation.dltHandlerMethod(), clazz, bean))
 				.includeTopics(Arrays.asList(topics))
 				.listenerFactory(resolveExpressionAsString(annotation.listenerContainerFactory(), "listenerContainerFactory"))
 				.autoCreateTopics(resolveExpressionAsBoolean(annotation.autoCreateTopics(), "autoCreateTopics"),
@@ -225,6 +226,13 @@ public class RetryableTopicAnnotationProcessor {
 	private Map<String, Set<Class<? extends Throwable>>> createDltRoutingSpecFromAnnotation(ExceptionBasedDltDestination[] routingRules) {
 		return Arrays.stream(routingRules)
 			.collect(Collectors.toMap(ExceptionBasedDltDestination::suffix, excBasedDestDlt -> Set.of(excBasedDestDlt.exceptions())));
+	}
+
+	private EndpointHandlerMethod getDltProcessor(DltHandlerMethod dltHandlerMethod, Class<?> clazz, Object bean) {
+		if (StringUtils.hasText(dltHandlerMethod.beanName()) && StringUtils.hasText(dltHandlerMethod.methodName())) {
+			return new EndpointHandlerMethod(dltHandlerMethod.beanName(), dltHandlerMethod.methodName());
+		}
+		return getDltProcessor(clazz, bean);
 	}
 
 	private EndpointHandlerMethod getDltProcessor(Class<?> clazz, Object bean) {

@@ -42,6 +42,7 @@ import org.springframework.retry.annotation.Backoff;
  * @author João Lima
  * @author Adrian Chlebosz
  * @author Wang Zhiyang
+ * @author Joo Hyuk Kim
  *
  * @since 2.7
  *
@@ -221,5 +222,14 @@ public @interface RetryableTopic {
 	 * @since 3.0
 	 */
 	String concurrency() default "";
+
+	/**
+	 * Configure the DLT handler method.
+	 * Note that this will override the {@link DltHandler}-annotated method in the same declared class.
+	 *
+	 * @return the DLT handler method configuration.
+	 * @since 3.2
+	 */
+	DltHandlerMethod dltHandlerMethod() default @DltHandlerMethod;
 
 }
