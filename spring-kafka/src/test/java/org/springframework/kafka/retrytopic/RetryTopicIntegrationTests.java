@@ -814,7 +814,7 @@ public class RetryTopicIntegrationTests {
 		}
 
 		@Bean
-		AnnotationDltHandlerService annotatedDltHandlerService() {
+		AnnotationDltHandlerService annotationDltHandlerService() {
 			return new AnnotationDltHandlerService();
 		}
 	}
