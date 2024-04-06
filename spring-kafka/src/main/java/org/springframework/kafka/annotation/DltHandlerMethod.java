@@ -16,13 +16,13 @@
 
 package org.springframework.kafka.annotation;
 
-import org.springframework.kafka.support.EndpointHandlerMethod;
-
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+
+import org.springframework.kafka.support.EndpointHandlerMethod;
 
 /**
  * Annotation to configure the {@link org.springframework.kafka.support.EndpointHandlerMethod} for handling the DLT,
