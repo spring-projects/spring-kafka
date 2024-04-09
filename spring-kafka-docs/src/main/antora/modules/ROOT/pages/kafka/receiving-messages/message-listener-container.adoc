@@ -187,8 +187,8 @@ The following lists describes the action taken by the container for each `AckMod
 
 * `RECORD`: Commit the offset when the listener returns after processing the record.
 * `BATCH`: Commit the offset when all the records returned by the `poll()` have been processed.
-* `TIME`: Commit the offset when all the records returned by the `poll()` have been processed, as long as the `ackTime` since the last commit has been exceeded.
-* `COUNT`: Commit the offset when all the records returned by the `poll()` have been processed, as long as `ackCount` records have been received since the last commit.
+* `TIME`: Commit the offset when all the records returned by the `poll()` have been processed, as soon as the `ackTime` since the last commit has been exceeded.
+* `COUNT`: Commit the offset when all the records returned by the `poll()` have been processed, as soon as `ackCount` records have been received since the last commit.
 * `COUNT_TIME`: Similar to `TIME` and `COUNT`, but the commit is performed if either condition is `true`.
 * `MANUAL`: The message listener is responsible to `acknowledge()` the `Acknowledgment`.
 After that, the same semantics as `BATCH` are applied.
