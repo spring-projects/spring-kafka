@@ -3472,25 +3472,33 @@ public class KafkaMessageListenerContainerTests {
 
 	@Test
 	void testCommitRebalanceInProgressBatch() throws Exception {
-		testCommitRebalanceInProgressGuts(AckMode.BATCH, 2, commits -> {
-			assertThat(commits).hasSize(3);
+		testCommitRebalanceInProgressGuts(AckMode.BATCH, 3, commits -> {
+			assertThat(commits).hasSize(5);
 			assertThat(commits.get(0)).hasSize(2); // assignment
-			assertThat(commits.get(1)).hasSize(2); // batch commit
-			assertThat(commits.get(2)).hasSize(2); // GH-2489: offsets for both partition should be re-committed before partition 1 is revoked
+			assertThat(commits.get(1)).hasSize(2); // batch commit which should fail due to rebalance in progress
+			assertThat(commits.get(2)).hasSize(2); // commit retry which should fail due to rebalance in progress
+			assertThat(commits.get(3)).hasSize(1); // GH-3186: additional batch commit with only one partition which should be successful
+			assertThat(commits.get(4)).hasSize(1); // GH-2489: offsets for both uncommitted partition should be re-committed before partition 0 is revoked
+			assertThat(commits.get(4).get(new TopicPartition("foo", 0)))
+					.isNotNull()
+					.extracting(OffsetAndMetadata::offset)
+					.isEqualTo(2L);
 		});
 	}
 
 	@Test
 	void testCommitRebalanceInProgressRecord() throws Exception {
-		testCommitRebalanceInProgressGuts(AckMode.RECORD, 5, commits -> {
-			assertThat(commits).hasSize(6);
+		testCommitRebalanceInProgressGuts(AckMode.RECORD, 6, commits -> {
+			assertThat(commits).hasSize(8);
 			assertThat(commits.get(0)).hasSize(2); // assignment
-			assertThat(commits.get(1)).hasSize(1); // 4 individual commits
+			assertThat(commits.get(1)).hasSize(1); // 4 individual commits which should fail due to rebalance in progress
 			assertThat(commits.get(2)).hasSize(1);
 			assertThat(commits.get(3)).hasSize(1);
 			assertThat(commits.get(4)).hasSize(1);
-			assertThat(commits.get(5)).hasSize(2); // GH-2489: offsets for both partition should be re-committed before partition 1 is revoked
-			assertThat(commits.get(5).get(new TopicPartition("foo", 1)))
+			assertThat(commits.get(5)).hasSize(2); // commit retry which should fail due to rebalance in progress
+			assertThat(commits.get(6)).hasSize(1); // GH-3186: additional commit which should be successful
+			assertThat(commits.get(7)).hasSize(1); // GH-2489: offsets for both partition should be re-committed before partition 0 is revoked
+			assertThat(commits.get(7).get(new TopicPartition("foo", 0)))
 				.isNotNull()
 				.extracting(OffsetAndMetadata::offset)
 				.isEqualTo(2L);
@@ -3514,25 +3522,37 @@ public class KafkaMessageListenerContainerTests {
 		records.put(new TopicPartition("foo", 1), Arrays.asList(
 				new ConsumerRecord<>("foo", 1, 0L, 1, "foo"),
 				new ConsumerRecord<>("foo", 1, 1L, 1, "bar")));
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> additionalRecords = Collections.singletonMap(
+			new TopicPartition("foo", 1),
+				Collections.singletonList(new ConsumerRecord<>("foo", 1, 2L, 1, "foo")));
 		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> additionalConsumerRecords = new ConsumerRecords<>(additionalRecords);
 		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
-		AtomicBoolean first = new AtomicBoolean(true);
-		AtomicInteger rebalance = new AtomicInteger();
+		AtomicInteger pollIteration = new AtomicInteger();
 		AtomicReference<ConsumerRebalanceListener> rebal = new AtomicReference<>();
-		CountDownLatch latch = new CountDownLatch(2);
+		CountDownLatch latch = new CountDownLatch(3);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
-			int call = rebalance.getAndIncrement();
+			int call = pollIteration.getAndIncrement();
+			final ConsumerRecords<Integer, String> result;
 			if (call == 0) {
 				rebal.get().onPartitionsRevoked(Collections.emptyList());
 				rebal.get().onPartitionsAssigned(records.keySet());
+				result = consumerRecords;
 			}
 			else if (call == 1) {
+				result = additionalConsumerRecords;
+			}
+			else if (call == 2) {
 				rebal.get().onPartitionsRevoked(Collections.singletonList(topicPartition0));
 				rebal.get().onPartitionsAssigned(Collections.emptyList());
+				result = emptyRecords;
+			}
+			else {
+				result = emptyRecords;
 			}
 			latch.countDown();
-			return first.getAndSet(false) ? consumerRecords : emptyRecords;
+			return result;
 		});
 		willAnswer(invoc -> {
 			rebal.set(invoc.getArgument(1));
