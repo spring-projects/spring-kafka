@@ -76,9 +76,8 @@ Provides new class `EndpointHandlerMultiMethod` to handler multi method for retr
 See xref:kafka/seek.adoc#seek[Seek API Docs] for more details.
 
 [[x32-annotation-partition-offset-seek-position]]
-=== @PartitionOffset support SeekPosition
-`@PartitionOffset` support `TopicPartitionOffset.SeekPosition`.
-`@PartitionOffset` add new properties `seekPosition`.
+=== @PartitionOffset support for SeekPosition
+Adding `seekPosition` property to `@PartitionOffset` support for `TopicPartitionOffset.SeekPosition`.
 See xref:kafka/receiving-messages/listener-annotation.adoc#manual-assignment[manual-assignment] for more details.
 
 [[x32-topic-partition-offset-constructor]]

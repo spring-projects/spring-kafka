@@ -1008,14 +1008,15 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	@Nullable
 	private TopicPartitionOffset.SeekPosition resloveTopicPartitionOffsetSeekPosition(@Nullable Object seekPosition) {
 		TopicPartitionOffset.SeekPosition resloveTpoSp = null;
-		if (seekPosition instanceof String string) {
-			if (SeekPosition.BEGINNING.name().equals(string.toUpperCase())) {
+		if (seekPosition instanceof String seekPositionName) {
+			String capitalLetterSeekPositionName = seekPositionName.trim().toUpperCase();
+			if (SeekPosition.BEGINNING.name().equals(capitalLetterSeekPositionName)) {
 				resloveTpoSp = SeekPosition.BEGINNING;
 			}
-			else if (SeekPosition.END.name().equals(string.toUpperCase())) {
+			else if (SeekPosition.END.name().equals(capitalLetterSeekPositionName)) {
 				resloveTpoSp = SeekPosition.END;
 			}
-			else if (SeekPosition.TIMESTAMP.name().equals(string.toUpperCase())) {
+			else if (SeekPosition.TIMESTAMP.name().equals(capitalLetterSeekPositionName)) {
 				resloveTpoSp = SeekPosition.TIMESTAMP;
 			}
 		}

@@ -64,11 +64,12 @@ public @interface PartitionOffset {
 	String relativeToCurrent() default "false";
 
 	/**
-	 * Providers seek position strategy, by default, seek by offset.
-	 * Upper case {@link SeekPosition} seek position enum name to match "special" seeks.
-	 * If seekPosition set 'BEGINNING' or 'END', ignore {@code relativeToCurrent}
-	 * and {@code initialOffset}.
-	 * If seekPosition set 'TIMESTAMP', initialOffset means time stamp, ignore {@code relativeToCurrent}.
+	 * Position to seek on partition assignment. By default, seek by offset.
+	 * Set {@link SeekPosition} seek position enum name to specify "special"
+	 * seeks, no restrictions on capitalization. If seekPosition set 'BEGINNING'
+	 * or 'END', ignore {@code relativeToCurrent} and {@code initialOffset}.
+	 * If seekPosition set 'TIMESTAMP', initialOffset means time stamp, ignore
+	 * {@code relativeToCurrent}.
 	 * @return special seeks.
 	 * @since 3.2
 	 * @see SeekPosition
