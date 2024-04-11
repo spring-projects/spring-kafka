@@ -164,6 +164,7 @@ import io.micrometer.observation.ObservationRegistry;
  * @author Wang Zhiyang
  * @author Raphael Rösch
  * @author Christian Mergenthaler
+ * @author Mikael Carlstedt
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
