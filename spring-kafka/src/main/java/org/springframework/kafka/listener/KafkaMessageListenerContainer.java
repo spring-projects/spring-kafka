@@ -3222,13 +3222,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void doCommitSync(Map<TopicPartition, OffsetAndMetadata> commits, int retries) {
 			try {
-				if (!this.commitsDuringRebalance.isEmpty()) {
-					// Remove failed commits during last rebalance that are superseded by these commits
-					this.commitsDuringRebalance.keySet().removeAll(commits.keySet());
-				}
 				this.consumer.commitSync(commits, this.syncCommitTimeout);
 				if (this.fixTxOffsets) {
 					this.lastCommits.putAll(commits);
+				}
+				if (!this.commitsDuringRebalance.isEmpty()) {
+					// Remove failed commits during last rebalance that are superseded by these commits
+					this.commitsDuringRebalance.keySet().removeAll(commits.keySet());
 				}
 			}
 			catch (RetriableCommitFailedException e) {
