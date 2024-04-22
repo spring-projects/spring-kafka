@@ -35,6 +35,9 @@ import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerInterceptor;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.errors.InvalidTopicException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
@@ -89,6 +92,7 @@ import io.micrometer.tracing.test.simple.SimpleTracer;
  * @author Artem Bilan
  * @author Wang Zhiyang
  * @author Christian Mergenthaler
+ * @author Soby Chacko
  *
  * @since 3.0
  */
@@ -120,9 +124,40 @@ public class ObservationTests {
 
 		AtomicReference<SimpleSpan> spanFromCallback = new AtomicReference<>();
 
+		template.setProducerInterceptor(new ProducerInterceptor<>() {
+			@Override
+			public ProducerRecord<Integer, String> onSend(ProducerRecord<Integer, String> record) {
+				tracer.currentSpanCustomizer().tag("key", "value");
+				return record;
+			}
+
+			@Override
+			public void onAcknowledgement(RecordMetadata metadata, Exception exception) {
+
+			}
+
+			@Override
+			public void close() {
+
+			}
+
+			@Override
+			public void configure(Map<String, ?> configs) {
+
+			}
+		});
+
 		template.send(OBSERVATION_TEST_1, "test")
 				.thenAccept((sendResult) -> spanFromCallback.set(tracer.currentSpan()))
 				.get(10, TimeUnit.SECONDS);
+
+		Deque<SimpleSpan> spans = tracer.getSpans();
+		assertThat(spans).hasSize(1);
+
+		SimpleSpan templateSpan = spans.peek();
+		assertThat(templateSpan).isNotNull();
+		assertThat(templateSpan.getTags()).containsAllEntriesOf(Map.of(
+				"key", "value"));
 
 		assertThat(spanFromCallback.get()).isNotNull();
 		MessageListenerContainer listenerContainer1 = rler.getListenerContainer("obs1");
@@ -144,11 +179,11 @@ public class ObservationTests {
 		Headers headers = listener.record.headers();
 		assertThat(headers.lastHeader("foo")).extracting(Header::value).isEqualTo("some foo value".getBytes());
 		assertThat(headers.lastHeader("bar")).extracting(Header::value).isEqualTo("some bar value".getBytes());
-		Deque<SimpleSpan> spans = tracer.getSpans();
+		spans = tracer.getSpans();
 		assertThat(spans).hasSize(4);
-		assertThatTemplateSpanTags(spans, 5, OBSERVATION_TEST_1);
+		assertThatTemplateSpanTags(spans, 6, OBSERVATION_TEST_1);
 		assertThatListenerSpanTags(spans, 12, OBSERVATION_TEST_1, "obs1-0", "obs1", "0", "0");
-		assertThatTemplateSpanTags(spans, 5, OBSERVATION_TEST_2);
+		assertThatTemplateSpanTags(spans, 6, OBSERVATION_TEST_2);
 		assertThatListenerSpanTags(spans, 12, OBSERVATION_TEST_2, "obs2-0", "obs2", "0", "0");
 		template.setObservationConvention(new DefaultKafkaTemplateObservationConvention() {
 
@@ -181,9 +216,9 @@ public class ObservationTests {
 		assertThat(headers.lastHeader("foo")).extracting(Header::value).isEqualTo("some foo value".getBytes());
 		assertThat(headers.lastHeader("bar")).extracting(Header::value).isEqualTo("some bar value".getBytes());
 		assertThat(spans).hasSize(4);
-		assertThatTemplateSpanTags(spans, 6, OBSERVATION_TEST_1, Map.entry("foo", "bar"));
+		assertThatTemplateSpanTags(spans, 7, OBSERVATION_TEST_1, Map.entry("foo", "bar"));
 		assertThatListenerSpanTags(spans, 13, OBSERVATION_TEST_1, "obs1-0", "obs1", "1", "0", Map.entry("baz", "qux"));
-		assertThatTemplateSpanTags(spans, 6, OBSERVATION_TEST_2, Map.entry("foo", "bar"));
+		assertThatTemplateSpanTags(spans, 7, OBSERVATION_TEST_2, Map.entry("foo", "bar"));
 		SimpleSpan span = assertThatListenerSpanTags(spans, 12, OBSERVATION_TEST_2, "obs2-0", "obs2", "1", "0");
 		assertThat(span.getTags()).doesNotContainEntry("baz", "qux");
 		MeterRegistryAssert meterRegistryAssert = MeterRegistryAssert.assertThat(meterRegistry);

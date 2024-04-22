@@ -768,7 +768,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 				this.observationRegistry);
 		try {
 			observation.start();
-			return doSend(producerRecord, observation);
+			try (Observation.Scope ignored = observation.openScope()) {
+				return doSend(producerRecord, observation);
+			}
 		}
 		catch (RuntimeException ex) {
 			// The error is added from org.apache.kafka.clients.producer.Callback
