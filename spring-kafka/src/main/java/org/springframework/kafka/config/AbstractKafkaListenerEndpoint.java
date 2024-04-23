@@ -340,6 +340,11 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.ackDiscarded = ackDiscarded;
 	}
 
+	public void useRecordFilterStrategy(RecordFilterStrategy<? super K, ? super V> recordFilterStrategy) {
+		setRecordFilterStrategy(recordFilterStrategy);
+		setAckDiscarded(true);
+	}
+
 	@Nullable
 	@Override
 	public String getClientIdPrefix() {
