@@ -702,13 +702,15 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	private void resolveFilter(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener) {
 		Object filter = resolveExpression(kafkaListener.filter());
 		if (filter instanceof RecordFilterStrategy rfs) {
-			endpoint.useRecordFilterStrategy(rfs);
+			endpoint.setRecordFilterStrategy(rfs);
+			endpoint.setAckDiscarded(true);
 		}
 		else {
 			String filterBeanName = resolveExpressionAsString(kafkaListener.filter(), "filter");
 			if (StringUtils.hasText(filterBeanName)) {
-				endpoint.useRecordFilterStrategy(
+				endpoint.setRecordFilterStrategy(
 						this.beanFactory.getBean(filterBeanName, RecordFilterStrategy.class));
+				endpoint.setAckDiscarded(true);
 			}
 		}
 	}

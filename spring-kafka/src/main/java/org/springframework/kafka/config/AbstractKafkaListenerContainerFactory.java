@@ -373,7 +373,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private void configureEndpoint(AbstractKafkaListenerEndpoint<K, V> aklEndpoint) {
 		if (aklEndpoint.getRecordFilterStrategy() == null) {
 			JavaUtils.INSTANCE
-					.acceptIfNotNull(this.recordFilterStrategy, aklEndpoint::useRecordFilterStrategy);
+					.acceptIfNotNull(this.recordFilterStrategy, aklEndpoint::setRecordFilterStrategy);
 		}
 		JavaUtils.INSTANCE
 				.acceptIfNotNull(this.ackDiscarded, aklEndpoint::setAckDiscarded)
