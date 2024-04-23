@@ -327,7 +327,6 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	@SuppressWarnings("unchecked")
 	public void setRecordFilterStrategy(RecordFilterStrategy<? super K, ? super V> recordFilterStrategy) {
 		this.recordFilterStrategy = (RecordFilterStrategy<K, V>) recordFilterStrategy;
-		setAckDiscarded(true);
 	}
 
 	protected boolean isAckDiscarded() {
@@ -335,7 +334,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	/**
-	 * Set to true if the {@link #setRecordFilterStrategy(RecordFilterStrategy)} is in use.
+	 * Set to true if the {@link #setRecordFilterStrategy(RecordFilterStrategy)} should ack discarded messages.
 	 * @param ackDiscarded the ackDiscarded.
 	 */
 	public void setAckDiscarded(boolean ackDiscarded) {
