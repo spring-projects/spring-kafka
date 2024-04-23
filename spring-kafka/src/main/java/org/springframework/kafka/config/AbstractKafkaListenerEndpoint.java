@@ -62,6 +62,7 @@ import org.springframework.util.ObjectUtils;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Wang Zhiyang
+ * @author Sanghyeok An
  *
  * @see MethodKafkaListenerEndpoint
  */
