@@ -326,6 +326,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	@SuppressWarnings("unchecked")
 	public void setRecordFilterStrategy(RecordFilterStrategy<? super K, ? super V> recordFilterStrategy) {
 		this.recordFilterStrategy = (RecordFilterStrategy<K, V>) recordFilterStrategy;
+		setAckDiscarded(true);
 	}
 
 	protected boolean isAckDiscarded() {

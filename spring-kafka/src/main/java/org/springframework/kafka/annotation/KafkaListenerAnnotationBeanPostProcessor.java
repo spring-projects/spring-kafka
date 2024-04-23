@@ -703,14 +703,12 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		Object filter = resolveExpression(kafkaListener.filter());
 		if (filter instanceof RecordFilterStrategy rfs) {
 			endpoint.setRecordFilterStrategy(rfs);
-			endpoint.setAckDiscarded(true);
 		}
 		else {
 			String filterBeanName = resolveExpressionAsString(kafkaListener.filter(), "filter");
 			if (StringUtils.hasText(filterBeanName)) {
 				endpoint.setRecordFilterStrategy(
 						this.beanFactory.getBean(filterBeanName, RecordFilterStrategy.class));
-				endpoint.setAckDiscarded(true);
 			}
 		}
 	}
