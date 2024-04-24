@@ -58,4 +58,8 @@ public interface RecordFilterStrategy<K, V> {
 		return records;
 	}
 
+	default boolean ignoreEmptyBatch() {
+		return false;
+	}
+
 }
