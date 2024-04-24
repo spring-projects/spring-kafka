@@ -85,7 +85,4 @@ public interface Acknowledgment {
 		return false;
 	}
 
-	default boolean isAnyManualAck() {
-		throw new UnsupportedOperationException("You should implement your isAnyManualAck() method.");
-	}
 }
