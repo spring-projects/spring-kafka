@@ -43,6 +43,7 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 		implements BatchAcknowledgingConsumerAwareMessageListener<K, V> {
 
 	private final boolean ackDiscarded;
+	private final boolean consumerAware;
 
 	/**
 	 * Create an instance with the supplied strategy and delegate listener.
@@ -54,6 +55,8 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 
 		super(delegate, recordFilterStrategy);
 		this.ackDiscarded = false;
+		this.consumerAware = this.delegateType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
+							 || this.delegateType.equals(ListenerType.CONSUMER_AWARE);
 	}
 
 	/**
@@ -79,19 +82,26 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 
 		List<ConsumerRecord<K, V>> consumerRecords = getRecordFilterStrategy().filterBatch(records);
 		Assert.state(consumerRecords != null, "filter returned null from filterBatch");
-		boolean consumerAware = this.delegateType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
-						|| this.delegateType.equals(ListenerType.CONSUMER_AWARE);
-		/*
-		 *  An empty list goes to the listener if ackDiscarded is false and the listener can ack
-		 *  either through the acknowledgment
-		 */
-		if (consumerRecords.size() > 0 || consumerAware
-				|| (!this.ackDiscarded && this.delegateType.equals(ListenerType.ACKNOWLEDGING))) {
-			invokeDelegate(consumerRecords, acknowledgment, consumer);
+
+		if (consumerRecords.isEmpty()) {
+			if (acknowledgment != null && acknowledgment.isAnyManualAck()) {
+				invokeDelegate(consumerRecords, acknowledgment, consumer);
+			}
+			else {
+				if (this.ackDiscarded && acknowledgment != null) {
+					acknowledgment.acknowledge();
+				}
+			}
 		}
 		else {
-			if (this.ackDiscarded && acknowledgment != null) {
-				acknowledgment.acknowledge();
+			if (this.consumerAware
+				|| (!this.ackDiscarded && this.delegateType.equals(ListenerType.ACKNOWLEDGING))) {
+				invokeDelegate(consumerRecords, acknowledgment, consumer);
+			}
+			else {
+				if (this.ackDiscarded && acknowledgment != null) {
+					acknowledgment.acknowledge();
+				}
 			}
 		}
 	}

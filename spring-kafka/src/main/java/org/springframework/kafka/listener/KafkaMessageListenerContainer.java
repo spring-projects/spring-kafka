@@ -3396,16 +3396,28 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			private final ConsumerRecords<K, V> records;
 
 			private final List<ConsumerRecord<K, V>> recordList;
+			private boolean isAnyManualAck = false;
 
 			private volatile boolean acked;
 
 			private volatile int partial = -1;
 
 			ConsumerBatchAcknowledgment(ConsumerRecords<K, V> records,
-					@Nullable List<ConsumerRecord<K, V>> recordList) {
-
+										@Nullable List<ConsumerRecord<K, V>> recordList) {
 				this.records = records;
 				this.recordList = recordList;
+			}
+
+			ConsumerBatchAcknowledgment(ConsumerRecords<K, V> records,
+										@Nullable List<ConsumerRecord<K, V>> recordList,
+										boolean isAnyManualAck) {
+				this(records, recordList);
+				this.isAnyManualAck = isAnyManualAck;
+			}
+
+			@Override
+			public boolean isAnyManualAck() {
+				return this.isAnyManualAck;
 			}
 
 			@Override
@@ -3416,7 +3428,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				if (!this.acked) {
 					Map<TopicPartition, List<Long>> offs = ListenerConsumer.this.offsetsInThisBatch;
-					Map<TopicPartition, List<ConsumerRecord<K, V>>> deferred = ListenerConsumer.this.deferredOffsets;
+					Map<TopicPartition, List<ConsumerRecord<K, V>>> deferred =
+							ListenerConsumer.this.deferredOffsets;
 					for (TopicPartition topicPartition : this.records.partitions()) {
 						if (offs != null) {
 							offs.remove(topicPartition);
@@ -3431,22 +3444,23 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			@Override
 			public void acknowledge(int index) {
 				Assert.isTrue(index > this.partial,
-						() -> String.format("index (%d) must be greater than the previous partial commit (%d)", index,
-								this.partial));
+							  () -> String.format(
+									  "index (%d) must be greater than the previous partial commit (%d)", index,
+									  this.partial));
 				Assert.state(ListenerConsumer.this.isManualImmediateAck,
-						"Partial batch acknowledgment is only supported with AckMode.MANUAL_IMMEDIATE");
+							 "Partial batch acknowledgment is only supported with AckMode.MANUAL_IMMEDIATE");
 				Assert.state(this.recordList != null,
-						"Listener must receive a List of records to use partial batch acknowledgment");
+							 "Listener must receive a List of records to use partial batch acknowledgment");
 				Assert.isTrue(index >= 0 && index < this.recordList.size(),
-						() -> String.format("index (%d) is out of range (%d-%d)", index, 0,
-								this.recordList.size() - 1));
+							  () -> String.format("index (%d) is out of range (%d-%d)", index, 0,
+												  this.recordList.size() - 1));
 				Assert.state(Thread.currentThread().equals(ListenerConsumer.this.consumerThread),
-						"Partial batch acknowledgment is only supported on the consumer thread");
+							 "Partial batch acknowledgment is only supported on the consumer thread");
 				Map<TopicPartition, List<ConsumerRecord<K, V>>> offsetsToCommit = new LinkedHashMap<>();
 				for (int i = this.partial + 1; i <= index; i++) {
 					ConsumerRecord<K, V> record = this.recordList.get(i);
 					offsetsToCommit.computeIfAbsent(new TopicPartition(record.topic(), record.partition()),
-							tp -> new ArrayList<>()).add(record);
+													tp -> new ArrayList<>()).add(record);
 				}
 				if (!offsetsToCommit.isEmpty()) {
 					processAcks(new ConsumerRecords<>(offsetsToCommit));
@@ -3457,9 +3471,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			@Override
 			public void nack(int index, Duration sleep) {
 				Assert.state(Thread.currentThread().equals(ListenerConsumer.this.consumerThread),
-						"nack() can only be called on the consumer thread");
+							 "nack() can only be called on the consumer thread");
 				Assert.state(!ListenerConsumer.this.asyncReplies,
-						"nack() is not supported with out-of-order commits");
+							 "nack() is not supported with out-of-order commits");
 				Assert.isTrue(!sleep.isNegative(), "sleep cannot be negative");
 				Assert.isTrue(index >= 0 && index < this.records.count(), "index out of bounds");
 				ListenerConsumer.this.nackIndex = index;
@@ -3469,15 +3483,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				for (ConsumerRecord<K, V> cRecord : this.records) {
 					if (i++ < index) {
 						toAck.add(cRecord);
-					}
-					else {
+					} else {
 						break;
 					}
 				}
 				Map<TopicPartition, List<ConsumerRecord<K, V>>> newRecords = new HashMap<>();
 				for (ConsumerRecord<K, V> cRecord : toAck) {
 					newRecords.computeIfAbsent(new TopicPartition(cRecord.topic(), cRecord.partition()),
-							tp -> new LinkedList<>()).add(cRecord);
+											   tp -> new LinkedList<>()).add(cRecord);
 				}
 				processAcks(new ConsumerRecords<K, V>(newRecords));
 			}
