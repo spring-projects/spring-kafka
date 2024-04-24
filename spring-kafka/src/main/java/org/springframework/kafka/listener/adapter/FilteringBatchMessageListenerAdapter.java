@@ -74,8 +74,6 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 
 		super(delegate, recordFilterStrategy);
 		this.ackDiscarded = ackDiscarded;
-		this.consumerAware = this.delegateType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
-							 || this.delegateType.equals(ListenerType.CONSUMER_AWARE);
 	}
 
 	@Override
@@ -86,8 +84,13 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 		Assert.state(consumerRecords != null, "filter returned null from filterBatch");
 
 		if (consumerRecords.isEmpty()) {
-			if (acknowledgment != null) {
+			if (acknowledgment != null && acknowledgment.isAnyManualAck()) {
 				invokeDelegate(consumerRecords, acknowledgment, consumer);
+			}
+			else {
+				if (this.ackDiscarded && acknowledgment != null) {
+					acknowledgment.acknowledge();
+				}
 			}
 		}
 		else {
