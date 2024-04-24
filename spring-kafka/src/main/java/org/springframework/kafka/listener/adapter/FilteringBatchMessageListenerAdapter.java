@@ -53,10 +53,7 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 	 */
 	public FilteringBatchMessageListenerAdapter(BatchMessageListener<K, V> delegate,
 			RecordFilterStrategy<K, V> recordFilterStrategy) {
-
-		super(delegate, recordFilterStrategy);
-		this.ackDiscarded = false;
-		this.consumerAware = this.delegateType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE) || this.delegateType.equals(ListenerType.CONSUMER_AWARE);
+		this(delegate, recordFilterStrategy, false);
 	}
 
 	/**
@@ -81,10 +78,11 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 	public void onMessage(List<ConsumerRecord<K, V>> records, @Nullable Acknowledgment acknowledgment,
 			Consumer<?, ?> consumer) {
 
-		List<ConsumerRecord<K, V>> consumerRecords = getRecordFilterStrategy().filterBatch(records);
+		final RecordFilterStrategy<K, V> recordFilterStrategy = getRecordFilterStrategy();
+		final List<ConsumerRecord<K, V>> consumerRecords = recordFilterStrategy.filterBatch(records);
 		Assert.state(consumerRecords != null, "filter returned null from filterBatch");
 
-		if (consumerRecords.isEmpty()) {
+		if (recordFilterStrategy.ignoreEmptyBatch()) {
 			if (acknowledgment != null) {
 				invokeDelegate(consumerRecords, acknowledgment, consumer);
 			}
