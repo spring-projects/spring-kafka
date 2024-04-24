@@ -3396,6 +3396,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			private final ConsumerRecords<K, V> records;
 
 			private final List<ConsumerRecord<K, V>> recordList;
+			private boolean isAnyManualAck = false;
 
 			private volatile boolean acked;
 
@@ -3405,6 +3406,18 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 										@Nullable List<ConsumerRecord<K, V>> recordList) {
 				this.records = records;
 				this.recordList = recordList;
+			}
+
+			ConsumerBatchAcknowledgment(ConsumerRecords<K, V> records,
+										@Nullable List<ConsumerRecord<K, V>> recordList,
+										boolean isAnyManualAck) {
+				this(records, recordList);
+				this.isAnyManualAck = isAnyManualAck;
+			}
+
+			@Override
+			public boolean isAnyManualAck() {
+				return this.isAnyManualAck;
 			}
 
 			@Override
