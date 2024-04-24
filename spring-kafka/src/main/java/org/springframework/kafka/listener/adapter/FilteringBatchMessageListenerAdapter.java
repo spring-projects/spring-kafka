@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,6 +44,8 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 
 	private final boolean ackDiscarded;
 
+	private final boolean consumerAware;
+
 	/**
 	 * Create an instance with the supplied strategy and delegate listener.
 	 * @param delegate the delegate.
@@ -54,6 +56,7 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 
 		super(delegate, recordFilterStrategy);
 		this.ackDiscarded = false;
+		this.consumerAware = this.delegateType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE) || this.delegateType.equals(ListenerType.CONSUMER_AWARE);
 	}
 
 	/**
@@ -71,6 +74,7 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 
 		super(delegate, recordFilterStrategy);
 		this.ackDiscarded = ackDiscarded;
+		this.consumerAware = this.delegateType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE) || this.delegateType.equals(ListenerType.CONSUMER_AWARE);
 	}
 
 	@Override
@@ -79,19 +83,21 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 
 		List<ConsumerRecord<K, V>> consumerRecords = getRecordFilterStrategy().filterBatch(records);
 		Assert.state(consumerRecords != null, "filter returned null from filterBatch");
-		boolean consumerAware = this.delegateType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
-						|| this.delegateType.equals(ListenerType.CONSUMER_AWARE);
-		/*
-		 *  An empty list goes to the listener if ackDiscarded is false and the listener can ack
-		 *  either through the acknowledgment
-		 */
-		if (consumerRecords.size() > 0 || consumerAware
-				|| (!this.ackDiscarded && this.delegateType.equals(ListenerType.ACKNOWLEDGING))) {
-			invokeDelegate(consumerRecords, acknowledgment, consumer);
+
+		if (consumerRecords.isEmpty()) {
+			if (acknowledgment != null) {
+				invokeDelegate(consumerRecords, acknowledgment, consumer);
+			}
 		}
 		else {
-			if (this.ackDiscarded && acknowledgment != null) {
-				acknowledgment.acknowledge();
+			if (this.consumerAware
+				|| (!this.ackDiscarded && this.delegateType.equals(ListenerType.ACKNOWLEDGING))) {
+				invokeDelegate(consumerRecords, acknowledgment, consumer);
+			}
+			else {
+				if (this.ackDiscarded && acknowledgment != null) {
+					acknowledgment.acknowledge();
+				}
 			}
 		}
 	}
