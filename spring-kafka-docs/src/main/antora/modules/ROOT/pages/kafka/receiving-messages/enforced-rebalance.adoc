@@ -6,7 +6,7 @@ Starting with version `3.1.2`, Spring for Apache Kafka provides an option to inv
 When calling this API, it is simply alerting the Kafka consumer to trigger an enforced rebalance; the actual rebalance will only occur as part of the next `poll()` operation.
 If there is already a rebalance in progress, calling an enforced rebalance is a NO-OP.
 The caller must wait for the current rebalance to complete before invoking another one.
-See the javadocs for `enfroceRebalance` for more details.
+See the javadocs for `enforceRebalance` for more details.
 
 The following code snippet shows the essence of enforcing a rebalance using the message listener container.
 
