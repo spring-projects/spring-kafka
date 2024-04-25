@@ -36,6 +36,7 @@ import org.springframework.util.Assert;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Sanghyeok An
  *
  */
 public class FilteringBatchMessageListenerAdapter<K, V>
@@ -82,20 +83,18 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 		final List<ConsumerRecord<K, V>> consumerRecords = recordFilterStrategy.filterBatch(records);
 		Assert.state(consumerRecords != null, "filter returned null from filterBatch");
 
-		if (recordFilterStrategy.ignoreEmptyBatch()) {
-			if (acknowledgment != null) {
-				invokeDelegate(consumerRecords, acknowledgment, consumer);
-			}
+		if (recordFilterStrategy.ignoreEmptyBatch() &&
+			consumerRecords.isEmpty() &&
+			acknowledgment != null) {
+			acknowledgment.acknowledge();
+		}
+		else if (consumerRecords.size() > 0 || this.consumerAware
+			|| (!this.ackDiscarded && this.delegateType.equals(ListenerType.ACKNOWLEDGING))) {
+			invokeDelegate(consumerRecords, acknowledgment, consumer);
 		}
 		else {
-			if (this.consumerAware
-				|| (!this.ackDiscarded && this.delegateType.equals(ListenerType.ACKNOWLEDGING))) {
-				invokeDelegate(consumerRecords, acknowledgment, consumer);
-			}
-			else {
-				if (this.ackDiscarded && acknowledgment != null) {
-					acknowledgment.acknowledge();
-				}
+			if (this.ackDiscarded && acknowledgment != null) {
+				acknowledgment.acknowledge();
 			}
 		}
 	}
