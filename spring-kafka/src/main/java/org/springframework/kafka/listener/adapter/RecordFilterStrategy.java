@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ import java.util.List;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.kafka.listener.BatchMessageListener;
+
 /**
  * Implementations of this interface can signal that a record about
  * to be delivered to a message listener should be discarded instead
@@ -30,7 +32,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  * @param <V> the value type.
  *
  * @author Gary Russell
- *
+ * @author Sanghyeok An
  */
 public interface RecordFilterStrategy<K, V> {
 
@@ -58,6 +60,12 @@ public interface RecordFilterStrategy<K, V> {
 		return records;
 	}
 
+	/**
+	 * Returns a boolean value that determines whether {@link FilteringBatchMessageListenerAdapter} invoke the {@link BatchMessageListener} when all {@link ConsumerRecord}
+	 * have been filtered and return an EmptyList. The default is not to invoke the {@link BatchMessageListener} (false).
+	 * @return If true is returned, the {@link FilteringBatchMessageListenerAdapter} will not invoke the {@link BatchMessageListener}
+	 * @since 3.2.0
+	 */
 	default boolean ignoreEmptyBatch() {
 		return false;
 	}
