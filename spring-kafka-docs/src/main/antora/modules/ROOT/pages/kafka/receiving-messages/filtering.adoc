@@ -28,7 +28,7 @@ public void listen(Thing thing) {
 ----
 
 [[x32-ignore-empty-batch-messages]]
-=== Ignore empty batch when you use `batch` mode.
+=== Ignore empty batch in `batch` mode.
 
 Starting with version 3.3, Ignoring empty batches that result from filtering by `RecordFilterStrategy` is supported. +
 When implementing `RecordFilterStrategy`, it can be configured through `ignoreEmptyBatch()`. +
