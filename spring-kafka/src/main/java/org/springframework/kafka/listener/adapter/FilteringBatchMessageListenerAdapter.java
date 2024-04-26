@@ -72,7 +72,8 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 
 		super(delegate, recordFilterStrategy);
 		this.ackDiscarded = ackDiscarded;
-		this.consumerAware = this.delegateType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE) || this.delegateType.equals(ListenerType.CONSUMER_AWARE);
+		this.consumerAware = this.delegateType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE) ||
+							this.delegateType.equals(ListenerType.CONSUMER_AWARE);
 	}
 
 	@Override

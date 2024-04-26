@@ -27,14 +27,18 @@ public void listen(Thing thing) {
 }
 ----
 
-### Ignore empty batch when you use `batch` mode.
-Starting with version `3.3.0`, we support ignoring empty batch that result from filtering by `RecordFilterStrategy`.
-When implementing `RecordFilterStrategy`, you can configure it through `ignoreEmptyBatch()`. default is `false`, that means `KafkaListener` will be invoked even if all `ConsumerRecord` are filtered out.
+[[x32-ignore-empty-batch-messages]]
+=== Ignore empty batch when you use `batch` mode.
 
-If `true` is returned, the `KafkaListener` will not be invoked when all `ConsumerRecord` s are filtered out. However, commit to broker, will still be executed.
-If `false` is returned, the `KafkaListener` will be invoked when all `ConsumerRecord` s are filtered out.
+Starting with version 3.3, Ignoring empty batches that result from filtering by `RecordFilterStrategy` is supported. +
+When implementing `RecordFilterStrategy`, it can be configured through `ignoreEmptyBatch()`. +
+The default setting is `false`, indicating `KafkaListener` will be invoked even if all `ConsumerRecord` s are filtered out. +
 
-Let's look some examples.
+If `true` is returned, the `KafkaListener` [underline]#will not be invoked# when all `ConsumerRecord` are filtered out. +
+However, commit to broker, will still be executed. +
+If `false` is returned, the `KafkaListener` [underline]#will be invoked# when all `ConsumerRecord` are filtered out. +
+
+Here are some examples.
 
 [source,java]
 ----
@@ -54,12 +58,12 @@ public class IgnoreEmptyBatchRecordFilterStrategy implements RecordFilterStrateg
 
 // NOTE: ignoreEmptyBatchRecordFilterStrategy is bean name of IgnoreEmptyBatchRecordFilterStrategy instance.
 @KafkaListener(id = "filtered", topics = "topic", filter = "ignoreEmptyBatchRecordFilterStrategy")
-public void listen(Thing thing) {
+public void listen(List<Thing> things) {
     ...
 }
 ----
-In this case, `IgnoreEmptyBatchRecordFilterStrategy` always returns empty list and return `true` as result of `ignoreEmptyBatch()`.
-thus `KafkaListener#listen(...)` never will be invoked at all.
+In this case, `IgnoreEmptyBatchRecordFilterStrategy` always returns empty list and return `true` as result of `ignoreEmptyBatch()`. +
+Thus `KafkaListener#listen(...)` never will be invoked at all. +
 
 
 [source,java]
@@ -80,9 +84,9 @@ public class NotIgnoreEmptyBatchRecordFilterStrategy implements RecordFilterStra
 
 // NOTE: notIgnoreEmptyBatchRecordFilterStrategy is bean name of NotIgnoreEmptyBatchRecordFilterStrategy instance.
 @KafkaListener(id = "filtered", topics = "topic", filter = "notIgnoreEmptyBatchRecordFilterStrategy")
-public void listen(Thing thing) {
+public void listen(List<Thing> things) {
     ...
 }
 ----
-However, in this case, `IgnoreEmptyBatchRecordFilterStrategy` always returns empty list and return `false` as result of `ignoreEmptyBatch()`.
+However, in this case, `IgnoreEmptyBatchRecordFilterStrategy` always returns empty list and return `false` as result of `ignoreEmptyBatch()`. +
 thus `KafkaListener#listen(...)` always will be invoked.

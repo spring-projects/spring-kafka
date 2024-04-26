@@ -87,13 +87,11 @@ public class FilteringAdapterTests {
 			@Override
 			public List<ConsumerRecord<String, String>> filterBatch(
 					List<ConsumerRecord<String, String>> consumerRecords) {
-				// SUT
 				return List.of();
 			}
 
 			@Override
 			public boolean ignoreEmptyBatch() {
-				// SUT
 				return true;
 			}
 		};
@@ -127,13 +125,11 @@ public class FilteringAdapterTests {
 			@Override
 			public List<ConsumerRecord<String, String>> filterBatch(
 					List<ConsumerRecord<String, String>> consumerRecords) {
-				// SUT
 				return consumerRecords;
 			}
 
 			@Override
 			public boolean ignoreEmptyBatch() {
-				// SUT
 				return true;
 			}
 		};
@@ -170,14 +166,7 @@ public class FilteringAdapterTests {
 			@Override
 			public List<ConsumerRecord<String, String>> filterBatch(
 					List<ConsumerRecord<String, String>> consumerRecords) {
-				// SUT
 				return List.of();
-			}
-
-			@Override
-			public boolean ignoreEmptyBatch() {
-				// SUT
-				return false;
 			}
 		};
 
@@ -213,15 +202,9 @@ public class FilteringAdapterTests {
 
 			@Override
 			public List<ConsumerRecord<String, String>> filterBatch(
-					// SUT
+					// System Under Test
 					List<ConsumerRecord<String, String>> consumerRecords) {
 				return consumerRecords;
-			}
-
-			@Override
-			public boolean ignoreEmptyBatch() {
-				// SUT
-				return false;
 			}
 		};
 
@@ -244,4 +227,5 @@ public class FilteringAdapterTests {
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		verify(ack, never()).acknowledge();
 	}
+
 }
