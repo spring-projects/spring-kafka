@@ -207,12 +207,13 @@ public class FilteringAdapterTests {
 		final RecordFilterStrategy<String, String> filter = new RecordFilterStrategy<>() {
 			@Override
 			public boolean filter(ConsumerRecord<String, String> consumerRecord) {
-				// SUT
+
 				return true;
 			}
 
 			@Override
 			public List<ConsumerRecord<String, String>> filterBatch(
+					// SUT
 					List<ConsumerRecord<String, String>> consumerRecords) {
 				return consumerRecords;
 			}
