@@ -64,7 +64,7 @@ public interface RecordFilterStrategy<K, V> {
 	 * Returns a boolean value that determines whether {@link FilteringBatchMessageListenerAdapter} invoke the {@link BatchMessageListener} when all {@link ConsumerRecord}
 	 * have been filtered and return an EmptyList. The default is not to invoke the {@link BatchMessageListener} (false).
 	 * @return If true is returned, the {@link FilteringBatchMessageListenerAdapter} will not invoke the {@link BatchMessageListener}
-	 * @since 3.2.0
+	 * @since 3.3
 	 */
 	default boolean ignoreEmptyBatch() {
 		return false;

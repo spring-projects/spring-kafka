@@ -29,8 +29,11 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.record.MemoryRecords.RecordFilter;
 import org.junit.jupiter.api.Test;
 
+import org.mockito.Mockito;
 import org.springframework.kafka.listener.BatchAcknowledgingMessageListener;
 import org.springframework.kafka.support.Acknowledgment;
 
@@ -72,4 +75,171 @@ public class FilteringAdapterTests {
 		verify(listener, never()).onMessage(any(List.class), any(Acknowledgment.class));
 	}
 
+	@Test
+	public void listener_should_not_be_invoked_on_emptyList_and_ignoreEmptyBatch_true() throws Exception {
+		// Given :
+		final RecordFilterStrategy<String, String> filter = new RecordFilterStrategy<>() {
+			@Override
+			public boolean filter(ConsumerRecord<String, String> consumerRecord) {
+				return true;
+			}
+
+			@Override
+			public List<ConsumerRecord<String, String>> filterBatch(
+					List<ConsumerRecord<String, String>> consumerRecords) {
+				// SUT
+				return List.of();
+			}
+
+			@Override
+			public boolean ignoreEmptyBatch() {
+				// SUT
+				return true;
+			}
+		};
+
+		final BatchAcknowledgingMessageListener<String, String> listener = mock(BatchAcknowledgingMessageListener.class);
+		final FilteringBatchMessageListenerAdapter<String, String> adapter =
+				new FilteringBatchMessageListenerAdapter<String, String>(listener, filter);
+		final List<ConsumerRecord<String, String>> consumerRecords = new ArrayList<>();
+		final Acknowledgment ack = mock(Acknowledgment.class);
+
+		// When :
+		adapter.onMessage(consumerRecords, ack, null);
+
+		// Then
+		verify(ack, Mockito.only()).acknowledge();
+		verify(listener, never()).onMessage(any(List.class), any(Acknowledgment.class), any(KafkaConsumer.class));
+		verify(listener, never()).onMessage(any(List.class), any(Acknowledgment.class));
+		verify(listener, never()).onMessage(any(List.class), any(KafkaConsumer.class));
+		verify(listener, never()).onMessage(any(List.class));
+	}
+
+	@Test
+	public void listener_should_be_invoked_on_notEmptyList_and_ignoreEmptyBatch_true() throws Exception {
+		// Given :
+		final RecordFilterStrategy<String, String> filter = new RecordFilterStrategy<>() {
+			@Override
+			public boolean filter(ConsumerRecord<String, String> consumerRecord) {
+				return true;
+			}
+
+			@Override
+			public List<ConsumerRecord<String, String>> filterBatch(
+					List<ConsumerRecord<String, String>> consumerRecords) {
+				// SUT
+				return consumerRecords;
+			}
+
+			@Override
+			public boolean ignoreEmptyBatch() {
+				// SUT
+				return true;
+			}
+		};
+
+		final BatchAcknowledgingMessageListener<String, String> listener = mock(BatchAcknowledgingMessageListener.class);
+		final FilteringBatchMessageListenerAdapter<String, String> adapter =
+				new FilteringBatchMessageListenerAdapter<String, String>(listener, filter);
+		final List<ConsumerRecord<String, String>> consumerRecords = List.of(new ConsumerRecord<>("hello-topic", 1, 1, "hello-key", "hello-value"));
+		final Acknowledgment ack = mock(Acknowledgment.class);
+		final CountDownLatch latch = new CountDownLatch(1);
+		willAnswer(i -> {
+			latch.countDown();
+			return null;
+		}).given(listener).onMessage(any(List.class), any(Acknowledgment.class));
+
+		// When :
+		adapter.onMessage(consumerRecords, ack, null);
+
+		// Then
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		verify(ack, never()).acknowledge();
+	}
+
+	@Test
+	public void listener_should_be_invoked_on_emptyList_and_ignoreEmptyBatch_false() throws Exception {
+		// Given :
+		final RecordFilterStrategy<String, String> filter = new RecordFilterStrategy<>() {
+			@Override
+			public boolean filter(ConsumerRecord<String, String> consumerRecord) {
+				return true;
+			}
+
+			@Override
+			public List<ConsumerRecord<String, String>> filterBatch(
+					List<ConsumerRecord<String, String>> consumerRecords) {
+				// SUT
+				return List.of();
+			}
+
+			@Override
+			public boolean ignoreEmptyBatch() {
+				// SUT
+				return false;
+			}
+		};
+
+		final BatchAcknowledgingMessageListener<String, String> listener = mock(BatchAcknowledgingMessageListener.class);
+		final FilteringBatchMessageListenerAdapter<String, String> adapter =
+				new FilteringBatchMessageListenerAdapter<String, String>(listener, filter);
+		final List<ConsumerRecord<String, String>> consumerRecords = new ArrayList<>();
+		final CountDownLatch latch = new CountDownLatch(1);
+		final Acknowledgment ack = mock(Acknowledgment.class);
+
+		willAnswer(i -> {
+			latch.countDown();
+			return null;
+		}).given(listener).onMessage(any(List.class), any(Acknowledgment.class));
+
+		// When :
+		adapter.onMessage(consumerRecords, ack, null);
+
+		// Then
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		verify(ack, never()).acknowledge();
+	}
+
+	@Test
+	public void listener_should_be_invoked_on_notEmptyList_and_ignoreEmptyBatch_false() throws Exception {
+		// Given :
+		final RecordFilterStrategy<String, String> filter = new RecordFilterStrategy<>() {
+			@Override
+			public boolean filter(ConsumerRecord<String, String> consumerRecord) {
+				// SUT
+				return true;
+			}
+
+			@Override
+			public List<ConsumerRecord<String, String>> filterBatch(
+					List<ConsumerRecord<String, String>> consumerRecords) {
+				return consumerRecords;
+			}
+
+			@Override
+			public boolean ignoreEmptyBatch() {
+				// SUT
+				return false;
+			}
+		};
+
+		final BatchAcknowledgingMessageListener<String, String> listener = mock(BatchAcknowledgingMessageListener.class);
+		final FilteringBatchMessageListenerAdapter<String, String> adapter =
+				new FilteringBatchMessageListenerAdapter<String, String>(listener, filter);
+		final List<ConsumerRecord<String, String>> consumerRecords = new ArrayList<>();
+		final CountDownLatch latch = new CountDownLatch(1);
+		final Acknowledgment ack = mock(Acknowledgment.class);
+
+		willAnswer(i -> {
+			latch.countDown();
+			return null;
+		}).given(listener).onMessage(any(List.class), any(Acknowledgment.class));
+
+		// When :
+		adapter.onMessage(consumerRecords, ack, null);
+
+		// Then
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		verify(ack, never()).acknowledge();
+	}
 }
