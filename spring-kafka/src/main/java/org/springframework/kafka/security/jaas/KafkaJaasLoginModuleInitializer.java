@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2023 the original author or authors.
+ * Copyright 2017-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package org.springframework.kafka.security.jaas;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +36,7 @@ import org.springframework.util.Assert;
  * @author Marius Bogoevici
  * @author Gary Russell
  * @author Edan Idzerda
+ * @author Soby Chacko
  *
  * @since 1.3
  */
@@ -87,8 +87,6 @@ public class KafkaJaasLoginModuleInitializer implements SmartInitializingSinglet
 
 	private final boolean ignoreJavaLoginConfigParamSystemProperty;
 
-	private final File placeholderJaasConfiguration;
-
 	private final Map<String, String> options = new HashMap<>();
 
 	private String loginModule = "com.sun.security.auth.module.Krb5LoginModule";
@@ -99,8 +97,6 @@ public class KafkaJaasLoginModuleInitializer implements SmartInitializingSinglet
 	public KafkaJaasLoginModuleInitializer() throws IOException {
 		// we ignore the system property if it wasn't originally set at launch
 		this.ignoreJavaLoginConfigParamSystemProperty = (System.getProperty(JaasUtils.JAVA_LOGIN_CONFIG_PARAM) == null);
-		this.placeholderJaasConfiguration = File.createTempFile("kafka-client-jaas-config-placeholder", "conf");
-		this.placeholderJaasConfiguration.deleteOnExit();
 	}
 
 	public void setLoginModule(String loginModule) {
@@ -137,14 +133,6 @@ public class KafkaJaasLoginModuleInitializer implements SmartInitializingSinglet
 					new AppConfigurationEntry[] { kafkaClientConfigurationEntry });
 			Configuration.setConfiguration(new InternalConfiguration(configurationEntries,
 					Configuration.getConfiguration()));
-			// Workaround for a 0.9 client issue where even if the Configuration is
-			// set
-			// a system property check is performed.
-			// Since the Configuration already exists, this will be ignored.
-			if (this.placeholderJaasConfiguration != null) {
-				System.setProperty(JaasUtils.JAVA_LOGIN_CONFIG_PARAM,
-						this.placeholderJaasConfiguration.getAbsolutePath());
-			}
 		}
 	}
 
