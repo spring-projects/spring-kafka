@@ -8,6 +8,11 @@
 		<property name="file" value="${config_loc}/checkstyle-suppressions.xml"/>
 	</module>
 
+	<module name="LineLength">
+		<property name="max" value="119"/>
+		<property name="ignorePattern" value="^package.*|^import.*|a href|href|http://|https://|ftp://"/>
+	</module>
+
 	<!-- Root Checks -->
 	<module name="RegexpHeader">
 		<property name="headerFile" value="${config_loc}/checkstyle-header.txt"/>
