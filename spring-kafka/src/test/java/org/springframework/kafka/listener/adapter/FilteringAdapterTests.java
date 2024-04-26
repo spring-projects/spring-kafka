@@ -21,6 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.only;
 import static org.mockito.Mockito.verify;
 
 import java.util.ArrayList;
@@ -30,10 +31,8 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.record.MemoryRecords.RecordFilter;
 import org.junit.jupiter.api.Test;
 
-import org.mockito.Mockito;
 import org.springframework.kafka.listener.BatchAcknowledgingMessageListener;
 import org.springframework.kafka.support.Acknowledgment;
 
@@ -109,7 +108,7 @@ public class FilteringAdapterTests {
 		adapter.onMessage(consumerRecords, ack, null);
 
 		// Then
-		verify(ack, Mockito.only()).acknowledge();
+		verify(ack, only()).acknowledge();
 		verify(listener, never()).onMessage(any(List.class), any(Acknowledgment.class), any(KafkaConsumer.class));
 		verify(listener, never()).onMessage(any(List.class), any(Acknowledgment.class));
 		verify(listener, never()).onMessage(any(List.class), any(KafkaConsumer.class));
@@ -144,6 +143,7 @@ public class FilteringAdapterTests {
 				new FilteringBatchMessageListenerAdapter<String, String>(listener, filter);
 		final List<ConsumerRecord<String, String>> consumerRecords = List.of(new ConsumerRecord<>("hello-topic", 1, 1, "hello-key", "hello-value"));
 		final Acknowledgment ack = mock(Acknowledgment.class);
+
 		final CountDownLatch latch = new CountDownLatch(1);
 		willAnswer(i -> {
 			latch.countDown();
@@ -185,9 +185,9 @@ public class FilteringAdapterTests {
 		final FilteringBatchMessageListenerAdapter<String, String> adapter =
 				new FilteringBatchMessageListenerAdapter<String, String>(listener, filter);
 		final List<ConsumerRecord<String, String>> consumerRecords = new ArrayList<>();
-		final CountDownLatch latch = new CountDownLatch(1);
 		final Acknowledgment ack = mock(Acknowledgment.class);
 
+		final CountDownLatch latch = new CountDownLatch(1);
 		willAnswer(i -> {
 			latch.countDown();
 			return null;
@@ -228,10 +228,10 @@ public class FilteringAdapterTests {
 		final BatchAcknowledgingMessageListener<String, String> listener = mock(BatchAcknowledgingMessageListener.class);
 		final FilteringBatchMessageListenerAdapter<String, String> adapter =
 				new FilteringBatchMessageListenerAdapter<String, String>(listener, filter);
-		final List<ConsumerRecord<String, String>> consumerRecords = new ArrayList<>();
-		final CountDownLatch latch = new CountDownLatch(1);
+		final List<ConsumerRecord<String, String>> consumerRecords = List.of(new ConsumerRecord<>("hello-topic", 1, 1, "hello-key", "hello-value"));
 		final Acknowledgment ack = mock(Acknowledgment.class);
 
+		final CountDownLatch latch = new CountDownLatch(1);
 		willAnswer(i -> {
 			latch.countDown();
 			return null;
