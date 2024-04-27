@@ -24,19 +24,22 @@ import org.apache.kafka.clients.consumer.Consumer;
 
 import io.confluent.parallelconsumer.ParallelConsumerOptions;
 import io.confluent.parallelconsumer.ParallelConsumerOptions.ProcessingOrder;
+
+import org.apache.kafka.clients.producer.Producer;
 import org.springframework.util.StringUtils;
 import org.springframework.kafka.annotation.EnableParallelConsumer;
+// It would be better to be migrated to org.springframework.boot.autoconfigure.kafka.KafkaProperties.
 
 /**
  * ParallelConsumerConfig is for config of {@link io.confluent.parallelconsumer}.
  * This will be registered as Spring Bean when {@link EnableParallelConsumer} is annotated to your spring application.
  * @author ...
- * @since 3.2.0
+ * @since 3.3
  */
 
 public class ParallelConsumerConfig {
 
-
+	public static final String DEFAULT_BEAN_NAME = "parallelConsumerConfig";
 	private static final String PARALLEL_CONSUMER_MAX_CONCURRENCY = "PARALLEL_CONSUMER_MAX_CONCURRENCY";
 	private static final String PARALLEL_CONSUMER_ORDERING = "PARALLEL_CONSUMER_ORDERING";
 	private static final String ALLOW_EAGER_PROCESSING_DURING_TRANSACTION_COMMIT = "ALLOW_EAGER_PROCESSING_DURING_TRANSACTION_COMMIT";
@@ -67,9 +70,19 @@ public class ParallelConsumerConfig {
 		};
 	}
 
-	public <K,V> ParallelConsumerOptions<K, V> toConsumerOptions(Consumer<K, V> consumer) {
+	public <K,V> ParallelConsumerOptions<K, V> toConsumerOptions(
+			ParallelConsumerOptions.ParallelConsumerOptionsBuilder<K, V> builder,
+			Consumer<K, V> consumer,
+			Producer<K, V> producer) {
 
-		ParallelConsumerOptions.ParallelConsumerOptionsBuilder<K, V> builder = ParallelConsumerOptions.builder();
+		builder.producer(producer);
+		return toConsumerOptions(builder, consumer);
+	}
+
+	public <K,V> ParallelConsumerOptions<K, V> toConsumerOptions(
+			ParallelConsumerOptions.ParallelConsumerOptionsBuilder<K, V> builder,
+			Consumer<K, V> consumer) {
+
 		builder.consumer(consumer);
 
 		final String maxConcurrencyString = this.properties.get(PARALLEL_CONSUMER_MAX_CONCURRENCY);

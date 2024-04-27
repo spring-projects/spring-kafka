@@ -17,32 +17,16 @@
 package org.springframework.kafka.core;
 
 import java.util.List;
-import java.util.regex.Pattern;
+import java.util.function.Consumer;
 
+import org.apache.kafka.clients.producer.ProducerRecord;
+
+import io.confluent.parallelconsumer.ParallelStreamProcessor.ConsumeProduceResult;
 import io.confluent.parallelconsumer.PollContext;
 
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.springframework.kafka.config.ParallelConsumerContext;
-
 /**
- * User should create ConcreteClass of this and register it as Spring Bean.
- * Concrete class of ParallelConsumerCallback will be registered {@link ParallelConsumerContext},
- * and then it will be used in {@link ParallelConsumerFactory} when ParallelConsumerFactory start.
- * @author ...
- * @since 3.2.0
+ * ...
  */
 
-public interface ParallelConsumerCallback<K, V> {
-
-	/**
-	 * ...
-	 */
-	List<String> getTopics();
-	default Pattern getSubscribeTopicsPattern(){
-		return null;
-	}
-	default ConsumerRebalanceListener getRebalanceListener(){
-		return null;
-	}
+public interface PollAndProduceManyResultCallback<K, V> extends PollAndProduceManyCallback<K, V>, ResultConsumerCallback<K, V> {
 }

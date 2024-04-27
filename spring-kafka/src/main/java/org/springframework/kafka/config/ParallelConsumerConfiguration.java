@@ -16,8 +16,11 @@
 
 package org.springframework.kafka.config;
 
+import javax.annotation.Nullable;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.ParallelConsumerCallback;
 import org.springframework.kafka.core.ParallelConsumerFactory;
 import org.springframework.kafka.annotation.EnableParallelConsumer;
@@ -34,14 +37,22 @@ import org.springframework.kafka.annotation.EnableParallelConsumer;
 
 public class ParallelConsumerConfiguration<K, V> {
 
+	@Bean(name = ParallelConsumerConfig.DEFAULT_BEAN_NAME)
+	public ParallelConsumerConfig parallelConsumerConfig() {
+		return new ParallelConsumerConfig();
+	}
+
 	@Bean(name = ParallelConsumerContext.DEFAULT_BEAN_NAME)
-	public ParallelConsumerContext<K,V> parallelConsumerContext(ParallelConsumerCallback<K, V> parallelConsumerCallback) {
-		return new ParallelConsumerContext(parallelConsumerCallback);
+	public ParallelConsumerContext<K,V> parallelConsumerContext(ParallelConsumerConfig parallelConsumerConfig,
+																ParallelConsumerCallback<K, V> parallelConsumerCallback) {
+		return new ParallelConsumerContext(parallelConsumerConfig,
+										   parallelConsumerCallback);
 	}
 
 	@Bean(name = ParallelConsumerFactory.DEFAULT_BEAN_NAME)
 	public ParallelConsumerFactory<K,V> parallelConsumerFactory(DefaultKafkaConsumerFactory<K,V> consumerFactory,
+																DefaultKafkaProducerFactory<K,V> producerFactory,
 																ParallelConsumerContext<K,V> parallelConsumerContext) {
-		return new ParallelConsumerFactory(parallelConsumerContext, consumerFactory);
+		return new ParallelConsumerFactory(parallelConsumerContext, consumerFactory, producerFactory);
 	}
 }
