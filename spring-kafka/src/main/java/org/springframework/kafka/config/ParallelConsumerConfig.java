@@ -16,18 +16,15 @@
 
 package org.springframework.kafka.config;
 
-import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.apache.kafka.clients.consumer.Consumer;
 
 import io.confluent.parallelconsumer.ParallelConsumerOptions;
-import io.confluent.parallelconsumer.ParallelConsumerOptions.ProcessingOrder;
 
 import org.apache.kafka.clients.producer.Producer;
-import org.springframework.util.StringUtils;
+import org.springframework.kafka.core.parallelconsumer.ParallelConsumerOptionsProvider;
 import org.springframework.kafka.annotation.EnableParallelConsumer;
+
 // It would be better to be migrated to org.springframework.boot.autoconfigure.kafka.KafkaProperties.
 
 /**
@@ -37,40 +34,16 @@ import org.springframework.kafka.annotation.EnableParallelConsumer;
  * @since 3.3
  */
 
-public class ParallelConsumerConfig {
+public class ParallelConsumerConfig<K, V> {
 
 	public static final String DEFAULT_BEAN_NAME = "parallelConsumerConfig";
-	private static final String PARALLEL_CONSUMER_MAX_CONCURRENCY = "PARALLEL_CONSUMER_MAX_CONCURRENCY";
-	private static final String PARALLEL_CONSUMER_ORDERING = "PARALLEL_CONSUMER_ORDERING";
-	private static final String ALLOW_EAGER_PROCESSING_DURING_TRANSACTION_COMMIT = "ALLOW_EAGER_PROCESSING_DURING_TRANSACTION_COMMIT";
-	private static final String COMMIT_LOCK_ACQUISITION_TIMEOUT = "COMMIT_LOCK_ACQUISITION_TIMEOUT";
-	private static final String COMMIT_INTERVAL = "COMMIT_INTERVAL";
-	private final Map<String, String> properties = new HashMap<>();
+	private final ParallelConsumerOptionsProvider<K, V> provider;
 
-	public ParallelConsumerConfig() {
-
-		final String maxConcurrency = System.getenv(PARALLEL_CONSUMER_MAX_CONCURRENCY);
-		final String ordering = System.getenv(PARALLEL_CONSUMER_ORDERING);
-		final String allowEagerProcessingDuringTransactionCommit = System.getenv(ALLOW_EAGER_PROCESSING_DURING_TRANSACTION_COMMIT);
-		final String commitLockAcquisitionTimeout = System.getenv(COMMIT_LOCK_ACQUISITION_TIMEOUT);
-		final String commitInterval = System.getenv(COMMIT_INTERVAL);
-
-		this.properties.put(PARALLEL_CONSUMER_MAX_CONCURRENCY, maxConcurrency);
-		this.properties.put(PARALLEL_CONSUMER_ORDERING, ordering);
-		this.properties.put(ALLOW_EAGER_PROCESSING_DURING_TRANSACTION_COMMIT, allowEagerProcessingDuringTransactionCommit);
-		this.properties.put(COMMIT_LOCK_ACQUISITION_TIMEOUT, commitLockAcquisitionTimeout);
-		this.properties.put(COMMIT_INTERVAL, commitInterval);
+	public ParallelConsumerConfig(ParallelConsumerOptionsProvider<K, V> provider) {
+		this.provider = provider;
 	}
 
-	private ProcessingOrder toOrder(String order) {
-		return switch (order) {
-			case "partition" -> ProcessingOrder.PARTITION;
-			case "unordered" -> ProcessingOrder.UNORDERED;
-			default -> ProcessingOrder.KEY; // Confluent Consumer Default Policy
-		};
-	}
-
-	public <K,V> ParallelConsumerOptions<K, V> toConsumerOptions(
+	public ParallelConsumerOptions<K, V> toConsumerOptions(
 			ParallelConsumerOptions.ParallelConsumerOptionsBuilder<K, V> builder,
 			Consumer<K, V> consumer,
 			Producer<K, V> producer) {
@@ -79,43 +52,110 @@ public class ParallelConsumerConfig {
 		return toConsumerOptions(builder, consumer);
 	}
 
-	public <K,V> ParallelConsumerOptions<K, V> toConsumerOptions(
+	public ParallelConsumerOptions<K, V> toConsumerOptions(
 			ParallelConsumerOptions.ParallelConsumerOptionsBuilder<K, V> builder,
 			Consumer<K, V> consumer) {
-
 		builder.consumer(consumer);
+		return buildRemainOptions(builder);
+	}
 
-		final String maxConcurrencyString = this.properties.get(PARALLEL_CONSUMER_MAX_CONCURRENCY);
-		final String orderingString = this.properties.get(PARALLEL_CONSUMER_ORDERING);
-		final String allowEagerProcessingDuringTransactionCommitString = this.properties.get(ALLOW_EAGER_PROCESSING_DURING_TRANSACTION_COMMIT);
-		final String commitLockAcquisitionTimeoutString = this.properties.get(COMMIT_LOCK_ACQUISITION_TIMEOUT);
-		final String commitIntervalString = this.properties.get(COMMIT_INTERVAL);
-
-		if (StringUtils.hasText(maxConcurrencyString)) {
-			final Integer maxConcurrency = Integer.valueOf(maxConcurrencyString);
-			builder.maxConcurrency(maxConcurrency);
+	private ParallelConsumerOptions<K, V> buildRemainOptions(ParallelConsumerOptions.ParallelConsumerOptionsBuilder<K, V> builder) {
+		if (this.provider.managedExecutorService() != null){
+			builder.managedExecutorService(this.provider.managedExecutorService());
 		}
 
-		if (StringUtils.hasText(orderingString)) {
-			final ProcessingOrder processingOrder = toOrder(orderingString);
-			builder.ordering(processingOrder);
+		if (this.provider.managedThreadFactory() != null){
+			builder.managedThreadFactory(this.provider.managedThreadFactory());
 		}
 
-		if (StringUtils.hasText(allowEagerProcessingDuringTransactionCommitString)) {
-			final Boolean allowEagerProcessingDuringTransactionCommit = Boolean.valueOf(allowEagerProcessingDuringTransactionCommitString);
-			builder.allowEagerProcessingDuringTransactionCommit(allowEagerProcessingDuringTransactionCommit);
+		if (this.provider.meterRegistry() != null){
+			builder.meterRegistry(this.provider.meterRegistry());
 		}
 
-		if (StringUtils.hasText(commitLockAcquisitionTimeoutString)) {
-			final Long commitLockAcquisitionTimeout = Long.valueOf(commitLockAcquisitionTimeoutString);
-			builder.commitLockAcquisitionTimeout(Duration.ofSeconds(commitLockAcquisitionTimeout));
+		if (this.provider.pcInstanceTag() != null){
+			builder.pcInstanceTag(this.provider.pcInstanceTag());
 		}
 
-		if (StringUtils.hasText(commitIntervalString)) {
-			final Long commitInterval = Long.valueOf(commitIntervalString);
-			builder.commitInterval(Duration.ofMillis(commitInterval));
+		if (this.provider.metricsTags() != null){
+			builder.metricsTags(this.provider.metricsTags());
+		}
+
+		if (this.provider.allowEagerProcessingDuringTransactionCommit() != null){
+			builder.allowEagerProcessingDuringTransactionCommit(this.provider.allowEagerProcessingDuringTransactionCommit());
+		}
+
+		if (this.provider.commitLockAcquisitionTimeout() != null){
+			builder.commitLockAcquisitionTimeout(this.provider.commitLockAcquisitionTimeout());
+		}
+
+		if (this.provider.produceLockAcquisitionTimeout() != null){
+			builder.produceLockAcquisitionTimeout(this.provider.produceLockAcquisitionTimeout());
+		}
+
+		if (this.provider.commitInterval() != null){
+			builder.commitInterval(this.provider.commitInterval());
+		}
+
+		if (this.provider.ordering() != null){
+			builder.ordering(this.provider.ordering());
+		}
+
+		if (this.provider.commitMode() != null){
+			builder.commitMode(this.provider.commitMode());
+		}
+
+		if (this.provider.maxConcurrency() != null){
+			builder.maxConcurrency(this.provider.maxConcurrency());
+		}
+
+		if (this.provider.invalidOffsetMetadataPolicy() != null){
+			builder.invalidOffsetMetadataPolicy(this.provider.invalidOffsetMetadataPolicy());
+		}
+
+		if (this.provider.retryDelayProvider() != null){
+			builder.retryDelayProvider(this.provider.retryDelayProvider());
+		}
+
+		if (this.provider.sendTimeout() != null){
+			builder.sendTimeout(this.provider.sendTimeout());
+		}
+
+		if (this.provider.offsetCommitTimeout() != null){
+			builder.offsetCommitTimeout(this.provider.offsetCommitTimeout());
+		}
+
+		if (this.provider.batchSize() != null){
+			builder.batchSize(this.provider.batchSize());
+		}
+
+		if (this.provider.thresholdForTimeSpendInQueueWarning() != null){
+			builder.thresholdForTimeSpendInQueueWarning(this.provider.thresholdForTimeSpendInQueueWarning());
+		}
+
+		if (this.provider.maxFailureHistory() != null){
+			builder.maxFailureHistory(this.provider.maxFailureHistory());
+		}
+
+		if (this.provider.shutdownTimeout() != null){
+			builder.shutdownTimeout(this.provider.shutdownTimeout());
+		}
+
+		if (this.provider.drainTimeout() != null){
+			builder.drainTimeout(this.provider.drainTimeout());
+		}
+
+		if (this.provider.messageBufferSize() != null){
+			builder.messageBufferSize(this.provider.messageBufferSize());
+		}
+
+		if (this.provider.initialLoadFactor() != null){
+			builder.initialLoadFactor(this.provider.initialLoadFactor());
+		}
+		if (this.provider.maximumLoadFactor() != null){
+			builder.maximumLoadFactor(this.provider.maximumLoadFactor());
 		}
 
 		return builder.build();
 	}
+
 }

@@ -16,17 +16,13 @@
 
 package org.springframework.kafka.config;
 
-import java.time.Duration;
-
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
-import org.springframework.kafka.core.ParallelConsumerCallback;
+import org.springframework.kafka.core.parallelconsumer.ParallelConsumerCallback;
 
-import io.confluent.parallelconsumer.JStreamParallelStreamProcessor;
 import io.confluent.parallelconsumer.ParallelConsumerOptions;
 import io.confluent.parallelconsumer.ParallelConsumerOptions.ParallelConsumerOptionsBuilder;
 import io.confluent.parallelconsumer.ParallelStreamProcessor;
-import io.confluent.parallelconsumer.internal.DrainingCloseable.DrainingMode;
 
 /**
  * This class is for aggregating all related with ParallelConsumer.
@@ -41,7 +37,7 @@ public class ParallelConsumerContext<K,V> {
 	private final ParallelConsumerConfig parallelConsumerConfig;
 	private final ParallelConsumerCallback<K, V> parallelConsumerCallback;
 
-	public ParallelConsumerContext(ParallelConsumerConfig parallelConsumerConfig,
+	public ParallelConsumerContext(ParallelConsumerConfig<K, V> parallelConsumerConfig,
 								   ParallelConsumerCallback<K, V> callback) {
 		this.parallelConsumerConfig = parallelConsumerConfig;
 		this.parallelConsumerCallback = callback;
@@ -59,11 +55,6 @@ public class ParallelConsumerContext<K,V> {
 	public ParallelConsumerOptions<K, V> getParallelConsumerOptions(Consumer<K, V> consumer, Producer<K, V> producer) {
 		final ParallelConsumerOptionsBuilder<K, V> builder = ParallelConsumerOptions.builder();
 		return parallelConsumerConfig.toConsumerOptions(builder, consumer, producer);
-	}
-
-	public void stop(ParallelStreamProcessor<K, V> parallelStreamProcessor) {
-		parallelStreamProcessor.close();
-
 	}
 
 }

@@ -16,14 +16,14 @@
 
 package org.springframework.kafka.config;
 
-import javax.annotation.Nullable;
-
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
-import org.springframework.kafka.core.ParallelConsumerCallback;
+import org.springframework.kafka.core.parallelconsumer.ParallelConsumerCallback;
 import org.springframework.kafka.core.ParallelConsumerFactory;
 import org.springframework.kafka.annotation.EnableParallelConsumer;
+import org.springframework.kafka.core.parallelconsumer.ParallelConsumerOptionsProvider;
 
 /**
  * If User decide to use parallelConsumer on SpringKafka, User should import this class to their ComponentScan scopes.
@@ -37,22 +37,29 @@ import org.springframework.kafka.annotation.EnableParallelConsumer;
 
 public class ParallelConsumerConfiguration<K, V> {
 
+	@Bean
+	@Conditional(OnMissingParallelConsumerOptionsProviderCondition.class)
+	public ParallelConsumerOptionsProvider<K, V> parallelConsumerOptionsProvider() {
+		return new ParallelConsumerOptionsProvider<K, V>() {};
+	}
+
 	@Bean(name = ParallelConsumerConfig.DEFAULT_BEAN_NAME)
-	public ParallelConsumerConfig parallelConsumerConfig() {
-		return new ParallelConsumerConfig();
+	public ParallelConsumerConfig<K, V> parallelConsumerConfig(ParallelConsumerOptionsProvider<K, V> parallelConsumerOptionsProvider) {
+		return new ParallelConsumerConfig<K, V>(parallelConsumerOptionsProvider);
 	}
 
 	@Bean(name = ParallelConsumerContext.DEFAULT_BEAN_NAME)
-	public ParallelConsumerContext<K,V> parallelConsumerContext(ParallelConsumerConfig parallelConsumerConfig,
+	public ParallelConsumerContext<K,V> parallelConsumerContext(ParallelConsumerConfig<K, V> parallelConsumerConfig,
 																ParallelConsumerCallback<K, V> parallelConsumerCallback) {
-		return new ParallelConsumerContext(parallelConsumerConfig,
-										   parallelConsumerCallback);
+		return new ParallelConsumerContext<K, V>(parallelConsumerConfig,
+												 parallelConsumerCallback);
 	}
 
 	@Bean(name = ParallelConsumerFactory.DEFAULT_BEAN_NAME)
 	public ParallelConsumerFactory<K,V> parallelConsumerFactory(DefaultKafkaConsumerFactory<K,V> consumerFactory,
 																DefaultKafkaProducerFactory<K,V> producerFactory,
 																ParallelConsumerContext<K,V> parallelConsumerContext) {
-		return new ParallelConsumerFactory(parallelConsumerContext, consumerFactory, producerFactory);
+		return new ParallelConsumerFactory<K, V>(parallelConsumerContext, consumerFactory, producerFactory);
 	}
+
 }

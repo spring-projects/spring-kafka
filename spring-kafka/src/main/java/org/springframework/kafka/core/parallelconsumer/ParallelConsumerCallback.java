@@ -14,32 +14,45 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.core;
+package org.springframework.kafka.core.parallelconsumer;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.kafka.config.ParallelConsumerContext;
+import org.springframework.kafka.core.ParallelConsumerFactory;
 
-import io.confluent.parallelconsumer.PollContext;
+import io.confluent.parallelconsumer.internal.DrainingCloseable.DrainingMode;
 
 /**
  * User should create ConcreteClass of this and register it as Spring Bean.
  * Concrete class of ParallelConsumerCallback will be registered {@link ParallelConsumerContext},
  * and then it will be used in {@link ParallelConsumerFactory} when ParallelConsumerFactory start.
- * @author ...
- * @since 3.2.0
+ *
+ * @author Sanghyeok An
+ * @since 3.3
  */
 
-public interface PollCallback<K, V> extends ParallelConsumerCallback<K, V> {
+public interface ParallelConsumerCallback<K, V> {
 
 	/**
-	 * This is for {@link ParallelConsumerFactory} and {@link ParallelConsumerContext}.
-	 * ParallelConsumer will process the consumed messages using this callback.
-	 * @param context context which Parallel Consumer produce
-	 * @return void.
+	 * ...
 	 */
-	void accept(PollContext<K, V> context);
+	List<String> getTopics();
+	default Pattern getSubscribeTopicsPattern(){
+		return null;
+	}
+	default ConsumerRebalanceListener getRebalanceListener(){
+		return null;
+	}
+	default DrainingMode drainingMode() {
+		return DrainingMode.DONT_DRAIN;
+	}
+
+	default Duration drainTimeOut() {
+		return Duration.ofMillis(0);
+	}
+
 }

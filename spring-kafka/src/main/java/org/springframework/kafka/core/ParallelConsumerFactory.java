@@ -16,29 +16,32 @@
 
 package org.springframework.kafka.core;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.kafka.config.ParallelConsumerContext;
+import org.springframework.kafka.core.parallelconsumer.ParallelConsumerCallback;
+import org.springframework.kafka.core.parallelconsumer.PollAndProduce;
+import org.springframework.kafka.core.parallelconsumer.PollAndProduceMany;
+import org.springframework.kafka.core.parallelconsumer.PollAndProduceManyResult;
+import org.springframework.kafka.core.parallelconsumer.PollAndProduceResult;
+import org.springframework.kafka.core.parallelconsumer.Poll;
 
-import io.confluent.parallelconsumer.ParallelConsumer;
 import io.confluent.parallelconsumer.ParallelConsumerOptions;
 import io.confluent.parallelconsumer.ParallelStreamProcessor;
-import io.confluent.parallelconsumer.ParallelStreamProcessor.ConsumeProduceResult;
+import io.confluent.parallelconsumer.internal.DrainingCloseable.DrainingMode;
 
 /**
  * ParallelConsumerFactory will be started and closed by Spring LifeCycle.
  * This class is quite simple, because ParallelConsumer requires delegating the situation to itself.
  * @author Sanghyeok An
- * @since 3.2.0
+ * @since 3.3
  */
 
 public class ParallelConsumerFactory<K, V> implements SmartLifecycle {
@@ -48,7 +51,6 @@ public class ParallelConsumerFactory<K, V> implements SmartLifecycle {
 	private final DefaultKafkaConsumerFactory<K, V> defaultKafkaConsumerFactory;
 	private final DefaultKafkaProducerFactory<K, V> defaultKafkaProducerFactory;
 	private final ParallelConsumerContext<K, V> parallelConsumerContext;
-
 	private final ParallelStreamProcessor<K, V> parallelConsumer;
 	private final ParallelConsumerOptions<K, V> parallelConsumerOptions;
 	private boolean running;
@@ -70,8 +72,8 @@ public class ParallelConsumerFactory<K, V> implements SmartLifecycle {
 	private ParallelConsumerOptions<K, V> parallelConsumerOptions(Consumer<K, V> consumer,
 																  Producer<K, V> producer) {
 		final ParallelConsumerCallback<K, V> callback = parallelConsumerContext.parallelConsumerCallback();
-		if (callback instanceof PollAndProduceManyCallback<K,V> ||
-			callback instanceof PollAndProduceCallback<K,V>) {
+		if (callback instanceof PollAndProduceMany<K,V> ||
+			callback instanceof PollAndProduce<K,V>) {
 			return parallelConsumerContext.getParallelConsumerOptions(consumer, producer);
 		} else {
 			return parallelConsumerContext.getParallelConsumerOptions(consumer);
@@ -85,35 +87,40 @@ public class ParallelConsumerFactory<K, V> implements SmartLifecycle {
 		final ParallelConsumerCallback<K, V> callback0 = parallelConsumerContext.parallelConsumerCallback();
 
 		if (callback0 instanceof ResultConsumerCallback) {
-			if (callback0 instanceof PollAndProduceManyResultCallback<K, V>) {
-				final PollAndProduceManyResultCallback<K, V> callback =
-						(PollAndProduceManyResultCallback<K, V>) callback0;
+			if (callback0 instanceof PollAndProduceManyResult<K, V>) {
+				final PollAndProduceManyResult<K, V> callback =
+						(PollAndProduceManyResult<K, V>) callback0;
 
 				this.parallelConsumer.pollAndProduceMany(callback::accept, callback::resultConsumer);
-			} else if (callback0 instanceof PollAndProduceCallback<K, V>) {
-				final PollAndProduceResultCallback<K, V> callback =
-						(PollAndProduceResultCallback<K, V>) callback0;
+			}
+			else if (callback0 instanceof PollAndProduce<K, V>) {
+				final PollAndProduceResult<K, V> callback =
+						(PollAndProduceResult<K, V>) callback0;
 
 				this.parallelConsumer.pollAndProduce(callback::accept, callback::resultConsumer);
-			} else {
+			}
+			else {
 				throw new UnsupportedOperationException();
 			}
 		} else {
-			if (callback0 instanceof PollAndProduceManyCallback<K, V>) {
-				final PollAndProduceManyCallback<K, V> callback =
-						(PollAndProduceManyCallback<K, V>) callback0;
+			if (callback0 instanceof PollAndProduceMany<K, V>) {
+				final PollAndProduceMany<K, V> callback =
+						(PollAndProduceMany<K, V>) callback0;
 
 				this.parallelConsumer.pollAndProduceMany(callback::accept);
-			} else if (callback0 instanceof PollAndProduceCallback<K, V>) {
-				final PollAndProduceCallback<K, V> callback =
-						(PollAndProduceCallback<K, V>) callback0;
+			}
+			else if (callback0 instanceof PollAndProduce<K, V>) {
+				final PollAndProduce<K, V> callback =
+						(PollAndProduce<K, V>) callback0;
 
 				this.parallelConsumer.pollAndProduce(callback::accept);
-			} else if (callback0 instanceof PollCallback<K, V>) {
-				final PollCallback<K, V> callback = (PollCallback<K, V>) callback0;
+			}
+			else if (callback0 instanceof Poll<K, V>) {
+				final Poll<K, V> callback = (Poll<K, V>) callback0;
 
 				this.parallelConsumer.poll(callback::accept);
-			} else {
+			}
+			else {
 				throw new UnsupportedOperationException();
 			}
 		}
@@ -122,7 +129,12 @@ public class ParallelConsumerFactory<K, V> implements SmartLifecycle {
 
 	@Override
 	public void stop() {
-		this.parallelConsumerContext.stop(this.parallelConsumer);
+		final ParallelConsumerCallback<K, V> callback =
+				this.parallelConsumerContext.parallelConsumerCallback();
+		final DrainingMode drainingMode = callback.drainingMode();
+		final Duration duration = callback.drainTimeOut();
+
+		this.parallelConsumer.close(duration, drainingMode);
 		this.running = false;
 	}
 
@@ -139,24 +151,28 @@ public class ParallelConsumerFactory<K, V> implements SmartLifecycle {
 
 		if (topics != null && !topics.isEmpty()) {
 			subscribe(topics, rebalanceListener);
-		} else {
+		}
+		else {
 			subscribe(callback.getSubscribeTopicsPattern(), rebalanceListener);
 		}
 	}
 
-	private void subscribe(Collection<String> topics, ConsumerRebalanceListener callback){
-		if (callback == null) {
+	private void subscribe(Collection<String> topics, ConsumerRebalanceListener listenerCallback){
+		if (listenerCallback == null) {
 			this.parallelConsumer.subscribe(topics);
-		} else {
-			this.parallelConsumer.subscribe(topics, callback);
+		}
+		else {
+			this.parallelConsumer.subscribe(topics, listenerCallback);
 		}
 	}
 
-	private void subscribe(Pattern pattern, ConsumerRebalanceListener callback) {
-		if (callback == null) {
+	private void subscribe(Pattern pattern, ConsumerRebalanceListener listenerCallback) {
+		if (listenerCallback == null) {
 			this.parallelConsumer.subscribe(pattern);
-		} else {
-			this.parallelConsumer.subscribe(pattern, callback);
+		}
+		else {
+			this.parallelConsumer.subscribe(pattern, listenerCallback);
 		}
 	}
+
 }

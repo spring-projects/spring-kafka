@@ -14,18 +14,26 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.core;
+package org.springframework.kafka.core.parallelconsumer;
 
-import java.util.function.Consumer;
+import java.util.List;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
 
-import io.confluent.parallelconsumer.ParallelStreamProcessor.ConsumeProduceResult;
 import io.confluent.parallelconsumer.PollContext;
 
 /**
  * ...
+ *
+ * @author Sanghyeok An
+ * @since 3.3
  */
 
-public interface PollAndProduceResultCallback<K, V> extends PollAndProduceCallback<K, V>, ResultConsumerCallback<K, V> {
+public interface PollAndProduceMany<K, V> extends ParallelConsumerCallback<K, V> {
+
+	/**
+	 * ...
+	 */
+	List<ProducerRecord<K, V>> accept(PollContext<K, V> context);
+
 }
