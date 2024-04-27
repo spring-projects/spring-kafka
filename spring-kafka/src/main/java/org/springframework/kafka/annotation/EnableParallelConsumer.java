@@ -28,8 +28,10 @@ import java.lang.annotation.Target;
 /**
  * If you want to import {@link ParallelConsumerConfiguration} to your application,
  * you just annotated {@link EnableParallelConsumer} to your spring application.
- * @author ...
- * @since 3.2.0
+ *
+ * @author Sanghyeok An
+ *
+ * @since 3.3
  */
 
 @Target(ElementType.TYPE)
