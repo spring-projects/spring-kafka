@@ -27,16 +27,13 @@ public void listen(Thing thing) {
 }
 ----
 
-[[x32-ignore-empty-batch-messages]]
-=== Ignore empty batch in `batch` mode.
+Starting with version 3.3, Ignoring empty batches that result from filtering by `RecordFilterStrategy` is supported.
+When implementing `RecordFilterStrategy`, it can be configured through `ignoreEmptyBatch()`.
+The default setting is `false`, indicating `KafkaListener` will be invoked even if all `ConsumerRecord` s are filtered out.
 
-Starting with version 3.3, Ignoring empty batches that result from filtering by `RecordFilterStrategy` is supported. +
-When implementing `RecordFilterStrategy`, it can be configured through `ignoreEmptyBatch()`. +
-The default setting is `false`, indicating `KafkaListener` will be invoked even if all `ConsumerRecord` s are filtered out. +
-
-If `true` is returned, the `KafkaListener` [underline]#will not be invoked# when all `ConsumerRecord` are filtered out. +
+If `true` is returned, the `KafkaListener` [underline]#will not be invoked# when all `ConsumerRecord` are filtered out.
 However, commit to broker, will still be executed. +
-If `false` is returned, the `KafkaListener` [underline]#will be invoked# when all `ConsumerRecord` are filtered out. +
+If `false` is returned, the `KafkaListener` [underline]#will be invoked# when all `ConsumerRecord` are filtered out.
 
 Here are some examples.
 
@@ -62,9 +59,8 @@ public void listen(List<Thing> things) {
     ...
 }
 ----
-In this case, `IgnoreEmptyBatchRecordFilterStrategy` always returns empty list and return `true` as result of `ignoreEmptyBatch()`. +
-Thus `KafkaListener#listen(...)` never will be invoked at all. +
-
+In this case, `IgnoreEmptyBatchRecordFilterStrategy` always returns empty list and return `true` as result of `ignoreEmptyBatch()`.
+Thus `KafkaListener#listen(...)` never will be invoked at all.
 
 [source,java]
 ----
@@ -88,5 +84,5 @@ public void listen(List<Thing> things) {
     ...
 }
 ----
-However, in this case, `IgnoreEmptyBatchRecordFilterStrategy` always returns empty list and return `false` as result of `ignoreEmptyBatch()`. +
+However, in this case, `IgnoreEmptyBatchRecordFilterStrategy` always returns empty list and return `false` as result of `ignoreEmptyBatch()`.
 Thus `KafkaListener#listen(...)` always will be invoked.
