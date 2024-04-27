@@ -26,12 +26,13 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.producer.Producer;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.kafka.config.ParallelConsumerContext;
-import org.springframework.kafka.core.parallelconsumer.ParallelConsumerCallback;
+import org.springframework.kafka.core.parallelconsumer.ParallelConsumerRootInterface;
 import org.springframework.kafka.core.parallelconsumer.PollAndProduce;
 import org.springframework.kafka.core.parallelconsumer.PollAndProduceMany;
 import org.springframework.kafka.core.parallelconsumer.PollAndProduceManyResult;
 import org.springframework.kafka.core.parallelconsumer.PollAndProduceResult;
 import org.springframework.kafka.core.parallelconsumer.Poll;
+import org.springframework.kafka.core.parallelconsumer.ParallelConsumerResultInterface;
 
 import io.confluent.parallelconsumer.ParallelConsumerOptions;
 import io.confluent.parallelconsumer.ParallelStreamProcessor;
@@ -40,7 +41,9 @@ import io.confluent.parallelconsumer.internal.DrainingCloseable.DrainingMode;
 /**
  * ParallelConsumerFactory will be started and closed by Spring LifeCycle.
  * This class is quite simple, because ParallelConsumer requires delegating the situation to itself.
+ *
  * @author Sanghyeok An
+ *
  * @since 3.3
  */
 
@@ -71,7 +74,7 @@ public class ParallelConsumerFactory<K, V> implements SmartLifecycle {
 
 	private ParallelConsumerOptions<K, V> parallelConsumerOptions(Consumer<K, V> consumer,
 																  Producer<K, V> producer) {
-		final ParallelConsumerCallback<K, V> callback = parallelConsumerContext.parallelConsumerCallback();
+		final ParallelConsumerRootInterface<K, V> callback = parallelConsumerContext.parallelConsumerCallback();
 		if (callback instanceof PollAndProduceMany<K,V> ||
 			callback instanceof PollAndProduce<K,V>) {
 			return parallelConsumerContext.getParallelConsumerOptions(consumer, producer);
@@ -84,9 +87,9 @@ public class ParallelConsumerFactory<K, V> implements SmartLifecycle {
 	public void start() {
 		subscribe();
 
-		final ParallelConsumerCallback<K, V> callback0 = parallelConsumerContext.parallelConsumerCallback();
+		final ParallelConsumerRootInterface<K, V> callback0 = parallelConsumerContext.parallelConsumerCallback();
 
-		if (callback0 instanceof ResultConsumerCallback) {
+		if (callback0 instanceof ParallelConsumerResultInterface) {
 			if (callback0 instanceof PollAndProduceManyResult<K, V>) {
 				final PollAndProduceManyResult<K, V> callback =
 						(PollAndProduceManyResult<K, V>) callback0;
@@ -129,7 +132,7 @@ public class ParallelConsumerFactory<K, V> implements SmartLifecycle {
 
 	@Override
 	public void stop() {
-		final ParallelConsumerCallback<K, V> callback =
+		final ParallelConsumerRootInterface<K, V> callback =
 				this.parallelConsumerContext.parallelConsumerCallback();
 		final DrainingMode drainingMode = callback.drainingMode();
 		final Duration duration = callback.drainTimeOut();
@@ -144,7 +147,7 @@ public class ParallelConsumerFactory<K, V> implements SmartLifecycle {
 	}
 
 	private void subscribe() {
-		final ParallelConsumerCallback<K, V> callback = this.parallelConsumerContext.parallelConsumerCallback();
+		final ParallelConsumerRootInterface<K, V> callback = this.parallelConsumerContext.parallelConsumerCallback();
 
 		final List<String> topics = callback.getTopics();
 		final ConsumerRebalanceListener rebalanceListener = callback.getRebalanceListener();

@@ -17,19 +17,25 @@
 package org.springframework.kafka.core.parallelconsumer;
 
 import java.util.List;
+import java.util.function.Function;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.springframework.kafka.core.ParallelConsumerFactory;
 
+import io.confluent.parallelconsumer.ParallelStreamProcessor;
 import io.confluent.parallelconsumer.PollContext;
 
 /**
- * ...
- *
+ * This interface is intended for use when the user use the producer after consuming.
+ * User should implement {@link PollAndProduceMany} and register it as Spring Bean.
+ * {@link PollAndProduceMany#accept(PollContext)} will be called by {@link ParallelStreamProcessor#pollAndProduceMany(Function)}
+ * when {@link ParallelConsumerFactory} started.
  * @author Sanghyeok An
+ *
  * @since 3.3
  */
 
-public interface PollAndProduceMany<K, V> extends ParallelConsumerCallback<K, V> {
+public interface PollAndProduceMany<K, V> extends ParallelConsumerRootInterface<K, V> {
 
 	/**
 	 * ...

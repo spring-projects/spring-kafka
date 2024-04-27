@@ -21,21 +21,21 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.springframework.kafka.config.ParallelConsumerContext;
-import org.springframework.kafka.core.ParallelConsumerFactory;
 
 import io.confluent.parallelconsumer.internal.DrainingCloseable.DrainingMode;
 
 /**
- * User should create ConcreteClass of this and register it as Spring Bean.
- * Concrete class of ParallelConsumerCallback will be registered {@link ParallelConsumerContext},
- * and then it will be used in {@link ParallelConsumerFactory} when ParallelConsumerFactory start.
- *
+ * This interface provides a common interface for sub-interfaces.
+ * Users should not implement this interface.
+ * Users should implement one of {@link Poll}, {@link PollAndProduce}, {@link PollAndProduceResult}
+ * , {@link PollAndProduceMany}, {@link PollAndProduceManyResult} instead of {@link ParallelConsumerRootInterface}.
+
  * @author Sanghyeok An
+ *
  * @since 3.3
  */
 
-public interface ParallelConsumerCallback<K, V> {
+public interface ParallelConsumerRootInterface<K, V> {
 
 	/**
 	 * ...

@@ -19,12 +19,15 @@ package org.springframework.kafka.config;
 import org.springframework.context.annotation.ImportSelector;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.kafka.annotation.EnableParallelConsumer;
+
 /**
  * ParallelConsumerImportSelector is to register {@link ParallelConsumerConfiguration}.
  * If you want to import {@link ParallelConsumerConfiguration} to your application,
  * you just annotated {@link EnableParallelConsumer} to your spring application.
- * @author ...
- * @since 3.2.0
+ *
+ * @author Sanghyeok An
+ *
+ * @since 3.3
  */
 
 public class ParallelConsumerImportSelector implements ImportSelector {

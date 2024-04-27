@@ -21,29 +21,28 @@ import java.util.function.Function;
 
 import javax.annotation.Nullable;
 
-import org.springframework.kafka.config.ParallelConsumerContext;
-import org.springframework.kafka.core.ParallelConsumerFactory;
-
-import io.confluent.parallelconsumer.ParallelConsumerOptions;
+import io.confluent.parallelconsumer.ParallelConsumer;
 import io.confluent.parallelconsumer.ParallelConsumerOptions.CommitMode;
 import io.confluent.parallelconsumer.ParallelConsumerOptions.InvalidOffsetMetadataHandlingPolicy;
-import io.confluent.parallelconsumer.ParallelConsumerOptions.ParallelConsumerOptionsBuilder;
 import io.confluent.parallelconsumer.ParallelConsumerOptions.ProcessingOrder;
 import io.confluent.parallelconsumer.RecordContext;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 
 /**
+ * User can configure options of {@link ParallelConsumer} via {@link ParallelConsumerOptionsProvider}.
+ * If user want to configure options of {@link ParallelConsumer}, user should implement {@link ParallelConsumerOptionsProvider}
+ * and register it as spring bean.
+ *
+ * User don't need to implement all of methods.
+ * Note : If a method returns null, that option will use the default value of the {@link ParallelConsumer}.
  *
  * @author Sanghyeok An
+ *
  * @since 3.3
  */
 
 public interface ParallelConsumerOptionsProvider<K, V> {
-
-	default void hello() {
-		ParallelConsumerOptionsBuilder<Object, Object> builder = ParallelConsumerOptions.builder();
-	}
 
 	@Nullable
 	default String managedExecutorService() {

@@ -18,16 +18,17 @@ package org.springframework.kafka.config;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.Producer;
-import org.springframework.kafka.core.parallelconsumer.ParallelConsumerCallback;
+import org.springframework.kafka.core.parallelconsumer.ParallelConsumerRootInterface;
 
 import io.confluent.parallelconsumer.ParallelConsumerOptions;
 import io.confluent.parallelconsumer.ParallelConsumerOptions.ParallelConsumerOptionsBuilder;
-import io.confluent.parallelconsumer.ParallelStreamProcessor;
 
 /**
- * This class is for aggregating all related with ParallelConsumer.
- * @author ...
- * @since 3.2.0
+ * This class is for collecting all related with ParallelConsumer.
+ *
+ * @author Sanghyeok An
+ *
+ * @since 3.3
  */
 
 
@@ -35,15 +36,15 @@ public class ParallelConsumerContext<K,V> {
 
 	public static final String DEFAULT_BEAN_NAME = "parallelConsumerContext";
 	private final ParallelConsumerConfig parallelConsumerConfig;
-	private final ParallelConsumerCallback<K, V> parallelConsumerCallback;
+	private final ParallelConsumerRootInterface<K, V> parallelConsumerCallback;
 
 	public ParallelConsumerContext(ParallelConsumerConfig<K, V> parallelConsumerConfig,
-								   ParallelConsumerCallback<K, V> callback) {
+								   ParallelConsumerRootInterface<K, V> callback) {
 		this.parallelConsumerConfig = parallelConsumerConfig;
 		this.parallelConsumerCallback = callback;
 	}
 
-	public ParallelConsumerCallback<K, V> parallelConsumerCallback() {
+	public ParallelConsumerRootInterface<K, V> parallelConsumerCallback() {
 		return this.parallelConsumerCallback;
 	}
 

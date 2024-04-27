@@ -16,21 +16,26 @@
 
 package org.springframework.kafka.core.parallelconsumer;
 
+import java.util.function.Consumer;
+
 import org.springframework.kafka.config.ParallelConsumerContext;
 import org.springframework.kafka.core.ParallelConsumerFactory;
 
+import io.confluent.parallelconsumer.ParallelStreamProcessor;
 import io.confluent.parallelconsumer.PollContext;
 
 /**
- * User should create ConcreteClass of this and register it as Spring Bean.
- * Concrete class of ParallelConsumerCallback will be registered {@link ParallelConsumerContext},
- * and then it will be used in {@link ParallelConsumerFactory} when ParallelConsumerFactory start.
+ * This interface is intended for use when the user does not use the producer after consuming.
+ * User should implement {@link Poll} and register it as Spring Bean.
+ * {@link Poll#accept(PollContext)} will be called by {@link ParallelStreamProcessor#poll(Consumer)}
+ * when {@link ParallelConsumerFactory} started.
  *
  * @author Sanghyeok An
+ *
  * @since 3.3
  */
 
-public interface Poll<K, V> extends ParallelConsumerCallback<K, V> {
+public interface Poll<K, V> extends ParallelConsumerRootInterface<K, V> {
 
 	/**
 	 * This is for {@link ParallelConsumerFactory} and {@link ParallelConsumerContext}.

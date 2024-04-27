@@ -20,7 +20,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
-import org.springframework.kafka.core.parallelconsumer.ParallelConsumerCallback;
+import org.springframework.kafka.core.parallelconsumer.ParallelConsumerRootInterface;
 import org.springframework.kafka.core.ParallelConsumerFactory;
 import org.springframework.kafka.annotation.EnableParallelConsumer;
 import org.springframework.kafka.core.parallelconsumer.ParallelConsumerOptionsProvider;
@@ -30,9 +30,11 @@ import org.springframework.kafka.core.parallelconsumer.ParallelConsumerOptionsPr
  * If so, this class will register both {@link ParallelConsumerContext} and {@link ParallelConsumerFactory} as Spring Bean.
  * User has responsibility
  *   1. annotated {@link EnableParallelConsumer} on their spring application
- *   2. register ConcreteClass of {@link ParallelConsumerCallback}.
- * @author ...
- * @since 3.2.0
+ *   2. register ConcreteClass of {@link ParallelConsumerRootInterface}.
+ *
+ * @author Sanghyoek An
+ *
+ * @since 3.3
  */
 
 public class ParallelConsumerConfiguration<K, V> {
@@ -50,7 +52,7 @@ public class ParallelConsumerConfiguration<K, V> {
 
 	@Bean(name = ParallelConsumerContext.DEFAULT_BEAN_NAME)
 	public ParallelConsumerContext<K,V> parallelConsumerContext(ParallelConsumerConfig<K, V> parallelConsumerConfig,
-																ParallelConsumerCallback<K, V> parallelConsumerCallback) {
+																ParallelConsumerRootInterface<K, V> parallelConsumerCallback) {
 		return new ParallelConsumerContext<K, V>(parallelConsumerConfig,
 												 parallelConsumerCallback);
 	}

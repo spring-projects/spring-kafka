@@ -30,7 +30,9 @@ import org.springframework.kafka.annotation.EnableParallelConsumer;
 /**
  * ParallelConsumerConfig is for config of {@link io.confluent.parallelconsumer}.
  * This will be registered as Spring Bean when {@link EnableParallelConsumer} is annotated to your spring application.
- * @author ...
+ *
+ * @author Sanghyeok An
+ *
  * @since 3.3
  */
 
