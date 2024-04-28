@@ -463,7 +463,7 @@ The `SmartMessageConverter.toMessage()` method is called to create a new outboun
 Similarly, in the `KafkaMessageConverter.toMessage()` method, after the converter has created a new `Message<?>` from the `ConsumerRecord`, the `SmartMessageConverter.fromMessage()` method is called and then the final inbound message is created with the newly converted payload.
 In either case, if the `SmartMessageConverter` returns `null`, the original message is used.
 
-When the default converter is used in the `KafkaTemplate` and listener container factory, you configure the `SmartMessageConverter` by calling `setMessagingConverter()` on the template and via the `contentMessageConverter` property on `@KafkaListener` methods.
+When the default converter is used in the `KafkaTemplate` and listener container factory, you configure the `SmartMessageConverter` by calling `setMessagingConverter()` on the template and via the `contentTypeConverter` property on `@KafkaListener` methods.
 
 Examples:
 
@@ -664,7 +664,7 @@ Consider using a `DelegatingByTypeSerializer` configured to use a `ByteArraySeri
 Starting with version 3.1, you can add a `Validator` to the `ErrorHandlingDeserializer`.
 If the delegate `Deserializer` successfully deserializes the object, but that object fails validation, an exception is thrown similar to a deserialization exception occurring.
 This allows the original raw data to be passed to the error handler.
-WHen creating the deserializer yourself, simply call `setValidator`; if you configure the serializer using properties, set the consumer configuration property `ErrorHandlingDeserializer.VALIDATOR_CLASS` to the class or fully qualified class name for your `Validator`.
+When creating the deserializer yourself, simply call `setValidator`; if you configure the serializer using properties, set the consumer configuration property `ErrorHandlingDeserializer.VALIDATOR_CLASS` to the class or fully qualified class name for your `Validator`.
 When using Spring Boot, this property name is `spring.kafka.consumer.properties.spring.deserializer.validator.class`.
 
 [[payload-conversion-with-batch]]

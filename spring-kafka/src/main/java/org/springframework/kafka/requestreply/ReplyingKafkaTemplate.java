@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -408,7 +408,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	@Override
 	public RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record, @Nullable Duration replyTimeout) {
-		Assert.state(this.running, "Template has not been start()ed"); // NOSONAR (sync)
+		Assert.state(this.running, "Template has not been started"); // NOSONAR (sync)
 		Duration timeout = replyTimeout;
 		if (timeout == null) {
 			timeout = this.defaultReplyTimeout;
