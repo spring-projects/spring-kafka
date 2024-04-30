@@ -33,7 +33,7 @@ public void processMessage(MyPojo message) {
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
     return RetryTopicConfigurationBuilder
             .newInstance()
-            .fixedBackoff(3_000)
+            .fixedBackOff(3_000)
             .maxAttempts(4)
             .create(template);
 }
@@ -47,7 +47,7 @@ You can also provide a custom implementation of Spring Retry's `SleepingBackOffP
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
     return RetryTopicConfigurationBuilder
             .newInstance()
-            .customBackOff(new MyCustomBackOffPolicy())
+            .customBackoff(new MyCustomBackOffPolicy())
             .maxAttempts(5)
             .create(template);
 }
@@ -81,7 +81,7 @@ public void processMessage(MyPojo message) {
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
     return RetryTopicConfigurationBuilder
             .newInstance()
-            .fixedBackoff(2_000)
+            .fixedBackOff(2_000)
             .timeoutAfter(5_000)
             .create(template);
 }
@@ -212,7 +212,7 @@ If your broker version is earlier than 2.4, you will need to set an explicit val
 [[retry-headers]]
 == Failure Header Management
 
-When considering how to manage failure headers (original headers and exception headers), the framework delegates to the `DeadLetterPublishingRecover` to decide whether to append or replace the headers.
+When considering how to manage failure headers (original headers and exception headers), the framework delegates to the `DeadLetterPublishingRecoverer` to decide whether to append or replace the headers.
 
 By default, it explicitly sets `appendOriginalHeaders` to `false` and leaves `stripPreviousExceptionHeaders` to the default used by the `DeadLetterPublishingRecover`.
 
@@ -221,7 +221,7 @@ This is to avoid creation of excessively large messages (due to the stack trace 
 
 See xref:kafka/annotation-error-handling.adoc#dlpr-headers[Managing Dead Letter Record Headers] for more information.
 
-To reconfigure the framework to use different settings for these properties, configure a `DeadLetterPublishingRecoverer` customizer by overriding the `configureCustomizers` method in a `@Configuration` class that extends `RetryTopicConfigurationSupport`.
+To reconfigure the framework to use different settings for these properties, configure a `DeadLetterPublishingRecovererer` customizer by overriding the `configureCustomizers` method in a `@Configuration` class that extends `RetryTopicConfigurationSupport`.
 See xref:retrytopic/retry-config.adoc#retry-topic-global-settings[Configuring Global Settings and Features] for more details.
 
 [source, java]

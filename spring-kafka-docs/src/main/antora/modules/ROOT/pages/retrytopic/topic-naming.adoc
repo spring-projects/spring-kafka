@@ -92,7 +92,7 @@ public void processMessage(MyPojo message) {
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
     return RetryTopicConfigurationBuilder
             .newInstance()
-            .fixedBackoff(3_000)
+            .fixedBackOff(3_000)
             .maxAttempts(5)
             .useSingleTopicForFixedDelays()
             .create(template);
