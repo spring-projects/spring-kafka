@@ -56,6 +56,10 @@ import org.springframework.test.context.aot.DisabledInAotMode;
  * }
  * </pre>
  *
+ * When using EmbeddedKafka with {@link org.springframework.test.context.junit.jupiter.SpringJUnitConfig},
+ * it is recommended to use {@link org.springframework.test.annotation.DirtiesContext} on the test class,
+ * in order to prevent certain race conditions on JVM shutdown when running multiple tests.
+ *
  * @author Artem Bilan
  * @author Elliot Metsger
  * @author Zach Olauson
