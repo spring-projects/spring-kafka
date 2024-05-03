@@ -183,17 +183,17 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 	}
 
 	@Override
-  	public boolean handleOne(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
+	public boolean handleOne(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
-		
-    	CommonErrorHandler handler = findDelegate(thrownException);
-	    if (handler != null) {
-	      	return handler.handleOne(thrownException, record, consumer, container);
-	    }
-	    else {
-	      	return this.defaultErrorHandler.handleOne(thrownException, record, consumer, container);
-	    }
-  	}
+
+		CommonErrorHandler handler = findDelegate(thrownException);
+		if (handler != null) {
+			return handler.handleOne(thrownException, record, consumer, container);
+		}
+		else {
+			return this.defaultErrorHandler.handleOne(thrownException, record, consumer, container);
+		}
+	}
 
 	@Nullable
 	private CommonErrorHandler findDelegate(Throwable thrownException) {
