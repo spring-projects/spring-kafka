@@ -19,6 +19,7 @@ package org.springframework.kafka.listener;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -29,6 +30,7 @@ import java.util.Collections;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.junit.jupiter.api.Test;
 
@@ -42,13 +44,14 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
  * @author Gary Russell
  * @author Adrian Chlebosz
  * @author Antonin Arquey
+ * @author Dan Blackney
  * @since 2.8
  *
  */
 public class CommonDelegatingErrorHandlerTests {
 
 	@Test
-	void testRecordDelegates() {
+	void testHandleRemainingDelegates() {
 		var def = mock(CommonErrorHandler.class);
 		var one = mock(CommonErrorHandler.class);
 		var two = mock(CommonErrorHandler.class);
@@ -72,7 +75,7 @@ public class CommonDelegatingErrorHandlerTests {
 	}
 
 	@Test
-	void testBatchDelegates() {
+	void testHandleBatchDelegates() {
 		var def = mock(CommonErrorHandler.class);
 		var one = mock(CommonErrorHandler.class);
 		var two = mock(CommonErrorHandler.class);
@@ -93,6 +96,54 @@ public class CommonDelegatingErrorHandlerTests {
 		eh.handleBatch(wrap(new IllegalStateException()), mock(ConsumerRecords.class), mock(Consumer.class),
 				mock(MessageListenerContainer.class), mock(Runnable.class));
 		verify(one).handleBatch(any(), any(), any(), any(), any());
+	}
+
+	@Test
+	void testHandleOtherExceptionDelegates() {
+		var def = mock(CommonErrorHandler.class);
+		var one = mock(CommonErrorHandler.class);
+		var two = mock(CommonErrorHandler.class);
+		var three = mock(CommonErrorHandler.class);
+		var eh = new CommonDelegatingErrorHandler(def);
+		eh.setErrorHandlers(Map.of(IllegalStateException.class, one, IllegalArgumentException.class, two));
+		eh.addDelegate(RuntimeException.class, three);
+
+		eh.handleOtherException(wrap(new IOException()), mock(Consumer.class),
+				mock(MessageListenerContainer.class), true);
+		verify(def).handleOtherException(any(), any(), any(), anyBoolean());
+		eh.handleOtherException(wrap(new KafkaException("test")), mock(Consumer.class),
+				mock(MessageListenerContainer.class), true);
+		verify(three).handleOtherException(any(), any(), any(), anyBoolean());
+		eh.handleOtherException(wrap(new IllegalArgumentException()), mock(Consumer.class),
+				mock(MessageListenerContainer.class), true);
+		verify(two).handleOtherException(any(), any(), any(), anyBoolean());
+		eh.handleOtherException(wrap(new IllegalStateException()), mock(Consumer.class),
+				mock(MessageListenerContainer.class), true);
+		verify(one).handleOtherException(any(), any(), any(), anyBoolean());
+	}
+
+	@Test
+	void testHandleOneDelegates() {
+		var def = mock(CommonErrorHandler.class);
+		var one = mock(CommonErrorHandler.class);
+		var two = mock(CommonErrorHandler.class);
+		var three = mock(CommonErrorHandler.class);
+		var eh = new CommonDelegatingErrorHandler(def);
+		eh.setErrorHandlers(Map.of(IllegalStateException.class, one, IllegalArgumentException.class, two));
+		eh.addDelegate(RuntimeException.class, three);
+
+		eh.handleOne(wrap(new IOException()), mock(ConsumerRecord.class), mock(Consumer.class),
+				mock(MessageListenerContainer.class));
+		verify(def).handleOne(any(), any(), any(), any());
+		eh.handleOne(wrap(new KafkaException("test")), mock(ConsumerRecord.class), mock(Consumer.class),
+				mock(MessageListenerContainer.class));
+		verify(three).handleOne(any(), any(), any(), any());
+		eh.handleOne(wrap(new IllegalArgumentException()), mock(ConsumerRecord.class), mock(Consumer.class),
+				mock(MessageListenerContainer.class));
+		verify(two).handleOne(any(), any(), any(), any());
+		eh.handleOne(wrap(new IllegalStateException()), mock(ConsumerRecord.class), mock(Consumer.class),
+				mock(MessageListenerContainer.class));
+		verify(one).handleOne(any(), any(), any(), any());
 	}
 
 	@Test
