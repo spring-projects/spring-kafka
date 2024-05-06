@@ -21,15 +21,8 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.kafka:spring-kafka-test'
 
-	// https://mvnrepository.com/artifact/org.testcontainers/kafka
 	testImplementation 'org.testcontainers:kafka:1.19.7'
-
-	// https://mvnrepository.com/artifact/org.apache.kafka/kafka-clients
 	implementation 'org.apache.kafka:kafka-clients:3.7.0'
-
-
-
-
 }
 
 tasks.named('test') {
