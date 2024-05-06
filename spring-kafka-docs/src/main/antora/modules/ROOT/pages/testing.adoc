@@ -8,8 +8,8 @@ The `spring-kafka-test` jar contains some useful utilities to assist with testin
 
 Two implementations are provided:
 
-* `EmbeddedKafkaZKBroker` - legacy implementation which starts an embedded `Zookeeper` instance.
-* `EmbeddedKafkaKraftBroker` - (default) uses `Kraft` instead of `Zookeeper` in combined controller and broker modes (since 3.1).
+* `EmbeddedKafkaZKBroker` - legacy implementation which starts an embedded `Zookeeper` instance (which is still the default when using `EmbeddedKafka`).
+* `EmbeddedKafkaKraftBroker` - uses `Kraft` instead of `Zookeeper` in combined controller and broker modes (since 3.1).
 
 There are several techniques to configure the broker as discussed in the following sections.
 
@@ -228,7 +228,7 @@ In addition, these properties can be provided:
 - `spring.kafka.embedded.topics` - topics (comma-separated value) to create in the started Kafka cluster;
 - `spring.kafka.embedded.partitions` - number of partitions to provision for the created topics;
 - `spring.kafka.embedded.broker.properties.location` - the location of the file for additional Kafka broker configuration properties; the value of this property must follow the Spring resource abstraction pattern;
-- `spring.kafka.embedded.kraft` - when false, use an `EmbeddedKafkaZKBroker` instead of an `EmbeddedKafkaKraftBroker`.
+- `spring.kafka.embedded.kraft` - default false, when true, use an `EmbeddedKafkaKraftBroker` instead of an `EmbeddedKafkaZKBroker`.
 
 Essentially these properties mimic some of the `@EmbeddedKafka` attributes.
 
@@ -295,7 +295,7 @@ public class KafkaStreamsTests {
 
 Starting with version 2.2.4, you can also use the `@EmbeddedKafka` annotation to specify the Kafka ports property.
 
-Starting with version 3.1, set the `kraft` property to `false` to use an `EmbeddedKafkaZKBroker` instead of an `EmbeddedKafkaKraftBroker`.
+Starting with version 3.2, set the `kraft` property to `true` to use an `EmbeddedKafkaKraftBroker` instead of an `EmbeddedKafkaZKBroker`.
 
 The following example sets the `topics`, `brokerProperties`, and `brokerPropertiesLocation` attributes of `@EmbeddedKafka` support property placeholder resolutions:
 

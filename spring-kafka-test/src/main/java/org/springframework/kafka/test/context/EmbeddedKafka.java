@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2023 the original author or authors.
+ * Copyright 2017-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,6 +67,7 @@ import org.springframework.test.context.aot.DisabledInAotMode;
  * @author Sergio Lourenco
  * @author Pawel Lozinski
  * @author Adrian Chlebosz
+ * @author Soby Chacko
  *
  * @since 1.3
  *
@@ -193,11 +194,11 @@ public @interface EmbeddedKafka {
 	int adminTimeout() default EmbeddedKafkaBroker.DEFAULT_ADMIN_TIMEOUT;
 
 	/**
-	 * Use KRaft instead of Zookeeper; default true.
+	 * Use KRaft instead of Zookeeper; default false.
 	 * @return whether to use KRaft.
 	 * @since 3.6
 	 */
-	boolean kraft() default true;
+	boolean kraft() default false;
 
 }
 

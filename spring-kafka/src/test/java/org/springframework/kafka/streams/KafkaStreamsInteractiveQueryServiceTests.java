@@ -67,7 +67,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
+import org.springframework.kafka.test.EmbeddedKafkaZKBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.retry.RetryPolicy;
@@ -96,7 +96,7 @@ class KafkaStreamsInteractiveQueryServiceTests {
 	public static final String NON_EXISTENT_STORE = "my-non-existent-store";
 
 	@Autowired
-	private EmbeddedKafkaKraftBroker embeddedKafka;
+	private EmbeddedKafkaZKBroker embeddedKafka;
 
 	@Autowired
 	private StreamsBuilderFactoryBean streamsBuilderFactoryBean;

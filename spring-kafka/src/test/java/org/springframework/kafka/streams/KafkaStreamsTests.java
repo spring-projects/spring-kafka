@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2023 the original author or authors.
+ * Copyright 2017-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -97,7 +97,7 @@ import kafka.server.BrokerServer;
 		brokerProperties = {
 				"auto.create.topics.enable=${topics.autoCreate:false}",
 				"delete.topic.enable=${topic.delete:true}" },
-		brokerPropertiesLocation = "classpath:/${broker.filename:broker}.properties")
+		brokerPropertiesLocation = "classpath:/${broker.filename:broker}.properties", kraft = true)
 public class KafkaStreamsTests {
 
 	static final String STREAMING_TOPIC1 = "streamingTopic1";
