@@ -166,7 +166,7 @@ The following Spring Boot example overrides the default factories:
 [source, java]
 ----
 @Bean
-public ConsumerFactory<String, Thing> kafkaConsumerFactory(JsonDeserializer customValueDeserializer) {
+public ConsumerFactory<?, ?> kafkaConsumerFactory(JsonDeserializer customValueDeserializer) {
     Map<String, Object> properties = new HashMap<>();
     // properties.put(..., ...)
     // ...
@@ -175,7 +175,7 @@ public ConsumerFactory<String, Thing> kafkaConsumerFactory(JsonDeserializer cust
 }
 
 @Bean
-public ProducerFactory<String, Thing> kafkaProducerFactory(JsonSerializer customValueSerializer) {
+public ProducerFactory<?, ?> kafkaProducerFactory(JsonSerializer customValueSerializer) {
     return new DefaultKafkaProducerFactory<>(properties.buildProducerProperties(),
         new StringSerializer(), customValueSerializer);
 }
@@ -184,6 +184,9 @@ public ProducerFactory<String, Thing> kafkaProducerFactory(JsonSerializer custom
 
 Setters are also provided, as an alternative to using these constructors.
 ====
+
+NOTE: When using Spring Boot and overriding the `ConsumerFactory` and `ProducerFactory` as shown above, wild card generic types need to be used with the bean method return type.
+If concrete generic types are provided instead, then Spring Boot will ignore these beans and still use the default ones.
 
 Starting with version 2.2, you can explicitly configure the deserializer to use the supplied target type and ignore type information in headers by using one of the overloaded constructors that have a boolean `useHeadersIfPresent` argument (which is `true` by default).
 The following example shows how to do so:
