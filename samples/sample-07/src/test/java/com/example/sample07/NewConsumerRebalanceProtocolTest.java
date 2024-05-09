@@ -1,3 +1,19 @@
+/*
+ * Copyright 2022-2024 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.example.sample07;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -36,6 +52,15 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * New consumer rebalance protocol sample which purpose is only to be used in the test assertions.
+ * In this sample, Testcontainers is used for testing instead of @EmbeddedKafka.
+ * See unit tests for this project for more information.
+ *
+ * @author Sanghyeok An.
+ *
+ * @since 3.3
+ */
 @SpringBootTest
 @DirtiesContext
 public class NewConsumerRebalanceProtocolTest {
@@ -59,8 +84,17 @@ public class NewConsumerRebalanceProtocolTest {
 	CountDownLatch rawConsumerAssignedCount;
 
 
+	/*
+	Test Scenario
+	1. spring-kafka consumer subscribe hello-topic. (1st consumer rebalancing occurs)
+	2. rawKafkaConsumer subscribe hello-topic, too. (2nd consumer rebalancing occurs)
+	3. rawKafkaConsumer is closed.                  (3rd consumer rebalancing occurs)
+
+	Execute this step and check side effect by ConsumerRebalancing at each step,
+	testing the new consumer rebalancing protocol.
+	 */
 	@Test
-	public void test3() throws InterruptedException, ExecutionException {
+	public void newConsumerRebalancingProtocolTest() throws InterruptedException, ExecutionException {
 
 		// One spring-kafka listener subscribe
 		final MessageListenerContainer listenerContainer = registry.getListenerContainer(GROUP_ID);
@@ -108,7 +142,6 @@ public class NewConsumerRebalanceProtocolTest {
 		assertThat(rawConsumerAssignedCount.await(20, TimeUnit.SECONDS)).isTrue();
 		assertThat(config.partitionRevokedLatch.await(20, TimeUnit.SECONDS)).isTrue();
 		assertThat(config.partitionAssignedLatch.await(20, TimeUnit.SECONDS)).isTrue();
-
 
 		// Send two messages each partition to broker.
 		this.template.send(TOPIC_NAME, 0, null, "my-data");
