@@ -16,6 +16,21 @@
 
 package com.example.sample07;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.io.IOException;
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -26,15 +41,23 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.BytesDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PropertiesLoaderUtils;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
-import org.springframework.kafka.core.*;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ConsumerAwareRebalanceListener;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -42,15 +65,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.annotation.DirtiesContext;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.InternetProtocol;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
-
-import java.time.Duration;
-import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * New consumer rebalance protocol sample which purpose is only to be used in the test assertions.
@@ -61,28 +77,38 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * @since 3.3
  */
+@Testcontainers
 @SpringBootTest
 @DirtiesContext
-public class NewConsumerRebalanceProtocolTest {
+public class Sample07ApplicationTest {
 
 	static final String GROUP_ID = "hello";
+
 	static final String TOPIC_NAME = "hello-topic";
+
 	static final String BROKER = "localhost:12000";
+
+	static final String BROKER_PROPERTIES_FILE_PATH = "src/test/resources/broker.properties";
+
 	static final String KAFKA_IMAGE_NAME = "bitnami/kafka:3.7.0";
 
 	@Autowired
 	TestConfig config;
+
 	@Autowired
 	KafkaTemplate<Integer, String> template;
+
 	@Autowired
 	KafkaListenerEndpointRegistry registry;
+
 	@Autowired
 	ThreadPoolTaskExecutor threadPoolTaskExecutor;
 
 	CountDownLatch rawConsumerPollCount;
-	CountDownLatch rawConsumerRevokedCount;
-	CountDownLatch rawConsumerAssignedCount;
 
+	CountDownLatch rawConsumerRevokedCount;
+
+	CountDownLatch rawConsumerAssignedCount;
 
 	/*
 	Test Scenario
@@ -145,7 +171,7 @@ public class NewConsumerRebalanceProtocolTest {
 
 		// Send two messages each partition to broker.
 		this.template.send(TOPIC_NAME, 0, null, "my-data");
-		this.template.send(TOPIC_NAME, 1, null,"my-data");
+		this.template.send(TOPIC_NAME, 1, null, "my-data");
 
 		// Both spring-kafka consumer and rawConsumer will received message from broker each by each.
 		assertThat(config.listenerLatch.await(20, TimeUnit.SECONDS)).isTrue();
@@ -163,7 +189,7 @@ public class NewConsumerRebalanceProtocolTest {
 
 		config.listenerLatch = new CountDownLatch(2);
 		this.template.send(TOPIC_NAME, 0, null, "my-data");
-		this.template.send(TOPIC_NAME, 1, null,"my-data");
+		this.template.send(TOPIC_NAME, 1, null, "my-data");
 		assertThat(config.listenerLatch.await(20, TimeUnit.SECONDS)).isTrue();
 	}
 
@@ -184,12 +210,28 @@ public class NewConsumerRebalanceProtocolTest {
 		return props;
 	}
 
+	static Map<String, String> getPropertiesFromFile() {
+		final Resource resource = new ClassPathResource(BROKER_PROPERTIES_FILE_PATH);
+		try {
+			final Properties properties = PropertiesLoaderUtils.loadAllProperties(resource.getFilename());
+			return properties.stringPropertyNames().stream()
+							.collect(Collectors.toMap(
+										s -> s,
+										s -> (String) properties.get(s)));
+		}
+		catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
 	@EnableKafka
-	@Configuration
+	@TestConfiguration
 	public static class TestConfig {
 
 		CountDownLatch partitionRevokedLatch = new CountDownLatch(0);
+
 		CountDownLatch partitionAssignedLatch = new CountDownLatch(1);
+
 		CountDownLatch listenerLatch = new CountDownLatch(2);
 
 		@KafkaListener(id = GROUP_ID, topics = TOPIC_NAME, autoStartup = "false")
@@ -219,7 +261,7 @@ public class NewConsumerRebalanceProtocolTest {
 			factory.getContainerProperties().setConsumerRebalanceListener(new ConsumerAwareRebalanceListener() {
 				@Override
 				public void onPartitionsAssigned(Consumer<?, ?> consumer,
-												 Collection<TopicPartition> partitions) {
+												Collection<TopicPartition> partitions) {
 					partitionAssignedLatch.countDown();
 				}
 
@@ -232,7 +274,20 @@ public class NewConsumerRebalanceProtocolTest {
 		}
 
 		@Bean
-		ConsumerFactory<Integer, String> consumerFactory() {
+		ConsumerFactory<Integer, String> consumerFactory() throws InterruptedException {
+			Properties propsDummy = new Properties();
+			propsDummy.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, BytesDeserializer.class.getName());
+			propsDummy.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
+									StringDeserializer.class.getName());
+			propsDummy.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BROKER);
+			propsDummy.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "hello");
+			propsDummy.setProperty(ConsumerConfig.GROUP_PROTOCOL_CONFIG, "consumer");
+			propsDummy.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+			Consumer<Object, Object> dummyConsumer = new KafkaConsumer<>(propsDummy);
+
+			Thread.sleep(5000);
+			dummyConsumer.close();
+
 			final Map<String, Object> props = getConsumerProperties();
 			return new DefaultKafkaConsumerFactory<>(props);
 		}
@@ -247,67 +302,20 @@ public class NewConsumerRebalanceProtocolTest {
 		}
 
 		@Bean
-		GenericContainer genericContainer(ConsumerFactory<Integer, String> cf) throws InterruptedException {
-			GenericContainer genericContainer = setUpBroker();
-
-			Properties props = new Properties();
-			props.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, BytesDeserializer.class.getName());
-			props.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-							  StringDeserializer.class.getName());
-			props.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, BROKER);
-			props.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "hello");
-			props.setProperty(ConsumerConfig.GROUP_PROTOCOL_CONFIG, "consumer");
-			props.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-			Consumer<Object, Object> dummyConsumer = new KafkaConsumer<>(props);
-
-			Thread.sleep(5000);
-			dummyConsumer.close();
-
-			return genericContainer;
-		}
-
-		GenericContainer setUpBroker() {
+		public GenericContainer<?> brokerContainer() {
 			final DockerImageName imageName = DockerImageName.parse(KAFKA_IMAGE_NAME);
-			final GenericContainer broker = new GenericContainer(imageName);
+			final GenericContainer<?> broker = new GenericContainer<>(imageName);
 
-			// Set KRAFT.
-			broker.addEnv("KAFKA_CFG_NODE_ID", "0");
-			broker.addEnv("KAFKA_CFG_KRAFT_CLUSTER_ID", "HsDBs9l6UUmQq7Y5E6bNlw");
-			broker.addEnv("KAFKA_CFG_CONTROLLER_QUORUM_VOTERS", "0@localhost:9093");
-			broker.addEnv("KAFKA_CFG_PROCESS_ROLES", "controller,broker");
-
-			// Set listener.
-			broker.addEnv("KAFKA_CFG_LISTENERS",
-						  "INTERNAL://localhost:29092, PLAINTEXT://0.0.0.0:9092, EXTERNAL://:9094, CONTROLLER://:9093");
-			broker.addEnv("KAFKA_CFG_ADVERTISED_LISTENERS",
-						  "INTERNAL://localhost:29092, PLAINTEXT://localhost:9092, EXTERNAL://127.0.0.1:12000");
-			broker.addEnv("KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP",
-						  "CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT");
-			broker.addEnv("KAFKA_CFG_CONTROLLER_LISTENER_NAMES", "CONTROLLER");
-
-			// Set ETC.
-			broker.addEnv("KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE", "true");
-			broker.addEnv("KAFKA_CFG_NUM_PARTITIONS", "2");
-			broker.addEnv("KAFKA_CFG_INTER_BROKER_LISTENER_NAME", "INTERNAL");
-			broker.addEnv("KAFKA_CFG_GROUP_INITIAL_REBALANCE_DELAY_MS", "0");
-			broker.addEnv("KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR", "1");
-			broker.addEnv("KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR", "1");
-			broker.addEnv("KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR", "1");
-			broker.addEnv("KAFKA_CFG_DEFAULT_REPLICATION_FACTOR", "1");
-
-			// KIP-848. If you want more, see links below.
-			// https://cwiki.apache.org/confluence/display/KAFKA/KIP-848%3A+The+Next+Generation+of+the+Consumer+Rebalance+Protocol
-			// https://cwiki.apache.org/confluence/display/KAFKA/The+Next+Generation+of+the+Consumer+Rebalance+Protocol+%28KIP-848%29+-+Early+Access+Release+Notes
-			broker.addEnv("KAFKA_CFG_GROUP_COORDINATOR_REBALANCE_PROTOCOLS", "classic,consumer");
-			broker.addEnv("KAFKA_CFG_TRANSACTION_PARTITION_VERIFICATION_ENABLE", "false");
+			broker.getEnvMap().putAll(getPropertiesFromFile());
 
 			// Set Port forwarding. 12000 -> 9094.
-			String portFormat = String.format("%d:%d/%s", 12000, 9094, InternetProtocol.TCP.toDockerNotation());
+			final String portFormat = String.format("%d:%d/%s", 12000, 9094, InternetProtocol.TCP.toDockerNotation());
 			final List<String> portsBinding = Collections.singletonList(portFormat);
 			broker.setPortBindings(portsBinding);
-			broker.start();
+
 			return broker;
 		}
+
 	}
 
 	public class RawConsumerRebalanceListener implements ConsumerRebalanceListener {
@@ -321,5 +329,7 @@ public class NewConsumerRebalanceProtocolTest {
 		public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
 			rawConsumerAssignedCount.countDown();
 		}
+
 	}
+
 }
