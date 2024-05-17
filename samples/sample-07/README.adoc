@@ -1,0 +1,50 @@
+== Sample 7
+
+This sample demonstrated the application of the new consumer rebalance protocol in Spring Kafka.
+
+The new consumer rebalance protocol refers to the Server Side rebalance protocol proposed in KIP-848.
+
+`Spring Boot` starts the `Kafka Broker` container defined in the `compose.yaml` file upon startup.
+
+```yaml
+version: '3'
+services:
+  broker:
+    image: bitnami/kafka:3.7.0
+    ...
+      # KIP-848
+      KAFKA_CFG_GROUP_COORDINATOR_REBALANCE_PROTOCOLS: "classic,consumer"
+      KAFKA_CFG_TRANSACTION_PARTITION_VERIFICATION_ENABLE: "false"
+```
+
+The config of `group.protocol = conumser` should be added to `Consumer` configuration to apply new consumer rebalance protocol.
+
+```java
+        @Bean
+	public ConsumerFactory<String, String> consumerFactory() {
+		final Map<String, Object> props = new HashMap<>();
+		...
+		props.put(ConsumerConfig.GROUP_PROTOCOL_CONFIG, "consumer");
+		...
+	}
+```
+
+Next, the `Consumer` created by `@KafkaListener` will request a subscription to the `test-topic` from the `Broker`.
+
+The `Broker` will then send the Topic Partition Assign information to the `Consumer`. That means the `Consumer` Rebalancing has finished and started to poll messages.
+
+```java
+@Component
+public class Sample07KafkaListener {
+
+	@KafkaListener(topics = "test-topic", groupId = "sample07-1")
+	public void listenWithGroup1(String message) {
+		System.out.println("Received message at group sample07-1: " + message);
+	}
+
+	@KafkaListener(topics = "test-topic", groupId = "sample07-2")
+	public void listenWithGroup2(String message) {
+		System.out.println("Received message at group sample07-2: " + message);
+	}
+}
+```
