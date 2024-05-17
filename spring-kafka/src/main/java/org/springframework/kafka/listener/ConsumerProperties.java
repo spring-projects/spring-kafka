@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 the original author or authors.
+ * Copyright 2019-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ import org.springframework.util.StringUtils;
  * Common consumer properties.
  *
  * @author Gary Russell
+ * @author Soby Chacko
  * @since 2.3
  *
  */
@@ -115,6 +116,12 @@ public class ConsumerProperties {
 	private boolean checkDeserExWhenKeyNull;
 
 	private boolean checkDeserExWhenValueNull;
+
+	/**
+	 * Container group protocol that will be set on the Kafka Consumer.
+	 * Default to classic consumer protocol.
+	 */
+	private String groupProtocol;
 
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
@@ -499,6 +506,23 @@ public class ConsumerProperties {
 	 */
 	public void setCheckDeserExWhenValueNull(boolean checkDeserExWhenValueNull) {
 		this.checkDeserExWhenValueNull = checkDeserExWhenValueNull;
+	}
+
+	/**
+	 * Return the container's group protocol.
+	 * @return Container group protocol set via the group.protocol Consumer property
+	 */
+	public String getGroupProtocol() {
+		return this.groupProtocol;
+	}
+
+	/**
+	 * Set the container group protocol.
+	 *
+	 * @param groupProtocol group protocol via the group.protocol Consumer property
+	 */
+	public void setGroupProtocol(String groupProtocol) {
+		this.groupProtocol = groupProtocol;
 	}
 
 	@Override
