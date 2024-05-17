@@ -1,8 +1,8 @@
 == Sample 7
 
-This sample demonstrated the application of the new consumer rebalance protocol in Spring Kafka.
+This sample demonstrates the application of the new consumer rebalance protocol in Spring for Apache Kafka.
 
-The new consumer rebalance protocol refers to the Server Side rebalance protocol proposed in KIP-848.
+The new consumer rebalance protocol refers to the Server Side rebalance protocol proposed in link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-848%3A+The+Next+Generation+of+the+Consumer+Rebalance+Protocol[KIP-848].
 
 `Spring Boot` starts the `Kafka Broker` container defined in the `compose.yaml` file upon startup.
 
@@ -31,7 +31,7 @@ The config of `group.protocol = conumser` should be added to `Consumer` configur
 
 Next, the `Consumer` created by `@KafkaListener` will request a subscription to the `test-topic` from the `Broker`.
 
-The `Broker` will then send the Topic Partition Assign information to the `Consumer`. That means the `Consumer` Rebalancing has finished and started to poll messages.
+The `Broker` will then send the Topic Partition Assign information to the `Consumer`. This means that the `Consumer` rebalancing has finished, and the `Consumer` has started to poll messages.
 
 ```java
 @Component
