@@ -18,6 +18,7 @@ package com.example.sample07;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.kafka.annotation.EnableKafka;
 
 /**
  * New consumer rebalance protocol sample which purpose is only to demonstrate the application
@@ -28,6 +29,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @since 3.3
  */
 
+@EnableKafka
 @SpringBootApplication
 public class Sample07Application {
 

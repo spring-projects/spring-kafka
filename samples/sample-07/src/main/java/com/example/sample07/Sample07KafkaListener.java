@@ -22,8 +22,8 @@ import org.springframework.stereotype.Component;
 /**
  * New consumer rebalance protocol sample which purpose is only to demonstrate the application
  * of the New Consumer Rebalance Protocol in Spring Kafka.
- * Each consumer subscribe test-topic with different group id. then, new consumer rebalance protocol
- * will be completed successfully.
+ * Each consumer will subscribe test-topic with different group id.
+ * Then, new consumer rebalance protocol will be completed successfully.
  *
  * @author Sanghyeok An.
  *

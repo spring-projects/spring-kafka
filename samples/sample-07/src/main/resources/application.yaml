@@ -7,3 +7,11 @@ spring:
       stop:
         command: down
         timeout: 10s
+  kafka:
+    consumer:
+      bootstrap-servers: localhost:10000
+      group-id: sample07
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        group.protocol: consumer
