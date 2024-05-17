@@ -30,10 +30,3 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
-
-tasks.withType(Checkstyle) {
-	checkstyle {
-		configDirectory.set(rootProject.file("src/checkstyle"))
-		toolVersion = '10.12.5'
-	}
-}
