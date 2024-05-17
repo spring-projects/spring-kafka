@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ import org.springframework.retry.support.RetrySynchronizationManager;
  *
  * @author Tomaz Fernandes
  * @author Artem Bilan
+ * @author Borahm Lee
  *
  * @since 2.7
  *
@@ -53,7 +54,7 @@ public class BackOffValuesGenerator {
 	public BackOffValuesGenerator(int providedMaxAttempts, BackOffPolicy providedBackOffPolicy) {
 		this.numberOfValuesToCreate = getMaxAttempts(providedMaxAttempts) - 1;
 		BackOffPolicy policy = providedBackOffPolicy != null ? providedBackOffPolicy : DEFAULT_BACKOFF_POLICY;
-		checkBackOffPolicyTipe(policy);
+		checkBackOffPolicyType(policy);
 		this.backOffPolicy = policy;
 	}
 
@@ -69,7 +70,7 @@ public class BackOffValuesGenerator {
 				: generateFromSleepingBackOffPolicy(this.numberOfValuesToCreate, this.backOffPolicy);
 	}
 
-	private void checkBackOffPolicyTipe(BackOffPolicy providedBackOffPolicy) {
+	private void checkBackOffPolicyType(BackOffPolicy providedBackOffPolicy) {
 		if (!(SleepingBackOffPolicy.class.isAssignableFrom(providedBackOffPolicy.getClass())
 				|| NoBackOffPolicy.class.isAssignableFrom(providedBackOffPolicy.getClass()))) {
 			throw new IllegalArgumentException("Either a SleepingBackOffPolicy or a NoBackOffPolicy must be provided. " +

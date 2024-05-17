@@ -197,7 +197,7 @@ When using a POJO batch listener (e.g. `List<Thing>`), and you don't have the fu
 ----
 @KafkaListener(id = "recovering", topics = "someTopic")
 public void listen(List<Thing> things) {
-    for (int i = 0; i < records.size(); i++) {
+    for (int i = 0; i < things.size(); i++) {
         try {
             process(things.get(i));
         }

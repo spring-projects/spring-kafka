@@ -58,7 +58,7 @@ However, the quickest way to get started is to use https://start.spring.io[start
 
 This quick tour works with the following versions:
 
-* Apache Kafka Clients 3.6.x
+* Apache Kafka Clients 3.7.x
 * Spring Framework 6.1.x
 * Minimum Java version: 17
 

@@ -11,6 +11,21 @@ For changes in earlier version, see xref:appendix/change-history.adoc[Change His
 === Kafka Client Version
 
 This version requires 3.7.0 `kafka-clients`.
+The 3.7.0 version of Kafka client introduces the new consumer group protocol.
+Fore more details and it's limitations see https://cwiki.apache.org/confluence/display/KAFKA/The+Next+Generation+of+the+Consumer+Rebalance+Protocol+%28KIP-848%29+-+Early+Access+Release+Notes[KIP-848].
+The new consumer group protocol is an early access release and not meant to be used in production.
+It is only recommended to use for testing purposes in this version.
+Therefore, Spring for Apache Kafka supports this new consumer group protocol only to the extent of such testing level support available in the `kafka-client` itself.
+By default, Spring for Apache Kafka uses the classic consumer group protocol and when testing the new consumer group protocol, that needs to be opted-in via the `group.protocol` property on the consumer.
+
+[[x32-testing-support-changes]]
+=== Testing Support Changes
+
+The `kraft` mode is disabled in `EmbeddedKafka` by default and users wanting to use the `kraft` mode must enable it.
+This is due to certain instabilities observed while using `EmbeddedKafka` in `kraft` mode, especially when testing the new consumer group protocol.
+The new consumer group protocol is only supported in `kraft` mode and because of this, when testing the new protocol, that needs to be done against a real Kafka cluster and not the one based on the `KafkaClusterTestKit`, which `EmbeddedKafka` is based upon.
+In addition, there were some other race conditions observed, while running multiple `KafkaListener` methods with `EmbeddedKafka` in `kraft` mode.
+Until these issues are resolved, the `kraft` default on `EmbeddedKafka` will remain as `false`.
 
 [[x32-kafka-streams-iqs-support]]
 === Kafka Streams Interactive Query Support

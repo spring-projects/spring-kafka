@@ -11,7 +11,7 @@ The Spring for Apache Kafka project applies core Spring concepts to the developm
 We provide a "`template`" as a high-level abstraction for sending messages.
 We also provide support for Message-driven POJOs.
 
-(C) 2016 - 2023 VMware, Inc.
+(C) 2016 - 2024 Broadcom, Inc.
 
 Copies of this document may be made for your own use and for distribution to others, provided that you do not charge any fee for such copies and further provided that each copy contains this Copyright Notice, whether distributed in print or electronically.
 

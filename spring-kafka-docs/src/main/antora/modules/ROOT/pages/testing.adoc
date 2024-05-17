@@ -8,8 +8,8 @@ The `spring-kafka-test` jar contains some useful utilities to assist with testin
 
 Two implementations are provided:
 
-* `EmbeddedKafkaZKBroker` - legacy implementation which starts an embedded `Zookeeper` instance.
-* `EmbeddedKafkaKraftBroker` - (default) uses `Kraft` instead of `Zookeeper` in combined controller and broker modes (since 3.1).
+* `EmbeddedKafkaZKBroker` - legacy implementation which starts an embedded `Zookeeper` instance (which is still the default when using `EmbeddedKafka`).
+* `EmbeddedKafkaKraftBroker` - uses `Kraft` instead of `Zookeeper` in combined controller and broker modes (since 3.1).
 
 There are several techniques to configure the broker as discussed in the following sections.
 
@@ -228,7 +228,7 @@ In addition, these properties can be provided:
 - `spring.kafka.embedded.topics` - topics (comma-separated value) to create in the started Kafka cluster;
 - `spring.kafka.embedded.partitions` - number of partitions to provision for the created topics;
 - `spring.kafka.embedded.broker.properties.location` - the location of the file for additional Kafka broker configuration properties; the value of this property must follow the Spring resource abstraction pattern;
-- `spring.kafka.embedded.kraft` - when false, use an `EmbeddedKafkaZKBroker` instead of an `EmbeddedKafkaKraftBroker`.
+- `spring.kafka.embedded.kraft` - default false, when true, use an `EmbeddedKafkaKraftBroker` instead of an `EmbeddedKafkaZKBroker`.
 
 Essentially these properties mimic some of the `@EmbeddedKafka` attributes.
 
@@ -243,7 +243,7 @@ NOTE: `spring-kafka-test` has transitive dependencies on `junit-jupiter-api` and
 If you wish to use the embedded broker and are NOT using JUnit, you may wish to exclude these dependencies.
 
 [[embedded-kafka-annotation]]
-== @EmbeddedKafka Annotation
+== `@EmbeddedKafka` Annotation
 We generally recommend that you use the rule as a `@ClassRule` to avoid starting and stopping the broker between tests (and use a different topic for each test).
 Starting with version 2.0, if you use Spring's test application context caching, you can also declare a `EmbeddedKafkaBroker` bean, so a single broker can be used across multiple test classes.
 For convenience, we provide a test class-level annotation called `@EmbeddedKafka` to register the `EmbeddedKafkaBroker` bean.
@@ -295,7 +295,7 @@ public class KafkaStreamsTests {
 
 Starting with version 2.2.4, you can also use the `@EmbeddedKafka` annotation to specify the Kafka ports property.
 
-Starting with version 3.1, set the `kraft` property to `false` to use an `EmbeddedKafkaZKBroker` instead of an `EmbeddedKafkaKraftBroker`.
+Starting with version 3.2, set the `kraft` property to `true` to use an `EmbeddedKafkaKraftBroker` instead of an `EmbeddedKafkaZKBroker`.
 
 The following example sets the `topics`, `brokerProperties`, and `brokerPropertiesLocation` attributes of `@EmbeddedKafka` support property placeholder resolutions:
 
@@ -317,7 +317,7 @@ Properties defined by `brokerProperties` override properties found in `brokerPro
 You can use the `@EmbeddedKafka` annotation with JUnit 4 or JUnit 5.
 
 [[embedded-kafka-junit5]]
-== @EmbeddedKafka Annotation with JUnit5
+== `@EmbeddedKafka` Annotation with JUnit5
 
 Starting with version 2.3, there are two ways to use the `@EmbeddedKafka` annotation with JUnit5.
 When used with the `@SpringJunitConfig` annotation, the embedded broker is added to the test application context.
@@ -403,6 +403,16 @@ public class MyApplicationTests {
 ----
 
 Notice that, since this is a Spring Boot application, we override the broker list property to set Spring Boot's property.
+
+[[embedded-broker-with-springjunitconfig-annotations]]
+== `@EmbeddedKafka` with `@SpringJunitConfig`
+
+When using `@EmbeddedKafka` with `@SpringJUnitConfig`, it is recommended to use `@DirtiesContext` on the test class.
+This is to prevent potential race conditions occurring during the JVM shutdown after running multiple tests in a test suite.
+For example, without using `@DirtiesContext`, the `EmbeddedKafkaBroker` may shutdown earlier while the application context still needs resources from it.
+Since every `EmbeddedKafka` test-runs create its own temporary directory, when this race condition occurs, it will produce error log messages indicating that the files that it is trying to delete or cleanup are not available anymore.
+Adding `@DirtiesContext` will ensure that the application context is cleaned up after each test and not cached, making it less vulnerable to potential resource race conditions like these.
+
 
 [[kafka-testing-embeddedkafka-annotation]]
 === `@EmbeddedKafka` Annotation or `EmbeddedKafkaBroker` Bean

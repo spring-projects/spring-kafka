@@ -89,7 +89,7 @@ The `ConsumerRetryAuthEvent` event has the following properties:
 ** `AUTHENTICATION` - the event was published because of an authentication exception.
 ** `AUTHORIZATION` - the event was published because of an authorization exception.
 
-The `ConsumerStartingEvent`, `ConsumerStartingEvent`, `ConsumerFailedToStartEvent`, `ConsumerStoppedEvent`, `ConsumerRetryAuthSuccessfulEvent` and `ContainerStoppedEvent` events have the following properties:
+The `ConsumerStartingEvent`, `ConsumerStartedEvent`, `ConsumerFailedToStartEvent`, `ConsumerStoppedEvent`, `ConsumerRetryAuthSuccessfulEvent` and `ContainerStoppedEvent` events have the following properties:
 
 * `source`: The listener container instance that published the event.
 * `container`: The listener container or the parent listener container, if the source container is a child.

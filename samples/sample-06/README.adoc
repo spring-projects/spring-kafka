@@ -1,0 +1,36 @@
+== Sample 6
+
+This sample demonstrates a simple Kafka Streams topology tested with TopologyTestDriver.
+
+The application contains a simple Kafka Streams topology that counts the keys seen so far in a stateful manner.
+The corresponding `TopologyTestDriver` based JUnit test verifies the behavior of the business logic in the Kafka Streams topology.
+
+
+Console output describe the topology as shown below:
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::                (v2.5.2)
+
+2021-06-30 17:38:33.637  INFO 92063 --- [           main] com.example.ApplicationTests             : Starting ApplicationTests using Java 11.0.10 on C02FL1KSMD6T with PID 92063 (started by igomez in /Users/igomez/Projects/spring-kafka/samples/sample-05)
+2021-06-30 17:38:33.638  INFO 92063 --- [           main] com.example.ApplicationTests             : The following profiles are active: test
+2021-06-30 17:38:35.027  INFO 92063 --- [           main] com.example.ApplicationTests             : Started ApplicationTests in 1.73 seconds (JVM running for 2.833)
+2021-06-30 17:38:35.695  INFO 92063 --- [           main] com.example.ApplicationTests             : Topologies:
+   Sub-topology: 0
+    Source: KSTREAM-SOURCE-0000000000 (topics: [input])
+      --> KSTREAM-AGGREGATE-0000000002
+    Processor: KSTREAM-AGGREGATE-0000000002 (stores: [KSTREAM-AGGREGATE-STATE-STORE-0000000001])
+      --> KTABLE-SUPPRESS-0000000003
+      <-- KSTREAM-SOURCE-0000000000
+    Processor: KTABLE-SUPPRESS-0000000003 (stores: [KTABLE-SUPPRESS-STATE-STORE-0000000004])
+      --> KTABLE-TOSTREAM-0000000005
+      <-- KSTREAM-AGGREGATE-0000000002
+    Processor: KTABLE-TOSTREAM-0000000005 (stores: [])
+      --> KSTREAM-SINK-0000000006
+      <-- KTABLE-SUPPRESS-0000000003
+    Sink: KSTREAM-SINK-0000000006 (topic: output)
+      <-- KTABLE-TOSTREAM-0000000005

@@ -116,7 +116,7 @@ import org.springframework.lang.Nullable;
  *     public RetryTopicConfiguration myRetryableTopic(KafkaTemplate&lt;String, MyPojo&gt; template) {
  *         return RetryTopicConfigurationBuilder
  *                 .newInstance()
- *                 .fixedBackoff(3000)
+ *                 .fixedBackOff(3000)
  *                 .maxAttempts(5)
  *                 .includeTopics("my-topic", "my-other-topic")
  *                 .create(template);
@@ -238,6 +238,7 @@ import org.springframework.lang.Nullable;
  * @author Fabio da Silva Jr.
  * @author Gary Russell
  * @author Wang Zhiyang
+ * @author Borahm Lee
  *
  * @since 2.7
  *

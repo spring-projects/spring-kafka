@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,10 +28,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
+/**
+ * @author Lee Jaeheon
+ * @author Soby Chacko
+ */
 @EmbeddedKafka
 @SpringJUnitConfig(WithNestedClassContextTests.Config.class)
+@DirtiesContext
 class WithNestedClassContextTests {
 
 	private static final AtomicInteger counter = new AtomicInteger();
@@ -56,17 +62,20 @@ class WithNestedClassContextTests {
 		void equalsCount() {
 			assertThat(counter.get()).isEqualTo(1);
 		}
+
 	}
 
-	public static class TestClass {
-	}
+	public static class TestClass { }
 
 	@Configuration
 	static class Config {
+
 		@Bean
 		public TestClass testClass() {
 			counter.incrementAndGet();
 			return new TestClass();
 		}
+
 	}
+
 }

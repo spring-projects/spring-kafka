@@ -166,7 +166,7 @@ future.whenComplete((result, ex) -> {
 `SendResult` has two properties, a `ProducerRecord` and `RecordMetadata`.
 See the Kafka API documentation for information about those objects.
 
-The `Throwable` can be cast to a `KafkaProducerException`; its `failedProducerRecord` property contains the failed record.
+The `Throwable` can be cast to a `KafkaProducerException`; its `producerRecord` property contains the failed record.
 
 If you wish to block the sending thread to await the result, you can invoke the future's `get()` method; using the method with a timeout is recommended.
 If you have set a `linger.ms`, you may wish to invoke `flush()` before waiting or, for convenience, the template has a constructor with an `autoFlush` parameter that causes the template to `flush()` on each send.
@@ -216,7 +216,7 @@ public void sendToKafka(final MyOutputData data) {
 ----
 ====
 
-Note that the cause of the `ExecutionException` is `KafkaProducerException` with the `failedProducerRecord` property.
+Note that the cause of the `ExecutionException` is `KafkaProducerException` with the `producerRecord` property.
 
 [[routing-template]]
 == Using `RoutingKafkaTemplate`

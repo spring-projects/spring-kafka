@@ -5,4 +5,5 @@
 * sample-03 - transactions
 * sample-04 - topic based (non-blocking) retry
 * sample-05 - global embedded Kafka testing
+* sample-06 - Kafka Streams tests with TopologyTestDriver
 * sample-07 - new consumer rebalance protocol in spring-kafka
