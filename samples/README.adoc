@@ -1,9 +1,9 @@
 == Samples
 
-* sample-01 - simple producer/consumer with dead-letter topic
-* sample-02 - multi-method listener
-* sample-03 - transactions
-* sample-04 - topic based (non-blocking) retry
-* sample-05 - global embedded Kafka testing
+* sample-01 - Simple producer/consumer with dead-letter topic
+* sample-02 - Multi-method listener
+* sample-03 - Transactions
+* sample-04 - Topic based (non-blocking) retry
+* sample-05 - Global embedded Kafka testing
 * sample-06 - Kafka Streams tests with TopologyTestDriver
-* sample-07 - new consumer rebalance protocol in spring-kafka
+* sample-07 - The New consumer rebalance protocol in spring-kafka
