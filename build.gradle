@@ -65,7 +65,7 @@ ext {
 	micrometerVersion = '1.12.5'
 	micrometerTracingVersion = '1.2.5'
 	mockitoVersion = '5.6.0'
-	reactorVersion = '2023.0.5'
+	reactorVersion = '2023.0.6'
 	scalaVersion = '2.13'
 	springBootVersion = '3.2.5' // docs module
 	springDataVersion = '2023.1.5'
