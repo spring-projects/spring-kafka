@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.core.ProducerFactory
 import org.springframework.kafka.listener.*
+import org.springframework.kafka.support.converter.JsonMessageConverter
 import org.springframework.kafka.test.EmbeddedKafkaBroker
 import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.annotation.DirtiesContext
@@ -47,6 +48,7 @@ import java.util.concurrent.TimeUnit
 
 /**
  * @author Gary Russell
+ * @author Huijin Hong
  * @since 2.2
  */
 
@@ -63,7 +65,7 @@ class EnableKafkaKotlinTests {
 
 	@Test
 	fun `test listener`() {
-		this.template.send("kotlinTestTopic1", "foo")
+		this.template.send("kotlinTestTopic1", "{\"data\":\"foo\"}")
 		assertThat(this.config.latch1.await(10, TimeUnit.SECONDS)).isTrue()
 		assertThat(this.config.received).isEqualTo("foo")
 	}
@@ -173,6 +175,7 @@ class EnableKafkaKotlinTests {
 				= ConcurrentKafkaListenerContainerFactory()
 			factory.consumerFactory = kcf()
 			factory.setCommonErrorHandler(eh)
+			factory.setRecordMessageConverter(JsonMessageConverter())
 			return factory
 		}
 
@@ -186,9 +189,11 @@ class EnableKafkaKotlinTests {
 			return factory
 		}
 
+		data class TestKafkaMessage(val data: String)
+
 		@KafkaListener(id = "kotlin", topics = ["kotlinTestTopic1"], containerFactory = "kafkaListenerContainerFactory")
-		fun listen(value: String) {
-			this.received = value
+		fun listen(value: TestKafkaMessage) {
+			this.received = value.data
 			this.latch1.countDown()
 		}
 

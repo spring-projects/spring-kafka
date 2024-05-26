@@ -35,6 +35,7 @@ import reactor.core.publisher.Mono;
  *
  * @author Gary Russell
  * @author Wang Zhiyang
+ * @author Huijin Hong
  * @since 2.5
  *
  */
@@ -124,4 +125,13 @@ public final class AdapterUtils {
 		return CompletableFuture.class.isAssignableFrom(resultType);
 	}
 
+	/**
+	 * Return the true when type is {@code Continuation}.
+	 * @param  parameterType {@code MethodParameter} parameter type.
+	 * @return type is {@code Continuation}.
+	 * @since 3.2
+	 */
+	public static boolean isKotlinContinuation(Class<?> parameterType) {
+		return "kotlin.coroutines.Continuation".equals(parameterType.getName());
+	}
 }

@@ -37,7 +37,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.context.expression.MapAccessor;
-import org.springframework.core.KotlinDetector;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.expression.BeanResolver;
@@ -90,6 +89,7 @@ import reactor.core.publisher.Mono;
  * @author Venil Noronha
  * @author Nathan Xu
  * @author Wang ZhiYang
+ * @author Huijin Hong
  */
 public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware, AsyncRepliesAware {
 
@@ -763,8 +763,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			isNotConvertible |= isAck;
 			boolean isConsumer = parameterIsType(parameterType, Consumer.class);
 			isNotConvertible |= isConsumer;
-			boolean isCoroutines = KotlinDetector.isKotlinType(methodParameter.getParameterType());
-			isNotConvertible |= isCoroutines;
+			boolean isKotlinContinuation = AdapterUtils.isKotlinContinuation(methodParameter.getParameterType());
+			isNotConvertible |= isKotlinContinuation;
 			boolean isMeta = parameterIsType(parameterType, ConsumerRecordMetadata.class);
 			this.hasMetadataParameter |= isMeta;
 			isNotConvertible |= isMeta;
@@ -783,7 +783,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 					break;
 				}
 			}
-			else if (isAck || isCoroutines || isConsumer || annotationHeaderIsGroupId(methodParameter)) {
+			else if (isAck || isKotlinContinuation || isConsumer || annotationHeaderIsGroupId(methodParameter)) {
 				allowedBatchParameters++;
 			}
 		}

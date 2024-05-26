@@ -30,6 +30,7 @@ import reactor.core.publisher.Mono;
  * but for regular {@link HandlerMethodArgumentResolver} contract.
  *
  * @author Wang Zhiyang
+ * @author Huijin Hong
  *
  * @since 3.2
  *
@@ -39,7 +40,7 @@ public class ContinuationHandlerMethodArgumentResolver implements HandlerMethodA
 
 	@Override
 	public boolean supportsParameter(MethodParameter parameter) {
-		return "kotlin.coroutines.Continuation".equals(parameter.getParameterType().getName());
+		return AdapterUtils.isKotlinContinuation(parameter.getParameterType());
 	}
 
 	@Override
