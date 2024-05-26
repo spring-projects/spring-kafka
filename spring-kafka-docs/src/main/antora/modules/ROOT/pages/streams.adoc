@@ -473,7 +473,7 @@ public class KafkaStreamsConfig {
         stream
                 .mapValues((ValueMapper<String, String>) String::toUpperCase)
                 .groupByKey()
-                .windowedBy(TimeWindows.of(Duration.ofMillis(1_000)))
+                .windowedBy(TimeWindows.ofSizeWithNoGrace(Duration.ofMillis(1_000)))
                 .reduce((String value1, String value2) -> value1 + value2,
                 		Named.as("windowStore"))
                 .toStream()
