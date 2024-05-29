@@ -49,6 +49,15 @@ import org.springframework.util.PatternMatchUtils;
  */
 public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 
+	private static final String[] DEFAULT_RAW_MAPPED_HEADERS = {
+			KafkaHeaders.LISTENER_INFO,
+			"b3",
+			"traceparent",
+			"X-B3-TraceId",
+			"X-B3-SpanId",
+			"X-B3-Sampled",
+			"X-B3-Flags"};
+
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); // NOSONAR
 
 	private final List<HeaderMatcher> matchers = new ArrayList<>();
@@ -56,7 +65,9 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	private final Map<String, Boolean> rawMappedHeaders = new HashMap<>();
 
 	{
-		this.rawMappedHeaders.put(KafkaHeaders.LISTENER_INFO, true);
+		for (String defaultRawMappedHeader : DEFAULT_RAW_MAPPED_HEADERS) {
+			this.rawMappedHeaders.put(defaultRawMappedHeader, true);
+		}
 	}
 
 	private final boolean outbound;
@@ -153,6 +164,8 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	 * {@code byte[]} for outbound). Inbound headers that match will be mapped as
 	 * {@code byte[]} unless the corresponding boolean in the map value is true,
 	 * in which case it will be mapped as a String.
+	 * Headers mapped by default are: {@code kafka_listenerInfo}, {@code b3}, {@code traceparent},
+	 * {@code X-B3-TraceId}, {@code X-B3-SpanId}, {@code X-B3-Sampled} and {@code X-B3-Flags}.
 	 * @param rawMappedHeaders the header names to not convert and
 	 * @since 2.2.5
 	 * @see #setCharset(Charset)
@@ -160,7 +173,6 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	 */
 	public void setRawMappedHeaders(Map<String, Boolean> rawMappedHeaders) {
 		if (!ObjectUtils.isEmpty(rawMappedHeaders)) {
-			this.rawMappedHeaders.clear();
 			this.rawMappedHeaders.putAll(rawMappedHeaders);
 		}
 	}
