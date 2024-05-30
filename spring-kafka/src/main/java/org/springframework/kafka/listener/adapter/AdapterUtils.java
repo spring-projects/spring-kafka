@@ -129,7 +129,7 @@ public final class AdapterUtils {
 	 * Return the true when type is {@code Continuation}.
 	 * @param  parameterType {@code MethodParameter} parameter type.
 	 * @return type is {@code Continuation}.
-	 * @since 3.2
+	 * @since 3.2.1
 	 */
 	public static boolean isKotlinContinuation(Class<?> parameterType) {
 		return "kotlin.coroutines.Continuation".equals(parameterType.getName());
