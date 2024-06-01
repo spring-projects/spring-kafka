@@ -64,6 +64,7 @@ import org.springframework.util.ObjectUtils;
  *
  * @author Gary Russell
  * @author Tomaz Fernandes
+ * @author Watlas
  * @since 2.2
  *
  */
@@ -75,7 +76,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); // NOSONAR
 
 	private static final BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition>
-		DEFAULT_DESTINATION_RESOLVER = (cr, e) -> new TopicPartition(cr.topic() + ".DLT", cr.partition());
+		DEFAULT_DESTINATION_RESOLVER = (cr, e) -> new TopicPartition(cr.topic() + "-dlt", cr.partition());
 
 	private static final long FIVE = 5L;
 

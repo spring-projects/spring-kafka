@@ -122,7 +122,7 @@ public class TransactionalContainerTests {
 
 	public static final String topic3 = "txTopic3";
 
-	public static final String topic3DLT = "txTopic3.DLT";
+	public static final String topic3DLT = "txTopic3-dlt";
 
 	public static final String topic4 = "txTopic4";
 
@@ -134,7 +134,7 @@ public class TransactionalContainerTests {
 
 	public static final String topic8 = "txTopic8";
 
-	public static final String topic8DLT = "txTopic8.DLT";
+	public static final String topic8DLT = "txTopic8-dlt";
 
 	public static final String topic9 = "txTopic9";
 

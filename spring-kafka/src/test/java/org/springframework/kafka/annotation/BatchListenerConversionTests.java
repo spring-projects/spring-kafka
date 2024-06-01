@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2023 the original author or authors.
+ * Copyright 2017-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,7 +84,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  */
 @SpringJUnitConfig
 @DirtiesContext
-@EmbeddedKafka(kraft = false, partitions = 1, topics = { "blc1", "blc2", "blc3", "blc4", "blc5", "blc6", "blc6.DLT" })
+@EmbeddedKafka(kraft = false, partitions = 1, topics = { "blc1", "blc2", "blc3", "blc4", "blc5", "blc6", "blc6-dlt" })
 public class BatchListenerConversionTests {
 
 	private static final String DEFAULT_TEST_GROUP_ID = "blc";
@@ -378,7 +378,7 @@ public class BatchListenerConversionTests {
 			}
 		}
 
-		@KafkaListener(topics = "blc6.DLT", groupId = "blc6.DLT",
+		@KafkaListener(topics = "blc6-dlt", groupId = "blc6-dlt",
 				properties = ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG +
 					":org.apache.kafka.common.serialization.StringDeserializer")
 		public void listen5Dlt(String in) {

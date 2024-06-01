@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2022 the original author or authors.
+ * Copyright 2020-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,11 +63,11 @@ public class FallbackBatchErrorHandlerIntegrationTests {
 
 	public static final String topic1 = "retryTopic1";
 
-	public static final String topic1DLT = "retryTopic1.DLT";
+	public static final String topic1DLT = "retryTopic1-dlt";
 
 	public static final String topic2 = "retryTopic2";
 
-	public static final String topic2DLT = "retryTopic2.DLT";
+	public static final String topic2DLT = "retryTopic2-dlt";
 
 	private static EmbeddedKafkaBroker embeddedKafka;
 
@@ -141,7 +141,7 @@ public class FallbackBatchErrorHandlerIntegrationTests {
 		assertThat(recoverLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(failedGroupId.get()).isEqualTo("retryBatch");
 
-		props.put(ConsumerConfig.GROUP_ID_CONFIG, "retryBatch.dlt");
+		props.put(ConsumerConfig.GROUP_ID_CONFIG, "retryBatch-dlt");
 		DefaultKafkaConsumerFactory<Integer, String> dltcf = new DefaultKafkaConsumerFactory<>(props);
 		Consumer<Integer, String> consumer = dltcf.createConsumer();
 		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, topic1DLT);
@@ -219,7 +219,7 @@ public class FallbackBatchErrorHandlerIntegrationTests {
 		assertThat(recoverLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(failedGroupId.get()).isEqualTo("retryBatch2");
 
-		props.put(ConsumerConfig.GROUP_ID_CONFIG, "retryBatch2.dlt");
+		props.put(ConsumerConfig.GROUP_ID_CONFIG, "retryBatch2-dlt");
 		DefaultKafkaConsumerFactory<Integer, String> dltcf = new DefaultKafkaConsumerFactory<>(props);
 		Consumer<Integer, String> consumer = dltcf.createConsumer();
 		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, topic2DLT);

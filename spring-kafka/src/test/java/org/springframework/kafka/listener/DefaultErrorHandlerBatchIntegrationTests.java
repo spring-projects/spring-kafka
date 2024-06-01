@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2022 the original author or authors.
+ * Copyright 2020-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,11 +61,11 @@ public class DefaultErrorHandlerBatchIntegrationTests {
 
 	public static final String topic1 = "dehTopic1";
 
-	public static final String topic1DLT = "dehTopic1.DLT";
+	public static final String topic1DLT = "dehTopic1-dlt";
 
 	public static final String topic2 = "dehTopic2";
 
-	public static final String topic2DLT = "dehTopic2.DLT";
+	public static final String topic2DLT = "dehTopic2-dlt";
 
 	private static EmbeddedKafkaBroker embeddedKafka;
 
@@ -133,7 +133,7 @@ public class DefaultErrorHandlerBatchIntegrationTests {
 					"baz", "qux", "fiz", "buz",
 					"qux", "fiz", "buz");
 
-		props.put(ConsumerConfig.GROUP_ID_CONFIG, "recoverBatch.dlt");
+		props.put(ConsumerConfig.GROUP_ID_CONFIG, "recoverBatch-dlt");
 		DefaultKafkaConsumerFactory<Integer, String> dltcf = new DefaultKafkaConsumerFactory<>(props);
 		Consumer<Integer, String> consumer = dltcf.createConsumer();
 		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, topic1DLT);
@@ -215,7 +215,7 @@ public class DefaultErrorHandlerBatchIntegrationTests {
 					"baz", "qux", "fiz", "buz",
 					"qux", "fiz", "buz");
 
-		props.put(ConsumerConfig.GROUP_ID_CONFIG, "recoverBatch2.dlt");
+		props.put(ConsumerConfig.GROUP_ID_CONFIG, "recoverBatch2-dlt");
 		DefaultKafkaConsumerFactory<Integer, String> dltcf = new DefaultKafkaConsumerFactory<>(props);
 		Consumer<Integer, String> consumer = dltcf.createConsumer();
 		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, topic2DLT);

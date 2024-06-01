@@ -96,14 +96,14 @@ public class DeadLetterPublishingRecovererTests {
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
 		Consumer consumer = mock(Consumer.class);
-		given(consumer.partitionsFor("foo.DLT", Duration.ofSeconds(5)))
+		given(consumer.partitionsFor("foo-dlt", Duration.ofSeconds(5)))
 				.willReturn(Collections.singletonList(new PartitionInfo("foo", 0, null, null, null)));
 		recoverer.accept(record, consumer, new RuntimeException());
 		verify(template, never()).executeInTransaction(any());
 		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
 		verify(template).send(captor.capture());
 		assertThat(captor.getValue().partition()).isEqualTo(0);
-		verify(consumer).partitionsFor("foo.DLT", Duration.ofSeconds(5));
+		verify(consumer).partitionsFor("foo-dlt", Duration.ofSeconds(5));
 
 		record = new ConsumerRecord<>("foo", 1, 0L, "bar", "baz");
 		recoverer.accept(record, consumer, new RuntimeException());
