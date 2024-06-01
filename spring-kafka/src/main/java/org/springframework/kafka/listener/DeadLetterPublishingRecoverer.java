@@ -64,7 +64,7 @@ import org.springframework.util.ObjectUtils;
  *
  * @author Gary Russell
  * @author Tomaz Fernandes
- * @author Watlas
+ * @author Watlas R
  * @since 2.2
  *
  */
