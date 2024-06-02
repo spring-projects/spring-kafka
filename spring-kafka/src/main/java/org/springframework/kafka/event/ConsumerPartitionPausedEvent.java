@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import org.apache.kafka.common.TopicPartition;
  * An event published when a consumer partition is paused.
  *
  * @author Tomaz Fernandes
+ * @author Borahm Lee
  * @since 2.7
  *
  */
@@ -47,13 +48,13 @@ public class ConsumerPartitionPausedEvent extends KafkaEvent {
 	 * Return the paused partition.
 	 * @return the partition.
 	 */
-	public TopicPartition getPartitions() {
+	public TopicPartition getPartition() {
 		return this.partition;
 	}
 
 	@Override
 	public String toString() {
-		return "ConsumerPausedEvent [partitions=" + this.partition + "]";
+		return "ConsumerPartitionPausedEvent [partition=" + this.partition + "]";
 	}
 
 }

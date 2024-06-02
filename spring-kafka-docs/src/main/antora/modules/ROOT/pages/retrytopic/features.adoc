@@ -221,7 +221,7 @@ This is to avoid creation of excessively large messages (due to the stack trace 
 
 See xref:kafka/annotation-error-handling.adoc#dlpr-headers[Managing Dead Letter Record Headers] for more information.
 
-To reconfigure the framework to use different settings for these properties, configure a `DeadLetterPublishingRecovererer` customizer by overriding the `configureCustomizers` method in a `@Configuration` class that extends `RetryTopicConfigurationSupport`.
+To reconfigure the framework to use different settings for these properties, configure a `DeadLetterPublishingRecoverer` customizer by overriding the `configureCustomizers` method in a `@Configuration` class that extends `RetryTopicConfigurationSupport`.
 See xref:retrytopic/retry-config.adoc#retry-topic-global-settings[Configuring Global Settings and Features] for more details.
 
 [source, java]
