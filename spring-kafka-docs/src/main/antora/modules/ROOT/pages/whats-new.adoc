@@ -7,3 +7,13 @@
 This section covers the changes made from version 3.2 to version 3.3.
 For changes in earlier version, see xref:appendix/change-history.adoc[Change History].
 
+
+[[x33-dlt-topic-naming]]
+=== DLT Topic Naming Convention
+
+The naming convention for DLT topics has been standardized to use the "-dlt" suffix consistently. This change ensures compatibility and avoids conflicts when transitioning between different retry solutions. Users who wish to retain the ".dlt" suffix behavior need to opt-in explicitly by setting the appropriate DLT name property.
+
+
+
+
+
