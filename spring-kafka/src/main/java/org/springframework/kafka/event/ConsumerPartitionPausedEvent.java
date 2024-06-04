@@ -47,6 +47,16 @@ public class ConsumerPartitionPausedEvent extends KafkaEvent {
 	/**
 	 * Return the paused partition.
 	 * @return the partition.
+	 * @deprecated replaced by {@link #getPartition()}
+	 */
+	@Deprecated(since = "3.3", forRemoval = true)
+	public TopicPartition getPartitions() {
+		return this.partition;
+	}
+
+	/**
+	 * Return the paused partition.
+	 * @return the partition.
 	 */
 	public TopicPartition getPartition() {
 		return this.partition;
