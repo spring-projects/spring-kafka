@@ -57,6 +57,7 @@ public class ConsumerPartitionPausedEvent extends KafkaEvent {
 	/**
 	 * Return the paused partition.
 	 * @return the partition.
+	 * @since 3.3
 	 */
 	public TopicPartition getPartition() {
 		return this.partition;
