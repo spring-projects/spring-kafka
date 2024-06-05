@@ -11,7 +11,7 @@ For changes in earlier version, see xref:appendix/change-history.adoc[Change His
 [[x33-dlt-topic-naming]]
 === DLT Topic Naming Convention
 
-The naming convention for DLT topics has been standardized to use the "-dlt" suffix consistently. This change ensures compatibility and avoids conflicts when transitioning between different retry solutions. Users who wish to retain the ".dlt" suffix behavior need to opt-in explicitly by setting the appropriate DLT name property.
+The naming convention for DLT topics has been standardized to use the "-dlt" suffix consistently. This change ensures compatibility and avoids conflicts when transitioning between different retry solutions. Users who wish to retain the ".DLT" suffix behavior need to opt-in explicitly by setting the appropriate DLT name property.
 
 
 
