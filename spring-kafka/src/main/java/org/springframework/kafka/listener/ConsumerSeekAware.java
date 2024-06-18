@@ -29,6 +29,7 @@ import org.apache.kafka.common.TopicPartition;
  *
  * @author Gary Russell
  * @author Soby Chacko
+ * @author Borahm Lee
  * @since 1.1
  *
  */
@@ -86,6 +87,16 @@ public interface ConsumerSeekAware {
 	 * @since 2.4
 	 */
 	default void unregisterSeekCallback() {
+	}
+
+	/**
+	 * Determine if the consumer group ID for seeking matches the expected value.
+	 *
+	 * @return true if the group ID matches, false otherwise.
+	 * @since 3.3
+	 */
+	default boolean matchGroupId() {
+		return false;
 	}
 
 	/**

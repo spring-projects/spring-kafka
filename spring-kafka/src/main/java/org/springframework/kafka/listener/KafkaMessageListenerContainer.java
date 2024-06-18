@@ -165,6 +165,7 @@ import io.micrometer.observation.ObservationRegistry;
  * @author Raphael Rösch
  * @author Christian Mergenthaler
  * @author Mikael Carlstedt
+ * @author Borahm Lee
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -1362,8 +1363,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			publishConsumerStartingEvent();
 			this.consumerThread = Thread.currentThread();
-			setupSeeks();
 			KafkaUtils.setConsumerGroupId(this.consumerGroupId);
+			setupSeeks();
 			this.count = 0;
 			this.last = System.currentTimeMillis();
 			initAssignedPartitions();
