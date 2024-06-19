@@ -168,7 +168,7 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 			refreshContextContainers();
 			return this.unregisteredContainers.get(id);
 		}
-		return null;
+		return container;
 	}
 
 	/**

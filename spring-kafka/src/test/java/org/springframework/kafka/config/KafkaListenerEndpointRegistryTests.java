@@ -35,11 +35,15 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListenerContainer;
 
 /**
  * @author Gary Russell
  * @author Joo Hyuk Kim
+ * @author Artem Bilan
+ *
  * @since 2.8.9
  */
 public class KafkaListenerEndpointRegistryTests {
@@ -137,6 +141,21 @@ public class KafkaListenerEndpointRegistryTests {
 		Collection<MessageListenerContainer> listeners = registry.getListenerContainersMatching(idAndContainerMatcher);
 		// Then
 		assertThat(listeners).hasSize(expectedCount);
+	}
+
+	@Test
+	void verifyUnregisteredListenerContainer() {
+		KafkaListenerEndpointRegistry registry = new KafkaListenerEndpointRegistry();
+		GenericApplicationContext applicationContext = new GenericApplicationContext();
+		ConcurrentMessageListenerContainer<?, ?> listenerContainerMock = mock(ConcurrentMessageListenerContainer.class);
+		given(listenerContainerMock.getListenerId()).willReturn("testListenerContainer");
+		applicationContext.registerBean(ConcurrentMessageListenerContainer.class, () -> listenerContainerMock);
+		applicationContext.refresh();
+		registry.setApplicationContext(applicationContext);
+		// Lazy-load from application context
+		assertThat(registry.getUnregisteredListenerContainer("testListenerContainer")).isNotNull();
+		// From internal map
+		assertThat(registry.getUnregisteredListenerContainer("testListenerContainer")).isNotNull();
 	}
 
 	/**
