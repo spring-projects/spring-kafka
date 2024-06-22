@@ -28,8 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @DirtiesContext
 @SpringJUnitConfig
 @EmbeddedKafka(topics = {AbstractConsumerSeekAwareTests.TOPIC}, partitions = 3)
-public class
-AbstractConsumerSeekAwareTests {
+public class AbstractConsumerSeekAwareTests {
 
 	static final String TOPIC = "Seek";
 
