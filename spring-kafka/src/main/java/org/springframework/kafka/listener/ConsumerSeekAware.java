@@ -19,8 +19,8 @@ package org.springframework.kafka.listener;
 import java.util.Collection;
 import java.util.Map;
 import java.util.function.Function;
-
 import org.apache.kafka.common.TopicPartition;
+import org.springframework.lang.Nullable;
 
 /**
  * Listeners that implement this interface are provided with a
@@ -31,7 +31,6 @@ import org.apache.kafka.common.TopicPartition;
  * @author Soby Chacko
  * @author Borahm Lee
  * @since 1.1
- *
  */
 public interface ConsumerSeekAware {
 
@@ -40,6 +39,7 @@ public interface ConsumerSeekAware {
 	 * {@code ConcurrentMessageListenerContainer} or the same listener instance in multiple
 	 * containers listeners should store the callback in a {@code ThreadLocal} or a map keyed
 	 * by the thread.
+	 *
 	 * @param callback the callback.
 	 */
 	default void registerSeekCallback(ConsumerSeekCallback callback) {
@@ -47,8 +47,9 @@ public interface ConsumerSeekAware {
 
 	/**
 	 * When using group management, called when partition assignments change.
+	 *
 	 * @param assignments the new assignments and their current offsets.
-	 * @param callback the callback to perform an initial seek after assignment.
+	 * @param callback    the callback to perform an initial seek after assignment.
 	 */
 	default void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
 	}
@@ -57,6 +58,7 @@ public interface ConsumerSeekAware {
 	 * When using group management, called when partition assignments are revoked.
 	 * Listeners should discard any callback saved from
 	 * {@link #registerSeekCallback(ConsumerSeekCallback)} on this thread.
+	 *
 	 * @param partitions the partitions that have been revoked.
 	 * @since 2.3
 	 */
@@ -66,8 +68,9 @@ public interface ConsumerSeekAware {
 	/**
 	 * If the container is configured to emit idle container events, this method is called
 	 * when the container idle event is emitted - allowing a seek operation.
+	 *
 	 * @param assignments the new assignments and their current offsets.
-	 * @param callback the callback to perform a seek.
+	 * @param callback    the callback to perform a seek.
 	 */
 	default void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback) {
 	}
@@ -76,6 +79,7 @@ public interface ConsumerSeekAware {
 	 * When using manual partition assignment, called when the first poll has completed;
 	 * useful when using {@code auto.offset.reset=latest} and you need to wait until the
 	 * initial position has been established.
+	 *
 	 * @since 2.8.8
 	 */
 	default void onFirstPoll() {
@@ -84,19 +88,10 @@ public interface ConsumerSeekAware {
 	/**
 	 * Called when the listener consumer terminates allowing implementations to clean up
 	 * state, such as thread locals.
+	 *
 	 * @since 2.4
 	 */
 	default void unregisterSeekCallback() {
-	}
-
-	/**
-	 * Determine if the consumer group ID for seeking matches the expected value.
-	 *
-	 * @return true if the group ID matches, false otherwise.
-	 * @since 3.3
-	 */
-	default boolean matchGroupId() {
-		return false;
 	}
 
 	/**
@@ -112,9 +107,10 @@ public interface ConsumerSeekAware {
 		 * queue the seek operation to the consumer. The queued seek will occur after any
 		 * pending offset commits. The consumer must be currently assigned the specified
 		 * partition.
-		 * @param topic the topic.
+		 *
+		 * @param topic     the topic.
 		 * @param partition the partition.
-		 * @param offset the offset (absolute).
+		 * @param offset    the offset (absolute).
 		 */
 		void seek(String topic, int partition, long offset);
 
@@ -128,8 +124,9 @@ public interface ConsumerSeekAware {
 		 * queue the seek operation to the consumer. The queued seek will occur after any
 		 * pending offset commits. The consumer must be currently assigned the specified
 		 * partition.
-		 * @param topic the topic.
-		 * @param partition the partition.
+		 *
+		 * @param topic                 the topic.
+		 * @param partition             the partition.
 		 * @param offsetComputeFunction function to compute the absolute offset to seek to.
 		 * @since 3.2.0
 		 */
@@ -143,7 +140,8 @@ public interface ConsumerSeekAware {
 		 * the seek operation to the consumer. The queued seek will occur after
 		 * any pending offset commits. The consumer must be currently assigned the
 		 * specified partition.
-		 * @param topic the topic.
+		 *
+		 * @param topic     the topic.
 		 * @param partition the partition.
 		 */
 		void seekToBeginning(String topic, int partition);
@@ -156,6 +154,7 @@ public interface ConsumerSeekAware {
 		 * queue the seek operation to the consumer for each
 		 * {@link TopicPartition}. The seek will occur after any pending offset commits.
 		 * The consumer must be currently assigned the specified partition(s).
+		 *
 		 * @param partitions the {@link TopicPartition}s.
 		 * @since 2.3.4
 		 */
@@ -171,7 +170,8 @@ public interface ConsumerSeekAware {
 		 * the seek operation to the consumer. The queued seek will occur after any
 		 * pending offset commits. The consumer must be currently assigned the specified
 		 * partition.
-		 * @param topic the topic.
+		 *
+		 * @param topic     the topic.
 		 * @param partition the partition.
 		 */
 		void seekToEnd(String topic, int partition);
@@ -184,6 +184,7 @@ public interface ConsumerSeekAware {
 		 * the seek operation to the consumer for each {@link TopicPartition}. The queued
 		 * seek(s) will occur after any pending offset commits. The consumer must be
 		 * currently assigned the specified partition(s).
+		 *
 		 * @param partitions the {@link TopicPartition}s.
 		 * @since 2.3.4
 		 */
@@ -198,12 +199,13 @@ public interface ConsumerSeekAware {
 		 * perform the seek immediately on the consumer. When called from elsewhere, queue
 		 * the seek operation. The queued seek will occur after any pending offset
 		 * commits. The consumer must be currently assigned the specified partition.
-		 * @param topic the topic.
+		 *
+		 * @param topic     the topic.
 		 * @param partition the partition.
-		 * @param offset the offset; positive values are relative to the start, negative
-		 * values are relative to the end, unless toCurrent is true.
+		 * @param offset    the offset; positive values are relative to the start, negative
+		 *                  values are relative to the end, unless toCurrent is true.
 		 * @param toCurrent true for the offset to be relative to the current position
-		 * rather than the beginning or end.
+		 *                  rather than the beginning or end.
 		 * @since 2.3
 		 */
 		void seekRelative(String topic, int partition, long offset, boolean toCurrent);
@@ -218,11 +220,12 @@ public interface ConsumerSeekAware {
 		 * commits. The consumer must be currently assigned the specified partition. Use
 		 * {@link #seekToTimestamp(Collection, long)} when seeking multiple partitions
 		 * because the offset lookup is blocking.
-		 * @param topic the topic.
+		 *
+		 * @param topic     the topic.
 		 * @param partition the partition.
 		 * @param timestamp the time stamp.
-		 * @since 2.3
 		 * @see #seekToTimestamp(Collection, long)
+		 * @since 2.3
 		 */
 		void seekToTimestamp(String topic, int partition, long timestamp);
 
@@ -234,12 +237,26 @@ public interface ConsumerSeekAware {
 		 * perform the seek immediately on the consumer. When called from elsewhere, queue
 		 * the seek operation. The queued seek will occur after any pending offset
 		 * commits. The consumer must be currently assigned the specified partition.
+		 *
 		 * @param topicPartitions the topic/partitions.
-		 * @param timestamp the time stamp.
+		 * @param timestamp       the time stamp.
 		 * @since 2.3
 		 */
 		void seekToTimestamp(Collection<TopicPartition> topicPartitions, long timestamp);
 
+
+		/**
+		 * Retrieve the group ID associated with this consumer seek callback, if available.
+		 * This method returns {@code null} by default, indicating that the group ID is not specified.
+		 * Implementations may override this method to provide a specific group ID value.
+		 *
+		 * @return the consumer group ID.
+		 * @since 3.3
+		 */
+		@Nullable
+		default String getGroupId() {
+			return null;
+		}
 	}
 
 }

@@ -16,27 +16,28 @@
 
 package org.springframework.kafka.listener;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
+
 import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-
 /**
  * @author Gary Russell
- * @author Borahm Lee
  * @since 2.6
+ *
  */
 public class ConsumerSeekAwareTests {
 
@@ -50,7 +51,7 @@ public class ConsumerSeekAwareTests {
 		var exec1 = Executors.newSingleThreadExecutor();
 		var exec2 = Executors.newSingleThreadExecutor();
 		var cb1 = mock(ConsumerSeekCallback.class);
-		var cb2 = mock(ConsumerSeekCallback.class);
+		var cb2  = mock(ConsumerSeekCallback.class);
 		var first = new AtomicBoolean(true);
 		var map1 = new LinkedHashMap<>(Map.of(new TopicPartition("foo", 0), 0L, new TopicPartition("foo", 1), 0L));
 		var map2 = new LinkedHashMap<>(Map.of(new TopicPartition("foo", 2), 0L, new TopicPartition("foo", 3), 0L));
@@ -58,7 +59,8 @@ public class ConsumerSeekAwareTests {
 			if (first.getAndSet(false)) {
 				csa.registerSeekCallback(cb1);
 				csa.onPartitionsAssigned(map1, null);
-			} else {
+			}
+			else {
 				csa.registerSeekCallback(cb2);
 				csa.onPartitionsAssigned(map2, null);
 			}
@@ -78,7 +80,8 @@ public class ConsumerSeekAwareTests {
 		var revoke1 = (Callable<Void>) () -> {
 			if (!first.getAndSet(true)) {
 				csa.onPartitionsRevoked(Collections.singletonList(map1.keySet().iterator().next()));
-			} else {
+			}
+			else {
 				csa.onPartitionsRevoked(Collections.singletonList(map2.keySet().iterator().next()));
 			}
 			return null;
@@ -93,7 +96,8 @@ public class ConsumerSeekAwareTests {
 		var revoke2 = (Callable<Void>) () -> {
 			if (first.getAndSet(false)) {
 				csa.onPartitionsRevoked(Collections.singletonList(map1.keySet().iterator().next()));
-			} else {
+			}
+			else {
 				csa.onPartitionsRevoked(Collections.singletonList(map2.keySet().iterator().next()));
 			}
 			return null;
@@ -112,30 +116,6 @@ public class ConsumerSeekAwareTests {
 		exec2.submit(checkTL).get();
 		exec1.shutdown();
 		exec2.shutdown();
-	}
-
-	@SuppressWarnings("unchecked")
-	@Test
-	void notMatchedGroupId() throws ExecutionException, InterruptedException {
-		class CSA extends AbstractConsumerSeekAware {
-			@Override
-			public boolean matchGroupId() {
-				return false;
-			}
-		}
-
-		AbstractConsumerSeekAware csa = new CSA();
-		var exec = Executors.newSingleThreadExecutor();
-		var register = (Callable<Void>) () -> {
-			csa.registerSeekCallback(mock(ConsumerSeekCallback.class));
-			csa.onPartitionsAssigned(Map.of(new TopicPartition("baz", 0), 0L), null);
-			return null;
-		};
-		exec.submit(register).get();
-		assertThat(KafkaTestUtils.getPropertyValue(csa, "callbackForThread", Map.class)).isEmpty();
-		assertThat(KafkaTestUtils.getPropertyValue(csa, "callbacks", Map.class)).isEmpty();
-		assertThat(KafkaTestUtils.getPropertyValue(csa, "callbacksToTopic", Map.class)).isEmpty();
-		exec.shutdown();
 	}
 
 }
