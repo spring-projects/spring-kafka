@@ -18,10 +18,19 @@ package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
+import org.apache.kafka.common.TopicPartition;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -35,6 +44,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.AbstractConsumerSeekAwareTests.Config.MultiGroupListener;
+import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -48,6 +58,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  */
 @DirtiesContext
 @SpringJUnitConfig
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @EmbeddedKafka(topics = {AbstractConsumerSeekAwareTests.TOPIC}, partitions = 3)
 class AbstractConsumerSeekAwareTests {
 
@@ -63,6 +74,17 @@ class AbstractConsumerSeekAwareTests {
 	MultiGroupListener multiGroupListener;
 
 	@Test
+	@Order(1)
+	public void checkSizeOfCallbacks() {
+		Map<ConsumerSeekCallback, List<TopicPartition>> callbacksAndTopics = multiGroupListener.getCallbacksAndTopics();
+		Set<ConsumerSeekCallback> registeredCallbacks = callbacksAndTopics.keySet();
+		Map<TopicPartition, List<ConsumerSeekCallback>> topicsAndCallbacks = multiGroupListener.getSeekCallbacks();
+		Set<ConsumerSeekCallback> foundCallbacks = topicsAndCallbacks.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
+		assertThat(registeredCallbacks).containsExactlyInAnyOrderElementsOf(foundCallbacks);
+	}
+
+	@Test
+	@Order(2)
 	void seekForAllGroups() throws Exception {
 		template.send(TOPIC, "test-data");
 		template.send(TOPIC, "test-data");
@@ -78,6 +100,7 @@ class AbstractConsumerSeekAwareTests {
 	}
 
 	@Test
+	@Order(2)
 	void seekForSpecificGroup() throws Exception {
 		template.send(TOPIC, "test-data");
 		template.send(TOPIC, "test-data");
@@ -130,12 +153,12 @@ class AbstractConsumerSeekAwareTests {
 
 			static CountDownLatch latch2 = new CountDownLatch(2);
 
-			@KafkaListener(groupId = "group1", topics = TOPIC)
+			@KafkaListener(id = "group1", groupId = "group1", topics = TOPIC, concurrency = "2")
 			void listenForGroup1(String in) {
 				latch1.countDown();
 			}
 
-			@KafkaListener(groupId = "group2", topics = TOPIC)
+			@KafkaListener(id = "group2", groupId = "group2", topics = TOPIC, concurrency = "2")
 			void listenForGroup2(String in) {
 				latch2.countDown();
 			}

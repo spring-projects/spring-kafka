@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2023 the original author or authors.
+ * Copyright 2019-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
@@ -33,6 +34,7 @@ import org.springframework.lang.Nullable;
  * having to keep track of the callbacks itself.
  *
  * @author Gary Russell
+ * @author Borahm Lee
  * @since 2.3
  *
  */
@@ -40,7 +42,7 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
 	private final Map<Thread, ConsumerSeekCallback> callbackForThread = new ConcurrentHashMap<>();
 
-	private final Map<TopicPartition, ConsumerSeekCallback> callbacks = new ConcurrentHashMap<>();
+	private final Map<TopicPartition, List<ConsumerSeekCallback>> callbacks = new ConcurrentHashMap<>();
 
 	private final Map<ConsumerSeekCallback, List<TopicPartition>> callbacksToTopic = new ConcurrentHashMap<>();
 
@@ -54,7 +56,7 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 		ConsumerSeekCallback threadCallback = this.callbackForThread.get(Thread.currentThread());
 		if (threadCallback != null) {
 			assignments.keySet().forEach(tp -> {
-				this.callbacks.put(tp, threadCallback);
+				this.callbacks.computeIfAbsent(tp, key -> new ArrayList<>()).add(threadCallback);
 				this.callbacksToTopic.computeIfAbsent(threadCallback, key -> new LinkedList<>()).add(tp);
 			});
 		}
@@ -63,15 +65,17 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 	@Override
 	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
 		partitions.forEach(tp -> {
-			ConsumerSeekCallback removed = this.callbacks.remove(tp);
-			if (removed != null) {
-				List<TopicPartition> topics = this.callbacksToTopic.get(removed);
-				if (topics != null) {
-					topics.remove(tp);
-					if (topics.size() == 0) {
-						this.callbacksToTopic.remove(removed);
+			List<ConsumerSeekCallback> removedCallbacks = this.callbacks.remove(tp);
+			if (removedCallbacks != null && !removedCallbacks.isEmpty()) {
+				removedCallbacks.forEach(cb -> {
+					List<TopicPartition> topics = this.callbacksToTopic.get(cb);
+					if (topics != null) {
+						topics.remove(tp);
+						if (topics.isEmpty()) {
+							this.callbacksToTopic.remove(cb);
+						}
 					}
-				}
+				});
 			}
 		});
 	}
@@ -82,25 +86,28 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 	}
 
 	/**
-	 * Return the callback for the specified topic/partition.
+	 * Return the callbacks for the specified topic/partition.
+	 *
 	 * @param topicPartition the topic/partition.
-	 * @return the callback (or null if there is no assignment).
+	 * @return the callbacks (or null if there is no assignment).
 	 */
 	@Nullable
-	protected ConsumerSeekCallback getSeekCallbackFor(TopicPartition topicPartition) {
+	protected List<ConsumerSeekCallback> getSeekCallbacksFor(TopicPartition topicPartition) {
 		return this.callbacks.get(topicPartition);
 	}
 
 	/**
 	 * The map of callbacks for all currently assigned partitions.
+	 *
 	 * @return the map.
 	 */
-	protected Map<TopicPartition, ConsumerSeekCallback> getSeekCallbacks() {
+	protected Map<TopicPartition, List<ConsumerSeekCallback>> getSeekCallbacks() {
 		return Collections.unmodifiableMap(this.callbacks);
 	}
 
 	/**
 	 * Return the currently registered callbacks and their associated {@link TopicPartition}(s).
+	 *
 	 * @return the map of callbacks and partitions.
 	 * @since 2.6
 	 */
@@ -110,6 +117,7 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
 	/**
 	 * Seek all assigned partitions to the beginning.
+	 *
 	 * @since 2.6
 	 */
 	public void seekToBeginning() {
@@ -118,6 +126,7 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
 	/**
 	 * Seek all assigned partitions to the end.
+	 *
 	 * @since 2.6
 	 */
 	public void seekToEnd() {
@@ -126,6 +135,7 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
 	/**
 	 * Seek all assigned partitions to the offset represented by the timestamp.
+	 *
 	 * @param time the time to seek to.
 	 * @since 2.6
 	 */

@@ -180,6 +180,7 @@ import jakarta.validation.constraints.Max;
  * @author Nakul Mishra
  * @author Soby Chacko
  * @author Wang Zhiyang
+ * @author Borahm Lee
  */
 @SpringJUnitConfig
 @DirtiesContext
@@ -2212,7 +2213,7 @@ public class EnableKafkaIntegrationTests {
 
 		@KafkaListener(id = LISTENER_ID_SEEK_POSITION_TIMESTAMP_0, autoStartup = "false", topicPartitions = {
 				@TopicPartition(topic = TOPIC_SEEK_POSITION_TIMESTAMP, partitionOffsets =
-						@PartitionOffset(partition = "0", initialOffset = "9999999999000", seekPosition = "TIMESTAMP")
+				@PartitionOffset(partition = "0", initialOffset = "9999999999000", seekPosition = "TIMESTAMP")
 				)
 		})
 		void annotationPartitionOffsetSeekPositionTimestampNoMatch(ConsumerRecord<?, ?> record) {
@@ -2523,11 +2524,10 @@ public class EnableKafkaIntegrationTests {
 				if (latch1.getCount() > 0) {
 					latch1.countDown();
 					if (latch1.getCount() == 0) {
-						ConsumerSeekCallback seekToComputeFn = getSeekCallbackFor(
+						List<ConsumerSeekCallback> seekToComputeFunctions = getSeekCallbacksFor(
 								new org.apache.kafka.common.TopicPartition("seekToComputeFn", 0));
-						assertThat(seekToComputeFn).isNotNull();
-						seekToComputeFn.
-								seek("seekToComputeFn", 0, current -> 0L);
+						assertThat(seekToComputeFunctions).isNotNull();
+						seekToComputeFunctions.forEach(callback -> callback.seek("seekToComputeFn", 0, current -> 0L));
 					}
 				}
 			}
@@ -2577,13 +2577,14 @@ public class EnableKafkaIntegrationTests {
 
 		public void rewindAllOneRecord() {
 			getSeekCallbacks()
-					.forEach((tp, callback) ->
-							callback.seekRelative(tp.topic(), tp.partition(), -1, true));
+					.forEach((tp, callbacks) ->
+							callbacks.forEach(callback -> callback.seekRelative(tp.topic(), tp.partition(), -1, true))
+					);
 		}
 
 		public void rewindOnePartitionOneRecord(String topic, int partition) {
-			getSeekCallbackFor(new org.apache.kafka.common.TopicPartition(topic, partition))
-					.seekRelative(topic, partition, -1, true);
+			getSeekCallbacksFor(new org.apache.kafka.common.TopicPartition(topic, partition))
+					.forEach(callback -> callback.seekRelative(topic, partition, -1, true));
 		}
 
 		@Override
