@@ -49,7 +49,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 @DirtiesContext
 @SpringJUnitConfig
 @EmbeddedKafka(topics = {AbstractConsumerSeekAwareTests.TOPIC}, partitions = 3)
-public class AbstractConsumerSeekAwareTests {
+class AbstractConsumerSeekAwareTests {
 
 	static final String TOPIC = "Seek";
 
@@ -63,7 +63,7 @@ public class AbstractConsumerSeekAwareTests {
 	MultiGroupListener multiGroupListener;
 
 	@Test
-	public void seekForAllGroups() throws Exception {
+	void seekForAllGroups() throws Exception {
 		template.send(TOPIC, "test-data");
 		template.send(TOPIC, "test-data");
 		assertThat(MultiGroupListener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
@@ -78,7 +78,7 @@ public class AbstractConsumerSeekAwareTests {
 	}
 
 	@Test
-	public void seekForSpecificGroup() throws Exception {
+	void seekForSpecificGroup() throws Exception {
 		template.send(TOPIC, "test-data");
 		template.send(TOPIC, "test-data");
 		assertThat(MultiGroupListener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
@@ -100,7 +100,7 @@ public class AbstractConsumerSeekAwareTests {
 		EmbeddedKafkaBroker broker;
 
 		@Bean
-		public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
+		ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
 				ConsumerFactory<String, String> consumerFactory) {
 			ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory);
@@ -139,7 +139,7 @@ public class AbstractConsumerSeekAwareTests {
 				latch2.countDown();
 			}
 
-			public void seekToBeginningForGroup(String groupIdForSeek) {
+			void seekToBeginningForGroup(String groupIdForSeek) {
 				getCallbacksAndTopics().forEach((cb, topics) -> {
 					if (groupIdForSeek.equals(cb.getGroupId())) {
 						topics.forEach(tp -> cb.seekToBeginning(tp.topic(), tp.partition()));
