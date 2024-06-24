@@ -19,7 +19,9 @@ package org.springframework.kafka.listener;
 import java.util.Collection;
 import java.util.Map;
 import java.util.function.Function;
+
 import org.apache.kafka.common.TopicPartition;
+
 import org.springframework.lang.Nullable;
 
 /**
@@ -224,8 +226,8 @@ public interface ConsumerSeekAware {
 		 * @param topic     the topic.
 		 * @param partition the partition.
 		 * @param timestamp the time stamp.
-		 * @see #seekToTimestamp(Collection, long)
 		 * @since 2.3
+		 * @see #seekToTimestamp(Collection, long)
 		 */
 		void seekToTimestamp(String topic, int partition, long timestamp);
 
