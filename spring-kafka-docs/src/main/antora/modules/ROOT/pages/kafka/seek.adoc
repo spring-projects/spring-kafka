@@ -3,7 +3,7 @@
 
 In order to seek, your listener must implement `ConsumerSeekAware`, which has the following methods:
 
-[source,java]
+[source, java]
 ----
 void registerSeekCallback(ConsumerSeekCallback callback);
 
@@ -30,7 +30,7 @@ You should discard this thread's callback and remove any associations to the rev
 
 The callback has the following methods:
 
-[source,java]
+[source, java]
 ----
 void seek(String topic, int partition, long offset);
 
@@ -75,7 +75,7 @@ See xref:kafka/events.adoc#idle-containers[Detecting Idle and Non-Responsive Con
 
 NOTE: The `seekToBeginning` method that accepts a collection is useful, for example, when processing a compacted topic and you wish to seek to the beginning every time the application is started:
 
-[source,java]
+[source, java]
 ----
 public class MyListener implements ConsumerSeekAware {
 
@@ -93,7 +93,7 @@ To arbitrarily seek at runtime, use the callback reference from the `registerSee
 
 Here is a trivial Spring Boot application that demonstrates how to use the callback; it sends 10 records to the topic; hitting `<Enter>` in the console causes all partitions to seek to the beginning.
 
-[source,java]
+[source, java]
 ----
 @SpringBootApplication
 public class SeekExampleApplication {
@@ -166,7 +166,7 @@ To make things simpler, version 2.3 added the `AbstractConsumerSeekAware` class,
 The following example shows how to seek to the last record processed, in each partition, each time the container goes idle.
 It also has methods that allow arbitrary external calls to rewind partitions by one record.
 
-[source,java]
+[source, java]
 ----
 public class SeekToLastOnIdleListener extends AbstractConsumerSeekAware {
 
@@ -210,7 +210,7 @@ Version 2.6 added convenience methods to the abstract class:
 
 Example:
 
-[source,java]
+[source, java]
 ----
 public class MyListener extends AbstractConsumerSeekAware {
 
