@@ -9,7 +9,7 @@ void registerSeekCallback(ConsumerSeekCallback callback);
 
 void onPartitionsAssigned(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback);
 
-void onPartitionsRevoked(Collection<TopicPartition> partitions)
+void onPartitionsRevoked(Collection<TopicPartition> partitions);
 
 void onIdleContainer(Map<TopicPartition, Long> assignments, ConsumerSeekCallback callback);
 ----
@@ -49,6 +49,8 @@ void seekRelative(String topic, int partition, long offset, boolean toCurrent);
 void seekToTimestamp(String topic, int partition, long timestamp);
 
 void seekToTimestamp(Collection<TopicPartition> topicPartitions, long timestamp);
+
+String getGroupId();
 ----
 
 The two different variants of the `seek` methods provide a way to seek to an arbitrary offset.
@@ -232,4 +234,11 @@ public class SomeOtherBean {
 
 ----
 
+As of version 3.3, a new method `getGroupId()` was introduced in the `ConsumerSeekAware.ConsumerSeekCallback` interface.
+This method is particularly useful when you need to identify the consumer group associated with a specific seek callback.
+
+NOTE: When using a class that extends `AbstractConsumerSeekAware`, a seek operation performed in one listener may impact all listeners.
+This might not always be the desired behavior.
+To address this, you can use the `getGroupId()` method provided by the callback.
+This allows you to perform seek operations selectively, targeting only the consumer group of interest.
 
