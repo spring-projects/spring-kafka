@@ -90,6 +90,7 @@ class AbstractConsumerSeekAwareTests {
 		multiGroupListener.seekToBeginningForGroup("group2");
 		assertThat(MultiGroupListener.latch2.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(MultiGroupListener.latch1.await(100, TimeUnit.MICROSECONDS)).isFalse();
+		assertThat(MultiGroupListener.latch1.getCount()).isEqualTo(2);
 	}
 
 	@EnableKafka
