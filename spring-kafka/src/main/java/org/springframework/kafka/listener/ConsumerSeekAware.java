@@ -91,16 +91,6 @@ public interface ConsumerSeekAware {
 	}
 
 	/**
-	 * Determine if the consumer group ID for seeking matches the expected value.
-	 *
-	 * @return true if the group ID matches, false otherwise.
-	 * @since 3.3
-	 */
-	default boolean matchGroupId() {
-		return false;
-	}
-
-	/**
 	 * A callback that a listener can invoke to seek to a specific offset.
 	 */
 	interface ConsumerSeekCallback {
