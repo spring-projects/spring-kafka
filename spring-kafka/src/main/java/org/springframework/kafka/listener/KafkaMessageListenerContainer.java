@@ -1907,7 +1907,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.consumerSeekAwareListener.onPartitionsRevoked(partitions);
 				this.consumerSeekAwareListener.unregisterSeekCallback();
 			}
-			this.logger.info(() -> KafkaMessageListenerContainer.this.getGroupId() + ": Consumer stopped");
+			this.logger.info(() -> this.consumerGroupId + ": Consumer stopped");
 			publishConsumerStoppedEvent(throwable);
 		}
 
@@ -2694,7 +2694,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			Observation observation = KafkaListenerObservation.LISTENER_OBSERVATION.observation(
 					this.containerProperties.getObservationConvention(),
 					DefaultKafkaListenerObservationConvention.INSTANCE,
-					() -> new KafkaRecordReceiverContext(cRecord, getListenerId(), getClientId(), KafkaMessageListenerContainer.this.getGroupId(),
+					() -> new KafkaRecordReceiverContext(cRecord, getListenerId(), getClientId(), this.consumerGroupId,
 							this::clusterId),
 					this.observationRegistry);
 			return observation.observe(() -> {
@@ -3330,7 +3330,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@Override
 		public String getGroupId() {
-			return KafkaMessageListenerContainer.this.getGroupId();
+			return this.consumerGroupId;
 		}
 
 		@Override
