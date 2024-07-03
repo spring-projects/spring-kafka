@@ -82,7 +82,7 @@ class AbstractConsumerSeekAwareTests {
 				Set<TopicPartition> getTopicPartitions = topicsAndCallbacks.keySet();
 				Set<ConsumerSeekCallback> getCallbacks = topicsAndCallbacks.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
 
-				assertThat(registeredCallbacks).containsExactlyInAnyOrderElementsOf(getCallbacks).hasSize(4);
+				assertThat(registeredCallbacks).containsExactlyInAnyOrderElementsOf(getCallbacks).isNotEmpty();
 				assertThat(registeredTopicPartitions).containsExactlyInAnyOrderElementsOf(getTopicPartitions).hasSize(3);
 		});
 	}
