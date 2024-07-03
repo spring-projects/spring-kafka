@@ -2526,7 +2526,7 @@ public class EnableKafkaIntegrationTests {
 					if (latch1.getCount() == 0) {
 						List<ConsumerSeekCallback> seekToComputeFunctions = getSeekCallbacksFor(
 								new org.apache.kafka.common.TopicPartition("seekToComputeFn", 0));
-						assertThat(seekToComputeFunctions).isNotNull();
+						assertThat(seekToComputeFunctions).isNotNull().isNotEmpty();
 						seekToComputeFunctions.forEach(callback -> callback.seek("seekToComputeFn", 0, current -> 0L));
 					}
 				}
