@@ -17,7 +17,9 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -27,10 +29,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.TopicPartition;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -58,7 +57,6 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  */
 @DirtiesContext
 @SpringJUnitConfig
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @EmbeddedKafka(topics = {AbstractConsumerSeekAwareTests.TOPIC}, partitions = 3)
 class AbstractConsumerSeekAwareTests {
 
@@ -74,17 +72,22 @@ class AbstractConsumerSeekAwareTests {
 	MultiGroupListener multiGroupListener;
 
 	@Test
-	@Order(1)
-	public void checkSizeOfCallbacks() {
-		Map<ConsumerSeekCallback, List<TopicPartition>> callbacksAndTopics = multiGroupListener.getCallbacksAndTopics();
-		Set<ConsumerSeekCallback> registeredCallbacks = callbacksAndTopics.keySet();
-		Map<TopicPartition, List<ConsumerSeekCallback>> topicsAndCallbacks = multiGroupListener.getSeekCallbacks();
-		Set<ConsumerSeekCallback> foundCallbacks = topicsAndCallbacks.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
-		assertThat(registeredCallbacks).containsExactlyInAnyOrderElementsOf(foundCallbacks);
+	public void checkCallbacksAndTopicPartitions() {
+		await().timeout(Duration.ofSeconds(10)).untilAsserted(() -> {
+			Map<ConsumerSeekCallback, List<TopicPartition>> callbacksAndTopics = multiGroupListener.getCallbacksAndTopics();
+				Set<ConsumerSeekCallback> registeredCallbacks = callbacksAndTopics.keySet();
+				Set<TopicPartition> registeredTopicPartitions = callbacksAndTopics.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
+
+				Map<TopicPartition, List<ConsumerSeekCallback>> topicsAndCallbacks = multiGroupListener.getSeekCallbacks();
+				Set<TopicPartition> getTopicPartitions = topicsAndCallbacks.keySet();
+				Set<ConsumerSeekCallback> getCallbacks = topicsAndCallbacks.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
+
+				assertThat(registeredCallbacks).containsExactlyInAnyOrderElementsOf(getCallbacks).hasSize(4);
+				assertThat(registeredTopicPartitions).containsExactlyInAnyOrderElementsOf(getTopicPartitions).hasSize(3);
+		});
 	}
 
 	@Test
-	@Order(2)
 	void seekForAllGroups() throws Exception {
 		template.send(TOPIC, "test-data");
 		template.send(TOPIC, "test-data");
@@ -100,7 +103,6 @@ class AbstractConsumerSeekAwareTests {
 	}
 
 	@Test
-	@Order(2)
 	void seekForSpecificGroup() throws Exception {
 		template.send(TOPIC, "test-data");
 		template.send(TOPIC, "test-data");
