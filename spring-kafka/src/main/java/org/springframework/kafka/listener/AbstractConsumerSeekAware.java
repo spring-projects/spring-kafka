@@ -87,7 +87,6 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
 	/**
 	 * Return the callbacks for the specified topic/partition.
-	 *
 	 * @param topicPartition the topic/partition.
 	 * @return the callbacks (or null if there is no assignment).
 	 */
@@ -98,7 +97,6 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
 	/**
 	 * The map of callbacks for all currently assigned partitions.
-	 *
 	 * @return the map.
 	 */
 	protected Map<TopicPartition, List<ConsumerSeekCallback>> getSeekCallbacks() {
@@ -107,7 +105,6 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
 	/**
 	 * Return the currently registered callbacks and their associated {@link TopicPartition}(s).
-	 *
 	 * @return the map of callbacks and partitions.
 	 * @since 2.6
 	 */
@@ -117,7 +114,6 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
 	/**
 	 * Seek all assigned partitions to the beginning.
-	 *
 	 * @since 2.6
 	 */
 	public void seekToBeginning() {
@@ -126,7 +122,6 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
 	/**
 	 * Seek all assigned partitions to the end.
-	 *
 	 * @since 2.6
 	 */
 	public void seekToEnd() {
@@ -135,7 +130,6 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
 	/**
 	 * Seek all assigned partitions to the offset represented by the timestamp.
-	 *
 	 * @param time the time to seek to.
 	 * @since 2.6
 	 */
