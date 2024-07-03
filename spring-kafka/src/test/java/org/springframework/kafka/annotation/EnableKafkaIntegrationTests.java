@@ -2213,7 +2213,7 @@ public class EnableKafkaIntegrationTests {
 
 		@KafkaListener(id = LISTENER_ID_SEEK_POSITION_TIMESTAMP_0, autoStartup = "false", topicPartitions = {
 				@TopicPartition(topic = TOPIC_SEEK_POSITION_TIMESTAMP, partitionOffsets =
-				@PartitionOffset(partition = "0", initialOffset = "9999999999000", seekPosition = "TIMESTAMP")
+						@PartitionOffset(partition = "0", initialOffset = "9999999999000", seekPosition = "TIMESTAMP")
 				)
 		})
 		void annotationPartitionOffsetSeekPositionTimestampNoMatch(ConsumerRecord<?, ?> record) {
