@@ -73,7 +73,7 @@ class AbstractConsumerSeekAwareTests {
 
 	@Test
 	public void checkCallbacksAndTopicPartitions() {
-		await().timeout(Duration.ofSeconds(10)).untilAsserted(() -> {
+		await().timeout(Duration.ofSeconds(5)).untilAsserted(() -> {
 			Map<ConsumerSeekCallback, List<TopicPartition>> callbacksAndTopics = multiGroupListener.getCallbacksAndTopics();
 			Set<ConsumerSeekCallback> registeredCallbacks = callbacksAndTopics.keySet();
 			Set<TopicPartition> registeredTopicPartitions = callbacksAndTopics.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
