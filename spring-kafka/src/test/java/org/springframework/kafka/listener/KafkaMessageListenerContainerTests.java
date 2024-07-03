@@ -2597,7 +2597,7 @@ public class KafkaMessageListenerContainerTests {
 				if (data.partition() == 0 && data.offset() == 0) {
 					TopicPartition topicPartition = new TopicPartition(data.topic(), data.partition());
 					final List<ConsumerSeekCallback> seekCallbacksFor = getSeekCallbacksFor(topicPartition);
-					assertThat(seekCallbacksFor).isNotNull().isNotEmpty();
+					assertThat(seekCallbacksFor).isNotEmpty();
 					seekCallbacksFor.forEach(callback -> {
 						callback.seekToBeginning(records.keySet());
 						Iterator<TopicPartition> iterator = records.keySet().iterator();
