@@ -153,12 +153,12 @@ class AbstractConsumerSeekAwareTests {
 
 			static CountDownLatch latch2 = new CountDownLatch(2);
 
-			@KafkaListener(id = "group1", groupId = "group1", topics = TOPIC, concurrency = "2")
+			@KafkaListener(groupId = "group1", topics = TOPIC, concurrency = "2")
 			void listenForGroup1(String in) {
 				latch1.countDown();
 			}
 
-			@KafkaListener(id = "group2", groupId = "group2", topics = TOPIC, concurrency = "2")
+			@KafkaListener(groupId = "group2", topics = TOPIC, concurrency = "2")
 			void listenForGroup2(String in) {
 				latch2.countDown();
 			}
