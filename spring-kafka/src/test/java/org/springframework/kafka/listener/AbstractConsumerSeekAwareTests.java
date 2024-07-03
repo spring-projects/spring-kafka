@@ -75,15 +75,15 @@ class AbstractConsumerSeekAwareTests {
 	public void checkCallbacksAndTopicPartitions() {
 		await().timeout(Duration.ofSeconds(10)).untilAsserted(() -> {
 			Map<ConsumerSeekCallback, List<TopicPartition>> callbacksAndTopics = multiGroupListener.getCallbacksAndTopics();
-				Set<ConsumerSeekCallback> registeredCallbacks = callbacksAndTopics.keySet();
-				Set<TopicPartition> registeredTopicPartitions = callbacksAndTopics.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
+			Set<ConsumerSeekCallback> registeredCallbacks = callbacksAndTopics.keySet();
+			Set<TopicPartition> registeredTopicPartitions = callbacksAndTopics.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
 
-				Map<TopicPartition, List<ConsumerSeekCallback>> topicsAndCallbacks = multiGroupListener.getSeekCallbacks();
-				Set<TopicPartition> getTopicPartitions = topicsAndCallbacks.keySet();
-				Set<ConsumerSeekCallback> getCallbacks = topicsAndCallbacks.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
+			Map<TopicPartition, List<ConsumerSeekCallback>> topicsAndCallbacks = multiGroupListener.getSeekCallbacks();
+			Set<TopicPartition> getTopicPartitions = topicsAndCallbacks.keySet();
+			Set<ConsumerSeekCallback> getCallbacks = topicsAndCallbacks.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
 
-				assertThat(registeredCallbacks).containsExactlyInAnyOrderElementsOf(getCallbacks).isNotEmpty();
-				assertThat(registeredTopicPartitions).containsExactlyInAnyOrderElementsOf(getTopicPartitions).hasSize(3);
+			assertThat(registeredCallbacks).containsExactlyInAnyOrderElementsOf(getCallbacks).isNotEmpty();
+			assertThat(registeredTopicPartitions).containsExactlyInAnyOrderElementsOf(getTopicPartitions).hasSize(3);
 		});
 	}
 
