@@ -202,15 +202,24 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	@Override
 	public boolean isChildRunning() {
-		if (!isRunning()) {
-			return false;
-		}
-		for (MessageListenerContainer container : this.containers) {
-			if (container.isRunning()) {
+		this.lifecycleLock.lock();
+		try {
+			if(isRunning()) {
 				return true;
 			}
+			if(this.containers.isEmpty() && this.stoppedContainers.get() < this.concurrency) {
+				return true;
+			}
+			for (MessageListenerContainer container : this.containers) {
+				if (container.isRunning()) {
+					return true;
+				}
+			}
+			return false;
 		}
-		return false;
+		finally {
+			this.lifecycleLock.unlock();
+		}
 	}
 
 	@Override
@@ -340,12 +349,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	@Override
 	protected void doStop(final Runnable callback, boolean normal) {
 		final AtomicInteger count = new AtomicInteger();
-		if (isRunning()) {
-			boolean childRunning = isChildRunning();
+		if (!this.containers.isEmpty()) {
 			setRunning(false);
-			if (!childRunning) {
-				callback.run();
-			}
 			for (KafkaMessageListenerContainer<K, V> container : this.containers) {
 				if (container.isRunning()) {
 					count.incrementAndGet();
@@ -379,9 +384,10 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		if (this.reason == null || reason.equals(Reason.AUTH)) {
 			this.reason = reason;
 		}
+		int stoppedContainersCount = this.stoppedContainers.incrementAndGet();
 		if (Reason.AUTH.equals(this.reason)
 				&& getContainerProperties().isRestartAfterAuthExceptions()
-				&& this.concurrency == this.stoppedContainers.incrementAndGet()) {
+				&& this.concurrency == stoppedContainersCount) {
 
 			this.reason = null;
 			this.stoppedContainers.set(0);
@@ -392,6 +398,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				exec = new SimpleAsyncTaskExecutor(getListenerId() + ".authRestart");
 			}
 			exec.execute(this::start);
+		} else if (this.concurrency == stoppedContainersCount) {
+			//publish ConcurrentContainer stopped event
 		}
 	}
 

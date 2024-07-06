@@ -652,7 +652,13 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	@Override
 	public void stopAbnormally(Runnable callback) {
-		doStop(callback, false);
+		this.lifecycleLock.lock();
+		try {
+			doStop(callback, false);
+		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
 		publishContainerStoppedEvent();
 	}
 
