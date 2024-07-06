@@ -42,7 +42,14 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
 	private final Map<Thread, ConsumerSeekCallback> callbackForThread = new ConcurrentHashMap<>();
 
-	private final Map<TopicPartition, List<ConsumerSeekCallback>> callbacks = new ConcurrentHashMap<>();
+	/*
+	* @deprecated Replaced by the {@link #topicToCallbacks}.
+	* see https://github.com/spring-projects/spring-kafka/pull/3341
+	*/
+	@Deprecated(since = "3.3", forRemoval = true)
+	private final Map<TopicPartition, ConsumerSeekCallback> callbacks = new ConcurrentHashMap<>();
+
+	private final Map<TopicPartition, List<ConsumerSeekCallback>> topicToCallbacks = new ConcurrentHashMap<>();
 
 	private final Map<ConsumerSeekCallback, List<TopicPartition>> callbacksToTopic = new ConcurrentHashMap<>();
 
@@ -56,7 +63,8 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 		ConsumerSeekCallback threadCallback = this.callbackForThread.get(Thread.currentThread());
 		if (threadCallback != null) {
 			assignments.keySet().forEach(tp -> {
-				this.callbacks.computeIfAbsent(tp, key -> new ArrayList<>()).add(threadCallback);
+				this.callbacks.put(tp, threadCallback); // TODO: This should be removed when the existing `callbacks` field disappears.
+				this.topicToCallbacks.computeIfAbsent(tp, key -> new ArrayList<>()).add(threadCallback);
 				this.callbacksToTopic.computeIfAbsent(threadCallback, key -> new LinkedList<>()).add(tp);
 			});
 		}
@@ -65,7 +73,8 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 	@Override
 	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
 		partitions.forEach(tp -> {
-			List<ConsumerSeekCallback> removedCallbacks = this.callbacks.remove(tp);
+			this.callbacks.remove(tp); // TODO: This should be removed when the existing `callbacks` field disappears.
+			List<ConsumerSeekCallback> removedCallbacks = this.topicToCallbacks.remove(tp);
 			if (removedCallbacks != null && !removedCallbacks.isEmpty()) {
 				removedCallbacks.forEach(cb -> {
 					List<TopicPartition> topics = this.callbacksToTopic.get(cb);
@@ -86,21 +95,45 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 	}
 
 	/**
-	 * Return the callbacks for the specified topic/partition.
-	 * @param topicPartition the topic/partition.
-	 * @return the callbacks (or null if there is no assignment).
+     * Return the callback for the specified topic/partition.
+     * @param topicPartition the topic/partition.
+     * @return the callback (or null if there is no assignment).
+     * @deprecated Replaced by {@link #getSeekCallbacksFor(TopicPartition)}
+     */
+	@Deprecated(since = "3.3", forRemoval = true)
+	@Nullable
+	protected ConsumerSeekCallback getSeekCallbackFor(TopicPartition topicPartition) {
+		return this.callbacks.get(topicPartition);
+	}
+
+	/**
+     * Return the callbacks for the specified topic/partition.
+     * @param topicPartition the topic/partition.
+     * @return the callbacks (or null if there is no assignment).
+	 * @since 3.3
 	 */
 	@Nullable
 	protected List<ConsumerSeekCallback> getSeekCallbacksFor(TopicPartition topicPartition) {
-		return this.callbacks.get(topicPartition);
+		return this.topicToCallbacks.get(topicPartition);
 	}
 
 	/**
 	 * The map of callbacks for all currently assigned partitions.
 	 * @return the map.
+	 * @deprecated Replaced by {@link #getTopicsAndCallbacks()}
 	 */
-	protected Map<TopicPartition, List<ConsumerSeekCallback>> getSeekCallbacks() {
+	@Deprecated(since = "3.3", forRemoval = true)
+	protected Map<TopicPartition, ConsumerSeekCallback> getSeekCallbacks() {
 		return Collections.unmodifiableMap(this.callbacks);
+	}
+
+	/**
+	 * The map of callbacks for all currently assigned partitions.
+	 * @return the map.
+	 * @since 3.3
+	*/
+	protected Map<TopicPartition, List<ConsumerSeekCallback>> getTopicsAndCallbacks() {
+		return Collections.unmodifiableMap(this.topicToCallbacks);
 	}
 
 	/**

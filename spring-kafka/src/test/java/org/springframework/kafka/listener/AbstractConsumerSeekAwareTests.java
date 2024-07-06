@@ -78,7 +78,7 @@ class AbstractConsumerSeekAwareTests {
 			Set<ConsumerSeekCallback> registeredCallbacks = callbacksAndTopics.keySet();
 			Set<TopicPartition> registeredTopicPartitions = callbacksAndTopics.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
 
-			Map<TopicPartition, List<ConsumerSeekCallback>> topicsAndCallbacks = multiGroupListener.getSeekCallbacks();
+			Map<TopicPartition, List<ConsumerSeekCallback>> topicsAndCallbacks = multiGroupListener.getTopicsAndCallbacks();
 			Set<TopicPartition> getTopicPartitions = topicsAndCallbacks.keySet();
 			Set<ConsumerSeekCallback> getCallbacks = topicsAndCallbacks.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
 
