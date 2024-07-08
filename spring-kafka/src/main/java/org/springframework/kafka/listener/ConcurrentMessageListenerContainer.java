@@ -403,7 +403,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			}
 			exec.execute(this::start);
 		} else if (this.concurrency == stoppedContainersCount) {
-			//publish ConcurrentContainer stopped event
+			publishConcurrentContainerStoppedEvent();
 		}
 	}
 

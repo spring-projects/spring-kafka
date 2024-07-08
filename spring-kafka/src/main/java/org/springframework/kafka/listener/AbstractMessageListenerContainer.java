@@ -50,6 +50,7 @@ import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaAdmin;
+import org.springframework.kafka.event.ConcurrentContainerStoppedEvent;
 import org.springframework.kafka.event.ContainerStoppedEvent;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.TopicPartitionOffset;
@@ -707,6 +708,13 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		ApplicationEventPublisher eventPublisher = getApplicationEventPublisher();
 		if (eventPublisher != null) {
 			eventPublisher.publishEvent(new ContainerStoppedEvent(this, parentOrThis()));
+		}
+	}
+
+	protected void publishConcurrentContainerStoppedEvent() {
+		ApplicationEventPublisher eventPublisher = getApplicationEventPublisher();
+		if (eventPublisher != null) {
+			eventPublisher.publishEvent(new ConcurrentContainerStoppedEvent(this, parentOrThis()));
 		}
 	}
 
