@@ -23,6 +23,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.TopicPartition;
 
@@ -42,13 +43,6 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
 	private final Map<Thread, ConsumerSeekCallback> callbackForThread = new ConcurrentHashMap<>();
 
-	/*
-	* @deprecated Replaced by the {@link #topicToCallbacks}.
-	* see https://github.com/spring-projects/spring-kafka/pull/3341
-	*/
-	@Deprecated(since = "3.3", forRemoval = true)
-	private final Map<TopicPartition, ConsumerSeekCallback> callbacks = new ConcurrentHashMap<>();
-
 	private final Map<TopicPartition, List<ConsumerSeekCallback>> topicToCallbacks = new ConcurrentHashMap<>();
 
 	private final Map<ConsumerSeekCallback, List<TopicPartition>> callbacksToTopic = new ConcurrentHashMap<>();
@@ -63,7 +57,6 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 		ConsumerSeekCallback threadCallback = this.callbackForThread.get(Thread.currentThread());
 		if (threadCallback != null) {
 			assignments.keySet().forEach(tp -> {
-				this.callbacks.put(tp, threadCallback); // TODO: This should be removed when the existing `callbacks` field disappears.
 				this.topicToCallbacks.computeIfAbsent(tp, key -> new ArrayList<>()).add(threadCallback);
 				this.callbacksToTopic.computeIfAbsent(threadCallback, key -> new LinkedList<>()).add(tp);
 			});
@@ -73,7 +66,6 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 	@Override
 	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
 		partitions.forEach(tp -> {
-			this.callbacks.remove(tp); // TODO: This should be removed when the existing `callbacks` field disappears.
 			List<ConsumerSeekCallback> removedCallbacks = this.topicToCallbacks.remove(tp);
 			if (removedCallbacks != null && !removedCallbacks.isEmpty()) {
 				removedCallbacks.forEach(cb -> {
@@ -103,7 +95,11 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 	@Deprecated(since = "3.3", forRemoval = true)
 	@Nullable
 	protected ConsumerSeekCallback getSeekCallbackFor(TopicPartition topicPartition) {
-		return this.callbacks.get(topicPartition);
+		List<ConsumerSeekCallback> callbacks = getSeekCallbacksFor(topicPartition);
+		if (callbacks == null || callbacks.isEmpty()) {
+			return null;
+		}
+		return callbacks.get(0);
 	}
 
 	/**
@@ -124,7 +120,13 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 	 */
 	@Deprecated(since = "3.3", forRemoval = true)
 	protected Map<TopicPartition, ConsumerSeekCallback> getSeekCallbacks() {
-		return Collections.unmodifiableMap(this.callbacks);
+		Map<TopicPartition, List<ConsumerSeekCallback>> topicsAndCallbacks = getTopicsAndCallbacks();
+		return topicsAndCallbacks.entrySet().stream()
+			.filter(entry -> !entry.getValue().isEmpty())
+			.collect(Collectors.toMap(
+					Map.Entry::getKey,
+					entry -> entry.getValue().get(0)
+			));
 	}
 
 	/**

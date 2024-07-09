@@ -1082,7 +1082,7 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.seekOnIdleListener.latch3.await(10, TimeUnit.SECONDS)).isTrue();
 		this.registry.getListenerContainer("seekOnIdle").stop();
 		assertThat(this.seekOnIdleListener.latch4.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(KafkaTestUtils.getPropertyValue(this.seekOnIdleListener, "callbacks", Map.class)).hasSize(0);
+		assertThat(KafkaTestUtils.getPropertyValue(this.seekOnIdleListener, "topicToCallbacks", Map.class)).hasSize(0);
 	}
 
 	@SuppressWarnings({"unchecked", "rawtypes"})
@@ -2524,13 +2524,6 @@ public class EnableKafkaIntegrationTests {
 				if (latch1.getCount() > 0) {
 					latch1.countDown();
 					if (latch1.getCount() == 0) {
-						// TODO: This should be removed when the existing `getSeekCallbackFor()` disappears.
-						ConsumerSeekCallback seekToComputeFn = getSeekCallbackFor(
-								new org.apache.kafka.common.TopicPartition("seekToComputeFn", 0));
-						assertThat(seekToComputeFn).isNotNull();
-						seekToComputeFn.
-								seek("seekToComputeFn", 0, current -> 0L);
-
 						List<ConsumerSeekCallback> seekToComputeFunctions = getSeekCallbacksFor(
 								new org.apache.kafka.common.TopicPartition("seekToComputeFn", 0));
 						assertThat(seekToComputeFunctions).isNotEmpty();
@@ -2583,11 +2576,6 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		public void rewindAllOneRecord() {
-			// TODO: This should be removed when the existing `getSeekCallbacks()` disappears.
-			getSeekCallbacks()
-					.forEach((tp, callback) ->
-							callback.seekRelative(tp.topic(), tp.partition(), -1, true));
-
 			getTopicsAndCallbacks()
 					.forEach((tp, callbacks) ->
 							callbacks.forEach(callback -> callback.seekRelative(tp.topic(), tp.partition(), -1, true))
@@ -2595,10 +2583,6 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		public void rewindOnePartitionOneRecord(String topic, int partition) {
-			// TODO: This should be removed when the existing `getSeekCallbackFor()` disappears.
-			getSeekCallbackFor(new org.apache.kafka.common.TopicPartition(topic, partition))
-					.seekRelative(topic, partition, -1, true);
-
 			getSeekCallbacksFor(new org.apache.kafka.common.TopicPartition(topic, partition))
 					.forEach(callback -> callback.seekRelative(topic, partition, -1, true));
 		}
