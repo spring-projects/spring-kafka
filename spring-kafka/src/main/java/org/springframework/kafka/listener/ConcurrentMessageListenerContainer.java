@@ -35,6 +35,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.event.ConcurrentContainerStoppedEvent;
 import org.springframework.kafka.event.ConsumerStoppedEvent.Reason;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.lang.Nullable;
@@ -202,24 +203,15 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	@Override
 	public boolean isChildRunning() {
-		this.lifecycleLock.lock();
-		try {
-			if(isRunning()) {
-				return true;
-			}
-			if(this.containers.isEmpty() && this.stoppedContainers.get() < this.concurrency) {
-				return true;
-			}
-			for (MessageListenerContainer container : this.containers) {
-				if (container.isRunning()) {
-					return true;
-				}
-			}
+		if (!isRunning()) {
 			return false;
 		}
-		finally {
-			this.lifecycleLock.unlock();
+		for (MessageListenerContainer container : this.containers) {
+			if (container.isRunning()) {
+				return true;
+			}
 		}
+		return false;
 	}
 
 	@Override
@@ -252,6 +244,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 						+ topicPartitions.length);
 				this.concurrency = topicPartitions.length;
 			}
+			this.stoppedContainers.set(0);
 			setRunning(true);
 
 			for (int i = 0; i < this.concurrency; i++) {
@@ -390,13 +383,14 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		}
 		int stoppedContainersCount = this.stoppedContainers.incrementAndGet();
 
-		if(this.concurrency == stoppedContainersCount) {
+		if (this.concurrency == stoppedContainersCount) {
 			publishConcurrentContainerStoppedEvent();
 			if (Reason.AUTH.equals(this.reason)
 					&& getContainerProperties().isRestartAfterAuthExceptions()) {
 
 				this.reason = null;
 				this.stoppedContainers.set(0);
+
 				// This has to run on another thread to avoid a deadlock on lifecycleMonitor
 				AsyncTaskExecutor exec = getContainerProperties().getListenerTaskExecutor();
 				if (exec == null) {
@@ -405,8 +399,13 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				exec.execute(this::start);
 			}
 		}
+	}
 
-
+	protected void publishConcurrentContainerStoppedEvent() {
+		ApplicationEventPublisher eventPublisher = getApplicationEventPublisher();
+		if (eventPublisher != null) {
+			eventPublisher.publishEvent(new ConcurrentContainerStoppedEvent(this));
+		}
 	}
 
 	@Override
