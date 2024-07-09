@@ -19,4 +19,8 @@ A new method, `getGroupId()`, has been added to the `ConsumerSeekCallback` inter
 This method allows for more selective seek operations by targeting only the desired consumer group.
 For more details, see xref:kafka/seek.adoc#seek[Seek API Docs].
 
+=== ConcurrentContainerStoppedEvent
+
+A new event `ConcurrentContainerStoppedEvent` will be published once the parent container i.e ConcurentContainerMessageListenerContainer is stopped.
+
 
