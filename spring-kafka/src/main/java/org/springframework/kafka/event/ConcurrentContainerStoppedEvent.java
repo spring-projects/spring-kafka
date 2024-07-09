@@ -19,8 +19,8 @@ package org.springframework.kafka.event;
 /**
  * An event published when a container is stopped.
  *
- * @author Gary Russell
- * @since 2.2
+ * @author Lokesh Alamuri
+ * @since 3.3
  *
  */
 public class ConcurrentContainerStoppedEvent extends KafkaEvent {
