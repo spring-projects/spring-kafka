@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2020 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 package org.springframework.kafka.event;
 
 /**
- * An event published when a container is stopped.
+ * An event published when a concurrent container is stopped.
  *
  * @author Lokesh Alamuri
  * @since 3.3
@@ -30,11 +30,10 @@ public class ConcurrentContainerStoppedEvent extends KafkaEvent {
 	/**
 	 * Construct an instance with the provided source and container.
 	 * @param source the container instance that generated the event.
-	 * @param container the container or the parent container if the container is a child.
-	 * @since 2.2.1
+	 * @since 3.3
 	 */
-	public ConcurrentContainerStoppedEvent(Object source, Object container) {
-		super(source, container);
+	public ConcurrentContainerStoppedEvent(Object source) {
+		super(source, source);
 	}
 
 	@Override
