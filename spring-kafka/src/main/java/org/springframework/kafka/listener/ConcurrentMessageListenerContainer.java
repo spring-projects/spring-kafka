@@ -389,22 +389,24 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			this.reason = reason;
 		}
 		int stoppedContainersCount = this.stoppedContainers.incrementAndGet();
-		if (Reason.AUTH.equals(this.reason)
-				&& getContainerProperties().isRestartAfterAuthExceptions()
-				&& this.concurrency == stoppedContainersCount) {
 
-			this.reason = null;
-			this.stoppedContainers.set(0);
-
-			// This has to run on another thread to avoid a deadlock on lifecycleMonitor
-			AsyncTaskExecutor exec = getContainerProperties().getListenerTaskExecutor();
-			if (exec == null) {
-				exec = new SimpleAsyncTaskExecutor(getListenerId() + ".authRestart");
-			}
-			exec.execute(this::start);
-		} else if (this.concurrency == stoppedContainersCount) {
+		if(this.concurrency == stoppedContainersCount) {
 			publishConcurrentContainerStoppedEvent();
+			if (Reason.AUTH.equals(this.reason)
+					&& getContainerProperties().isRestartAfterAuthExceptions()) {
+
+				this.reason = null;
+				this.stoppedContainers.set(0);
+				// This has to run on another thread to avoid a deadlock on lifecycleMonitor
+				AsyncTaskExecutor exec = getContainerProperties().getListenerTaskExecutor();
+				if (exec == null) {
+					exec = new SimpleAsyncTaskExecutor(getListenerId() + ".authRestart");
+				}
+				exec.execute(this::start);
+			}
 		}
+
+
 	}
 
 	@Override
