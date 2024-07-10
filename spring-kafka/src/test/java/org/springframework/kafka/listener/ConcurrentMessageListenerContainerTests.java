@@ -17,6 +17,7 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -27,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -59,6 +61,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.event.ConcurrentContainerStoppedEvent;
 import org.springframework.kafka.event.ContainerStoppedEvent;
 import org.springframework.kafka.event.KafkaEvent;
 import org.springframework.kafka.support.TopicPartitionOffset;
@@ -142,7 +145,7 @@ public class ConcurrentMessageListenerContainerTests {
 
 		final CountDownLatch latch = new CountDownLatch(3);
 		final Set<String> listenerThreadNames = new ConcurrentSkipListSet<>();
-		final List<String> payloads = new ArrayList<>();
+		final List<String> payloads = Collections.synchronizedList(new ArrayList<>());
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
 			ConcurrentMessageListenerContainerTests.this.logger.info("auto: " + message);
 			listenerThreadNames.add(Thread.currentThread().getName());
@@ -157,10 +160,14 @@ public class ConcurrentMessageListenerContainerTests {
 		container.setChangeConsumerThreadName(true);
 		BlockingQueue<KafkaEvent> events = new LinkedBlockingQueue<>();
 		CountDownLatch stopLatch = new CountDownLatch(4);
+		CountDownLatch concurrentContainerStopLatch = new CountDownLatch(1);
 		container.setApplicationEventPublisher(e -> {
 			events.add((KafkaEvent) e);
 			if (e instanceof ContainerStoppedEvent) {
 				stopLatch.countDown();
+			}
+			if (e instanceof ConcurrentContainerStoppedEvent) {
+				concurrentContainerStopLatch.countDown();
 			}
 		});
 		CountDownLatch intercepted = new CountDownLatch(4);
@@ -205,6 +212,7 @@ public class ConcurrentMessageListenerContainerTests {
 		container.getContainers().get(0).start();
 		container.stop();
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(concurrentContainerStopLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(container.isInExpectedState()).isTrue();
 		events.forEach(e -> {
 			assertThat(e.getContainer(MessageListenerContainer.class)).isSameAs(container);
@@ -214,6 +222,14 @@ public class ConcurrentMessageListenerContainerTests {
 				}
 				else {
 					assertThat(children).contains((KafkaMessageListenerContainer<Integer, String>) e.getSource());
+				}
+			}
+			else if (e instanceof ConcurrentContainerStoppedEvent) {
+				if (e.getSource().equals(container)) {
+					assertThat(e.getContainer(MessageListenerContainer.class)).isSameAs(container);
+				}
+				else {
+					assertThatIllegalStateException();
 				}
 			}
 			else {
