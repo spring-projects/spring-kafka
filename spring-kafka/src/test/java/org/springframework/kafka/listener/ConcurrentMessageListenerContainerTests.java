@@ -27,7 +27,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -144,7 +143,7 @@ public class ConcurrentMessageListenerContainerTests {
 
 		final CountDownLatch latch = new CountDownLatch(3);
 		final Set<String> listenerThreadNames = new ConcurrentSkipListSet<>();
-		final List<String> payloads = Collections.synchronizedList(new ArrayList<>());
+		final List<String> payloads = new ArrayList<>();
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
 			ConcurrentMessageListenerContainerTests.this.logger.info("auto: " + message);
 			listenerThreadNames.add(Thread.currentThread().getName());
