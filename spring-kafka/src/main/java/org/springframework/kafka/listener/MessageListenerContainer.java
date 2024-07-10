@@ -281,6 +281,14 @@ public interface MessageListenerContainer extends SmartLifecycle, DisposableBean
 	default void childStopped(MessageListenerContainer child, ConsumerStoppedEvent.Reason reason) {
 	}
 
+	/**
+	 * Notify a parent container that a child container has started.
+	 * @param child the container.
+	 * @since 3.3
+	 */
+	default void childStarted(MessageListenerContainer child) {
+	}
+
 	@Override
 	default void destroy() {
 		stop();

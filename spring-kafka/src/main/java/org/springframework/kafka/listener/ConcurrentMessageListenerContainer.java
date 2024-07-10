@@ -66,7 +66,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	private final List<AsyncTaskExecutor> executors = new ArrayList<>();
 
-	private final AtomicInteger stoppedContainers = new AtomicInteger();
+	private final AtomicInteger startedContainers = new AtomicInteger();
 
 	private int concurrency = 1;
 
@@ -244,7 +244,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 						+ topicPartitions.length);
 				this.concurrency = topicPartitions.length;
 			}
-			this.stoppedContainers.set(0);
+			this.startedContainers.set(0);
 			setRunning(true);
 
 			for (int i = 0; i < this.concurrency; i++) {
@@ -377,19 +377,22 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	}
 
 	@Override
+	public void childStarted(MessageListenerContainer child) {
+		this.startedContainers.incrementAndGet();
+	}
+
+	@Override
 	public void childStopped(MessageListenerContainer child, Reason reason) {
 		if (this.reason == null || reason.equals(Reason.AUTH)) {
 			this.reason = reason;
 		}
-		int stoppedContainersCount = this.stoppedContainers.incrementAndGet();
-
-		if (this.concurrency == stoppedContainersCount) {
+		int startedContainersCount = this.startedContainers.decrementAndGet();
+		if (startedContainersCount == 0) {
 			publishConcurrentContainerStoppedEvent();
 			if (Reason.AUTH.equals(this.reason)
 					&& getContainerProperties().isRestartAfterAuthExceptions()) {
 
 				this.reason = null;
-				this.stoppedContainers.set(0);
 
 				// This has to run on another thread to avoid a deadlock on lifecycleMonitor
 				AsyncTaskExecutor exec = getContainerProperties().getListenerTaskExecutor();
@@ -401,7 +404,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		}
 	}
 
-	protected void publishConcurrentContainerStoppedEvent() {
+	private void publishConcurrentContainerStoppedEvent() {
 		ApplicationEventPublisher eventPublisher = getApplicationEventPublisher();
 		if (eventPublisher != null) {
 			eventPublisher.publishEvent(new ConcurrentContainerStoppedEvent(this));

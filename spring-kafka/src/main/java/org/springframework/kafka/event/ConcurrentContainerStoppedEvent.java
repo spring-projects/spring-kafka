@@ -38,7 +38,7 @@ public class ConcurrentContainerStoppedEvent extends KafkaEvent {
 
 	@Override
 	public String toString() {
-		return "ContainerStoppedEvent [source=" + getSource() + "]";
+		return "ConcurrentContainerStoppedEvent [source=" + getSource() + "]";
 	}
 
 }
