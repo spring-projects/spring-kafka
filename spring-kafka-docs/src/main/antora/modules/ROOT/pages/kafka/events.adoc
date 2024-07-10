@@ -23,7 +23,7 @@ See xref:kafka/thread-safety.adoc[Thread Safety].
 * `ConsumerRetryAuthEvent`: published when authentication or authorization of a consumer fails and is being retried.
 * `ConsumerRetryAuthSuccessfulEvent`: published when authentication or authorization has been retried successfully. Can only occur when there has been a `ConsumerRetryAuthEvent` before.
 * `ContainerStoppedEvent`: published when all consumers have stopped.
-* `ContainerStoppedEvent`: published when the ConcurrentMessageListenerContainer has stopped.
+* `ContainerStoppedEvent`: published when all the child containers are stopped.
 
 IMPORTANT: By default, the application context's event multicaster invokes event listeners on the calling thread.
 If you change the multicaster to use an async executor, you must not invoke any `Consumer` methods when the event contains a reference to the consumer.
