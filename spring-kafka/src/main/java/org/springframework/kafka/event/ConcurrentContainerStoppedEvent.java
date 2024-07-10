@@ -30,7 +30,6 @@ public class ConcurrentContainerStoppedEvent extends KafkaEvent {
 	/**
 	 * Construct an instance with the provided source and container.
 	 * @param source the container instance that generated the event.
-	 * @since 3.3
 	 */
 	public ConcurrentContainerStoppedEvent(Object source) {
 		super(source, source);

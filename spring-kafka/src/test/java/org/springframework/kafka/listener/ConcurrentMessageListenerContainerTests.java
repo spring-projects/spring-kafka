@@ -17,7 +17,6 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -225,12 +224,8 @@ public class ConcurrentMessageListenerContainerTests {
 				}
 			}
 			else if (e instanceof ConcurrentContainerStoppedEvent) {
-				if (e.getSource().equals(container)) {
-					assertThat(e.getContainer(MessageListenerContainer.class)).isSameAs(container);
-				}
-				else {
-					assertThatIllegalStateException();
-				}
+				assertThat(e.getSource()).isSameAs(container);
+				assertThat(e.getContainer(MessageListenerContainer.class)).isSameAs(container);
 			}
 			else {
 				assertThat(children).contains((KafkaMessageListenerContainer<Integer, String>) e.getSource());
