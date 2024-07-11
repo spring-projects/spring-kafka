@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,11 @@
 
 package org.springframework.kafka.listener.adapter;
 
-import java.util.Iterator;
 import java.util.List;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+
+import org.springframework.kafka.listener.BatchMessageListener;
 
 /**
  * Implementations of this interface can signal that a record about
@@ -30,7 +31,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  * @param <V> the value type.
  *
  * @author Gary Russell
- *
+ * @author Sanghyeok An
  */
 public interface RecordFilterStrategy<K, V> {
 
@@ -49,13 +50,20 @@ public interface RecordFilterStrategy<K, V> {
 	 * @since 2.8
 	 */
 	default List<ConsumerRecord<K, V>> filterBatch(List<ConsumerRecord<K, V>> records) {
-		Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
-		while (iterator.hasNext()) {
-			if (filter(iterator.next())) {
-				iterator.remove();
-			}
-		}
+		records.removeIf(this::filter);
 		return records;
+	}
+
+	/**
+	 * Determine whether {@link FilteringBatchMessageListenerAdapter} should invoke
+	 * the {@link BatchMessageListener} when all {@link ConsumerRecord}s in a batch have been filtered out
+	 * resulting in empty list. By default, do invoke the {@link BatchMessageListener} (return false).
+	 * @return true for {@link FilteringBatchMessageListenerAdapter} to {@link BatchMessageListener}
+	 * when all {@link ConsumerRecord} in a batch filtered out
+	 * @since 3.3
+	 */
+	default boolean ignoreEmptyBatch() {
+		return false;
 	}
 
 }

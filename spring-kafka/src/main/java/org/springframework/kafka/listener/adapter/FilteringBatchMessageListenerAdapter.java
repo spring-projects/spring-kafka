@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2021 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,6 +36,7 @@ import org.springframework.util.Assert;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Sanghyeok An
  *
  */
 public class FilteringBatchMessageListenerAdapter<K, V>
@@ -44,6 +45,8 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 
 	private final boolean ackDiscarded;
 
+	private final boolean consumerAware;
+
 	/**
 	 * Create an instance with the supplied strategy and delegate listener.
 	 * @param delegate the delegate.
@@ -51,9 +54,7 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 	 */
 	public FilteringBatchMessageListenerAdapter(BatchMessageListener<K, V> delegate,
 			RecordFilterStrategy<K, V> recordFilterStrategy) {
-
-		super(delegate, recordFilterStrategy);
-		this.ackDiscarded = false;
+		this(delegate, recordFilterStrategy, false);
 	}
 
 	/**
@@ -71,22 +72,25 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 
 		super(delegate, recordFilterStrategy);
 		this.ackDiscarded = ackDiscarded;
+		this.consumerAware = this.delegateType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE) ||
+							this.delegateType.equals(ListenerType.CONSUMER_AWARE);
 	}
 
 	@Override
 	public void onMessage(List<ConsumerRecord<K, V>> records, @Nullable Acknowledgment acknowledgment,
 			Consumer<?, ?> consumer) {
 
-		List<ConsumerRecord<K, V>> consumerRecords = getRecordFilterStrategy().filterBatch(records);
+		final RecordFilterStrategy<K, V> recordFilterStrategy = getRecordFilterStrategy();
+		final List<ConsumerRecord<K, V>> consumerRecords = recordFilterStrategy.filterBatch(records);
 		Assert.state(consumerRecords != null, "filter returned null from filterBatch");
-		boolean consumerAware = this.delegateType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
-						|| this.delegateType.equals(ListenerType.CONSUMER_AWARE);
-		/*
-		 *  An empty list goes to the listener if ackDiscarded is false and the listener can ack
-		 *  either through the acknowledgment
-		 */
-		if (consumerRecords.size() > 0 || consumerAware
-				|| (!this.ackDiscarded && this.delegateType.equals(ListenerType.ACKNOWLEDGING))) {
+
+		if (recordFilterStrategy.ignoreEmptyBatch() &&
+			consumerRecords.isEmpty() &&
+			acknowledgment != null) {
+			acknowledgment.acknowledge();
+		}
+		else if (!consumerRecords.isEmpty() || this.consumerAware
+			|| (!this.ackDiscarded && this.delegateType.equals(ListenerType.ACKNOWLEDGING))) {
 			invokeDelegate(consumerRecords, acknowledgment, consumer);
 		}
 		else {
@@ -98,6 +102,7 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 
 	private void invokeDelegate(List<ConsumerRecord<K, V>> consumerRecords, Acknowledgment acknowledgment,
 			Consumer<?, ?> consumer) {
+
 		switch (this.delegateType) {
 			case ACKNOWLEDGING_CONSUMER_AWARE:
 				this.delegate.onMessage(consumerRecords, acknowledgment, consumer);

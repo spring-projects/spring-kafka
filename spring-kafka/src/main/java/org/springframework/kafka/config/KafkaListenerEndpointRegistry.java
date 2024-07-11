@@ -396,7 +396,7 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	public void stop(Runnable callback) {
 		this.running = false;
 		Collection<MessageListenerContainer> listenerContainersToStop = getListenerContainers();
-		if (listenerContainersToStop.size() > 0) {
+		if (!listenerContainersToStop.isEmpty()) {
 			AggregatingCallback aggregatingCallback = new AggregatingCallback(listenerContainersToStop.size(),
 					callback);
 			for (MessageListenerContainer listenerContainer : listenerContainersToStop) {

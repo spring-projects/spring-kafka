@@ -186,17 +186,18 @@ public class SeekToLastOnIdleListener extends AbstractConsumerSeekAware {
     * Rewind all partitions one record.
     */
     public void rewindAllOneRecord() {
-        getSeekCallbacks()
-            .forEach((tp, callback) ->
-                callback.seekRelative(tp.topic(), tp.partition(), -1, true));
+        getTopicsAndCallbacks()
+            .forEach((tp, callbacks) ->
+                    callbacks.forEach(callback -> callback.seekRelative(tp.topic(), tp.partition(), -1, true))
+            );
     }
 
     /**
     * Rewind one partition one record.
     */
     public void rewindOnePartitionOneRecord(String topic, int partition) {
-        getSeekCallbackFor(new TopicPartition(topic, partition))
-            .seekRelative(topic, partition, -1, true);
+        getSeekCallbacksFor(new TopicPartition(topic, partition))
+            .forEach(callback -> callback.seekRelative(topic, partition, -1, true));
     }
 
 }
