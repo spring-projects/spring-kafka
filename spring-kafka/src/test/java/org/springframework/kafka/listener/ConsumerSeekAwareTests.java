@@ -106,7 +106,7 @@ public class ConsumerSeekAwareTests {
 		exec1.submit(revoke2).get();
 		exec2.submit(revoke2).get();
 		assertThat(KafkaTestUtils.getPropertyValue(csa, "topicToCallbacks", Map.class)).isEmpty();
-		assertThat(KafkaTestUtils.getPropertyValue(csa, "callbacksToTopic", Map.class)).isEmpty();
+		assertThat(KafkaTestUtils.getPropertyValue(csa, "callbackToTopics", Map.class)).isEmpty();
 		var checkTL = (Callable<Void>) () -> {
 			csa.unregisterSeekCallback();
 			assertThat(KafkaTestUtils.getPropertyValue(csa, "callbackForThread", Map.class).get(Thread.currentThread()))

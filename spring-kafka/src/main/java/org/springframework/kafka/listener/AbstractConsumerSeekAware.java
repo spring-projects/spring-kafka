@@ -45,7 +45,7 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
 	private final Map<TopicPartition, List<ConsumerSeekCallback>> topicToCallbacks = new ConcurrentHashMap<>();
 
-	private final Map<ConsumerSeekCallback, List<TopicPartition>> callbacksToTopic = new ConcurrentHashMap<>();
+	private final Map<ConsumerSeekCallback, List<TopicPartition>> callbackToTopics = new ConcurrentHashMap<>();
 
 	@Override
 	public void registerSeekCallback(ConsumerSeekCallback callback) {
@@ -58,7 +58,7 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 		if (threadCallback != null) {
 			assignments.keySet().forEach(tp -> {
 				this.topicToCallbacks.computeIfAbsent(tp, key -> new ArrayList<>()).add(threadCallback);
-				this.callbacksToTopic.computeIfAbsent(threadCallback, key -> new LinkedList<>()).add(tp);
+				this.callbackToTopics.computeIfAbsent(threadCallback, key -> new LinkedList<>()).add(tp);
 			});
 		}
 	}
@@ -69,11 +69,11 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 			List<ConsumerSeekCallback> removedCallbacks = this.topicToCallbacks.remove(tp);
 			if (removedCallbacks != null && !removedCallbacks.isEmpty()) {
 				removedCallbacks.forEach(cb -> {
-					List<TopicPartition> topics = this.callbacksToTopic.get(cb);
+					List<TopicPartition> topics = this.callbackToTopics.get(cb);
 					if (topics != null) {
 						topics.remove(tp);
 						if (topics.isEmpty()) {
-							this.callbacksToTopic.remove(cb);
+							this.callbackToTopics.remove(cb);
 						}
 					}
 				});
@@ -144,7 +144,7 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 	 * @since 2.6
 	 */
 	protected Map<ConsumerSeekCallback, List<TopicPartition>> getCallbacksAndTopics() {
-		return Collections.unmodifiableMap(this.callbacksToTopic);
+		return Collections.unmodifiableMap(this.callbackToTopics);
 	}
 
 	/**
