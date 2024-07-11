@@ -19,4 +19,10 @@ A new method, `getGroupId()`, has been added to the `ConsumerSeekCallback` inter
 This method allows for more selective seek operations by targeting only the desired consumer group.
 For more details, see xref:kafka/seek.adoc#seek[Seek API Docs].
 
+[[x33-new-option-ignore-empty-batch]]
+=== Configurable Handling of Empty Batches in Kafka Listener with RecordFilterStrategy
 
+`RecordFilterStrategy` now supports ignoring empty batches that result from filtering.
+This can be configured through default method `ignoreEmptyBatch()`, which defaults to false, ensuring `KafkaListener` is invoked even if all `ConsumerRecords` are filtered out.
+
+For more details, see xref:kafka/receiving-messages/filtering.adoc[Message receive filtering Docs].
