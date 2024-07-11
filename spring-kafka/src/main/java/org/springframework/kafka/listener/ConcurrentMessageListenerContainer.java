@@ -388,7 +388,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		}
 		int startedContainersCount = this.startedContainers.decrementAndGet();
 		if (startedContainersCount == 0) {
-			publishConcurrentContainerStoppedEvent();
+			publishConcurrentContainerStoppedEvent(this.reason);
 			if (Reason.AUTH.equals(this.reason)
 					&& getContainerProperties().isRestartAfterAuthExceptions()) {
 
@@ -404,10 +404,10 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		}
 	}
 
-	private void publishConcurrentContainerStoppedEvent() {
+	private void publishConcurrentContainerStoppedEvent(Reason reason) {
 		ApplicationEventPublisher eventPublisher = getApplicationEventPublisher();
 		if (eventPublisher != null) {
-			eventPublisher.publishEvent(new ConcurrentContainerStoppedEvent(this));
+			eventPublisher.publishEvent(new ConcurrentContainerStoppedEvent(this, reason));
 		}
 	}
 

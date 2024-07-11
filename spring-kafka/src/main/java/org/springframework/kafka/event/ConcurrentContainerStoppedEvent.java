@@ -27,17 +27,29 @@ public class ConcurrentContainerStoppedEvent extends KafkaEvent {
 
 	private static final long serialVersionUID = 1L;
 
+	private final ConsumerStoppedEvent.Reason reason;
+
 	/**
 	 * Construct an instance with the provided source and container.
 	 * @param source the container instance that generated the event.
+	 * @param reason the reason.
 	 */
-	public ConcurrentContainerStoppedEvent(Object source) {
+	public ConcurrentContainerStoppedEvent(Object source, ConsumerStoppedEvent.Reason reason) {
 		super(source, source);
+		this.reason = reason;
+	}
+
+	/**
+	 * Return the reason why the container was stopped.
+	 * @return the reason.
+	 */
+	public ConsumerStoppedEvent.Reason getReason() {
+		return this.reason;
 	}
 
 	@Override
 	public String toString() {
-		return "ConcurrentContainerStoppedEvent [source=" + getSource() + "]";
+		return "ConcurrentContainerStoppedEvent [source=" + getSource() + ", reason=" + this.reason + "]";
 	}
 
 }
