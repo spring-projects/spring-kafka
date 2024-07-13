@@ -69,7 +69,7 @@ ext {
 	reactorVersion = '2023.0.8'
 	scalaVersion = '2.13'
 	springBootVersion = '3.2.7' // docs module
-	springDataVersion = '2024.0.1'
+	springDataVersion = '2024.0.2'
 	springRetryVersion = '2.0.7'
 	springVersion = '6.2.0-SNAPSHOT'
 	zookeeperVersion = '3.8.4'
