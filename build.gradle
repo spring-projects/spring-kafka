@@ -62,7 +62,7 @@ ext {
 	kafkaVersion = '3.6.2'
 	log4jVersion = '2.21.1'
 	micrometerDocsVersion = '1.0.3'
-	micrometerVersion = '1.12.7'
+	micrometerVersion = '1.12.8'
 	micrometerTracingVersion = '1.2.7'
 	mockitoVersion = '5.6.0'
 	reactorVersion = '2023.0.7'
