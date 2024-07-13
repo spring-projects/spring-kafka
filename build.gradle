@@ -21,7 +21,7 @@ plugins {
 	id 'idea'
 	id 'org.ajoberstar.grgit' version '4.1.1'
 	id 'io.spring.nohttp' version '0.0.11'
-	id 'io.spring.dependency-management' version '1.1.5' apply false
+	id 'io.spring.dependency-management' version '1.1.6' apply false
 }
 
 apply plugin: 'io.spring.nohttp'
@@ -61,7 +61,7 @@ ext {
 	junitJupiterVersion = '5.10.3'
 	kafkaVersion = '3.6.2'
 	log4jVersion = '2.21.1'
-	micrometerDocsVersion = '1.0.2'
+	micrometerDocsVersion = '1.0.3'
 	micrometerVersion = '1.12.7'
 	micrometerTracingVersion = '1.2.7'
 	mockitoVersion = '5.6.0'
