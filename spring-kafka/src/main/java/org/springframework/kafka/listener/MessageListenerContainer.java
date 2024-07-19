@@ -290,6 +290,25 @@ public interface MessageListenerContainer extends SmartLifecycle, DisposableBean
 	default void childStarted(MessageListenerContainer child) {
 	}
 
+	/**
+	 * The uniqueID assigned to this container.
+	 * @return the uniqueID if exists
+	 * @since 3.3
+	 */
+	default String getUniqueId() {
+		throw new UnsupportedOperationException("This container does not have uniqueID");
+	}
+
+	/**
+	 * check if the child is the member of the container.
+	 * @param child the container.
+	 * @return false if container is not a member
+	 * @since 3.3
+	 */
+	default boolean isMember(MessageListenerContainer child) {
+		return false;
+	}
+
 	@Override
 	default void destroy() {
 		stop();

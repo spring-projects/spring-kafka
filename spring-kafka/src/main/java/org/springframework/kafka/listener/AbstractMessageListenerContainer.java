@@ -133,6 +133,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private boolean changeConsumerThreadName;
 
+	private String uniqueId;
+
 	@NonNull
 	private Function<MessageListenerContainer, String> threadNameSupplier = container -> container.getListenerId();
 
@@ -410,6 +412,15 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		this.changeConsumerThreadName = changeConsumerThreadName;
 	}
 
+	@Override
+	public String getUniqueId() {
+		return this.uniqueId == null ? "" : this.uniqueId;
+	}
+
+	public void setUniqueId(String uniqueId) {
+		this.uniqueId = uniqueId;
+	}
+
 	/**
 	 * Return the function used to change the consumer thread name.
 	 * @return the function.
@@ -506,7 +517,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		checkGroupId();
 		this.lifecycleLock.lock();
 		try {
-			if (!isRunning()) {
+			if (isContainerAllowedToStart()) {
 				Assert.state(this.containerProperties.getMessageListener() instanceof GenericMessageListener,
 						() -> "A " + GenericMessageListener.class.getName() + " implementation must be provided");
 				doStart();
@@ -711,6 +722,39 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 */
 	protected AbstractMessageListenerContainer<?, ?> parentOrThis() {
 		return this;
+	}
+
+	/**
+	 * verifies if the container is having parent.
+	 * @return return true if this container is having parent
+	 * @since 3.3
+	 */
+	private boolean isHavingParent() {
+		if (this.parentOrThis() == this) {
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * verifies if the container is allowed to start.
+	 * @return return true if this container is allowed to start
+	 * @since 3.3
+	 */
+	private boolean isContainerAllowedToStart() {
+		boolean isAllowedToStart = false;
+		if (this.isHavingParent()) {
+			if (!this.parentOrThis().isMember(this)) {
+				throw new ContainerFencedException("Container not allowed to start. Orphan Container!!!");
+			}
+			else if (this.parentOrThis().isRunning() && !this.isRunning()) {
+				isAllowedToStart = true;
+			}
+		}
+		else if (!this.isRunning()) {
+			isAllowedToStart = true;
+		}
+		return isAllowedToStart;
 	}
 
 	/**

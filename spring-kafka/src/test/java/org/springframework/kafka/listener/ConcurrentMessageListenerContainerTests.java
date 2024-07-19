@@ -17,6 +17,7 @@
 package org.springframework.kafka.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -808,6 +809,119 @@ public class ConcurrentMessageListenerContainerTests {
 		assertThat(consumer.position(new TopicPartition(topic, 0))).isEqualTo(1);
 		consumer.close();
 		logger.info("Stop ack on error with ManualImmediate ack mode");
+	}
+
+	@Test
+	public void testContainerFenced() throws Exception {
+		this.logger.info("Start auto");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true", embeddedKafka);
+		AtomicReference<Properties> overrides = new AtomicReference<>();
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props) {
+			@Override
+			protected Consumer<Integer, String> createKafkaConsumer(String groupId, String clientIdPrefix,
+																	String clientIdSuffixArg, Properties properties) {
+
+				overrides.set(properties);
+				return super.createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffixArg, properties);
+			}
+
+		};
+		ContainerProperties containerProps = new ContainerProperties(topic1);
+		containerProps.setLogContainerConfig(true);
+		containerProps.setClientId("client");
+
+		final CountDownLatch latch = new CountDownLatch(3);
+		final List<String> payloads = new ArrayList<>();
+		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
+			ConcurrentMessageListenerContainerTests.this.logger.info("auto: " + message);
+			payloads.add(message.value());
+			latch.countDown();
+		});
+
+		ConcurrentMessageListenerContainer<Integer, String> container =
+				new ConcurrentMessageListenerContainer<>(cf, containerProps);
+		container.setConcurrency(2);
+		container.setBeanName("testAuto");
+		container.setChangeConsumerThreadName(true);
+		BlockingQueue<KafkaEvent> events = new LinkedBlockingQueue<>();
+		CountDownLatch stopLatch = new CountDownLatch(4);
+		CountDownLatch concurrentContainerStopLatch = new CountDownLatch(1);
+		CountDownLatch concurrentContainerStopLatch2 = new CountDownLatch(2);
+
+		container.setApplicationEventPublisher(e -> {
+			events.add((KafkaEvent) e);
+			if (e instanceof ContainerStoppedEvent) {
+				stopLatch.countDown();
+			}
+			if (e instanceof ConcurrentContainerStoppedEvent) {
+				concurrentContainerStopLatch.countDown();
+				concurrentContainerStopLatch2.countDown();
+			}
+		});
+
+		CountDownLatch intercepted = new CountDownLatch(4);
+		container.setRecordInterceptor((record, consumer) -> {
+			intercepted.countDown();
+			return record.value().equals("baz") ? null : record;
+		});
+		container.start();
+
+		container.start();
+
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		assertThat(container.getAssignedPartitions()).hasSize(2);
+		Map<String, Collection<TopicPartition>> assignments = container.getAssignmentsByClientId();
+		assertThat(assignments).hasSize(2);
+		assertThat(assignments.get("client-0")).isNotNull();
+		assertThat(assignments.get("client-1")).isNotNull();
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic1);
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(1, 2, "bar");
+		template.sendDefault(0, 0, "baz");
+		template.sendDefault(1, 2, "qux");
+		template.flush();
+
+		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+
+		KafkaMessageListenerContainer<Integer, String> childContainer = container.getContainers().get(0);
+		assertThat(container.metrics()).isNotNull();
+		assertThat(container.isInExpectedState()).isTrue();
+		container.getContainers().get(0).stopAbnormally(() -> { });
+		assertThat(container.isInExpectedState()).isFalse();
+		container.getContainers().get(0).start();
+		assertThat(container.getContainers().get(0).isRunning()).isTrue();
+		container.stop();
+		assertThat(intercepted.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(payloads).containsExactlyInAnyOrder("foo", "bar", "qux");
+		assertThat(concurrentContainerStopLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(container.isInExpectedState()).isTrue();
+
+		childContainer.start();
+		// container is not allowed to start since the Concurrent container is stopped.
+		// It's running state would be false
+		assertThat(childContainer.isRunning()).isFalse();
+
+		// ConcurrentContainer started 2nd time. All the previous containers would be cleared.
+		container.start();
+
+		// Orphan container. Throws exception
+		assertThatExceptionOfType(ContainerFencedException.class).
+				isThrownBy(() -> childContainer.start());
+
+		assertThat(container.getContainers().get(0).isRunning()).isTrue();
+		assertThat(container.getContainers().get(1).isRunning()).isTrue();
+
+		container.stop();
+		assertThat(concurrentContainerStopLatch2.await(10, TimeUnit.SECONDS)).isTrue();
+
+
+		this.logger.info("Stop auto");
 	}
 
 }
