@@ -747,7 +747,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 			if (!this.parentOrThis().isMember(this)) {
 				throw new ContainerFencedException("Container not allowed to start. Orphan Container!!!");
 			}
-			else if (this.parentOrThis().isRunning() && !this.isRunning()) {
+			else if (!this.isRunning()) {
 				isAllowedToStart = true;
 			}
 		}

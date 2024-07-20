@@ -36,6 +36,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -61,6 +62,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ConcurrentContainerStoppedEvent;
+import org.springframework.kafka.event.ConsumerStartedEvent;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.event.ContainerStoppedEvent;
 import org.springframework.kafka.event.KafkaEvent;
@@ -813,7 +815,7 @@ public class ConcurrentMessageListenerContainerTests {
 
 	@Test
 	public void testContainerFenced() throws Exception {
-		this.logger.info("Start auto");
+		this.logger.info("Start testContainerFenced");
 		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true", embeddedKafka);
 		AtomicReference<Properties> overrides = new AtomicReference<>();
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props) {
@@ -829,9 +831,10 @@ public class ConcurrentMessageListenerContainerTests {
 		ContainerProperties containerProps = new ContainerProperties(topic1);
 		containerProps.setLogContainerConfig(true);
 		containerProps.setClientId("client");
+		containerProps.setAckMode(ContainerProperties.AckMode.RECORD);
 
 		final CountDownLatch latch = new CountDownLatch(3);
-		final List<String> payloads = new ArrayList<>();
+		final List<String> payloads = new CopyOnWriteArrayList<>();
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
 			ConcurrentMessageListenerContainerTests.this.logger.info("auto: " + message);
 			payloads.add(message.value());
@@ -845,8 +848,12 @@ public class ConcurrentMessageListenerContainerTests {
 		container.setChangeConsumerThreadName(true);
 		BlockingQueue<KafkaEvent> events = new LinkedBlockingQueue<>();
 		CountDownLatch stopLatch = new CountDownLatch(4);
+
 		CountDownLatch concurrentContainerStopLatch = new CountDownLatch(1);
 		CountDownLatch concurrentContainerStopLatch2 = new CountDownLatch(2);
+
+		CountDownLatch kafkaContainerStopLatch = new CountDownLatch(1);
+		CountDownLatch kafkaContainerStartLatch = new CountDownLatch(5);
 
 		container.setApplicationEventPublisher(e -> {
 			events.add((KafkaEvent) e);
@@ -857,6 +864,12 @@ public class ConcurrentMessageListenerContainerTests {
 				concurrentContainerStopLatch.countDown();
 				concurrentContainerStopLatch2.countDown();
 			}
+			if (e instanceof ConsumerStoppedEvent) {
+				kafkaContainerStopLatch.countDown();
+			}
+			if (e instanceof ConsumerStartedEvent) {
+				kafkaContainerStartLatch.countDown();
+			}
 		});
 
 		CountDownLatch intercepted = new CountDownLatch(4);
@@ -866,6 +879,7 @@ public class ConcurrentMessageListenerContainerTests {
 		});
 		container.start();
 
+		//Ignores second start
 		container.start();
 
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
@@ -887,41 +901,51 @@ public class ConcurrentMessageListenerContainerTests {
 		template.flush();
 
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(intercepted.await(10, TimeUnit.SECONDS)).isTrue();
 
-		KafkaMessageListenerContainer<Integer, String> childContainer = container.getContainers().get(0);
+
+		KafkaMessageListenerContainer<Integer, String> childContainer0 = container.getContainers().get(0);
+		KafkaMessageListenerContainer<Integer, String> childContainer1 = container.getContainers().get(1);
+
+		List<String> allocatedContainerIdsAfterStart = KafkaTestUtils.getPropertyValue(container,
+				"allocatedContainerIds", List.class);
+		assertThat(allocatedContainerIdsAfterStart).size().isEqualTo(2);
+
 		assertThat(container.metrics()).isNotNull();
 		assertThat(container.isInExpectedState()).isTrue();
 		container.getContainers().get(0).stopAbnormally(() -> { });
 		assertThat(container.isInExpectedState()).isFalse();
+
+		assertThat(kafkaContainerStopLatch.await(60, TimeUnit.SECONDS)).isTrue();
+
 		container.getContainers().get(0).start();
 		assertThat(container.getContainers().get(0).isRunning()).isTrue();
 		container.stop();
-		assertThat(intercepted.await(10, TimeUnit.SECONDS)).isTrue();
+
 		assertThat(stopLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(payloads).containsExactlyInAnyOrder("foo", "bar", "qux");
 		assertThat(concurrentContainerStopLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(container.isInExpectedState()).isTrue();
+		assertThat(payloads).containsExactlyInAnyOrder("foo", "bar", "qux");
 
-		childContainer.start();
-		// container is not allowed to start since the Concurrent container is stopped.
-		// It's running state would be false
-		assertThat(childContainer.isRunning()).isFalse();
+		// Orphan container. Throws exception
+		assertThatExceptionOfType(ContainerFencedException.class).
+				isThrownBy(() -> childContainer0.start());
 
-		// ConcurrentContainer started 2nd time. All the previous containers would be cleared.
+		// Orphan container. Throws exception
+		assertThatExceptionOfType(ContainerFencedException.class).
+				isThrownBy(() -> childContainer1.start());
+
+		// start container 2nd time
 		container.start();
 
 		// Orphan container. Throws exception
 		assertThatExceptionOfType(ContainerFencedException.class).
-				isThrownBy(() -> childContainer.start());
-
-		assertThat(container.getContainers().get(0).isRunning()).isTrue();
-		assertThat(container.getContainers().get(1).isRunning()).isTrue();
+				isThrownBy(() -> childContainer1.start());
 
 		container.stop();
 		assertThat(concurrentContainerStopLatch2.await(10, TimeUnit.SECONDS)).isTrue();
 
-
-		this.logger.info("Stop auto");
+		this.logger.info("Stop testContainerFenced");
 	}
 
 }

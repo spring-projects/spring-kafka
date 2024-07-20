@@ -78,6 +78,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	private final List<String> allocatedContainerIds = new CopyOnWriteArrayList<>();
 
+	private final List<String> deAllocatedContainerIds = new CopyOnWriteArrayList<>();
+
 	private final Set<String> startedContainerIds = new CopyOnWriteArraySet<>();
 
 	private final Set<String> stoppedContainerIds = new CopyOnWriteArraySet<>();
@@ -248,7 +250,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	 */
 	@Override
 	protected void doStart() {
-		if (!isRunning()) {
+		if (!isRunning() && !this.containers.stream().anyMatch((container) -> container.isRunning())) {
 			checkTopics();
 			ContainerProperties containerProperties = getContainerProperties();
 			TopicPartitionOffset[] topicPartitions = containerProperties.getTopicPartitions();
@@ -392,45 +394,56 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				}
 			}
 			this.containers.clear();
+			this.deAllocatedContainerIds.addAll(this.allocatedContainerIds);
+			this.allocatedContainerIds.clear();
 			setStoppedNormally(normal);
 		}
 	}
 
 	@Override
 	public void childStarted(MessageListenerContainer child) {
-		if (!this.isMember(child)) {
-			return;
+		this.lifecycleLock.lock();
+		try {
+			if (!this.isMember(child)) {
+				return;
+			}
+			this.startedContainerIds.add(child.getUniqueId());
+			this.stoppedContainerIds.remove(child.getUniqueId());
+			if (this.stoppedContainerIds.isEmpty() && this.startedContainerIds.containsAll(this.allocatedContainerIds)) {
+				setRunning(true);
+			}
 		}
-		setRunning(true);
-		this.startedContainerIds.add(child.getUniqueId());
-		this.stoppedContainerIds.remove(child.getUniqueId());
+		finally {
+			this.lifecycleLock.unlock();
+		}
 	}
 
 	@Override
 	public void childStopped(MessageListenerContainer child, Reason reason) {
 		this.lifecycleLock.lock();
 		try {
-			if (!this.isMember(child)) {
-				return;
-			}
-			setRunning(false);
-			this.startedContainerIds.remove(child.getUniqueId());
-			this.stoppedContainerIds.add(child.getUniqueId());
+			if (this.isMember(child) || this.deAllocatedContainerIds.contains(child.getUniqueId())) {
+				setRunning(false);
+				this.startedContainerIds.remove(child.getUniqueId());
+				this.stoppedContainerIds.add(child.getUniqueId());
 
-			if (this.reason == null || reason.equals(Reason.AUTH)) {
-				this.reason = reason;
-			}
-			if (verifyIfAllContainersStopped()) {
-				publishConcurrentContainerStoppedEvent(this.reason);
-				boolean restartContainer = Reason.AUTH.equals(this.reason)
-						&& getContainerProperties().isRestartAfterAuthExceptions();
-				if (restartContainer) {
-					// This has to run on another thread to avoid a deadlock on lifecycleMonitor
-					AsyncTaskExecutor exec = getContainerProperties().getListenerTaskExecutor();
-					if (exec == null) {
-						exec = new SimpleAsyncTaskExecutor(getListenerId() + ".authRestart");
+				if (this.reason == null || reason.equals(Reason.AUTH)) {
+					this.reason = reason;
+				}
+				if (verifyIfAllContainersStopped()) {
+					publishConcurrentContainerStoppedEvent(this.reason);
+					boolean restartContainer = Reason.AUTH.equals(this.reason)
+							&& getContainerProperties().isRestartAfterAuthExceptions();
+					this.reason = null;
+					this.deAllocatedContainerIds.clear();
+					if (restartContainer) {
+						// This has to run on another thread to avoid a deadlock on lifecycleMonitor
+						AsyncTaskExecutor exec = getContainerProperties().getListenerTaskExecutor();
+						if (exec == null) {
+							exec = new SimpleAsyncTaskExecutor(getListenerId() + ".authRestart");
+						}
+						exec.execute(this::start);
 					}
-					exec.execute(this::start);
 				}
 			}
 		}
@@ -441,7 +454,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	private boolean verifyIfAllContainersStopped() {
 		if (this.startedContainerIds.isEmpty() &&
-				this.allocatedContainerIds.containsAll(this.stoppedContainerIds)) {
+				this.stoppedContainerIds.size() == this.concurrency) {
 			return true;
 		}
 		return false;
@@ -449,8 +462,10 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	private void clearContainerState() {
 		this.allocatedContainerIds.clear();
+		this.deAllocatedContainerIds.clear();
 		this.startedContainerIds.clear();
 		this.stoppedContainerIds.clear();
+		this.containers.clear();
 		this.reason = null;
 	}
 
@@ -567,10 +582,16 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	@Override
 	public boolean isMember(MessageListenerContainer child) {
-		if (this.allocatedContainerIds.contains(child.getUniqueId())) {
-			return true;
+		this.lifecycleLock.lock();
+		try {
+			if (this.allocatedContainerIds.contains(child.getUniqueId())) {
+				return true;
+			}
+			return false;
 		}
-		return false;
+		finally {
+				this.lifecycleLock.unlock();
+		}
 	}
 
 	@Override
