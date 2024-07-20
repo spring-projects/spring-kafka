@@ -1,5 +1,5 @@
 buildscript {
-	ext.kotlinVersion = '1.9.24'
+	ext.kotlinVersion = '1.9.25'
 	ext.isCI = System.getenv('GITHUB_ACTION')
 	repositories {
 		mavenCentral()
