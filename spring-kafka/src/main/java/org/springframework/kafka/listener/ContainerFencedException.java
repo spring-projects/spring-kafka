@@ -15,8 +15,8 @@
  */
 
 /**
- * Exception throw when container is started when it is not a member of
- * ConcurrentMessageListenerContainer.
+ * Exception to be thrown when attempted to start a container that is not an active member
+ * of its parent container.
  *
  * @author Lokesh Alamuri
  * @since 3.3
