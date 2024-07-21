@@ -42,6 +42,8 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,6 +68,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  * @author Artem Bilan
  * @author Adrian Gygax
  * @author Soby Chacko
+ * @author Yaniv Nahoum
  *
  * @since 1.0.6
  */
@@ -458,8 +461,9 @@ public class DefaultKafkaConsumerFactoryTests {
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	@Test
-	void listener() {
+	@ParameterizedTest
+	@ValueSource(booleans = { true, false })
+	void listener(boolean closeWithTimeout) {
 		Map<String, Object> consumerConfig = KafkaTestUtils.consumerProps("txCache1Group", "false", this.embeddedKafka);
 		consumerConfig.put(ConsumerConfig.CLIENT_ID_CONFIG, "foo-0");
 		DefaultKafkaConsumerFactory cf = new DefaultKafkaConsumerFactory(consumerConfig);
@@ -484,8 +488,13 @@ public class DefaultKafkaConsumerFactoryTests {
 		Consumer consumer = cf.createConsumer();
 		assertThat(adds).hasSize(1);
 		assertThat(adds.get(0)).isEqualTo("cf.foo-0");
-		assertThat(removals).hasSize(0);
-		consumer.close(Duration.ofSeconds(10));
+		assertThat(removals).isEmpty();
+		if (closeWithTimeout) {
+			consumer.close(Duration.ofSeconds(10));
+		}
+		else {
+			consumer.close();
+		}
 		assertThat(removals).hasSize(1);
 	}
 

@@ -72,6 +72,7 @@ import org.springframework.util.StringUtils;
  * @author Artem Bilan
  * @author Chris Gilbert
  * @author Adrian Gygax
+ * @author Yaniv Nahoum
  */
 public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 		implements ConsumerFactory<K, V>, BeanNameAware, ApplicationContextAware {
@@ -520,9 +521,18 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 		}
 
 		@Override
+		public void close() {
+			super.close();
+			notifyConsumerRemoved();
+		}
+
+		@Override
 		public void close(Duration timeout) {
 			super.close(timeout);
+			notifyConsumerRemoved();
+		}
 
+		private void notifyConsumerRemoved() {
 			for (Listener<K, V> listener : DefaultKafkaConsumerFactory.this.listeners) {
 				listener.consumerRemoved(this.idForListeners, this);
 			}
