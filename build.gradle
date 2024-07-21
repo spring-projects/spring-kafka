@@ -63,7 +63,7 @@ ext {
 	kotlinCoroutinesVersion = '1.8.1'
 	log4jVersion = '2.23.1'
 	micrometerDocsVersion = '1.0.3'
-	micrometerVersion = '1.14.0-M1'
+	micrometerVersion = '1.14.0-SNAPSHOT'
 	micrometerTracingVersion = '1.4.0-SNAPSHOT'
 	mockitoVersion = '5.12.0'
 	reactorVersion = '2024.0.0-SNAPSHOT'
