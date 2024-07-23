@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,17 @@
 package org.springframework.kafka.support;
 
 import java.nio.ByteBuffer;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
+import org.assertj.core.util.Streams;
 
 import org.springframework.messaging.MessageHeaders;
 
@@ -35,8 +40,8 @@ import org.springframework.messaging.MessageHeaders;
  * The exceptions are correlation and reply headers for request/reply
  *
  * @author Gary Russell
+ * @author Grzegorz Poznachowski
  * @since 2.1.3
- *
  */
 public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 
@@ -69,6 +74,7 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * generally should not map the {@code "id" and "timestamp"} headers. Note:
 	 * most of the headers in {@link KafkaHeaders} are never mapped as headers since they
 	 * represent data in consumer/producer records.
+	 *
 	 * @param patterns the patterns.
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
 	 */
@@ -82,6 +88,7 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 
 	/**
 	 * Create an instance for inbound mapping only with pattern matching.
+	 *
 	 * @param patterns the patterns to match.
 	 * @return the header mapper.
 	 * @since 2.8.8
@@ -94,27 +101,48 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	public void fromHeaders(MessageHeaders headers, Headers target) {
 		headers.forEach((key, value) -> {
 			if (!NEVER.contains(key)) {
-				Object valueToAdd = headerValueToAddOut(key, value);
-				if (valueToAdd instanceof byte[] && matches(key, valueToAdd)) {
-					target.add(new RecordHeader(key, (byte[]) valueToAdd));
+				if (value instanceof Collection<?> values) {
+					values.forEach(v -> resolveSingleHeader(target, key, v));
+				}
+				else {
+					resolveSingleHeader(target, key, value);
 				}
 			}
 		});
 	}
 
+	private void resolveSingleHeader(Headers target, String key, Object value) {
+		Object valueToAdd = headerValueToAddOut(key, value);
+		if (valueToAdd instanceof byte[] && matches(key, valueToAdd)) {
+			target.add(new RecordHeader(key, (byte[]) valueToAdd));
+		}
+	}
+
 	@Override
 	public void toHeaders(Headers source, Map<String, Object> target) {
-		source.forEach(header -> {
-			String headerName = header.key();
-			if (matchesForInbound(headerName)) {
-				if (headerName.equals(KafkaHeaders.DELIVERY_ATTEMPT)) {
-					target.put(headerName, ByteBuffer.wrap(header.value()).getInt());
-				}
-				else {
-					target.put(headerName, headerValueToAddIn(header));
-				}
-			}
-		});
+		Streams.stream(source)
+				.collect(Collectors.groupingBy(Header::key))
+				.forEach((headerName, headers) -> {
+					if (matchesForInbound(headerName)) {
+						if (headerName.equals(KafkaHeaders.DELIVERY_ATTEMPT)) {
+							target.put(headerName, ByteBuffer.wrap(headers.get(headers.size() - 1).value()).getInt());
+						}
+						else {
+							var values = headers.stream()
+									.map(super::headerValueToAddIn)
+									.collect(Collectors.collectingAndThen(Collectors.toList(), list -> {
+										Collections.reverse(list);
+										return list;
+									}));
+							if (values.size() == 1) {
+								target.put(headerName, values.get(0));
+							}
+							else {
+								target.put(headerName, values);
+							}
+						}
+					}
+				});
 	}
 
 }

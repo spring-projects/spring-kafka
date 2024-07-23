@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.entry;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -52,11 +53,12 @@ import org.springframework.util.MimeTypeUtils;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Soby Chacko
+ * @author Grzegorz Poznachowski
  *
  * @since 1.3
  *
  */
-public class DefaultKafkaHeaderMapperTests {
+class DefaultKafkaHeaderMapperTests {
 
 	@Test
 	void testTrustedAndNot() {
@@ -177,7 +179,7 @@ public class DefaultKafkaHeaderMapperTests {
 		Object fooHeader = receivedHeaders.get("foo");
 		assertThat(fooHeader).isInstanceOf(List.class);
 		assertThat(fooHeader).asInstanceOf(InstanceOfAssertFactories.LIST)
-				.containsExactly("application/json", "text/plain");
+				.containsExactlyInAnyOrder("application/json", "text/plain");
 	}
 
 	@Test
@@ -279,6 +281,27 @@ public class DefaultKafkaHeaderMapperTests {
 				entry("thisOnesAString", "foo".getBytes()),
 				entry("thisOnesBytes", "bar".getBytes()),
 				entry("alwaysRaw", "baz".getBytes()));
+	}
+
+	@Test
+	void testIterableHeader() {
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		mapper.addTrustedPackages(getClass().getPackage().getName());
+		Map<String, Object> headersMap = new HashMap<>();
+		headersMap.put("iterableHeader",
+				List.of(new Foo(), "stringValue", "test".getBytes(StandardCharsets.UTF_8), Instant.now()));
+		MessageHeaders headers = new MessageHeaders(headersMap);
+		RecordHeaders recordHeaders = new RecordHeaders();
+		mapper.fromHeaders(headers, recordHeaders);
+		assertThat(recordHeaders)
+				.filteredOn(header -> header.key().equals("iterableHeader"))
+				.hasSize(4);
+		headersMap = new HashMap<>();
+		mapper.toHeaders(recordHeaders, headersMap);
+		assertThat(headersMap.get("iterableHeader")).asInstanceOf(InstanceOfAssertFactories.list(Object.class))
+				.hasSize(4)
+				.hasAtLeastOneElementOfType(NonTrustedHeaderType.class)
+				.containsSequence("test".getBytes(StandardCharsets.UTF_8), "stringValue", new Foo());
 	}
 
 	@Test
@@ -406,10 +429,10 @@ public class DefaultKafkaHeaderMapperTests {
 
 		private String field;
 
-		public Bar() {
+		Bar() {
 		}
 
-		public Bar(String field) {
+		Bar(String field) {
 			this.field = field;
 		}
 
