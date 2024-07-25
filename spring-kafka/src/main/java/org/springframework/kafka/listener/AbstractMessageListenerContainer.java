@@ -144,13 +144,12 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	/**
 	 * Construct an instance with the provided factory and properties.
-	 *
-	 * @param consumerFactory     the factory.
+	 * @param consumerFactory the factory.
 	 * @param containerProperties the properties.
 	 */
 	@SuppressWarnings("unchecked")
 	protected AbstractMessageListenerContainer(ConsumerFactory<? super K, ? super V> consumerFactory,
-											   ContainerProperties containerProperties) {
+			ContainerProperties containerProperties) {
 
 		Assert.notNull(containerProperties, "'containerProperties' cannot be null");
 		Assert.notNull(consumerFactory, "'consumerFactory' cannot be null");
@@ -158,15 +157,18 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		String[] topics = containerProperties.getTopics();
 		if (topics != null) {
 			this.containerProperties = new ContainerProperties(topics);
-		} else {
+		}
+		else {
 			Pattern topicPattern = containerProperties.getTopicPattern();
 			if (topicPattern != null) {
 				this.containerProperties = new ContainerProperties(topicPattern);
-			} else {
+			}
+			else {
 				TopicPartitionOffset[] topicPartitions = containerProperties.getTopicPartitions();
 				if (topicPartitions != null) {
 					this.containerProperties = new ContainerProperties(topicPartitions);
-				} else {
+				}
+				else {
 					throw new IllegalStateException("topics, topicPattern, or topicPartitions must be provided");
 				}
 			}
@@ -207,7 +209,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	/**
 	 * Return the bean name.
-	 *
 	 * @return the bean name.
 	 */
 	@Nullable
@@ -222,7 +223,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	/**
 	 * Get the event publisher.
-	 *
 	 * @return the publisher
 	 */
 	@Nullable
@@ -232,7 +232,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	/**
 	 * Get the {@link CommonErrorHandler}.
-	 *
 	 * @return the handler.
 	 * @since 2.8
 	 */
@@ -244,7 +243,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	/**
 	 * Set the {@link CommonErrorHandler} which can handle errors for both record
 	 * and batch listeners.
-	 *
 	 * @param commonErrorHandler the handler.
 	 * @since 2.8
 	 */
@@ -324,7 +322,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	/**
 	 * Return the currently configured {@link AfterRollbackProcessor}.
-	 *
 	 * @return the after rollback processor.
 	 * @since 2.2.14
 	 */
@@ -336,7 +333,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * Set a processor to perform seeks on unprocessed records after a rollback.
 	 * Default will seek to current position all topics/partitions, including the failed
 	 * record.
-	 *
 	 * @param afterRollbackProcessor the processor.
 	 * @since 1.3.5
 	 */
@@ -365,7 +361,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	/**
 	 * Set the main listener id, if this container is for a retry topic.
-	 *
 	 * @param id the id.
 	 * @since 3.0.
 	 */
@@ -388,7 +383,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	/**
 	 * Set arbitrary information that will be added to the
 	 * {@link KafkaHeaders#LISTENER_INFO} header of all records.
-	 *
 	 * @param listenerInfo the info.
 	 * @since 2.8.4
 	 */
@@ -399,7 +393,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	/**
 	 * How long to wait for {@link AdminClient#describeTopics(Collection)} result
 	 * futures to complete.
-	 *
 	 * @param topicCheckTimeout the timeout in seconds; default 30.
 	 * @since 2.3
 	 */
@@ -410,7 +403,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	/**
 	 * Return true if the container should change the consumer thread name during
 	 * initialization.
-	 *
 	 * @return true to change.
 	 * @since 3.0.1
 	 */
@@ -421,10 +413,9 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	/**
 	 * Set to true to instruct the container to change the consumer thread name during
 	 * initialization.
-	 *
 	 * @param changeConsumerThreadName true to change.
-	 * @see #setThreadNameSupplier(Function)
 	 * @since 3.0.1
+	 * @see #setThreadNameSupplier(Function)
 	 */
 	public void setChangeConsumerThreadName(boolean changeConsumerThreadName) {
 		this.changeConsumerThreadName = changeConsumerThreadName;
@@ -432,7 +423,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	/**
 	 * Return the function used to change the consumer thread name.
-	 *
 	 * @return the function.
 	 * @since 3.0.1
 	 */
@@ -443,10 +433,9 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	/**
 	 * Set a function used to change the consumer thread name. The default returns the
 	 * container {@code listenerId}.
-	 *
 	 * @param threadNameSupplier the function.
-	 * @see #setChangeConsumerThreadName(boolean)
 	 * @since 3.0.1
+	 * @see #setChangeConsumerThreadName(boolean)
 	 */
 	public void setThreadNameSupplier(Function<MessageListenerContainer, String> threadNameSupplier) {
 		Assert.notNull(threadNameSupplier, "'threadNameSupplier' cannot be null");
@@ -456,7 +445,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	/**
 	 * Return the {@link KafkaAdmin}, used to find the cluster id for observation, if
 	 * present.
-	 *
 	 * @return the kafkaAdmin
 	 * @since 3.0.5
 	 */
@@ -468,7 +456,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	/**
 	 * Set the {@link KafkaAdmin}, used to find the cluster id for observation, if
 	 * present.
-	 *
 	 * @param kafkaAdmin the admin.
 	 */
 	public void setKafkaAdmin(KafkaAdmin kafkaAdmin) {
@@ -482,10 +469,9 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	/**
 	 * Set an interceptor to be called before calling the record listener.
 	 * Does not apply to batch listeners.
-	 *
 	 * @param recordInterceptor the interceptor.
-	 * @see #setInterceptBeforeTx(boolean)
 	 * @since 2.2.7
+	 * @see #setInterceptBeforeTx(boolean)
 	 */
 	public void setRecordInterceptor(RecordInterceptor<K, V> recordInterceptor) {
 		this.recordInterceptor = recordInterceptor;
@@ -497,10 +483,9 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	/**
 	 * Set an interceptor to be called before calling the record listener.
-	 *
 	 * @param batchInterceptor the interceptor.
-	 * @see #setInterceptBeforeTx(boolean)
 	 * @since 2.6.6
+	 * @see #setInterceptBeforeTx(boolean)
 	 */
 	public void setBatchInterceptor(BatchInterceptor<K, V> batchInterceptor) {
 		this.batchInterceptor = batchInterceptor;
@@ -512,12 +497,11 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	/**
 	 * When false, invoke the interceptor after the transaction starts.
-	 *
 	 * @param interceptBeforeTx false to intercept within the transaction.
-	 *                          Default true since 2.8.
+	 * Default true since 2.8.
+	 * @since 2.3.4
 	 * @see #setRecordInterceptor(RecordInterceptor)
 	 * @see #setBatchInterceptor(BatchInterceptor)
-	 * @since 2.3.4
 	 */
 	public void setInterceptBeforeTx(boolean interceptBeforeTx) {
 		this.interceptBeforeTx = interceptBeforeTx;
@@ -538,7 +522,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 						() -> "A " + GenericMessageListener.class.getName() + " implementation must be provided");
 				doStart();
 			}
-		} finally {
+		}
+		finally {
 			this.lifecycleLock.unlock();
 		}
 	}
@@ -573,17 +558,20 @@ public abstract class AbstractMessageListenerContainer<K, V>
 								try {
 									entry.getValue().get(this.topicCheckTimeout, TimeUnit.SECONDS);
 									return false;
-								} catch (InterruptedException ex) {
+								}
+								catch (InterruptedException ex) {
 									Thread.currentThread().interrupt();
 									return true;
-								} catch (@SuppressWarnings("unused") Exception ex) {
+								}
+								catch (@SuppressWarnings("unused") Exception ex) {
 									return true;
 								}
 							})
 							.map(Entry::getKey)
 							.collect(Collectors.toList());
 				}
-			} catch (Exception e) {
+			}
+			catch (Exception e) {
 				this.logger.error(e, "Failed to check topic existence");
 			}
 			if (missing != null && missing.size() > 0) {
@@ -619,7 +607,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	/**
 	 * Stop the container.
-	 *
 	 * @param wait wait for the listener to terminate.
 	 * @since 2.3.8
 	 */
@@ -633,14 +620,17 @@ public abstract class AbstractMessageListenerContainer<K, V>
 					try {
 						latch.await(this.containerProperties.getShutdownTimeout(), TimeUnit.MILLISECONDS); // NOSONAR
 						publishContainerStoppedEvent();
-					} catch (@SuppressWarnings("unused") InterruptedException e) {
+					}
+					catch (@SuppressWarnings("unused") InterruptedException e) {
 						Thread.currentThread().interrupt();
 					}
-				} else {
+				}
+				else {
 					doStop(this::publishContainerStoppedEvent);
 				}
 			}
-		} finally {
+		}
+		finally {
 			this.lifecycleLock.unlock();
 		}
 	}
@@ -661,10 +651,12 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		try {
 			if (isRunning()) {
 				doStop(callback);
-			} else {
+			}
+			else {
 				callback.run();
 			}
-		} finally {
+		}
+		finally {
 			this.lifecycleLock.unlock();
 		}
 	}
@@ -682,16 +674,14 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	/**
 	 * Stop the container normally or abnormally.
-	 *
 	 * @param callback the callback.
-	 * @param normal   true for an expected stop.
+	 * @param normal true for an expected stop.
 	 * @since 2.8
 	 */
 	protected abstract void doStop(Runnable callback, boolean normal);
 
 	/**
 	 * Return default implementation of {@link ConsumerRebalanceListener} instance.
-	 *
 	 * @return the {@link ConsumerRebalanceListener} currently assigned to this container.
 	 */
 	protected final ConsumerRebalanceListener createSimpleLoggingConsumerRebalanceListener() {
@@ -712,7 +702,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 			@Override
 			public void onPartitionsLost(Collection<TopicPartition> partitions) {
 				AbstractMessageListenerContainer.this.logger.info(() ->
-						getGroupId() + ": partitions lost: " + partitions);
+				getGroupId() + ": partitions lost: " + partitions);
 			}
 
 		};
@@ -727,7 +717,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	/**
 	 * Return this or a parent container if this has a parent.
-	 *
 	 * @return the parent or this.
 	 * @since 2.2.1
 	 */
@@ -737,7 +726,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	/**
 	 * Make any default consumer override properties explicit properties.
-	 *
 	 * @return the properties.
 	 * @since 2.9.11
 	 */
