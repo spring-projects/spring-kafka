@@ -291,22 +291,13 @@ public interface MessageListenerContainer extends SmartLifecycle, DisposableBean
 	}
 
 	/**
-	 * The uniqueID assigned to this container.
-	 * @return the uniqueID if exists
-	 * @since 3.3
+	 * Verify if this container is allowed to start. Eg scenario: If this container has a parent container, and it is stopped,
+	 * implementation of this API could return false to indicate container is not allowed to start.
+	 * @return true if a container is allowed to start.
+	 * @since 2.7.3
 	 */
-	default String getUniqueId() {
-		throw new UnsupportedOperationException("This container does not have uniqueID");
-	}
-
-	/**
-	 * check if the child is the member of the container.
-	 * @param child the container.
-	 * @return false if container is not a member
-	 * @since 3.3
-	 */
-	default boolean isMember(MessageListenerContainer child) {
-		return false;
+	default boolean isAllowedToStart() {
+		return true;
 	}
 
 	@Override
