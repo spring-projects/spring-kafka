@@ -44,8 +44,8 @@ import org.springframework.util.Assert;
 /**
  * Creates 1 or more {@link KafkaMessageListenerContainer}s based on
  * {@link #setConcurrency(int) concurrency}. If the
- * {@link ContainerProperties} is configured with {@link TopicPartition}s,
- * the {@link TopicPartition}s are distributed evenly across the
+ * {@link ContainerProperties} is configured with {@link org.apache.kafka.common.TopicPartition}s,
+ * the {@link org.apache.kafka.common.TopicPartition}s are distributed evenly across the
  * instances.
  *
  * @param <K> the key type.
@@ -391,11 +391,11 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		int startedContainersCount = this.startedContainers.decrementAndGet();
 		if (startedContainersCount == 0) {
 			publishConcurrentContainerStoppedEvent(this.reason);
-			if (Reason.AUTH.equals(this.reason)
-					&& getContainerProperties().isRestartAfterAuthExceptions()) {
+			boolean restartContainer = Reason.AUTH.equals(this.reason)
+					&& getContainerProperties().isRestartAfterAuthExceptions();
+			this.reason = null;
 
-				this.reason = null;
-
+			if (restartContainer) {
 				// This has to run on another thread to avoid a deadlock on lifecycleMonitor
 				AsyncTaskExecutor exec = getContainerProperties().getListenerTaskExecutor();
 				if (exec == null) {
