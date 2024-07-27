@@ -240,8 +240,8 @@ public class ConcurrentMessageListenerContainerTests {
 		this.logger.info("Stop auto");
 		assertThat(childContainer.isRunning()).isFalse();
 		assertThat(container.isRunning()).isFalse();
-		assertThat(container.isAllowedToStart()).isTrue();
-		assertThat(childContainer.isAllowedToStart()).isFalse();
+		assertThat(container.isFenced()).isFalse();
+		assertThat(((AbstractMessageListenerContainer) childContainer).isFenced()).isTrue();
 
 		// Fenced container. Throws exception
 		assertThatExceptionOfType(IllegalStateException.class).isThrownBy(() -> childContainer.start());

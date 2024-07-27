@@ -290,16 +290,6 @@ public interface MessageListenerContainer extends SmartLifecycle, DisposableBean
 	default void childStarted(MessageListenerContainer child) {
 	}
 
-	/**
-	 * Verify if this container is allowed to start. Eg scenario: If this container has a parent container, and it is stopped,
-	 * implementation of this API could return false to indicate container is not allowed to start.
-	 * @return true if a container is allowed to start.
-	 * @since 2.7.3
-	 */
-	default boolean isAllowedToStart() {
-		return true;
-	}
-
 	@Override
 	default void destroy() {
 		stop();

@@ -124,7 +124,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private volatile boolean running = false;
 
-	private volatile boolean allowedToStart = true;
+	private volatile boolean fenced = false;
 
 	private volatile boolean paused;
 
@@ -277,13 +277,12 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		return this.running;
 	}
 
-	protected void setAllowedToStart(boolean allowedToStart) {
-		this.allowedToStart = allowedToStart;
+	protected void setFenced(boolean fenced) {
+		this.fenced = fenced;
 	}
 
-	@Override
-	public boolean isAllowedToStart() {
-		return this.allowedToStart;
+	public boolean isFenced() {
+		return this.fenced;
 	}
 
 	@Deprecated(since = "3.2", forRemoval = true)
@@ -517,7 +516,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		checkGroupId();
 		this.lifecycleLock.lock();
 		try {
-			if (!isRunning() && this.isContainerAllowedToStart()) {
+			if (!isRunning() && this.isContainerFenced()) {
 				Assert.state(this.containerProperties.getMessageListener() instanceof GenericMessageListener,
 						() -> "A " + GenericMessageListener.class.getName() + " implementation must be provided");
 				doStart();
@@ -743,8 +742,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		return props;
 	}
 
-	public boolean isContainerAllowedToStart() {
-		if (!this.allowedToStart) {
+	public boolean isContainerFenced() {
+		if (this.fenced) {
 			throw new IllegalStateException("Container Fenced. It is not allowed to start.");
 		}
 		return true;
