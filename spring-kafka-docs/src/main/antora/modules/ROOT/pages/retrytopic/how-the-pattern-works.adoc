@@ -13,22 +13,6 @@ IMPORTANT: By using this strategy you lose Kafka's ordering guarantees for that 
 
 IMPORTANT: You can set the `AckMode` mode you prefer, but `RECORD` is suggested.
 
-IMPORTANT: This functionality now supports class level `@KafkaListener` annotations since version 3.2.
-
-[source, java]
-----
-@RetryableTopic(listenerContainerFactory = "my-retry-topic-factory")
-@KafkaListener(topics = "my-annotated-topic")
-public class ClassLevelRetryListener {
-
-    @KafkaHandler
-    public void processMessage(MyPojo message) {
-        // message processing logic
-    }
-
-}
-----
-
 When using a manual `AckMode` with `asyncAcks` set to true, the `DefaultErrorHandler` must be configured with `seekAfterError` set to `false`.
 Starting with versions 2.9.10, 3.0.8, this will be set to `false` unconditionally for such configurations.
 With earlier versions, it was necessary to override the `RetryConfigurationSupport.configureCustomizers()` method to set the property to `false`.
