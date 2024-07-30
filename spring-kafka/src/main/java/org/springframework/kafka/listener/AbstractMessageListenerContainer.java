@@ -281,10 +281,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		this.fenced = fenced;
 	}
 
-	public boolean isFenced() {
-		return this.fenced;
-	}
-
 	@Deprecated(since = "3.2", forRemoval = true)
 	protected boolean isPaused() {
 		return this.paused;
@@ -742,7 +738,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		return props;
 	}
 
-	public boolean isContainerFenced() {
+	private boolean isContainerFenced() {
 		if (this.fenced) {
 			throw new IllegalStateException("Container Fenced. It is not allowed to start.");
 		}
