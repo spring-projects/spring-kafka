@@ -512,9 +512,10 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		checkGroupId();
 		this.lifecycleLock.lock();
 		try {
-			if (!isRunning() && this.isContainerFenced()) {
+			if (!isRunning()) {
 				Assert.state(this.containerProperties.getMessageListener() instanceof GenericMessageListener,
 						() -> "A " + GenericMessageListener.class.getName() + " implementation must be provided");
+				Assert.state(!this.fenced, "Container Fenced. It is not allowed to start.");
 				doStart();
 			}
 		}
@@ -738,10 +739,4 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		return props;
 	}
 
-	private boolean isContainerFenced() {
-		if (this.fenced) {
-			throw new IllegalStateException("Container Fenced. It is not allowed to start.");
-		}
-		return true;
-	}
 }
