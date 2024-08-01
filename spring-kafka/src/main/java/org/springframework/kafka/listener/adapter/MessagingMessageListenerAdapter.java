@@ -90,6 +90,7 @@ import reactor.core.publisher.Mono;
  * @author Nathan Xu
  * @author Wang ZhiYang
  * @author Huijin Hong
+ * @author Soby Chacko
  */
 public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware, AsyncRepliesAware {
 
@@ -440,8 +441,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		if (this.hasAckParameter && acknowledgment == null) {
 			return new ListenerExecutionFailedException("invokeHandler Failed",
 					new IllegalStateException("No Acknowledgment available as an argument, "
-							+ "the listener container must have a MANUAL AckMode to populate the Acknowledgment.",
-							ex));
+							+ "the listener container must have a MANUAL AckMode to populate the Acknowledgment."));
 		}
 		return new ListenerExecutionFailedException(createMessagingErrorMessage("Listener method could not " +
 				"be invoked with the incoming message", message.getPayload()), ex);

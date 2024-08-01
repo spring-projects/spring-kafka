@@ -173,7 +173,11 @@ If seekPosition set `TIMESTAMP`, `initialOffset` means timestamp.
 == Manual Acknowledgment
 
 When using manual `AckMode`, you can also provide the listener with the `Acknowledgment`.
+To activate the manual `AckMode`, you need to set the ack-mode in `ContainerProperties` to the appropriate manual mode.
 The following example also shows how to use a different container factory.
+This custom container factory must set the `AckMode` to a manual type by calling the `getContainerProperties()` and then calling `setAckMode` on it.
+Otherwise, the `Acknowledgment` object will be null.
+
 
 [source, java]
 ----
