@@ -638,12 +638,12 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			builder.setHeader(this.correlationHeaderName, correlationId);
 		}
 		setPartition(builder, source);
+		setKey(builder, source);
 		this.replyTemplate.send(builder.build());
 	}
 
 	protected void asyncSuccess(@Nullable Object result, String replyTopic, Message<?> source,
 			boolean returnTypeMessage) {
-
 		if (result == null) {
 			if (this.logger.isDebugEnabled()) {
 				this.logger.debug("Async result is null, ignoring");
@@ -662,7 +662,6 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	protected void asyncFailure(Object request, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer,
 			Throwable t, Message<?> source) {
-
 		try {
 			handleException(request, acknowledgment, consumer, source,
 					new ListenerExecutionFailedException(createMessagingErrorMessage(
@@ -676,7 +675,6 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	protected void handleException(Object records, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer,
 			Message<?> message, ListenerExecutionFailedException e) {
-
 		if (this.errorHandler != null) {
 			try {
 				if (NULL_MESSAGE.equals(message)) {
@@ -719,9 +717,22 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 	}
 
+	private void setKey(MessageBuilder<?> builder, Message<?> source) {
+		Object key = getReplyKeyFromRequest(source);
+		// Set the reply record key only for non-batch requests
+		if (key != null && !(key instanceof List)) {
+			builder.setHeader(KafkaHeaders.KEY, key);
+		}
+	}
+
 	@Nullable
 	private byte[] getReplyPartition(Message<?> source) {
 		return source.getHeaders().get(KafkaHeaders.REPLY_PARTITION, byte[].class);
+	}
+
+	@Nullable
+	private Object getReplyKeyFromRequest(Message<?> source) {
+		return source.getHeaders().get(KafkaHeaders.RECEIVED_KEY);
 	}
 
 	protected final String createMessagingErrorMessage(String description, Object payload) {
