@@ -74,6 +74,8 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Adrian Gygax
+ * @author Sanghyeok An
+ * @author Valentina Armenise
  *
  * @since 1.3
  */
@@ -211,6 +213,15 @@ public class KafkaAdmin extends KafkaResourceFactory
 	 */
 	public void setClusterId(String clusterId) {
 		this.clusterId = clusterId;
+	}
+
+	/**
+	 * Get the clusterId property.
+	 * @return the cluster id.
+	 * @since 3.1.8
+	 */
+	public String getClusterId() {
+		return this.clusterId;
 	}
 
 	@Override
