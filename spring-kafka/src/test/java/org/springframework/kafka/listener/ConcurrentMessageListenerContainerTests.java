@@ -816,4 +816,270 @@ public class ConcurrentMessageListenerContainerTests {
 		logger.info("Stop ack on error with ManualImmediate ack mode");
 	}
 
+	@Test
+	public void testIsChildRunning() throws Exception {
+		this.logger.info("Start isChildRunning");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true", embeddedKafka);
+		AtomicReference<Properties> overrides = new AtomicReference<>();
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props) {
+
+			@Override
+			protected Consumer<Integer, String> createKafkaConsumer(String groupId, String clientIdPrefix,
+																	String clientIdSuffixArg, Properties properties) {
+
+				overrides.set(properties);
+				return super.createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffixArg, properties);
+			}
+
+		};
+		ContainerProperties containerProps = new ContainerProperties(topic1);
+		containerProps.setLogContainerConfig(true);
+		containerProps.setClientId("client");
+		containerProps.setAckMode(ContainerProperties.AckMode.RECORD);
+
+		final CountDownLatch secondRunLatch = new CountDownLatch(5);
+		final Set<String> listenerThreadNames = new ConcurrentSkipListSet<>();
+		final List<String> payloads = new ArrayList<>();
+		final CountDownLatch processingLatch = new CountDownLatch(1);
+		final CountDownLatch firstLatch = new CountDownLatch(1);
+
+		AtomicBoolean first = new AtomicBoolean(true);
+
+		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
+			if (first.getAndSet(false)) {
+				try {
+					firstLatch.await(100, TimeUnit.SECONDS);
+				}
+				catch (InterruptedException e) {
+					throw new RuntimeException(e);
+				}
+			}
+			ConcurrentMessageListenerContainerTests.this.logger.info("auto: " + message);
+			listenerThreadNames.add(Thread.currentThread().getName());
+			payloads.add(message.value());
+			secondRunLatch.countDown();
+			processingLatch.countDown();
+		});
+
+		ConcurrentMessageListenerContainer<Integer, String> container =
+				new ConcurrentMessageListenerContainer<>(cf, containerProps);
+		container.setConcurrency(2);
+		container.setBeanName("testAuto");
+		container.setChangeConsumerThreadName(true);
+		BlockingQueue<KafkaEvent> events = new LinkedBlockingQueue<>();
+		CountDownLatch concurrentContainerStopLatch = new CountDownLatch(1);
+		CountDownLatch concurrentContainerSecondStopLatch = new CountDownLatch(1);
+		CountDownLatch consumerStoppedEventLatch = new CountDownLatch(1);
+
+		container.setApplicationEventPublisher(e -> {
+			events.add((KafkaEvent) e);
+			if (e instanceof ConcurrentContainerStoppedEvent) {
+				concurrentContainerStopLatch.countDown();
+				concurrentContainerSecondStopLatch.countDown();
+			}
+			if (e instanceof ConsumerStoppedEvent) {
+				consumerStoppedEventLatch.countDown();
+			}
+		});
+
+		CountDownLatch interceptedSecondRun = new CountDownLatch(5);
+		container.setRecordInterceptor((record, consumer) -> {
+			interceptedSecondRun.countDown();
+			return record;
+		});
+
+		container.start();
+
+		MessageListenerContainer childContainer0 = container.getContainers().get(0);
+		MessageListenerContainer childContainer1 = container.getContainers().get(1);
+
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		assertThat(container.getAssignedPartitions()).hasSize(2);
+		Map<String, Collection<TopicPartition>> assignments = container.getAssignmentsByClientId();
+		assertThat(assignments).hasSize(2);
+		assertThat(assignments.get("client-0")).isNotNull();
+		assertThat(assignments.get("client-1")).isNotNull();
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic1);
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(1, 2, "bar");
+		template.sendDefault(0, 0, "baz");
+		template.sendDefault(1, 2, "qux");
+		template.flush();
+
+		assertThat(container.metrics()).isNotNull();
+		assertThat(container.isInExpectedState()).isTrue();
+		assertThat(childContainer0.isRunning()).isTrue();
+		assertThat(childContainer1.isRunning()).isTrue();
+		assertThat(container.isChildRunning()).isTrue();
+
+		assertThat(processingLatch.await(60, TimeUnit.SECONDS)).isTrue();
+
+		container.stop();
+
+		assertThat(container.isChildRunning()).isTrue();
+		assertThat(container.isRunning()).isFalse();
+		assertThat(childContainer0.isRunning()).isFalse();
+		assertThat(childContainer1.isRunning()).isFalse();
+
+		assertThat(consumerStoppedEventLatch.await(30, TimeUnit.SECONDS)).isTrue();
+
+		// This returns true since one container is still processing message. Key validation for this test case.
+		assertThat(container.isChildRunning()).isTrue();
+
+		firstLatch.countDown();
+
+		assertThat(listenerThreadNames).contains("testAuto-0", "testAuto-1");
+
+		assertThat(concurrentContainerStopLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(container.isInExpectedState()).isTrue();
+		events.forEach(e -> {
+			assertThat(e.getContainer(MessageListenerContainer.class)).isSameAs(container);
+			if (e instanceof ConcurrentContainerStoppedEvent concurrentContainerStoppedEvent) {
+				assertThat(concurrentContainerStoppedEvent.getSource()).isSameAs(container);
+				assertThat(concurrentContainerStoppedEvent.getContainer(MessageListenerContainer.class))
+						.isSameAs(container);
+				assertThat(concurrentContainerStoppedEvent.getReason()).isEqualTo(ConsumerStoppedEvent.Reason.NORMAL);
+			}
+		});
+		assertThat(container.isChildRunning()).isFalse();
+		assertThat(payloads).containsAnyOf("foo", "bar", "qux", "baz");
+
+		template.sendDefault(0, 0, "FOO");
+		template.sendDefault(1, 2, "BAR");
+		template.sendDefault(0, 0, "BAZ");
+		template.sendDefault(1, 2, "QUX");
+		template.flush();
+
+		container.start();
+
+		assertThat(secondRunLatch.await(60, TimeUnit.SECONDS)).isTrue();
+		assertThat(interceptedSecondRun.await(10, TimeUnit.SECONDS)).isTrue();
+
+		container.stop();
+		assertThat(concurrentContainerSecondStopLatch.await(30, TimeUnit.SECONDS)).isTrue();
+		assertThat(payloads).containsAnyOf("FOO", "BAR", "QUX", "BAZ");
+
+		this.logger.info("Stop isChildRunning");
+	}
+
+	@Test
+	public void testContainerStartStop() throws Exception {
+		this.logger.info("Start containerStartStop");
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true", embeddedKafka);
+		AtomicReference<Properties> overrides = new AtomicReference<>();
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props) {
+
+			@Override
+			protected Consumer<Integer, String> createKafkaConsumer(String groupId, String clientIdPrefix,
+																	String clientIdSuffixArg, Properties properties) {
+
+				overrides.set(properties);
+				return super.createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffixArg, properties);
+			}
+
+		};
+		ContainerProperties containerProps = new ContainerProperties(topic1);
+		containerProps.setLogContainerConfig(true);
+		containerProps.setClientId("client");
+		containerProps.setAckMode(ContainerProperties.AckMode.RECORD);
+
+		final List<String> payloads = new ArrayList<>();
+
+		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
+			payloads.add(message.value());
+		});
+
+		ConcurrentMessageListenerContainer<Integer, String> container =
+				new ConcurrentMessageListenerContainer<>(cf, containerProps);
+		container.setConcurrency(2);
+		container.setBeanName("testAuto");
+		container.setChangeConsumerThreadName(true);
+		BlockingQueue<KafkaEvent> events = new LinkedBlockingQueue<>();
+		CountDownLatch concurrentContainerStopLatch = new CountDownLatch(1);
+		CountDownLatch concurrentContainerSecondStopLatch = new CountDownLatch(1);
+		CountDownLatch consumerStoppedEventLatch = new CountDownLatch(1);
+
+		container.setApplicationEventPublisher(e -> {
+			events.add((KafkaEvent) e);
+			if (e instanceof ConcurrentContainerStoppedEvent) {
+				concurrentContainerStopLatch.countDown();
+				concurrentContainerSecondStopLatch.countDown();
+			}
+			if (e instanceof ConsumerStoppedEvent) {
+				consumerStoppedEventLatch.countDown();
+			}
+		});
+
+		container.setCommonErrorHandler(null);
+
+		container.start();
+
+		MessageListenerContainer childContainer0 = container.getContainers().get(0);
+		MessageListenerContainer childContainer1 = container.getContainers().get(1);
+
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+		assertThat(container.getAssignedPartitions()).hasSize(2);
+		Map<String, Collection<TopicPartition>> assignments = container.getAssignmentsByClientId();
+		assertThat(assignments).hasSize(2);
+		assertThat(assignments.get("client-0")).isNotNull();
+		assertThat(assignments.get("client-1")).isNotNull();
+
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		ProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		template.setDefaultTopic(topic1);
+		template.sendDefault(0, 0, "foo");
+		template.sendDefault(1, 2, "bar");
+		template.sendDefault(0, 0, "baz");
+		template.sendDefault(1, 2, "qux");
+		template.flush();
+
+		assertThat(container.metrics()).isNotNull();
+		assertThat(container.isInExpectedState()).isTrue();
+		assertThat(childContainer0.isRunning()).isTrue();
+		assertThat(childContainer1.isRunning()).isTrue();
+		assertThat(container.isChildRunning()).isTrue();
+
+		childContainer0.stop();
+
+		assertThat(consumerStoppedEventLatch.await(30, TimeUnit.SECONDS)).isTrue();
+
+		assertThat(container.isChildRunning()).isTrue();
+		assertThat(childContainer1.isRunning()).isTrue();
+		assertThat(childContainer0.isRunning()).isFalse();
+		assertThat(container.isRunning()).isFalse();
+
+		//Ignore this start
+		container.start();
+
+		assertThat(container.isChildRunning()).isTrue();
+		assertThat(childContainer1.isRunning()).isTrue();
+		assertThat(childContainer0.isRunning()).isFalse();
+		assertThat(container.getContainers()).contains((KafkaMessageListenerContainer<Integer, String>) childContainer0);
+		assertThat(container.getContainers()).contains((KafkaMessageListenerContainer<Integer, String>) childContainer1);
+
+		container.stop();
+
+		assertThat(container.isRunning()).isFalse();
+		// child container1 is stopped.
+		assertThat(childContainer1.isRunning()).isFalse();
+		assertThat(childContainer0.isRunning()).isFalse();
+
+		assertThat(concurrentContainerStopLatch.await(30, TimeUnit.SECONDS)).isTrue();
+
+		// Accept this start
+		container.start();
+		assertThat(container.getContainers()).doesNotContain((KafkaMessageListenerContainer<Integer, String>) childContainer0);
+		assertThat(container.getContainers()).doesNotContain((KafkaMessageListenerContainer<Integer, String>) childContainer1);
+		container.stop();
+		assertThat(concurrentContainerSecondStopLatch.await(30, TimeUnit.SECONDS)).isTrue();
+
+		this.logger.info("Stop containerStartStop");
+	}
+
 }
