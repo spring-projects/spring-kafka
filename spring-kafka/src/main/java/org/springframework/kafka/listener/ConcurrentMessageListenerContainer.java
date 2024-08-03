@@ -65,6 +65,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	private final List<KafkaMessageListenerContainer<K, V>> containers = new ArrayList<>();
 
+	private final List<KafkaMessageListenerContainer<K, V>> stoppedContainers = new ArrayList<>();
+
 	private final List<AsyncTaskExecutor> executors = new ArrayList<>();
 
 	private final AtomicInteger startedContainers = new AtomicInteger();
@@ -204,13 +206,19 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	@Override
 	public boolean isChildRunning() {
-		if (!isRunning()) {
-			return false;
-		}
-		for (MessageListenerContainer container : this.containers) {
-			if (container.isRunning()) {
+		this.lifecycleLock.lock();
+		try {
+			for (MessageListenerContainer container : this.containers) {
+				if (container.isRunning()) {
+					return true;
+				}
+			}
+			if ((!isRunning() && this.startedContainers.get() > 0)) {
 				return true;
 			}
+		}
+		finally {
+			this.lifecycleLock.unlock();
 		}
 		return false;
 	}
@@ -235,7 +243,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	 */
 	@Override
 	protected void doStart() {
-		if (!isRunning()) {
+		if (!isRunning() && this.containers.stream().allMatch(container -> !container.isRunning())) {
 			checkTopics();
 			ContainerProperties containerProperties = getContainerProperties();
 			TopicPartitionOffset[] topicPartitions = containerProperties.getTopicPartitions();
@@ -245,7 +253,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 						+ topicPartitions.length);
 				this.concurrency = topicPartitions.length;
 			}
-			this.startedContainers.set(0);
+			clearState();
 			setRunning(true);
 
 			for (int i = 0; i < this.concurrency; i++) {
@@ -343,7 +351,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	@Override
 	protected void doStop(final Runnable callback, boolean normal) {
 		final AtomicInteger count = new AtomicInteger();
-		if (isRunning()) {
+		if (canStop()) {
 			boolean childRunning = isChildRunning();
 			setRunning(false);
 			if (!childRunning) {
@@ -372,6 +380,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 						});
 					}
 				}
+				this.stoppedContainers.add(container);
 			}
 			this.containers.clear();
 			setStoppedNormally(normal);
@@ -380,29 +389,48 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	@Override
 	public void childStarted(MessageListenerContainer child) {
-		this.startedContainers.incrementAndGet();
+		this.lifecycleLock.lock();
+		try {
+			if (this.containers.contains(child) || this.stoppedContainers.contains(child)) {
+				setRunning(!this.stoppedContainers.contains(child));
+				this.startedContainers.incrementAndGet();
+			}
+		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
 	}
 
 	@Override
 	public void childStopped(MessageListenerContainer child, Reason reason) {
-		if (this.reason == null || reason.equals(Reason.AUTH)) {
-			this.reason = reason;
-		}
-		int startedContainersCount = this.startedContainers.decrementAndGet();
-		if (startedContainersCount == 0) {
-			publishConcurrentContainerStoppedEvent(this.reason);
-			boolean restartContainer = Reason.AUTH.equals(this.reason)
-					&& getContainerProperties().isRestartAfterAuthExceptions();
-			this.reason = null;
-
-			if (restartContainer) {
-				// This has to run on another thread to avoid a deadlock on lifecycleMonitor
-				AsyncTaskExecutor exec = getContainerProperties().getListenerTaskExecutor();
-				if (exec == null) {
-					exec = new SimpleAsyncTaskExecutor(getListenerId() + ".authRestart");
-				}
-				exec.execute(this::start);
+		this.lifecycleLock.lock();
+		try {
+			if (!this.containers.contains(child) && !this.stoppedContainers.contains(child)) {
+				return;
 			}
+			setRunning(false);
+			if (this.reason == null || reason.equals(Reason.AUTH)) {
+				this.reason = reason;
+			}
+			int startedContainersCount = this.startedContainers.decrementAndGet();
+			if (startedContainersCount == 0) {
+				publishConcurrentContainerStoppedEvent(this.reason);
+				boolean restartContainer = Reason.AUTH.equals(this.reason)
+						&& getContainerProperties().isRestartAfterAuthExceptions();
+				this.reason = null;
+				this.stoppedContainers.clear();
+				if (restartContainer) {
+					// This has to run on another thread to avoid a deadlock on lifecycleMonitor
+					AsyncTaskExecutor exec = getContainerProperties().getListenerTaskExecutor();
+					if (exec == null) {
+						exec = new SimpleAsyncTaskExecutor(getListenerId() + ".authRestart");
+					}
+					exec.execute(this::start);
+				}
+			}
+		}
+		finally {
+			this.lifecycleLock.unlock();
 		}
 	}
 
@@ -515,6 +543,17 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	private boolean containsPartition(TopicPartition topicPartition, KafkaMessageListenerContainer<K, V> container) {
 		Collection<TopicPartition> assignedPartitions = container.getAssignedPartitions();
 		return assignedPartitions != null && assignedPartitions.contains(topicPartition);
+	}
+
+	private void clearState() {
+		this.startedContainers.set(0);
+		this.stoppedContainers.clear();
+		this.reason = null;
+	}
+
+	@Override
+	protected boolean canStop() {
+		return !this.containers.isEmpty() || isRunning();
 	}
 
 	@Override

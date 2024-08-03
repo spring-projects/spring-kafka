@@ -278,6 +278,10 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		return this.running;
 	}
 
+	protected boolean canStop() {
+		return this.running;
+	}
+
 	protected void setFenced(boolean fenced) {
 		this.fenced = fenced;
 	}
@@ -610,7 +614,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	public final void stop(boolean wait) {
 		this.lifecycleLock.lock();
 		try {
-			if (isRunning()) {
+			if (canStop()) {
 				if (wait) {
 					final CountDownLatch latch = new CountDownLatch(1);
 					doStop(latch::countDown);
@@ -646,7 +650,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	public void stop(Runnable callback) {
 		this.lifecycleLock.lock();
 		try {
-			if (isRunning()) {
+			if (canStop()) {
 				doStop(callback);
 			}
 			else {
@@ -660,8 +664,14 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	@Override
 	public void stopAbnormally(Runnable callback) {
-		doStop(callback, false);
-		publishContainerStoppedEvent();
+		this.lifecycleLock.lock();
+		try {
+			doStop(callback, false);
+			publishContainerStoppedEvent();
+		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
 	}
 
 	protected void doStop(Runnable callback) {
