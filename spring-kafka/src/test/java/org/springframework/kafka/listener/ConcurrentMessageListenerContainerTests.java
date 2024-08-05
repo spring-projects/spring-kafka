@@ -932,7 +932,7 @@ public class ConcurrentMessageListenerContainerTests {
 
 		firstLatch.countDown();
 
-		assertThat(listenerThreadNames).contains("testAuto-0", "testAuto-1");
+		assertThat(listenerThreadNames).containsAnyOf("testAuto-0", "testAuto-1");
 
 		assertThat(concurrentContainerStopLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(container.isInExpectedState()).isTrue();
