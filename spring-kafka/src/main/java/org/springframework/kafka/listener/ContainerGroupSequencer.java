@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -153,24 +153,22 @@ public class ContainerGroupSequencer implements ApplicationContextAware,
 	}
 
 	private synchronized void stopParentAndCheckGroup(MessageListenerContainer parent) {
-		if (parent.isRunning()) {
-			LOGGER.debug(() -> "Stopping: " + parent);
-			parent.stop(() -> {
-				if (this.currentGroup != null) {
-					LOGGER.debug(() -> "Checking group: " + this.currentGroup.toString());
-					if (this.currentGroup.allStopped()) {
-						if (this.iterator.hasNext()) {
-							this.currentGroup = this.iterator.next();
-							LOGGER.debug(() -> "Starting next group: " + this.currentGroup);
-							this.currentGroup.start();
-						}
-						else {
-							this.currentGroup = null;
-						}
+		LOGGER.debug(() -> "Stopping: " + parent);
+		parent.stop(() -> {
+			if (this.currentGroup != null) {
+				LOGGER.debug(() -> "Checking group: " + this.currentGroup.toString());
+				if (this.currentGroup.allStopped()) {
+					if (this.iterator.hasNext()) {
+						this.currentGroup = this.iterator.next();
+						LOGGER.debug(() -> "Starting next group: " + this.currentGroup);
+						this.currentGroup.start();
+					}
+					else {
+						this.currentGroup = null;
 					}
 				}
-			});
-		}
+			}
+		});
 	}
 
 	@Override
