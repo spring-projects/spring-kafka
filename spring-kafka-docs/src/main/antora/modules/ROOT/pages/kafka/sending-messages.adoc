@@ -650,8 +650,7 @@ public Message<?> messageReturn(String in) {
 }
 ----
 
-[[record-key-in-reply]]
-== Preserving Request Record Key in Reply
+=== Original Record Key in Reply
 
 Starting with version 3.3, the Kafka record key from the incoming request (if it exists) will be preserved in the reply record.
 This is only applicable for single record request/reply scenario.

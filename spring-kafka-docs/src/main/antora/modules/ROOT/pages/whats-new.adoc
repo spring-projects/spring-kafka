@@ -35,8 +35,8 @@ For more details, see xref:kafka/receiving-messages/filtering.adoc[Message recei
 The `ConcurentContainerMessageListenerContainer` emits now a `ConcurrentContainerStoppedEvent` when all of its child containers are stopped.
 For more details, see xref:kafka/events.adoc[Application Events] and `ConcurrentContainerStoppedEvent` Javadocs.
 
-[[x33-record-key-in-reply]]
-=== Preserving Request Record Key in Reply
+[[x33-original-record-key-in-reply]]
+=== Original Record Key in Reply
 
 When using `ReplyingKafkaTemplate`, if the original record from the request contains a key, then that same key will be part of the reply as well.
-For more details, see xref:kafka/sending-messages.adoc#record-key-in-reply[Record Key in Reply] section of the reference docs.
+For more details, see xref:kafka/sending-messages.adoc[Sending Messages] section of the reference docs.
