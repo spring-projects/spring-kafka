@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package org.springframework.kafka.listener;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
-import org.springframework.kafka.config.KafkaListenerConfigUtils;
+import org.springframework.kafka.config.KafkaListenerConfigTypes;
 import org.springframework.util.Assert;
 
 /**
@@ -78,7 +78,7 @@ public abstract class AbstractKafkaBackOffManagerFactory
 
 	private ListenerContainerRegistry getListenerContainerFromContext() {
 		Assert.notNull(this.applicationContext, "ApplicationContext not set.");
-		return this.applicationContext.getBean(KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME,
+		return this.applicationContext.getBean(KafkaListenerConfigTypes.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME.getBeanName(),
 				ListenerContainerRegistry.class);
 	}
 

@@ -78,7 +78,7 @@ import org.springframework.format.Formatter;
 import org.springframework.format.FormatterRegistry;
 import org.springframework.format.support.DefaultFormattingConversionService;
 import org.springframework.kafka.config.ContainerPostProcessor;
-import org.springframework.kafka.config.KafkaListenerConfigUtils;
+import org.springframework.kafka.config.KafkaListenerConfigTypes;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
@@ -317,7 +317,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				Assert.state(this.beanFactory != null,
 						"BeanFactory must be set to find endpoint registry by bean name");
 				this.endpointRegistry = this.beanFactory.getBean(
-						KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME,
+						KafkaListenerConfigTypes.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME.getBeanName(),
 						KafkaListenerEndpointRegistry.class);
 			}
 			this.registrar.setEndpointRegistry(this.endpointRegistry);
@@ -573,7 +573,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 			gac.registerBean(RetryTopicBeanNames.DESTINATION_TOPIC_RESOLVER_BEAN_NAME, DestinationTopicResolver.class,
 					() -> destResolver);
-			gac.registerBean(KafkaListenerConfigUtils.KAFKA_CONSUMER_BACK_OFF_MANAGER_BEAN_NAME,
+			gac.registerBean(KafkaListenerConfigTypes.KAFKA_CONSUMER_BACK_OFF_MANAGER_BEAN_NAME.getBeanName(),
 					KafkaConsumerBackoffManager.class, () -> bom);
 			gac.registerBean(RetryTopicBeanNames.RETRY_TOPIC_CONFIGURER_BEAN_NAME, RetryTopicConfigurer.class,
 					() -> rtc);
