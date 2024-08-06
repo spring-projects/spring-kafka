@@ -1,36 +1,37 @@
-node {
-	version = '16.16.0'
-}
-
 antora {
 	version = '3.2.0-alpha.2'
 	playbook = file('src/main/antora/antora-playbook.yml')
-	options = ['to-dir' : project.layout.buildDirectory.dir('site').get().toString(), clean: true, fetch: !project.gradle.startParameter.offline, stacktrace: true]
+	options = [
+			'to-dir'  : project.layout.buildDirectory.dir('site').get().toString(),
+			clean     : true,
+			fetch     : !project.gradle.startParameter.offline,
+			stacktrace: true
+	]
 	dependencies = [
-			'@antora/atlas-extension': '1.0.0-alpha.1',
-			'@antora/collector-extension': '1.0.0-alpha.3',
-			'@asciidoctor/tabs': '1.0.0-beta.3',
-			'@springio/antora-extensions': '1.4.2',
+			'@antora/atlas-extension'         : '1.0.0-alpha.1',
+			'@antora/collector-extension'     : '1.0.0-alpha.3',
+			'@asciidoctor/tabs'               : '1.0.0-beta.3',
+			'@springio/antora-extensions'     : '1.4.2',
 			'@springio/asciidoctor-extensions': '1.0.0-alpha.8',
 	]
 }
 
-tasks.named("generateAntoraYml") {
-	asciidocAttributes = project.provider( {
-		return ['project-version' : project.version,
-				'revnumber': project.version,
-				'spring-version': project.version,
+tasks.named('generateAntoraYml') {
+	asciidocAttributes = project.provider({
+		return ['project-version': project.version,
+				'revnumber'      : project.version,
+				'spring-version' : project.version,
 		]
-	} )
+	})
 	baseAntoraYmlFile = file('src/main/antora/antora.yml')
 }
 
-tasks.create(name: 'createAntoraPartials', type: Sync) {
+tasks.register('createAntoraPartials', Sync) {
 	from { project.rootProject.tasks.filterMetricsDocsContent.outputs }
 	into layout.buildDirectory.dir('generated-antora-resources/modules/ROOT/partials')
 }
 
-tasks.create('generateAntoraResources') {
+tasks.register('generateAntoraResources') {
 	dependsOn 'createAntoraPartials'
 	dependsOn 'generateAntoraYml'
 }

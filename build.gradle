@@ -2,9 +2,8 @@ buildscript {
 	ext.kotlinVersion = '1.9.25'
 	ext.isCI = System.getenv('GITHUB_ACTION')
 	repositories {
-		mavenCentral()
 		gradlePluginPortal()
-		maven { url 'https://repo.spring.io/plugins-release-local' }
+		mavenCentral()
 		if (version.endsWith('SNAPSHOT')) {
 			maven { url 'https://repo.spring.io/snapshot' }
 		}
@@ -17,11 +16,11 @@ buildscript {
 
 plugins {
 	id 'base'
-	id 'project-report'
 	id 'idea'
 	id 'org.ajoberstar.grgit' version '4.1.1'
 	id 'io.spring.nohttp' version '0.0.11'
 	id 'io.spring.dependency-management' version '1.1.6' apply false
+	id 'io.freefair.aggregate-javadoc' version '8.6'
 }
 
 apply plugin: 'io.spring.nohttp'
@@ -122,29 +121,44 @@ allprojects {
 
 configure(javaProjects) { subproject ->
 	apply plugin: 'java-library'
-	apply plugin: 'java'
-	apply from: "${rootProject.projectDir}/gradle/publish-maven.gradle"
 	apply plugin: 'eclipse'
 	apply plugin: 'idea'
 	apply plugin: 'checkstyle'
 	apply plugin: 'kotlin'
 	apply plugin: 'kotlin-spring'
 
+	apply from: "${rootProject.projectDir}/gradle/publish-maven.gradle"
+
+	def scopeAttribute = Attribute.of('dependency.scope', String)
+
+	configurations {
+		optional {
+			attributes {
+				attribute(scopeAttribute, 'optional')
+			}
+		}
+
+		compileClasspath.extendsFrom(optional)
+		testCompileClasspath.extendsFrom(optional)
+		testRuntimeClasspath.extendsFrom(optional)
+	}
+
+	components.java.addVariantsFromConfiguration(configurations.optional) {
+		mapToOptional()
+	}
+
 	java {
 		withJavadocJar()
 		withSourcesJar()
-		registerFeature('optional') {
-			usingSourceSet(sourceSets.main)
-		}
 	}
 
 	compileJava {
-		sourceCompatibility = 17
-		targetCompatibility = 17
+		options.release = 17
 	}
 
 	compileTestJava {
-		sourceCompatibility = 17
+		sourceCompatibility = JavaVersion.VERSION_17
+		targetCompatibility = JavaVersion.VERSION_17
 		options.encoding = 'UTF-8'
 	}
 
@@ -152,6 +166,10 @@ configure(javaProjects) { subproject ->
 
 	// dependencies that are common across all java projects
 	dependencies {
+		attributesSchema {
+			attribute(scopeAttribute)
+		}
+
 		implementation "com.google.code.findbugs:jsr305:$googleJsr305Version"
 		testImplementation 'org.junit.jupiter:junit-jupiter-api'
 		testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
@@ -168,7 +186,7 @@ configure(javaProjects) { subproject ->
 			exclude group: 'org.hamcrest'
 		}
 		testImplementation "org.hamcrest:hamcrest-core:$hamcrestVersion"
-		optionalApi "org.assertj:assertj-core:$assertjVersion"
+		optional "org.assertj:assertj-core:$assertjVersion"
 	}
 
 	// enable all compiler warnings; individual projects may customize further
@@ -185,7 +203,6 @@ configure(javaProjects) { subproject ->
 
 		maxHeapSize = '1536m'
 		useJUnitPlatform()
-
 	}
 
 	checkstyle {
@@ -202,7 +219,7 @@ configure(javaProjects) { subproject ->
 		}
 	}
 
-	task updateCopyrights {
+	tasks.register('updateCopyrights') {
 		onlyIf { !isCI }
 		inputs.files(modifiedFiles.filter { f -> f.path.contains(subproject.name) })
 		outputs.dir('build/classes')
@@ -275,28 +292,27 @@ project ('spring-kafka') {
 			exclude group: 'org.springframework'
 		}
 		api "org.apache.kafka:kafka-clients:$kafkaVersion"
-		optionalApi "org.apache.kafka:kafka-streams:$kafkaVersion"
-		optionalApi 'com.fasterxml.jackson.core:jackson-core'
-		optionalApi 'com.fasterxml.jackson.core:jackson-databind'
-		optionalApi 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
-		optionalApi 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
-		optionalApi 'com.fasterxml.jackson.datatype:jackson-datatype-joda'
-		optionalApi ('com.fasterxml.jackson.module:jackson-module-kotlin') {
+		optional "org.apache.kafka:kafka-streams:$kafkaVersion"
+		optional 'com.fasterxml.jackson.core:jackson-core'
+		optional 'com.fasterxml.jackson.core:jackson-databind'
+		optional 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
+		optional 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+		optional 'com.fasterxml.jackson.datatype:jackson-datatype-joda'
+		optional ('com.fasterxml.jackson.module:jackson-module-kotlin') {
 			exclude group: 'org.jetbrains.kotlin'
 		}
 
 		// Spring Data projection message binding support
-		optionalApi ("org.springframework.data:spring-data-commons") {
+		optional ("org.springframework.data:spring-data-commons") {
 			exclude group: 'org.springframework'
 			exclude group: 'io.micrometer'
 		}
-		optionalApi "com.jayway.jsonpath:json-path:$jaywayJsonPathVersion"
+		optional "com.jayway.jsonpath:json-path:$jaywayJsonPathVersion"
 
-		optionalApi 'io.projectreactor:reactor-core'
-		optionalApi 'io.projectreactor.kafka:reactor-kafka'
-		optionalApi 'io.micrometer:micrometer-core'
-		api 'io.micrometer:micrometer-observation'
-		optionalApi 'io.micrometer:micrometer-tracing'
+		optional 'io.projectreactor:reactor-core'
+		optional 'io.projectreactor.kafka:reactor-kafka'
+		optional 'io.micrometer:micrometer-core'
+		optional 'io.micrometer:micrometer-tracing'
 
 		testImplementation project (':spring-kafka-test')
 		testImplementation 'io.projectreactor:reactor-test'
@@ -322,9 +338,7 @@ project('spring-kafka-bom') {
 	dependencies {
 		constraints {
 			javaProjects.sort { "$it.name" }.each {
-				if (it.name != 'spring-kafka-docs') {
-					api it
-				}
+				api it
 			}
 		}
 	}
@@ -365,12 +379,12 @@ project ('spring-kafka-test') {
 		}
 		api 'org.junit.jupiter:junit-jupiter-api'
 		api 'org.junit.platform:junit-platform-launcher'
-		optionalApi "org.hamcrest:hamcrest-core:$hamcrestVersion"
-		optionalApi "org.mockito:mockito-core:$mockitoVersion"
-		optionalApi ("junit:junit:$junit4Version") {
+		optional "org.hamcrest:hamcrest-core:$hamcrestVersion"
+		optional "org.mockito:mockito-core:$mockitoVersion"
+		optional ("junit:junit:$junit4Version") {
 			exclude group: 'org.hamcrest', module: 'hamcrest-core'
 		}
-		optionalApi "org.apache.logging.log4j:log4j-core:$log4jVersion"
+		optional "org.apache.logging.log4j:log4j-core:$log4jVersion"
 	}
 }
 
@@ -402,15 +416,19 @@ task filterMetricsDocsContent(type: Copy) {
 	filter { line -> line.replaceAll('org.springframework.kafka.support.micrometer.', '').replaceAll('^Fully qualified n', 'N') }
 }
 
-task api(type: Javadoc) {
-	group = 'Documentation'
-	description = 'Generates aggregated Javadoc API documentation.'
+dependencies {
+	javaProjects.each {
+		javadoc it
+	}
+}
+
+javadoc {
 	title = "${rootProject.description} ${version} API"
 	options {
 		encoding = 'UTF-8'
-		memberLevel = org.gradle.external.javadoc.JavadocMemberLevel.PROTECTED
+		memberLevel = JavadocMemberLevel.PROTECTED
 		author = true
-		header = rootProject.description
+		header = project.description
 		use = true
 		overview = 'src/api/overview.html'
 		splitIndex = true
@@ -418,17 +436,18 @@ task api(type: Javadoc) {
 		addBooleanOption('Xdoclint:syntax', true) // only check syntax with doclint
 	}
 
-	source javaProjects.collect { project ->
-		project.sourceSets.main.allJava
-	}
-
-	classpath = files(javaProjects.collect { project ->
-		project.sourceSets.main.compileClasspath
-	})
 	destinationDir = new File(buildDir, 'api')
+	classpath = files().from { files(javaProjects.collect { it.sourceSets.main.compileClasspath }) }
 }
 
-task docsZip(type: Zip, dependsOn: [':spring-kafka-docs:antora']) {
+tasks.register('api') {
+	group = 'Documentation'
+	description = 'Generates aggregated Javadoc API documentation.'
+	dependsOn javadoc
+}
+
+tasks.register('docsZip', Zip) {
+	dependsOn ':spring-kafka-docs:antora'
 	group = 'Distribution'
 	archiveClassifier = 'docs'
 	description = "Builds -${archiveClassifier} archive containing api and reference " +
@@ -438,7 +457,7 @@ task docsZip(type: Zip, dependsOn: [':spring-kafka-docs:antora']) {
 		include 'changelog.txt'
 	}
 
-	from(api) {
+	from(javadoc) {
 		into 'api'
 	}
 
@@ -447,7 +466,7 @@ task docsZip(type: Zip, dependsOn: [':spring-kafka-docs:antora']) {
 	}
 }
 
-task distZip(type: Zip, dependsOn: [docsZip]) { //, schemaZip]) {
+tasks.register('distZip', Zip) {
 	group = 'Distribution'
 	archiveClassifier = 'dist'
 	description = "Builds -${archiveClassifier} archive, containing all jars and docs, " +
@@ -485,7 +504,8 @@ task distZip(type: Zip, dependsOn: [docsZip]) { //, schemaZip]) {
 
 }
 
-task dist(dependsOn: assemble) {
+tasks.register('dist') {
+	dependsOn assemble
 	group = 'Distribution'
 	description = 'Builds -dist, -docs distribution archives.'
 }
