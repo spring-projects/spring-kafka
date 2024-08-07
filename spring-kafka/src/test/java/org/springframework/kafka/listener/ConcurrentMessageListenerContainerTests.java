@@ -819,18 +819,16 @@ public class ConcurrentMessageListenerContainerTests {
 	@Test
 	public void testIsChildRunning() throws Exception {
 		this.logger.info("Start isChildRunning");
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true",
+				embeddedKafka);
 		AtomicReference<Properties> overrides = new AtomicReference<>();
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props) {
-
 			@Override
 			protected Consumer<Integer, String> createKafkaConsumer(String groupId, String clientIdPrefix,
-																	String clientIdSuffixArg, Properties properties) {
-
+				String clientIdSuffixArg, Properties properties) {
 				overrides.set(properties);
 				return super.createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffixArg, properties);
 			}
-
 		};
 		ContainerProperties containerProps = new ContainerProperties(topic1);
 		containerProps.setLogContainerConfig(true);
@@ -942,7 +940,8 @@ public class ConcurrentMessageListenerContainerTests {
 				assertThat(concurrentContainerStoppedEvent.getSource()).isSameAs(container);
 				assertThat(concurrentContainerStoppedEvent.getContainer(MessageListenerContainer.class))
 						.isSameAs(container);
-				assertThat(concurrentContainerStoppedEvent.getReason()).isEqualTo(ConsumerStoppedEvent.Reason.NORMAL);
+				assertThat(concurrentContainerStoppedEvent.getReason()).
+						isEqualTo(ConsumerStoppedEvent.Reason.NORMAL);
 			}
 		});
 		assertThat(container.isChildRunning()).isFalse();
@@ -969,18 +968,16 @@ public class ConcurrentMessageListenerContainerTests {
 	@Test
 	public void testContainerStartStop() throws Exception {
 		this.logger.info("Start containerStartStop");
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps("test1", "true",
+				embeddedKafka);
 		AtomicReference<Properties> overrides = new AtomicReference<>();
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props) {
-
 			@Override
 			protected Consumer<Integer, String> createKafkaConsumer(String groupId, String clientIdPrefix,
 																	String clientIdSuffixArg, Properties properties) {
-
 				overrides.set(properties);
 				return super.createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffixArg, properties);
 			}
-
 		};
 		ContainerProperties containerProps = new ContainerProperties(topic1);
 		containerProps.setLogContainerConfig(true);
@@ -1060,8 +1057,10 @@ public class ConcurrentMessageListenerContainerTests {
 		assertThat(container.isChildRunning()).isTrue();
 		assertThat(childContainer1.isRunning()).isTrue();
 		assertThat(childContainer0.isRunning()).isFalse();
-		assertThat(container.getContainers()).contains((KafkaMessageListenerContainer<Integer, String>) childContainer0);
-		assertThat(container.getContainers()).contains((KafkaMessageListenerContainer<Integer, String>) childContainer1);
+		assertThat(container.getContainers()).
+				contains((KafkaMessageListenerContainer<Integer, String>) childContainer0);
+		assertThat(container.getContainers()).
+				contains((KafkaMessageListenerContainer<Integer, String>) childContainer1);
 
 		container.stop();
 
@@ -1074,8 +1073,10 @@ public class ConcurrentMessageListenerContainerTests {
 
 		// Accept this start
 		container.start();
-		assertThat(container.getContainers()).doesNotContain((KafkaMessageListenerContainer<Integer, String>) childContainer0);
-		assertThat(container.getContainers()).doesNotContain((KafkaMessageListenerContainer<Integer, String>) childContainer1);
+		assertThat(container.getContainers()).
+				doesNotContain((KafkaMessageListenerContainer<Integer, String>) childContainer0);
+		assertThat(container.getContainers()).
+				doesNotContain((KafkaMessageListenerContainer<Integer, String>) childContainer1);
 		container.stop();
 		assertThat(concurrentContainerSecondStopLatch.await(30, TimeUnit.SECONDS)).isTrue();
 
