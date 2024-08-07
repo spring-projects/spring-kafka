@@ -974,7 +974,7 @@ public class ConcurrentMessageListenerContainerTests {
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<Integer, String>(props) {
 			@Override
 			protected Consumer<Integer, String> createKafkaConsumer(String groupId, String clientIdPrefix,
-																	String clientIdSuffixArg, Properties properties) {
+						String clientIdSuffixArg, Properties properties) {
 				overrides.set(properties);
 				return super.createKafkaConsumer(groupId, clientIdPrefix, clientIdSuffixArg, properties);
 			}
