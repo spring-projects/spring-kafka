@@ -58,7 +58,9 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  */
 @DirtiesContext
 @SpringJUnitConfig
-@EmbeddedKafka(topics = {AbstractConsumerSeekAwareTests.TOPIC}, partitions = 3)
+@EmbeddedKafka(topics = {AbstractConsumerSeekAwareTests.TOPIC},
+		partitions = 9,
+		brokerProperties = "group.initial.rebalance.delay.ms:4000")
 class AbstractConsumerSeekAwareTests {
 
 	static final String TOPIC = "Seek";
@@ -74,7 +76,7 @@ class AbstractConsumerSeekAwareTests {
 
 	@Test
 	public void checkCallbacksAndTopicPartitions() {
-		await().timeout(Duration.ofSeconds(5))
+		await().timeout(Duration.ofSeconds(15))
 				.untilAsserted(() -> {
 					Map<ConsumerSeekCallback, List<TopicPartition>> callbacksAndTopics =
 							multiGroupListener.getCallbacksAndTopics();
@@ -103,29 +105,29 @@ class AbstractConsumerSeekAwareTests {
 	void seekForAllGroups() throws Exception {
 		template.send(TOPIC, "test-data");
 		template.send(TOPIC, "test-data");
-		assertThat(MultiGroupListener.latch1.await(30, TimeUnit.SECONDS)).isTrue();
-		assertThat(MultiGroupListener.latch2.await(30, TimeUnit.SECONDS)).isTrue();
+		assertThat(MultiGroupListener.latch1.await(15, TimeUnit.SECONDS)).isTrue();
+		assertThat(MultiGroupListener.latch2.await(15, TimeUnit.SECONDS)).isTrue();
 
 		MultiGroupListener.latch1 = new CountDownLatch(2);
 		MultiGroupListener.latch2 = new CountDownLatch(2);
 
 		multiGroupListener.seekToBeginning();
-		assertThat(MultiGroupListener.latch1.await(30, TimeUnit.SECONDS)).isTrue();
-		assertThat(MultiGroupListener.latch2.await(30, TimeUnit.SECONDS)).isTrue();
+		assertThat(MultiGroupListener.latch1.await(15, TimeUnit.SECONDS)).isTrue();
+		assertThat(MultiGroupListener.latch2.await(15, TimeUnit.SECONDS)).isTrue();
 	}
 
 	@Test
 	void seekForSpecificGroup() throws Exception {
 		template.send(TOPIC, "test-data");
 		template.send(TOPIC, "test-data");
-		assertThat(MultiGroupListener.latch1.await(30, TimeUnit.SECONDS)).isTrue();
-		assertThat(MultiGroupListener.latch2.await(30, TimeUnit.SECONDS)).isTrue();
+		assertThat(MultiGroupListener.latch1.await(15, TimeUnit.SECONDS)).isTrue();
+		assertThat(MultiGroupListener.latch2.await(15, TimeUnit.SECONDS)).isTrue();
 
 		MultiGroupListener.latch1 = new CountDownLatch(2);
 		MultiGroupListener.latch2 = new CountDownLatch(2);
 
 		multiGroupListener.seekToBeginningForGroup("group2");
-		assertThat(MultiGroupListener.latch2.await(30, TimeUnit.SECONDS)).isTrue();
+		assertThat(MultiGroupListener.latch2.await(15, TimeUnit.SECONDS)).isTrue();
 		assertThat(MultiGroupListener.latch1.await(1, TimeUnit.SECONDS)).isFalse();
 		assertThat(MultiGroupListener.latch1.getCount()).isEqualTo(2);
 	}
@@ -168,12 +170,12 @@ class AbstractConsumerSeekAwareTests {
 
 			static CountDownLatch latch2 = new CountDownLatch(2);
 
-			@KafkaListener(groupId = "group1", topics = TOPIC/*TODO until we figure out non-relevant partitions on assignment, concurrency = "2"*/)
+			@KafkaListener(groupId = "group1", topics = TOPIC, concurrency = "2")
 			void listenForGroup1(String in) {
 				latch1.countDown();
 			}
 
-			@KafkaListener(groupId = "group2", topics = TOPIC/*TODO until we figure out non-relevant partitions on assignment, concurrency = "2"*/)
+			@KafkaListener(groupId = "group2", topics = TOPIC, concurrency = "7")
 			void listenForGroup2(String in) {
 				latch2.countDown();
 			}
