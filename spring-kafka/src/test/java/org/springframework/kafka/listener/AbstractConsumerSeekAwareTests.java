@@ -126,7 +126,7 @@ class AbstractConsumerSeekAwareTests {
 		MultiGroupListener.latch1 = new CountDownLatch(2);
 		MultiGroupListener.latch2 = new CountDownLatch(2);
 
-		multiGroupListener.seekToBeginningForGroup("group2");
+		multiGroupListener.seekToBeginningFor("group2");
 		assertThat(MultiGroupListener.latch2.await(15, TimeUnit.SECONDS)).isTrue();
 		assertThat(MultiGroupListener.latch1.await(1, TimeUnit.SECONDS)).isFalse();
 		assertThat(MultiGroupListener.latch1.getCount()).isEqualTo(2);
@@ -180,9 +180,9 @@ class AbstractConsumerSeekAwareTests {
 				latch2.countDown();
 			}
 
-			void seekToBeginningForGroup(String groupIdForSeek) {
+			void seekToBeginningFor(String groupId) {
 				getCallbacksAndTopics().forEach((cb, topics) -> {
-					if (groupIdForSeek.equals(cb.getGroupId())) {
+					if (groupId.equals(cb.getGroupId())) {
 						topics.forEach(tp -> cb.seekToBeginning(tp.topic(), tp.partition()));
 					}
 				});
