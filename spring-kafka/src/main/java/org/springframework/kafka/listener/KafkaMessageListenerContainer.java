@@ -3011,8 +3011,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			while (offset != null) {
 				traceSeek(offset);
 				try {
-					SeekPosition position = offset.getPosition();
 					TopicPartition topicPartition = offset.getTopicPartition();
+					if (assigned == null || !assigned.contains(topicPartition)) {
+						this.logger.warn("No current assignment for partition " + topicPartition +
+								" due to partition reassignment prior to seeking.");
+						offset = this.seeks.poll();
+						continue;
+					}
+					SeekPosition position = offset.getPosition();
 					Long whereTo = offset.getOffset();
 					Function<Long, Long> offsetComputeFunction = offset.getOffsetComputeFunction();
 					if (position == null) {
