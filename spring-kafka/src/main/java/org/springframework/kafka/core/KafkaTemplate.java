@@ -485,13 +485,17 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 				if (this.kafkaAdmin != null) {
 					Object producerServers = this.producerFactory.getConfigurationProperties()
 							.get(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG);
-					String adminServers = this.kafkaAdmin.getBootstrapServers();
+					String adminServers = getAdminBootstrapAddress();
 					if (!producerServers.equals(adminServers)) {
 						Map<String, Object> props = new HashMap<>(this.kafkaAdmin.getConfigurationProperties());
 						props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, producerServers);
 						int opTo = this.kafkaAdmin.getOperationTimeout();
+						String clusterId = this.kafkaAdmin.getClusterId();
 						this.kafkaAdmin = new KafkaAdmin(props);
 						this.kafkaAdmin.setOperationTimeout(opTo);
+						if (clusterId != null && !clusterId.isEmpty()) {
+							this.kafkaAdmin.setClusterId(clusterId);
+						}
 					}
 				}
 			}
@@ -499,6 +503,21 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		else if (this.micrometerEnabled) {
 			this.micrometerHolder = obtainMicrometerHolder();
 		}
+	}
+
+	private String getAdminBootstrapAddress() {
+		// Retrieve bootstrap servers from KafkaAdmin bootstrap supplier if available
+		String adminServers = this.kafkaAdmin.getBootstrapServers();
+
+		// Fallback to configuration properties if bootstrap servers are not set
+		if (adminServers == null) {
+			adminServers = this.kafkaAdmin.getConfigurationProperties().getOrDefault(
+					AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
+					""
+			).toString();
+		}
+
+		return adminServers;
 	}
 
 	@Nullable

@@ -213,6 +213,14 @@ public class KafkaAdmin extends KafkaResourceFactory
 		this.clusterId = clusterId;
 	}
 
+	/**
+	 * Get the clusterId property.
+	 * @since 3.3.0
+	 */
+	public String getClusterId() {
+		return clusterId;
+	}
+
 	@Override
 	public Map<String, Object> getConfigurationProperties() {
 		Map<String, Object> configs2 = new HashMap<>(this.configs);
