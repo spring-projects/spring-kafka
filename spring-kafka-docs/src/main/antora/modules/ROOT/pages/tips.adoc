@@ -12,9 +12,9 @@ The following is an example of how to use the power of a SpEL expression to crea
 [source, java]
 ----
 @KafkaListener(topicPartitions = @TopicPartition(topic = "compacted",
-            partitions = "#{@finder.partitions('compacted')}"),
+            partitions = "#{@finder.partitions('compacted')}",
             partitionOffsets = @PartitionOffset(partition = "*", initialOffset = "0")))
-public void listen(@Header(KafkaHeaders.RECEIVED_MESSAGE_KEY) String key, String payload) {
+public void listen(@Header(KafkaHeaders.RECEIVED_KEY) String key, String payload) {
     ...
 }
 

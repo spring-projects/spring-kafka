@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import org.springframework.context.annotation.Import;
 /**
  * Enable Kafka listener annotated endpoints that are created under the covers by a
  * {@link org.springframework.kafka.config.AbstractKafkaListenerContainerFactory
- * AbstractListenerContainerFactory}. To be used on
+ * AbstractKafkaListenerContainerFactory}. To be used on
  * {@link org.springframework.context.annotation.Configuration Configuration} classes as
  * follows:
  *
@@ -117,7 +117,7 @@ import org.springframework.context.annotation.Import;
  *
  * <pre class="code">
  * &#064;KafkaListener(containerFactory = "myKafkaListenerContainerFactory", topics = "myTopic")
- * public void process(String msg, @Header("kafka_partition") int partition) {
+ * public void process(String msg, @Header(KafkaHeaders.RECEIVED_PARTITION) int partition) {
  * 	// process incoming message
  * }
  * </pre>
@@ -174,7 +174,7 @@ import org.springframework.context.annotation.Import;
  * 		&#064;Override
  * 		public void configureKafkaListeners(KafkaListenerEndpointRegistrar registrar) {
  * 			registrar.setEndpointRegistry(myKafkaListenerEndpointRegistry());
- * 			registrar.setMessageHandlerMethodFactory(myMessageHandlerMethodFactory);
+ * 			registrar.setMessageHandlerMethodFactory(myMessageHandlerMethodFactory());
  * 			registrar.setValidator(new MyValidator());
  * 		}
  *
@@ -233,6 +233,7 @@ import org.springframework.context.annotation.Import;
  * @author Stephane Nicoll
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Borahm Lee
  *
  * @see KafkaListener
  * @see KafkaListenerAnnotationBeanPostProcessor
