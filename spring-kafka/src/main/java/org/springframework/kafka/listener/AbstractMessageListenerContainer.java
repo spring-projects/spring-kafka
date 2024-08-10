@@ -71,6 +71,7 @@ import org.springframework.util.StringUtils;
  * @author Wang Zhiyang
  * @author Soby Chacko
  * @author Sanghyeok An
+ * @author Lokesh Alamuri
  */
 public abstract class AbstractMessageListenerContainer<K, V>
 		implements GenericMessageListenerContainer<K, V>, BeanNameAware, ApplicationEventPublisherAware,
@@ -275,10 +276,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	@Override
 	public boolean isRunning() {
-		return this.running;
-	}
-
-	protected boolean canStop() {
 		return this.running;
 	}
 
@@ -614,7 +611,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	public final void stop(boolean wait) {
 		this.lifecycleLock.lock();
 		try {
-			if (canStop()) {
+			if (isRunning()) {
 				if (wait) {
 					final CountDownLatch latch = new CountDownLatch(1);
 					doStop(latch::countDown);
@@ -650,7 +647,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	public void stop(Runnable callback) {
 		this.lifecycleLock.lock();
 		try {
-			if (canStop()) {
+			if (isRunning()) {
 				doStop(callback);
 			}
 			else {

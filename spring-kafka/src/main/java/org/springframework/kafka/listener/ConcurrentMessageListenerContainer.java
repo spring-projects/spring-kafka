@@ -213,7 +213,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 					return true;
 				}
 			}
-			if ((!isRunning() && this.startedContainers.get() > 0)) {
+			if (this.startedContainers.get() > 0) {
 				return true;
 			}
 		}
@@ -243,7 +243,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	 */
 	@Override
 	protected void doStart() {
-		if (!isRunning() && this.containers.stream().allMatch(container -> !container.isRunning())) {
+		if (!isRunning()) {
 			checkTopics();
 			ContainerProperties containerProperties = getContainerProperties();
 			TopicPartitionOffset[] topicPartitions = containerProperties.getTopicPartitions();
@@ -351,7 +351,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	@Override
 	protected void doStop(final Runnable callback, boolean normal) {
 		final AtomicInteger count = new AtomicInteger();
-		if (canStop()) {
+		if (isRunning()) {
 			boolean childRunning = isChildRunning();
 			setRunning(false);
 			if (!childRunning) {
@@ -392,7 +392,6 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		this.lifecycleLock.lock();
 		try {
 			if (this.containers.contains(child) || this.stoppedContainers.contains(child)) {
-				setRunning(!this.stoppedContainers.contains(child));
 				this.startedContainers.incrementAndGet();
 			}
 		}
@@ -408,7 +407,6 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			if (!this.containers.contains(child) && !this.stoppedContainers.contains(child)) {
 				return;
 			}
-			setRunning(false);
 			if (this.reason == null || reason.equals(Reason.AUTH)) {
 				this.reason = reason;
 			}
@@ -549,11 +547,6 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		this.startedContainers.set(0);
 		this.stoppedContainers.clear();
 		this.reason = null;
-	}
-
-	@Override
-	protected boolean canStop() {
-		return !this.containers.isEmpty() || isRunning();
 	}
 
 	@Override

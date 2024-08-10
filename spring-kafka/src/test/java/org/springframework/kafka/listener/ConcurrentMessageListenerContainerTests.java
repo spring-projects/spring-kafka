@@ -1049,7 +1049,7 @@ public class ConcurrentMessageListenerContainerTests {
 		assertThat(container.isChildRunning()).isTrue();
 		assertThat(childContainer1.isRunning()).isTrue();
 		assertThat(childContainer0.isRunning()).isFalse();
-		assertThat(container.isRunning()).isFalse();
+		assertThat(container.isRunning()).isTrue();
 
 		//Ignore this start
 		container.start();
