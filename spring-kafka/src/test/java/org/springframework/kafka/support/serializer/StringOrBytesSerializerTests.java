@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.kafka.support.serializer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
 
@@ -28,6 +29,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 /**
  * @author Gary Russell
+ * @author Soby Chacko
  * @since 2.3
  *
  */
@@ -45,10 +47,10 @@ public class StringOrBytesSerializerTests {
 		Bytes bytes = Bytes.wrap("baz".getBytes());
 		out = serializer.serialize("x", bytes);
 		assertThat(out).isEqualTo("baz".getBytes());
-		assertThat(KafkaTestUtils.getPropertyValue(serializer, "stringSerializer.encoding")).isEqualTo("UTF-8");
+		assertThat(KafkaTestUtils.getPropertyValue(serializer, "stringSerializer.encoding")).isEqualTo(StandardCharsets.UTF_8);
 		Map<String, Object> configs = Collections.singletonMap("serializer.encoding", "UTF-16");
 		serializer.configure(configs, false);
-		assertThat(KafkaTestUtils.getPropertyValue(serializer, "stringSerializer.encoding")).isEqualTo("UTF-16");
+		assertThat(KafkaTestUtils.getPropertyValue(serializer, "stringSerializer.encoding")).isEqualTo(StandardCharsets.UTF_16);
 	}
 
 }

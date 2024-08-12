@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,6 +87,7 @@ import kafka.zookeeper.ZooKeeperClient;
  * @author Nakul Mishra
  * @author Pawel Lozinski
  * @author Adrian Chlebosz
+ * @author Soby Chacko
  *
  * @since 2.2
  */
@@ -302,17 +303,17 @@ public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker {
 			}
 			this.zkConnect = LOOPBACK + ":" + this.zookeeper.getPort();
 			this.kafkaServers.clear();
-			boolean userLogDir = this.brokerProperties.get(KafkaConfig.LogDirProp()) != null && this.count == 1;
+			boolean userLogDir = this.brokerProperties.get("log.dir") != null && this.count == 1;
 			for (int i = 0; i < this.count; i++) {
 				Properties brokerConfigProperties = createBrokerProperties(i);
-				brokerConfigProperties.setProperty(KafkaConfig.ReplicaSocketTimeoutMsProp(), "1000");
-				brokerConfigProperties.setProperty(KafkaConfig.ControllerSocketTimeoutMsProp(), "1000");
-				brokerConfigProperties.setProperty(KafkaConfig.OffsetsTopicReplicationFactorProp(), "1");
-				brokerConfigProperties.setProperty(KafkaConfig.ReplicaHighWatermarkCheckpointIntervalMsProp(),
+				brokerConfigProperties.setProperty("replica.socket.timeout.ms", "1000");
+				brokerConfigProperties.setProperty("controller.socket.timeout.ms", "1000");
+				brokerConfigProperties.setProperty("offsets.topic.replication.factor", "1");
+				brokerConfigProperties.setProperty("replica.high.watermark.checkpoint.interval.ms",
 						String.valueOf(Long.MAX_VALUE));
 				this.brokerProperties.forEach(brokerConfigProperties::put);
-				if (!this.brokerProperties.containsKey(KafkaConfig.NumPartitionsProp())) {
-					brokerConfigProperties.setProperty(KafkaConfig.NumPartitionsProp(), "" + this.partitionsPerTopic);
+				if (!this.brokerProperties.containsKey("num.partitions")) {
+					brokerConfigProperties.setProperty("num.partitions", "" + this.partitionsPerTopic);
 				}
 				if (!userLogDir) {
 					logDir(brokerConfigProperties);
@@ -337,7 +338,7 @@ public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker {
 
 	private void logDir(Properties brokerConfigProperties) {
 		try {
-			brokerConfigProperties.put(KafkaConfig.LogDirProp(),
+			brokerConfigProperties.put("log.dir",
 					Files.createTempDirectory("spring.kafka." + UUID.randomUUID()).toString());
 		}
 		catch (IOException e) {
