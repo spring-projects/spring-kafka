@@ -44,7 +44,7 @@ public class KafkaMessageHeaderAccessor extends MessageHeaderAccessor {
 
 	/**
 	 * Access the header value when the blocking delivery attempt header is present.
-	 * @return 1 if there is no header present; the decoded header value otherwise.
+	 * @return The decoded header value if the header is present.
 	 * @throws IllegalStateException if the header is not present.
 	 * @see org.springframework.kafka.listener.ContainerProperties#setDeliveryAttemptHeader(boolean)
 	 */
