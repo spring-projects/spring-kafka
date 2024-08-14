@@ -2212,6 +2212,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					invokeBatchErrorHandler(records, recordList, e);
 					commitOffsetsIfNeededAfterHandlingError(records);
 				}
+				catch (RecordInRetryException rire) {
+					rire.selfLog(this.logger);
+					return rire;
+				}
 				catch (KafkaException ke) {
 					ke.selfLog(ERROR_HANDLER_THREW_AN_EXCEPTION, this.logger);
 					return ke;
@@ -2714,6 +2718,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					try {
 						invokeErrorHandler(cRecord, iterator, e);
 						commitOffsetsIfNeededAfterHandlingError(cRecord);
+					}
+					catch (RecordInRetryException rire) {
+						rire.selfLog(this.logger);
+						return rire;
 					}
 					catch (KafkaException ke) {
 						ke.selfLog(ERROR_HANDLER_THREW_AN_EXCEPTION, this.logger);

@@ -52,7 +52,6 @@ import org.apache.kafka.common.serialization.Serializer;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaOperations;
@@ -70,6 +69,7 @@ import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * @author Gary Russell
+ * @author Soby Chacko
  * @since 2.2
  *
  */
@@ -180,7 +180,7 @@ public class SeekToCurrentRecovererTests {
 		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
 		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
 		Consumer<?, ?> consumer = mock(Consumer.class);
-		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(() ->
 				eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
 		verifyNoMoreInteractions(consumer);
@@ -227,14 +227,14 @@ public class SeekToCurrentRecovererTests {
 		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
 		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
 		Consumer<?, ?> consumer = mock(Consumer.class);
-		assertThatExceptionOfType(KafkaException.class).isThrownBy(
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(
 				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
 		verifyNoMoreInteractions(consumer);
-		assertThatExceptionOfType(KafkaException.class).isThrownBy(
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(
 				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		verify(consumer, times(2)).seek(new TopicPartition("foo", 0),  0L);
-		assertThatExceptionOfType(KafkaException.class).isThrownBy(
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(
 				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		verify(consumer, times(3)).seek(new TopicPartition("foo", 0),  0L);
 		eh.handleRemaining(new RuntimeException(), records, consumer, null);
@@ -267,11 +267,11 @@ public class SeekToCurrentRecovererTests {
 		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
 		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
 		Consumer<?, ?> consumer = mock(Consumer.class);
-		assertThatExceptionOfType(KafkaException.class).isThrownBy(
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(
 				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
 		verifyNoMoreInteractions(consumer);
-		assertThatExceptionOfType(KafkaException.class).isThrownBy(
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(
 				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		verify(consumer, times(2)).seek(new TopicPartition("foo", 0),  0L);
 		eh.handleRemaining(new RuntimeException(), records, consumer, null); // immediate re-attempt recovery
@@ -308,7 +308,7 @@ public class SeekToCurrentRecovererTests {
 		OffsetCommitCallback commitCallback = (offsets, ex) -> { };
 		properties.setCommitCallback(commitCallback);
 		given(container.getContainerProperties()).willReturn(properties);
-		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(() ->
 			eh.handleRemaining(new RuntimeException(), records, consumer, container));
 		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
 		verify(consumer).seek(new TopicPartition("foo", 1),  0L);
@@ -340,7 +340,7 @@ public class SeekToCurrentRecovererTests {
 		records.add(new ConsumerRecord<>("foo", 0, 1, null, "bar"));
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		for (int i = 0; i < 20; i++) {
-			assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
+			assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(() ->
 				eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		}
 		verify(consumer, times(20)).seek(new TopicPartition("foo", 0),  0L);

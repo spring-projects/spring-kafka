@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2023 the original author or authors.
+ * Copyright 2019-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,7 +45,6 @@ import org.apache.kafka.common.errors.SerializationException;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
-import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.converter.ConversionException;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
@@ -55,6 +54,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * {@link DefaultErrorHandler} tests for record listeners.
  *
  * @author Gary Russell
+ * @author Soby Chacko
  * @since 2.8
  *
  */
@@ -155,7 +155,7 @@ public class DefaultErrorHandlerRecordTests {
 		List<ConsumerRecord<?, ?>> records = Arrays.asList(record1, record2);
 		IllegalStateException illegalState = new IllegalStateException();
 		Consumer<?, ?> consumer = mock(Consumer.class);
-		assertThatExceptionOfType(KafkaException.class).isThrownBy(() -> handler.handleRemaining(illegalState, records,
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(() -> handler.handleRemaining(illegalState, records,
 					consumer, mock(MessageListenerContainer.class)))
 				.withCause(illegalState);
 		handler.handleRemaining(new DeserializationException("intended", null, false, illegalState), records,
@@ -214,7 +214,7 @@ public class DefaultErrorHandlerRecordTests {
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		given(container.isRunning()).willReturn(false);
 		long t1 = System.currentTimeMillis();
-		assertThatExceptionOfType(KafkaException.class).isThrownBy(() -> handler.handleRemaining(illegalState,
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(() -> handler.handleRemaining(illegalState,
 						records, consumer, container));
 		assertThat(System.currentTimeMillis() < t1 + 5_000);
 	}
@@ -230,7 +230,7 @@ public class DefaultErrorHandlerRecordTests {
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		given(container.isRunning()).willReturn(true);
 		long t1 = System.currentTimeMillis();
-		assertThatExceptionOfType(KafkaException.class).isThrownBy(() -> handler.handleRemaining(illegalState,
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(() -> handler.handleRemaining(illegalState,
 						records, consumer, container));
 		assertThat(System.currentTimeMillis() >= t1 + 200);
 	}

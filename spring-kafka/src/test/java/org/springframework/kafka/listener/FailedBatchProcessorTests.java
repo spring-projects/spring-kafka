@@ -43,13 +43,13 @@ import org.mockito.ArgumentCaptor;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.data.util.DirectFieldAccessFallbackBeanWrapper;
-import org.springframework.kafka.KafkaException;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
  * @author Gary Russell
  * @author Francois Rosiere
+ * @author Soby Chacko
  * @since 3.0.3
  *
  */
@@ -118,10 +118,10 @@ public class FailedBatchProcessorTests {
 		willThrow(new RebalanceInProgressException("rebalance in progress")).given(consumer).commitSync(anyMap(), any());
 		final MessageListenerContainer mockMLC = mock(MessageListenerContainer.class);
 		willReturn(new ContainerProperties("topic")).given(mockMLC).getContainerProperties();
-		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(() ->
 				testFBP.handle(new BatchListenerFailedException("topic", rec2),
 						records, consumer, mockMLC, mock(Runnable.class))
-		).withMessage("Seek to current after exception");
+		).withMessage("Record in retry and not yet recovered");
 	}
 
 	static class TestFBP extends FailedBatchProcessor {

@@ -32,7 +32,6 @@ import org.apache.kafka.common.errors.SerializationException;
 
 import org.springframework.core.NestedRuntimeException;
 import org.springframework.core.log.LogAccessor;
-import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.KafkaException.Level;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.support.KafkaUtils;
@@ -46,6 +45,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * @author Gary Russell
  * @author Francois Rosiere
  * @author Wang Zhiyang
+ * @author Soby Chacko
  * @since 2.2
  *
  */
@@ -224,7 +224,7 @@ public final class SeekUtils {
 		}
 
 		if (!doSeeks(records, consumer, thrownException, true, recovery, container, logger)) { // NOSONAR
-			throw new KafkaException("Seek to current after exception", level, thrownException);
+			throw new RecordInRetryException("Record in retry and not yet recovered", thrownException);
 		}
 		if (commitRecovered) {
 			if (container.getContainerProperties().getAckMode().equals(AckMode.MANUAL_IMMEDIATE)) {
