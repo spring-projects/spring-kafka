@@ -2213,7 +2213,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					commitOffsetsIfNeededAfterHandlingError(records);
 				}
 				catch (RecordInRetryException rire) {
-					rire.selfLog(this.logger);
+					this.logger.info("Record in retry and not yet recovered");
 					return rire;
 				}
 				catch (KafkaException ke) {
@@ -2720,7 +2720,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						commitOffsetsIfNeededAfterHandlingError(cRecord);
 					}
 					catch (RecordInRetryException rire) {
-						rire.selfLog(this.logger);
+						this.logger.info("Record in retry and not yet recovered");
 						return rire;
 					}
 					catch (KafkaException ke) {

@@ -19,7 +19,6 @@ package org.springframework.kafka.listener;
 import javax.annotation.Nullable;
 
 import org.springframework.core.NestedRuntimeException;
-import org.springframework.core.log.LogAccessor;
 
 /**
  * Internal {@link NestedRuntimeException} that is used as an exception thrown
@@ -31,9 +30,8 @@ import org.springframework.core.log.LogAccessor;
  * @author Soby Chacko
  * @since 3.3.0
  */
+@SuppressWarnings("serial")
 class RecordInRetryException extends NestedRuntimeException {
-
-	private final String message;
 
 	/**
 	 * Package protected constructor to create an instance with the provided properties.
@@ -43,10 +41,6 @@ class RecordInRetryException extends NestedRuntimeException {
 	 */
 	RecordInRetryException(String message, @Nullable Throwable cause) {
 		super(message, cause);
-		this.message = message;
 	}
 
-	void selfLog(LogAccessor logger) {
-		logger.info(this.message);
-	}
 }
