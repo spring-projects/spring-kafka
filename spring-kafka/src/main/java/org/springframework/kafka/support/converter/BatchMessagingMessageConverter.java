@@ -66,6 +66,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); // NOSONAR
 
+	@Nullable
 	private final RecordMessageConverter recordConverter;
 
 	private boolean generateMessageId = false;
@@ -123,6 +124,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 		this.headerMapper = headerMapper;
 	}
 
+	@Nullable
 	@Override
 	public RecordMessageConverter getRecordMessageConverter() {
 		return this.recordConverter;

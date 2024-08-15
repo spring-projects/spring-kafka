@@ -95,6 +95,9 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 		if (recordMessageConverter != null) {
 			setMessageConverter(recordMessageConverter);
 		}
+		else {
+			logger.warn("No batch message converter is set. because record message converter is null.");
+		}
 	}
 
 	/**
