@@ -50,6 +50,7 @@ import org.springframework.util.Assert;
  * @param <R> the reply data type.
  *
  * @author Gary Russell
+ * @author Sanghyeok An
  * @since 2.3
  *
  */

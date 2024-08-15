@@ -54,6 +54,7 @@ import org.springframework.util.Assert;
  * @author Artem Bilan
  * @author Venil Noronha
  * @author Wang ZhiYang
+ * @author Sanghyeok An
  * @since 1.1
  */
 public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessageListenerAdapter<K, V>

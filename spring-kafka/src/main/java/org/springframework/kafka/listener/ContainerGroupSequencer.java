@@ -37,6 +37,7 @@ import org.springframework.kafka.event.ListenerContainerIdleEvent;
  * idle.
  *
  * @author Gary Russell
+ * @author Sanghyeok An
  * @since 2.7.3
  *
  */

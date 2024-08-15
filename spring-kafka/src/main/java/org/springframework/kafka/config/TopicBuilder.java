@@ -30,6 +30,7 @@ import org.apache.kafka.common.config.TopicConfig;
  * {@link Optional#empty()} indicating the broker defaults will be applied.
  *
  * @author Gary Russell
+ * @author Sanghyeok An
  * @since 2.3
  *
  */

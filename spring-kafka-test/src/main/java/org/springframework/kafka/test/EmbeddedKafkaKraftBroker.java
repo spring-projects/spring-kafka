@@ -71,6 +71,7 @@ import kafka.testkit.TestKitNodes;
  * @author Pawel Lozinski
  * @author Adrian Chlebosz
  * @author Soby Chacko
+ * @author Sanghyeok An
  *
  * @since 3.1
  */

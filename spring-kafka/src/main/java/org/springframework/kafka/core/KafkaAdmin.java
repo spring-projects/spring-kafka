@@ -74,6 +74,7 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Adrian Gygax
+ * @author Sanghyeok An
  *
  * @since 1.3
  */

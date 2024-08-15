@@ -35,6 +35,7 @@ import org.springframework.util.StringUtils;
  * Common consumer properties.
  *
  * @author Gary Russell
+ * @author Sagnhyeok An
  * @since 2.3
  *
  */

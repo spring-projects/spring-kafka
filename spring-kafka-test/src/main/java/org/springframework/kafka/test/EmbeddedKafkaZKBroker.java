@@ -88,6 +88,7 @@ import kafka.zookeeper.ZooKeeperClient;
  * @author Pawel Lozinski
  * @author Adrian Chlebosz
  * @author Soby Chacko
+ * @author Sanghyeok An
  *
  * @since 2.2
  */

@@ -41,6 +41,7 @@ import org.springframework.util.ReflectionUtils;
  * Detect and register Avro types for Apache Kafka listeners.
  *
  * @author Gary Russell
+ * @author Sagnhyeok An
  * @since 3.0
  *
  */

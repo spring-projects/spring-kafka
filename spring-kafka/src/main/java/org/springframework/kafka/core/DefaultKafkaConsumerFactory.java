@@ -73,6 +73,7 @@ import org.springframework.util.StringUtils;
  * @author Chris Gilbert
  * @author Adrian Gygax
  * @author Yaniv Nahoum
+ * @author Sanghyeok An
  */
 public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 		implements ConsumerFactory<K, V>, BeanNameAware, ApplicationContextAware {
