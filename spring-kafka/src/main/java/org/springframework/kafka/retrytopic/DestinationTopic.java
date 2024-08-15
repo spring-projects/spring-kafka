@@ -46,8 +46,7 @@ public class DestinationTopic {
 	}
 
 	public DestinationTopic(String destinationName, DestinationTopic sourceDestinationtopic, String suffix, Type type) {
-		this.destinationName = destinationName;
-		this.properties = new Properties(sourceDestinationtopic.properties, suffix, type);
+		this(destinationName, new Properties(sourceDestinationtopic.properties, suffix, type));
 	}
 
 	public Long getDestinationDelay() {
