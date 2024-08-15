@@ -30,6 +30,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 /**
  * @author Gary Russell
  * @author Soby Chacko
+ * @author Borahm Lee
  * @since 2.3
  *
  */
@@ -47,10 +48,10 @@ public class StringOrBytesSerializerTests {
 		Bytes bytes = Bytes.wrap("baz".getBytes());
 		out = serializer.serialize("x", bytes);
 		assertThat(out).isEqualTo("baz".getBytes());
-		assertThat(KafkaTestUtils.getPropertyValue(serializer, "stringSerializer.encoding")).isEqualTo(StandardCharsets.UTF_8);
+		assertThat(KafkaTestUtils.getPropertyValue(serializer, "stringSerializer.encoding")).isEqualTo(StandardCharsets.UTF_8.name());
 		Map<String, Object> configs = Collections.singletonMap("serializer.encoding", "UTF-16");
 		serializer.configure(configs, false);
-		assertThat(KafkaTestUtils.getPropertyValue(serializer, "stringSerializer.encoding")).isEqualTo(StandardCharsets.UTF_16);
+		assertThat(KafkaTestUtils.getPropertyValue(serializer, "stringSerializer.encoding")).isEqualTo(StandardCharsets.UTF_16.name());
 	}
 
 }
