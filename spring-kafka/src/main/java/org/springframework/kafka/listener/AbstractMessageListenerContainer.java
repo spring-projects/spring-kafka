@@ -570,7 +570,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 			catch (Exception e) {
 				this.logger.error(e, "Failed to check topic existence");
 			}
-			if (missing != null && missing.size() > 0) {
+			if (missing != null && !missing.isEmpty()) {
 				throw new IllegalStateException(
 						"Topic(s) " + missing.toString()
 								+ " is/are not present and missingTopicsFatal is true");

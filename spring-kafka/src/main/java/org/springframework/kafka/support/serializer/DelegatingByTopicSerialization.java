@@ -108,7 +108,7 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 
 	@SuppressWarnings(UNCHECKED)
 	protected void configure(Map<String, ?> configs, boolean isKey) {
-		if (this.delegates.size() > 0) {
+		if (!this.delegates.isEmpty()) {
 			this.delegates.values().forEach(delegate -> configureDelegate(configs, isKey, delegate));
 		}
 		this.forKeys = isKey;

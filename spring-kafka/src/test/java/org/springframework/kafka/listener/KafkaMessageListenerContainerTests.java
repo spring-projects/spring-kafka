@@ -815,7 +815,7 @@ public class KafkaMessageListenerContainerTests {
 				latch1.countDown();
 				latch2.countDown();
 				acks.add(ack);
-				if (latch1.getCount() == 0 && records1.values().size() > 0
+				if (latch1.getCount() == 0 && !records1.isEmpty()
 						&& records1.values().iterator().next().size() == 4) {
 					acks.get(3).acknowledge();
 					acks.get(2).acknowledge();

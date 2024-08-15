@@ -349,7 +349,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		if (this.applicationContext != null) {
 			Map<String, AnnotationEnhancer> enhancersMap =
 					this.applicationContext.getBeansOfType(AnnotationEnhancer.class, false, false);
-			if (enhancersMap.size() > 0) {
+			if (!enhancersMap.isEmpty()) {
 				List<AnnotationEnhancer> enhancers = enhancersMap.values()
 						.stream()
 						.sorted(new OrderComparator())

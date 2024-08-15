@@ -520,7 +520,7 @@ public class ConsumerProperties {
 				+ (this.offsetAndMetadataProvider != null ? "\n offsetAndMetadataProvider=" + this.offsetAndMetadataProvider : "")
 				+ "\n syncCommits=" + this.syncCommits
 				+ (this.syncCommitTimeout != null ? "\n syncCommitTimeout=" + this.syncCommitTimeout : "")
-				+ (this.kafkaConsumerProperties.size() > 0 ? "\n properties=" + this.kafkaConsumerProperties : "")
+				+ (!this.kafkaConsumerProperties.isEmpty() ? "\n properties=" + this.kafkaConsumerProperties : "")
 				+ "\n authExceptionRetryInterval=" + this.authExceptionRetryInterval
 				+ "\n commitRetries=" + this.commitRetries
 				+ "\n fixTxOffsets" + this.fixTxOffsets;

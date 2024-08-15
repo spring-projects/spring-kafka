@@ -210,7 +210,7 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 				Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
 				records.forEach(rec -> offsets.put(new TopicPartition(rec.topic(), rec.partition()),
 						ListenerUtils.createOffsetAndMetadata(container, rec.offset() + 1)));
-				if (offsets.size() > 0 && this.kafkaTemplate != null && this.kafkaTemplate.isTransactional()) {
+				if (!offsets.isEmpty() && this.kafkaTemplate != null && this.kafkaTemplate.isTransactional()) {
 					this.kafkaTemplate.sendOffsetsToTransaction(offsets, consumer.groupMetadata());
 				}
 				clearThreadState();

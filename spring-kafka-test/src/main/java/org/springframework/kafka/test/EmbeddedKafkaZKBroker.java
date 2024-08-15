@@ -734,7 +734,7 @@ public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker {
 		List<String> notEmbedded = Arrays.stream(topicsToConsume)
 				.filter(topic -> !this.topics.contains(topic))
 				.collect(Collectors.toList());
-		if (notEmbedded.size() > 0) {
+		if (!notEmbedded.isEmpty()) {
 			throw new IllegalStateException("topic(s):'" + notEmbedded + "' are not in embedded topic list");
 		}
 		final AtomicReference<Collection<TopicPartition>> assigned = new AtomicReference<>();

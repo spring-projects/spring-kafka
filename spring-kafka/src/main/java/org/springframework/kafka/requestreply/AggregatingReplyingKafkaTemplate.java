@@ -162,7 +162,7 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 				}
 			}
 		});
-		if (completed.size() > 0) {
+		if (!completed.isEmpty()) {
 			super.onMessage(completed);
 		}
 	}

@@ -80,7 +80,7 @@ public class KafkaAvroBeanRegistrationAotProcessor implements BeanRegistrationAo
 				}
 			}, method -> method.getName().equals("onMessage"));
 		}
-		if (avroTypes.size() > 0) {
+		if (!avroTypes.isEmpty()) {
 			return (generationContext, beanRegistrationCode) -> {
 				ReflectionHints reflectionHints = generationContext.getRuntimeHints().reflection();
 				avroTypes.forEach(type -> reflectionHints.registerType(type,
