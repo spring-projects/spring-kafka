@@ -131,25 +131,12 @@ configure(javaProjects) { subproject ->
 
 	def scopeAttribute = Attribute.of('dependency.scope', String)
 
-	configurations {
-		optional {
-			attributes {
-				attribute(scopeAttribute, 'optional')
-			}
-		}
-
-		compileClasspath.extendsFrom(optional)
-		testCompileClasspath.extendsFrom(optional)
-		testRuntimeClasspath.extendsFrom(optional)
-	}
-
-	components.java.addVariantsFromConfiguration(configurations.optional) {
-		mapToOptional()
-	}
-
 	java {
 		withJavadocJar()
 		withSourcesJar()
+		registerFeature('optional') {
+			usingSourceSet(sourceSets.main)
+		}
 	}
 
 	compileJava {
@@ -166,10 +153,6 @@ configure(javaProjects) { subproject ->
 
 	// dependencies that are common across all java projects
 	dependencies {
-		attributesSchema {
-			attribute(scopeAttribute)
-		}
-
 		def spotbugsAnnotations = "com.github.spotbugs:spotbugs-annotations:${spotbugs.toolVersion.get()}"
 		compileOnly spotbugsAnnotations
 		testCompileOnly spotbugsAnnotations
@@ -189,7 +172,7 @@ configure(javaProjects) { subproject ->
 			exclude group: 'org.hamcrest'
 		}
 		testImplementation "org.hamcrest:hamcrest-core:$hamcrestVersion"
-		optional "org.assertj:assertj-core:$assertjVersion"
+		optionalApi "org.assertj:assertj-core:$assertjVersion"
 	}
 
 	// enable all compiler warnings; individual projects may customize further
@@ -296,28 +279,28 @@ project ('spring-kafka') {
 		}
 		api "org.apache.kafka:kafka-clients:$kafkaVersion"
 		api 'io.micrometer:micrometer-observation'
-		optional "org.apache.kafka:kafka-streams:$kafkaVersion"
-		optional "org.jetbrains.kotlinx:kotlinx-coroutines-reactor:$kotlinCoroutinesVersion"
-		optional 'com.fasterxml.jackson.core:jackson-core'
-		optional 'com.fasterxml.jackson.core:jackson-databind'
-		optional 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
-		optional 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
-		optional 'com.fasterxml.jackson.datatype:jackson-datatype-joda'
-		optional ('com.fasterxml.jackson.module:jackson-module-kotlin') {
+		optionalApi "org.apache.kafka:kafka-streams:$kafkaVersion"
+		optionalApi "org.jetbrains.kotlinx:kotlinx-coroutines-reactor:$kotlinCoroutinesVersion"
+		optionalApi 'com.fasterxml.jackson.core:jackson-core'
+		optionalApi 'com.fasterxml.jackson.core:jackson-databind'
+		optionalApi 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
+		optionalApi 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+		optionalApi 'com.fasterxml.jackson.datatype:jackson-datatype-joda'
+		optionalApi ('com.fasterxml.jackson.module:jackson-module-kotlin') {
 			exclude group: 'org.jetbrains.kotlin'
 		}
 
 		// Spring Data projection message binding support
-		optional ("org.springframework.data:spring-data-commons") {
+		optionalApi ("org.springframework.data:spring-data-commons") {
 			exclude group: 'org.springframework'
 			exclude group: 'io.micrometer'
 		}
-		optional "com.jayway.jsonpath:json-path:$jaywayJsonPathVersion"
+		optionalApi "com.jayway.jsonpath:json-path:$jaywayJsonPathVersion"
 
-		optional 'io.projectreactor:reactor-core'
-		optional 'io.projectreactor.kafka:reactor-kafka'
-		optional 'io.micrometer:micrometer-core'
-		optional 'io.micrometer:micrometer-tracing'
+		optionalApi 'io.projectreactor:reactor-core'
+		optionalApi 'io.projectreactor.kafka:reactor-kafka'
+		optionalApi 'io.micrometer:micrometer-core'
+		optionalApi 'io.micrometer:micrometer-tracing'
 
 		testImplementation project (':spring-kafka-test')
 		testImplementation 'io.projectreactor:reactor-test'
@@ -384,12 +367,12 @@ project ('spring-kafka-test') {
 		}
 		api 'org.junit.jupiter:junit-jupiter-api'
 		api 'org.junit.platform:junit-platform-launcher'
-		optional "org.hamcrest:hamcrest-core:$hamcrestVersion"
-		optional "org.mockito:mockito-core:$mockitoVersion"
-		optional ("junit:junit:$junit4Version") {
+		optionalApi "org.hamcrest:hamcrest-core:$hamcrestVersion"
+		optionalApi "org.mockito:mockito-core:$mockitoVersion"
+		optionalApi ("junit:junit:$junit4Version") {
 			exclude group: 'org.hamcrest', module: 'hamcrest-core'
 		}
-		optional "org.apache.logging.log4j:log4j-core:$log4jVersion"
+		optionalApi "org.apache.logging.log4j:log4j-core:$log4jVersion"
 	}
 }
 
