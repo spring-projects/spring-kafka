@@ -65,8 +65,6 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	private final List<KafkaMessageListenerContainer<K, V>> containers = new ArrayList<>();
 
-	private final List<KafkaMessageListenerContainer<K, V>> stoppedContainers = new ArrayList<>();
-
 	private final List<AsyncTaskExecutor> executors = new ArrayList<>();
 
 	private final AtomicInteger startedContainers = new AtomicInteger();
@@ -380,9 +378,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 						});
 					}
 				}
-				this.stoppedContainers.add(container);
 			}
-			this.containers.clear();
 			setStoppedNormally(normal);
 		}
 	}
@@ -391,7 +387,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	public void childStarted(MessageListenerContainer child) {
 		this.lifecycleLock.lock();
 		try {
-			if (this.containers.contains(child) || this.stoppedContainers.contains(child)) {
+			if (this.containers.contains(child)) {
 				this.startedContainers.incrementAndGet();
 			}
 		}
@@ -404,7 +400,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	public void childStopped(MessageListenerContainer child, Reason reason) {
 		this.lifecycleLock.lock();
 		try {
-			if (!this.containers.contains(child) && !this.stoppedContainers.contains(child)) {
+			if (!this.containers.contains(child)) {
 				return;
 			}
 			if (this.reason == null || reason.equals(Reason.AUTH)) {
@@ -416,7 +412,6 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				boolean restartContainer = Reason.AUTH.equals(this.reason)
 						&& getContainerProperties().isRestartAfterAuthExceptions();
 				this.reason = null;
-				this.stoppedContainers.clear();
 				if (restartContainer) {
 					// This has to run on another thread to avoid a deadlock on lifecycleMonitor
 					AsyncTaskExecutor exec = getContainerProperties().getListenerTaskExecutor();
@@ -544,8 +539,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	}
 
 	private void clearState() {
+		this.containers.clear();
 		this.startedContainers.set(0);
-		this.stoppedContainers.clear();
 		this.reason = null;
 	}
 
