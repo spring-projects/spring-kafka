@@ -997,7 +997,7 @@ public class ConcurrentMessageListenerContainerTests {
 		container.setChangeConsumerThreadName(true);
 		BlockingQueue<KafkaEvent> events = new LinkedBlockingQueue<>();
 		CountDownLatch concurrentContainerStopLatch = new CountDownLatch(1);
-		CountDownLatch concurrentContainerSecondStopLatch = new CountDownLatch(1);
+		CountDownLatch concurrentContainerSecondStopLatch = new CountDownLatch(2);
 		CountDownLatch consumerStoppedEventLatch = new CountDownLatch(1);
 
 		container.setApplicationEventPublisher(e -> {
@@ -1071,12 +1071,20 @@ public class ConcurrentMessageListenerContainerTests {
 
 		assertThat(concurrentContainerStopLatch.await(30, TimeUnit.SECONDS)).isTrue();
 
+		assertThat(container.getContainers()).
+				doesNotContain((KafkaMessageListenerContainer<Integer, String>) childContainer0);
+		assertThat(container.getContainers()).
+				doesNotContain((KafkaMessageListenerContainer<Integer, String>) childContainer1);
+
 		// Accept this start
 		container.start();
 		assertThat(container.getContainers()).
 				doesNotContain((KafkaMessageListenerContainer<Integer, String>) childContainer0);
 		assertThat(container.getContainers()).
 				doesNotContain((KafkaMessageListenerContainer<Integer, String>) childContainer1);
+
+		container.getContainers().forEach(containerForEach -> containerForEach.stop());
+		assertThat(container.getContainers()).isNotEmpty();
 		container.stop();
 		assertThat(concurrentContainerSecondStopLatch.await(30, TimeUnit.SECONDS)).isTrue();
 

@@ -380,6 +380,10 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				}
 			}
 			setStoppedNormally(normal);
+			// All the containers are stopped before calling stop API
+			if (this.startedContainers.get() == 0) {
+				publishConcurrentContainerStoppedEvent(this.reason);
+			}
 		}
 	}
 
@@ -408,7 +412,10 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			}
 			int startedContainersCount = this.startedContainers.decrementAndGet();
 			if (startedContainersCount == 0) {
-				publishConcurrentContainerStoppedEvent(this.reason);
+				if (!isRunning()) {
+					this.containers.clear();
+					publishConcurrentContainerStoppedEvent(this.reason);
+				}
 				boolean restartContainer = Reason.AUTH.equals(this.reason)
 						&& getContainerProperties().isRestartAfterAuthExceptions();
 				this.reason = null;
