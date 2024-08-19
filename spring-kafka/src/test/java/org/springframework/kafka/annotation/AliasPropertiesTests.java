@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -56,6 +57,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 /**
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Soby Chacko
  *
  * @since 2.2
  *
@@ -113,13 +115,15 @@ public class AliasPropertiesTests {
 
 		@Bean
 		public static AnnotationEnhancer mainEnhancer() {
+
 			return (attrs, element) -> {
-				attrs.put("groupId", attrs.get("id") + "." + (element instanceof Class
+				Map<String, Object> newAttrs = new HashMap<>(attrs);
+				newAttrs.put("groupId", attrs.get("id") + "." + (element instanceof Class
 						? ((Class<?>) element).getSimpleName()
 						: ((Method) element).getDeclaringClass().getSimpleName()
 								+  "." + ((Method) element).getName()));
 				orderedCalledFirst.set(true);
-				return attrs;
+				return newAttrs;
 			};
 		}
 

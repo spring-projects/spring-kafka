@@ -139,6 +139,8 @@ import org.springframework.validation.Validator;
  * @author Filip Halemba
  * @author Tomaz Fernandes
  * @author Wang Zhiyang
+ * @author Sanghyeok An
+ * @author Soby Chacko
  *
  * @see KafkaListener
  * @see KafkaListenerErrorHandler
@@ -351,7 +353,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 					for (AnnotationEnhancer enh : enhancers) {
 						newAttrs = enh.apply(newAttrs, element);
 					}
-					return attrs;
+					return newAttrs;
 				};
 			}
 		}
