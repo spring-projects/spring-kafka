@@ -1,0 +1,11 @@
+name: Announce Milestone Planning in Chat
+
+on:
+  milestone:
+    types: [ created, edited ]
+
+jobs:
+  announce-milestone-planning:
+    uses: spring-io/spring-github-workflows/.github/workflows/spring-announce-milestone-planning.yml@main
+    secrets:
+      SPRING_RELEASE_CHAT_WEBHOOK_URL: ${{ secrets.SPRING_RELEASE_GCHAT_WEBHOOK_URL }}
