@@ -40,3 +40,8 @@ For more details, see xref:kafka/events.adoc[Application Events] and `Concurrent
 
 When using `ReplyingKafkaTemplate`, if the original record from the request contains a key, then that same key will be part of the reply as well.
 For more details, see xref:kafka/sending-messages.adoc[Sending Messages] section of the reference docs.
+
+[[x33-customize-logging-in-DeadLetterPublishingRecovererFactory]]
+=== Customizing Logging in DeadLetterPublishingRecovererFactory
+
+When using `DeadLetterPublishingRecovererFactory`, the user applications can override the `maybeLogListenerException` method to customize the logging behavior.

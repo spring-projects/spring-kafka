@@ -246,7 +246,7 @@ public class DeadLetterPublishingRecovererFactory {
 	 * @param nextDestination the next topic where the record goes
 	 * @since 3.3.0
 	 */
-	public void maybeLogListenerException(Exception exception, ConsumerRecord<?, ?> consumerRecord, DestinationTopic nextDestination) {
+	protected void maybeLogListenerException(Exception exception, ConsumerRecord<?, ?> consumerRecord, DestinationTopic nextDestination) {
 		if (nextDestination.isDltTopic()
 				&& !ListenerExceptionLoggingStrategy.NEVER.equals(this.loggingStrategy)) {
 			LOGGER.error(exception, () -> getErrorMessage(consumerRecord) + " and won't be retried. "
