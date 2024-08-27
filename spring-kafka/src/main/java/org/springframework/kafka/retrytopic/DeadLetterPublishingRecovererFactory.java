@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,6 +54,7 @@ import org.springframework.util.Assert;
  *
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Soby Chacko
  * @since 2.7
  *
  */
@@ -237,6 +238,35 @@ public class DeadLetterPublishingRecovererFactory {
 		return recoverer;
 	}
 
+	/**
+	 * Log the exception before sending the record in error to the retry topic.
+	 * This method can be overridden by downstream applications to customize how the error is logged.
+	 * @param exception the exception that caused the error
+	 * @param consumerRecord the original consumer record
+	 * @param nextDestination the next topic where the record goes
+	 * @since 3.3.0
+	 */
+	public void maybeLogListenerException(Exception exception, ConsumerRecord<?, ?> consumerRecord, DestinationTopic nextDestination) {
+		if (nextDestination.isDltTopic()
+				&& !ListenerExceptionLoggingStrategy.NEVER.equals(this.loggingStrategy)) {
+			LOGGER.error(exception, () -> getErrorMessage(consumerRecord) + " and won't be retried. "
+					+ "Sending to DLT with name " + nextDestination.getDestinationName() + ".");
+		}
+		else if (nextDestination.isNoOpsTopic()
+				&& !ListenerExceptionLoggingStrategy.NEVER.equals(this.loggingStrategy)) {
+			LOGGER.error(exception, () -> getErrorMessage(consumerRecord) + " and won't be retried. "
+					+ "No further action will be taken with this record.");
+		}
+		else if (ListenerExceptionLoggingStrategy.EACH_ATTEMPT.equals(this.loggingStrategy)) {
+			LOGGER.error(exception, () -> getErrorMessage(consumerRecord) + ". "
+					+ "Sending to retry topic " + nextDestination.getDestinationName() + ".");
+		}
+		else {
+			LOGGER.debug(exception, () -> getErrorMessage(consumerRecord) + ". "
+					+ "Sending to retry topic " + nextDestination.getDestinationName() + ".");
+		}
+	}
+
 	private DeadLetterPublishingRecoverer create(
 			Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver,
 			BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
@@ -269,27 +299,6 @@ public class DeadLetterPublishingRecovererFactory {
 						? null
 						: resolveTopicPartition(cr, nextDestination);
 		};
-	}
-
-	private void maybeLogListenerException(Exception e, ConsumerRecord<?, ?> cr, DestinationTopic nextDestination) {
-		if (nextDestination.isDltTopic()
-				&& !ListenerExceptionLoggingStrategy.NEVER.equals(this.loggingStrategy)) {
-			LOGGER.error(e, () -> getErrorMessage(cr) + " and won't be retried. "
-					+ "Sending to DLT with name " + nextDestination.getDestinationName() + ".");
-		}
-		else if (nextDestination.isNoOpsTopic()
-				&& !ListenerExceptionLoggingStrategy.NEVER.equals(this.loggingStrategy)) {
-			LOGGER.error(e, () -> getErrorMessage(cr) + " and won't be retried. "
-					+ "No further action will be taken with this record.");
-		}
-		else if (ListenerExceptionLoggingStrategy.EACH_ATTEMPT.equals(this.loggingStrategy)) {
-			LOGGER.error(e, () -> getErrorMessage(cr) + ". "
-					+ "Sending to retry topic " + nextDestination.getDestinationName() + ".");
-		}
-		else {
-			LOGGER.debug(e, () -> getErrorMessage(cr) + ". "
-					+ "Sending to retry topic " + nextDestination.getDestinationName() + ".");
-		}
 	}
 
 	private static String getErrorMessage(ConsumerRecord<?, ?> cr) {
