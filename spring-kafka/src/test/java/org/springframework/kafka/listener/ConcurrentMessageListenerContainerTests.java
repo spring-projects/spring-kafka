@@ -1019,8 +1019,8 @@ public class ConcurrentMessageListenerContainerTests {
 
 		container.start();
 
-		MessageListenerContainer childContainer0 = container.getContainers().get(0);
-		MessageListenerContainer childContainer1 = container.getContainers().get(1);
+		KafkaMessageListenerContainer<Integer, String> childContainer0 = container.getContainers().get(0);
+		KafkaMessageListenerContainer<Integer, String> childContainer1 = container.getContainers().get(1);
 
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 		assertThat(container.getAssignedPartitions()).hasSize(2);
@@ -1062,9 +1062,9 @@ public class ConcurrentMessageListenerContainerTests {
 		assertThat(childContainer1.isRunning()).isTrue();
 		assertThat(childContainer0.isRunning()).isFalse();
 		assertThat(container.getContainers()).
-				contains((KafkaMessageListenerContainer<Integer, String>) childContainer0);
+				contains(childContainer0);
 		assertThat(container.getContainers()).
-				contains((KafkaMessageListenerContainer<Integer, String>) childContainer1);
+				contains(childContainer1);
 
 		container.stop();
 
@@ -1076,16 +1076,16 @@ public class ConcurrentMessageListenerContainerTests {
 		assertThat(concurrentContainerStopLatch.await(30, TimeUnit.SECONDS)).isTrue();
 
 		assertThat(container.getContainers()).
-				doesNotContain((KafkaMessageListenerContainer<Integer, String>) childContainer0);
+				doesNotContain(childContainer0);
 		assertThat(container.getContainers()).
-				doesNotContain((KafkaMessageListenerContainer<Integer, String>) childContainer1);
+				doesNotContain(childContainer1);
 
 		// Accept this start
 		container.start();
 		assertThat(container.getContainers()).
-				doesNotContain((KafkaMessageListenerContainer<Integer, String>) childContainer0);
+				doesNotContain(childContainer0);
 		assertThat(container.getContainers()).
-				doesNotContain((KafkaMessageListenerContainer<Integer, String>) childContainer1);
+				doesNotContain(childContainer1);
 
 		container.getContainers().forEach(containerForEach -> containerForEach.stop());
 		assertThat(container.getContainers()).isNotEmpty();
