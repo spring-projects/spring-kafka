@@ -34,6 +34,7 @@ import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.expression.BeanFactoryResolver;
 import org.springframework.context.expression.StandardBeanExpressionResolver;
+import org.springframework.core.MethodIntrospector;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.kafka.core.KafkaOperations;
@@ -64,6 +65,7 @@ import org.springframework.util.StringUtils;
  * @author Gary Russell
  * @author Adrian Chlebosz
  * @author Wang Zhiyang
+ * @author Artem Bilan
  *
  * @since 2.7
  *
@@ -228,8 +230,10 @@ public class RetryableTopicAnnotationProcessor {
 	}
 
 	private EndpointHandlerMethod getDltProcessor(Class<?> clazz, Object bean) {
-		return Arrays.stream(ReflectionUtils.getDeclaredMethods(clazz))
-				.filter(method -> AnnotationUtils.findAnnotation(method, DltHandler.class) != null)
+		ReflectionUtils.MethodFilter selector =
+				(method) -> AnnotationUtils.findAnnotation(method, DltHandler.class) != null;
+		return MethodIntrospector.selectMethods(clazz, selector)
+				.stream()
 				.map(method -> RetryTopicConfigurer.createHandlerMethodWith(bean, method))
 				.findFirst()
 				.orElse(RetryTopicConfigurer.DEFAULT_DLT_HANDLER);
