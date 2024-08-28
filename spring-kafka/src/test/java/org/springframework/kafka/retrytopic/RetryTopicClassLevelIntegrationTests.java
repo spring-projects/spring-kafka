@@ -93,6 +93,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  * Test class level non-blocking retries.
  *
  * @author Wang Zhiyang
+ * @author Artem Bilan
  *
  * @since 3.2
  */
@@ -227,7 +228,6 @@ class RetryTopicClassLevelIntegrationTests {
 		assertThat(awaitLatch(latchContainer.countDownLatch51)).isTrue();
 		assertThat(awaitLatch(latchContainer.countDownLatch52)).isTrue();
 		assertThat(awaitLatch(latchContainer.countDownLatchDltThree)).isTrue();
-		assertThat(awaitLatch(latchContainer.countDownLatchDltFour)).isTrue();
 		assertThat(listener1.topics).containsExactly(TWO_LISTENERS_TOPIC, TWO_LISTENERS_TOPIC
 				+ "-listener1-0", TWO_LISTENERS_TOPIC + "-listener1-1", TWO_LISTENERS_TOPIC + "-listener1-2",
 				TWO_LISTENERS_TOPIC + "-listener1-dlt");
@@ -387,6 +387,21 @@ class RetryTopicClassLevelIntegrationTests {
 		}
 	}
 
+	static class AbstractFifthTopicListener {
+
+		final List<String> topics = Collections.synchronizedList(new ArrayList<>());
+
+		@Autowired
+		CountDownLatchContainer container;
+
+		@DltHandler
+		public void annotatedDltMethod(ConsumerRecord<?, ?> record) {
+			this.topics.add(record.topic());
+			container.countDownLatchDltThree.countDown();
+		}
+
+	}
+
 	@RetryableTopic(attempts = "4",
 			backoff = @Backoff(250),
 			numPartitions = "2",
@@ -397,24 +412,13 @@ class RetryTopicClassLevelIntegrationTests {
 	@KafkaListener(id = "fifthTopicId1", topicPartitions = {@TopicPartition(topic = TWO_LISTENERS_TOPIC,
 			partitionOffsets = @PartitionOffset(partition = "0", initialOffset = "0"))},
 			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
-	static class FifthTopicListener1 {
-
-		final List<String> topics = Collections.synchronizedList(new ArrayList<>());
-
-		@Autowired
-		CountDownLatchContainer container;
+	static class FifthTopicListener1 extends AbstractFifthTopicListener {
 
 		@KafkaHandler
 		public void listenWithAnnotation(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			this.topics.add(receivedTopic);
 			container.countDownIfNotKnown(receivedTopic, container.countDownLatch51);
 			throw new RuntimeException("Annotated woooops... " + receivedTopic);
-		}
-
-		@DltHandler
-		public void annotatedDltMethod(ConsumerRecord<?, ?> record) {
-			this.topics.add(record.topic());
-			container.countDownLatchDltThree.countDown();
 		}
 
 	}
@@ -429,24 +433,13 @@ class RetryTopicClassLevelIntegrationTests {
 	@KafkaListener(id = "fifthTopicId2", topicPartitions = {@TopicPartition(topic = TWO_LISTENERS_TOPIC,
 			partitionOffsets = @PartitionOffset(partition = "1", initialOffset = "0"))},
 			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
-	static class FifthTopicListener2 {
-
-		final List<String> topics = Collections.synchronizedList(new ArrayList<>());
-
-		@Autowired
-		CountDownLatchContainer container;
+	static class FifthTopicListener2 extends AbstractFifthTopicListener {
 
 		@KafkaHandler
 		public void listenWithAnnotation2(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			this.topics.add(receivedTopic);
 			container.countDownLatch52.countDown();
 			throw new RuntimeException("Annotated woooops... " + receivedTopic);
-		}
-
-		@DltHandler
-		public void annotatedDltMethod(ConsumerRecord<?, ?> record) {
-			this.topics.add(record.topic());
-			container.countDownLatchDltFour.countDown();
 		}
 
 	}
@@ -575,9 +568,7 @@ class RetryTopicClassLevelIntegrationTests {
 
 		CountDownLatch countDownLatchDltTwo = new CountDownLatch(1);
 
-		CountDownLatch countDownLatchDltThree = new CountDownLatch(1);
-
-		CountDownLatch countDownLatchDltFour = new CountDownLatch(1);
+		CountDownLatch countDownLatchDltThree = new CountDownLatch(2);
 
 		CountDownLatch countDownLatchReuseOne = new CountDownLatch(2);
 
