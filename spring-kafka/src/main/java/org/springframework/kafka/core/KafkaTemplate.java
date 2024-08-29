@@ -508,11 +508,6 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		}
 	}
 
-	private String removeLeadingAndTrailingBrackets(String str) {
-		return StringUtils.trimTrailingCharacter(StringUtils.trimLeadingCharacter(str, '['),
-				']');
-	}
-
 	private String getAdminBootstrapAddress() {
 		// Retrieve bootstrap servers from KafkaAdmin bootstrap supplier if available
 		String adminServers = this.kafkaAdmin.getBootstrapServers();
@@ -1006,6 +1001,10 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		if (this.producerInterceptor != null) {
 			this.producerInterceptor.close();
 		}
+	}
+
+	private static String removeLeadingAndTrailingBrackets(String str) {
+		return StringUtils.trimTrailingCharacter(StringUtils.trimLeadingCharacter(str, '['), ']');
 	}
 
 	@SuppressWarnings("serial")
