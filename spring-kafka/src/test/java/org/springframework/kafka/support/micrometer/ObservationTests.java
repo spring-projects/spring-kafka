@@ -64,6 +64,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.lang.Nullable;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.util.StringUtils;
 
 import io.micrometer.common.KeyValues;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -204,7 +205,7 @@ public class ObservationTests {
 						KeyValues.of("spring.kafka.listener.id", "obs1-0", "baz", "qux"))
 				.hasTimerWithNameAndTags("spring.kafka.listener", KeyValues.of("spring.kafka.listener.id", "obs2-0"));
 		assertThat(admin.getConfigurationProperties())
-				.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString());
+				.containsEntry(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, List.of(broker.getBrokersAsString()));
 		// producer factory broker different to admin
 		KafkaAdmin pAdmin = KafkaTestUtils.getPropertyValue(template, "kafkaAdmin", KafkaAdmin.class);
 		assertThat(pAdmin.getOperationTimeout()).isEqualTo(admin.getOperationTimeout());
@@ -287,6 +288,14 @@ public class ObservationTests {
 				.hasMessage("obs5 error");
 	}
 
+	@Test
+	void kafkaAdminNotRecreatedIfBootstrapServersSameInProducerAndAdminConfig(
+			@Autowired @Qualifier("reuseAdminBeanKafkaTemplate") KafkaTemplate<Integer, String> template,
+			@Autowired KafkaAdmin kafkaAdmin) {
+		// See this issue for more details: https://github.com/spring-projects/spring-kafka/issues/3466
+		assertThat(template.getKafkaAdmin()).isSameAs(kafkaAdmin);
+	}
+
 	@Configuration
 	@EnableKafka
 	public static class Config {
@@ -295,17 +304,27 @@ public class ObservationTests {
 
 		@Bean
 		KafkaAdmin admin(EmbeddedKafkaBroker broker) {
+			String[] brokers = StringUtils.commaDelimitedListToStringArray(broker.getBrokersAsString());
+			List<String> brokersAsList = Arrays.asList(brokers);
 			KafkaAdmin admin = new KafkaAdmin(
-					Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString()));
+					Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, brokersAsList));
 			admin.setOperationTimeout(42);
 			return admin;
 		}
 
 		@Bean
+		@Primary
 		ProducerFactory<Integer, String> producerFactory(EmbeddedKafkaBroker broker) {
 			Map<String, Object> producerProps = KafkaTestUtils.producerProps(broker);
 			producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString() + ","
 					+ broker.getBrokersAsString());
+			return new DefaultKafkaProducerFactory<>(producerProps);
+		}
+
+		@Bean
+		ProducerFactory<Integer, String> customProducerFactory(EmbeddedKafkaBroker broker) {
+			Map<String, Object> producerProps = KafkaTestUtils.producerProps(broker);
+			producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString());
 			return new DefaultKafkaProducerFactory<>(producerProps);
 		}
 
@@ -335,6 +354,14 @@ public class ObservationTests {
 
 		@Bean
 		KafkaTemplate<Integer, String> throwableTemplate(ProducerFactory<Integer, String> pf) {
+			KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+			template.setObservationEnabled(true);
+			return template;
+		}
+
+		@Bean
+		KafkaTemplate<Integer, String> reuseAdminBeanKafkaTemplate(
+				@Qualifier("customProducerFactory") ProducerFactory<Integer, String> pf) {
 			KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 			template.setObservationEnabled(true);
 			return template;

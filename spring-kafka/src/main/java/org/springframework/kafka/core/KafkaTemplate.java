@@ -80,6 +80,7 @@ import org.springframework.messaging.converter.SmartMessageConverter;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
@@ -485,8 +486,9 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 			if (this.kafkaAdmin == null) {
 				this.kafkaAdmin = this.applicationContext.getBeanProvider(KafkaAdmin.class).getIfUnique();
 				if (this.kafkaAdmin != null) {
-					Object producerServers = this.producerFactory.getConfigurationProperties()
-							.get(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG);
+					String producerServers = this.producerFactory.getConfigurationProperties()
+							.get(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
+					producerServers = removeLeadingAndTrailingBrackets(producerServers);
 					String adminServers = getAdminBootstrapAddress();
 					if (!producerServers.equals(adminServers)) {
 						Map<String, Object> props = new HashMap<>(this.kafkaAdmin.getConfigurationProperties());
@@ -510,7 +512,6 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	private String getAdminBootstrapAddress() {
 		// Retrieve bootstrap servers from KafkaAdmin bootstrap supplier if available
 		String adminServers = this.kafkaAdmin.getBootstrapServers();
-
 		// Fallback to configuration properties if bootstrap servers are not set
 		if (adminServers == null) {
 			adminServers = this.kafkaAdmin.getConfigurationProperties().getOrDefault(
@@ -518,8 +519,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 					""
 			).toString();
 		}
-
-		return adminServers;
+		return removeLeadingAndTrailingBrackets(adminServers);
 	}
 
 	@Nullable
@@ -1005,6 +1005,10 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		if (this.producerInterceptor != null) {
 			this.producerInterceptor.close();
 		}
+	}
+
+	private static String removeLeadingAndTrailingBrackets(String str) {
+		return StringUtils.trimTrailingCharacter(StringUtils.trimLeadingCharacter(str, '['), ']');
 	}
 
 	@SuppressWarnings("serial")
