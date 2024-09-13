@@ -34,6 +34,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.AlterConfigOp;
@@ -286,7 +287,7 @@ public class KafkaAdminTests {
 		KafkaAdmin admin = new KafkaAdmin(Map.of()) {
 
 			@Override
-			AdminClient createAdmin() {
+			protected Admin createAdmin() {
 				return mock;
 			}
 
