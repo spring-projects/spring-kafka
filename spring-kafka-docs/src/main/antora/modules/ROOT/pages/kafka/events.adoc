@@ -8,7 +8,7 @@ The following Spring application events are published by listener containers and
 * `ConsumerFailedToStartEvent`: published if no `ConsumerStartingEvent` is published within the `consumerStartTimeout` container property.
 This event might signal that the configured task executor has insufficient threads to support the containers it is used in and their concurrency.
 An error message is also logged when this condition occurs.
-* `ListenerContainerIdleEvent`: published when no messages have been received in `idleInterval` (if configured).
+* `ListenerContainerIdleEvent`: published when no messages have been received in `idleEventInterval` (if configured).
 * `ListenerContainerNoLongerIdleEvent`: published when a record is consumed after previously publishing a `ListenerContainerIdleEvent`.
 * `ListenerContainerPartitionIdleEvent`: published when no messages have been received from that partition in `idlePartitionEventInterval` (if configured).
 * `ListenerContainerPartitionNoLongerIdleEvent`: published when a record is consumed from a partition that has previously published a `ListenerContainerPartitionIdleEvent`.
