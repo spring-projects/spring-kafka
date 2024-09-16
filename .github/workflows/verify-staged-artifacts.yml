@@ -25,6 +25,7 @@ jobs:
         with:
           repository: spring-projects/spring-integration
           show-progress: false
+          ref: 6.3.x
 
       - name: Set up Gradle
         uses: spring-io/spring-gradle-build-action@v2
