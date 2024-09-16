@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2021 the original author or authors.
+ * Copyright 2020-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import org.apache.kafka.common.TopicPartition;
  * idle events.
  *
  * @author Gary Russell
+ * @author Borahm Lee
  * @since 2.6.2
  */
 public class ListenerContainerPartitionNoLongerIdleEvent extends KafkaEvent {
@@ -92,9 +93,9 @@ public class ListenerContainerPartitionNoLongerIdleEvent extends KafkaEvent {
 
 	@Override
 	public String toString() {
-		return "ListenerContainerNoLongerIdleEvent [idleTime="
+		return "ListenerContainerPartitionNoLongerIdleEvent [idleTime="
 				+ ((float) this.idleTime / 1000) + "s, listenerId=" + this.listenerId // NOSONAR magic #
 				+ ", container=" + getSource()
-				+ ", topicPartitions=" + this.topicPartition + "]";
+				+ ", topicPartition=" + this.topicPartition + "]";
 	}
 }
