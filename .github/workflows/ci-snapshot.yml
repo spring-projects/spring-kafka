@@ -17,12 +17,10 @@ concurrency:
 
 jobs:
   build-snapshot:
-    uses: spring-io/spring-github-workflows/.github/workflows/spring-artifactory-gradle-snapshot.yml@v3
+    uses: spring-io/spring-github-workflows/.github/workflows/spring-artifactory-gradle-snapshot.yml@main
     with:
       gradleTasks: ${{ github.event_name == 'schedule' && '--rerun-tasks' || '' }}
     secrets:
-      GRADLE_ENTERPRISE_CACHE_USER: ${{ secrets.GRADLE_ENTERPRISE_CACHE_USER }}
-      GRADLE_ENTERPRISE_CACHE_PASSWORD: ${{ secrets.GRADLE_ENTERPRISE_CACHE_PASSWORD }}
-      GRADLE_ENTERPRISE_SECRET_ACCESS_KEY: ${{ secrets.GRADLE_ENTERPRISE_SECRET_ACCESS_KEY }}
+      DEVELOCITY_ACCESS_KEY: ${{ secrets.GRADLE_ENTERPRISE_SECRET_ACCESS_KEY }}
       ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
       ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
