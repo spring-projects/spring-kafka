@@ -16,7 +16,7 @@ jobs:
     with:
       build-refname: ${{ inputs.build-refname }}
     secrets:
-      DEVELOCITY_ACCESS_KEY: ${{ secrets.GRADLE_ENTERPRISE_SECRET_ACCESS_KEY }}
+      DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
       DOCS_USERNAME: ${{ secrets.DOCS_USERNAME }}
       DOCS_HOST: ${{ secrets.DOCS_HOST }}
       DOCS_SSH_KEY: ${{ secrets.DOCS_SSH_KEY }}
