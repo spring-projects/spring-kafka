@@ -142,7 +142,7 @@ For example, if you have three topics with five partitions each and you want to 
 This is because the default Kafka `PartitionAssignor` is the `RangeAssignor` (see its Javadoc).
 For this scenario, you may want to consider using the `RoundRobinAssignor` instead, which distributes the partitions across all of the consumers.
 Then, each consumer is assigned one topic or partition.
-To change the `PartitionAssignor`, you can set the `partition.assignment.strategy` consumer property (`ConsumerConfigs.PARTITION_ASSIGNMENT_STRATEGY_CONFIG`) in the properties provided to the `DefaultKafkaConsumerFactory`.
+To change the `PartitionAssignor`, you can set the `partition.assignment.strategy` consumer property (`ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG`) in the properties provided to the `DefaultKafkaConsumerFactory`.
 
 When using Spring Boot, you can assign set the strategy as follows:
 
