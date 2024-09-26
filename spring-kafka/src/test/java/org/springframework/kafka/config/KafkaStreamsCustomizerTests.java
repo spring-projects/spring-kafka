@@ -59,6 +59,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 /**
  * @author Nurettin Yilmaz
  * @author Artem Bilan
+ * @author Almog Gavra
  *
  * @since 2.1.5
  */
