@@ -36,6 +36,15 @@ import org.apache.kafka.streams.Topology;
 public interface KafkaStreamsCustomizer {
 
 	/**
+	 * Customize the instantiation of the {@code KafkaStreams} instance. This
+	 * happens before the modifications made by {@link StreamsBuilderFactoryBean}.
+	 *
+	 * @param topology the full topology
+	 * @param properties the configuration properties
+	 * @param clientSupplier the client supplier
+	 *
+	 * @return a new instance of {@link KafkaStreams}
+	 *
 	 * @since 3.3.0
 	 */
 	default KafkaStreams initKafkaStreams(
@@ -46,6 +55,12 @@ public interface KafkaStreamsCustomizer {
 		return new KafkaStreams(topology, properties, clientSupplier);
 	}
 
+	/**
+	 * Customize the instance of {@code KafkaStreams} after {@link StreamsBuilderFactoryBean}
+	 * has applied its default configurations.
+	 *
+	 * @param kafkaStreams the instantiated Kafka Streams instance
+	 */
 	void customize(KafkaStreams kafkaStreams);
 
 }
