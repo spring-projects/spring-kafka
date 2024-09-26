@@ -45,3 +45,8 @@ For more details, see xref:kafka/sending-messages.adoc[Sending Messages] section
 === Customizing Logging in DeadLetterPublishingRecovererFactory
 
 When using `DeadLetterPublishingRecovererFactory`, the user applications can override the `maybeLogListenerException` method to customize the logging behavior.
+
+[[x33-customize-kafka-streams-implementation]]
+=== Customizing The Implementation of Kafka Streams
+
+When using `KafkaStreamsCustomizer` it is now possible to return a custom implementation of the `KafkaStreams` object by overriding the `initKafkaStreams` method.
