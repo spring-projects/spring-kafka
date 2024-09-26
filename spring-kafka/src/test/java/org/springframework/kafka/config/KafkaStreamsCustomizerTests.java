@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
@@ -95,6 +96,7 @@ public class KafkaStreamsCustomizerTests {
 				.isEqualTo(1000);
 		assertThat(this.config.builderConfigured.get()).isTrue();
 		assertThat(this.config.topologyConfigured.get()).isTrue();
+		assertThat(this.config.ksInitialized.get()).isTrue();
 		assertThat(this.meterRegistry.get("kafka.consumer.coordinator.join.total")
 				.tag("customTag", "stream")
 				.tag("spring.id", KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_BUILDER_BEAN_NAME)
@@ -117,6 +119,8 @@ public class KafkaStreamsCustomizerTests {
 		final AtomicBoolean builderConfigured = new AtomicBoolean();
 
 		final AtomicBoolean topologyConfigured = new AtomicBoolean();
+
+		final AtomicBoolean ksInitialized = new AtomicBoolean();
 
 		@Autowired
 		EmbeddedKafkaBroker broker;
@@ -168,7 +172,26 @@ public class KafkaStreamsCustomizerTests {
 		}
 
 		private KafkaStreamsCustomizer customizer() {
-			return kafkaStreams -> kafkaStreams.setStateListener(STATE_LISTENER);
+			return new KafkaStreamsCustomizer() {
+				@Override
+				public KafkaStreams initKafkaStreams(
+						final Topology topology,
+						final Properties properties,
+						final KafkaClientSupplier clientSupplier
+				) {
+					ksInitialized.set(true);
+					return KafkaStreamsCustomizer.super.initKafkaStreams(
+							topology,
+							properties,
+							clientSupplier
+					);
+				}
+
+				@Override
+				public void customize(final KafkaStreams kafkaStreams) {
+					kafkaStreams.setStateListener(STATE_LISTENER);
+				}
+			};
 		}
 
 		@Bean

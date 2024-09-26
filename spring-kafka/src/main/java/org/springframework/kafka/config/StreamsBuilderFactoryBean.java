@@ -92,7 +92,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	private KafkaStreamsInfrastructureCustomizer infrastructureCustomizer = new KafkaStreamsInfrastructureCustomizer() {
 	};
 
-	private KafkaStreamsCustomizer kafkaStreamsCustomizer;
+	private KafkaStreamsCustomizer kafkaStreamsCustomizer = kafkaStreams -> { };
 
 	private KafkaStreams.StateListener stateListener;
 
@@ -361,15 +361,15 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 				try {
 					Assert.state(this.properties != null,
 							"streams configuration properties must not be null");
-					this.kafkaStreams = new KafkaStreams(this.topology, this.properties, this.clientSupplier);
+					this.kafkaStreams = this.kafkaStreamsCustomizer.initKafkaStreams(
+							this.topology, this.properties, this.clientSupplier
+					);
 					this.kafkaStreams.setStateListener(this.stateListener);
 					this.kafkaStreams.setGlobalStateRestoreListener(this.stateRestoreListener);
 					if (this.streamsUncaughtExceptionHandler != null) {
 						this.kafkaStreams.setUncaughtExceptionHandler(this.streamsUncaughtExceptionHandler);
 					}
-					if (this.kafkaStreamsCustomizer != null) {
-						this.kafkaStreamsCustomizer.customize(this.kafkaStreams);
-					}
+					this.kafkaStreamsCustomizer.customize(this.kafkaStreams);
 					if (this.cleanupConfig.cleanupOnStart()) {
 						this.kafkaStreams.cleanUp();
 					}
