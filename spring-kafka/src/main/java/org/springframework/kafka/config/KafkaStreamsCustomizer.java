@@ -26,6 +26,7 @@ import org.apache.kafka.streams.Topology;
  * Callback interface that can be used to configure {@link KafkaStreams} directly.
  *
  * @author Nurettin Yilmaz
+ * @author Almog Gavra
  *
  * @since 2.1.5
  *
@@ -34,6 +35,9 @@ import org.apache.kafka.streams.Topology;
 @FunctionalInterface
 public interface KafkaStreamsCustomizer {
 
+	/**
+	 * @since 3.3.0
+	 */
 	default KafkaStreams initKafkaStreams(
 			Topology topology,
 			Properties properties,
