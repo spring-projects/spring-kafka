@@ -20,7 +20,7 @@ plugins {
 	id 'org.ajoberstar.grgit' version '5.2.2'
 	id 'io.spring.nohttp' version '0.0.11'
 	id 'io.spring.dependency-management' version '1.1.6' apply false
-	id 'com.github.spotbugs' version '6.0.22'
+	id 'com.github.spotbugs' version '6.0.23'
 	id 'io.freefair.aggregate-javadoc' version '8.6'
 }
 
@@ -67,7 +67,7 @@ ext {
 	mockitoVersion = '5.10.0'
 	reactorVersion = '2023.0.10'
 	scalaVersion = '2.13'
-	springBootVersion = '3.2.9' // docs module
+	springBootVersion = '3.2.10' // docs module
 	springDataVersion = '2024.0.4'
 	springRetryVersion = '2.0.9'
 	springVersion = '6.1.13'
