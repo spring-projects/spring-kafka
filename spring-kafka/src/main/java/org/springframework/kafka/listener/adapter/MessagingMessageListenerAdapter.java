@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
@@ -46,6 +47,7 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.expression.spel.support.StandardTypeConverter;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.AsyncRetryableException;
 import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
@@ -151,6 +153,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	private boolean splitIterables = true;
 
 	private String correlationHeaderName = KafkaHeaders.CORRELATION_ID;
+
+	private BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback;
 
 	/**
 	 * Create an instance with the provided bean and method.
@@ -664,6 +668,15 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	protected void asyncFailure(Object request, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer,
 			Throwable t, Message<?> source) {
 
+		if (t.getCause() instanceof AsyncRetryableException) {
+			if (request instanceof ConsumerRecord) {
+				ConsumerRecord<K, V> record = (ConsumerRecord<K, V>) request;
+				AsyncRetryableException ex = (AsyncRetryableException) t.getCause();
+				asyncRetryCallback.accept(record, ex);
+				return;
+			}
+		}
+
 		try {
 			handleException(request, acknowledgment, consumer, source,
 					new ListenerExecutionFailedException(createMessagingErrorMessage(
@@ -885,6 +898,10 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		public void acknowledge() {
 		}
 
+	}
+
+	public void setAsyncRetryCallback(BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback) {
+		this.asyncRetryCallback = asyncRetryCallback;
 	}
 
 }

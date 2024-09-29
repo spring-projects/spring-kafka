@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import java.math.BigInteger;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.function.BiConsumer;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -142,5 +143,10 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 	@Override
 	public void onMessage(ConsumerRecord<K, V> data, Consumer<?, ?> consumer) {
 		onMessage(data, null, consumer);
+	}
+
+	@Override
+	public void setAsyncRetryCallback(BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback) {
+		this.delegate.setAsyncRetryCallback(asyncRetryCallback);
 	}
 }

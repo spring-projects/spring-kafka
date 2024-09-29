@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import java.lang.Thread.UncaughtExceptionHandler;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.AbstractMap.SimpleEntry;
@@ -895,6 +896,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.wantsFullRecords = false;
 				this.pollThreadStateProcessor = setUpPollProcessor(false);
 				this.observationEnabled = this.containerProperties.isObservationEnabled();
+
+				final BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback
+						= (cRecord, runtimeException) ->
+						this.invokeErrorHandlerBySingleRecord(cRecord, runtimeException);
+				this.listener.setAsyncRetryCallback(asyncRetryCallback);
 			}
 			else {
 				throw new IllegalArgumentException("Listener must be one of 'MessageListener', "
@@ -2823,6 +2829,42 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				catch (Exception ex) { // NOSONAR
 					throw decorateException(ex);
+				}
+			}
+		}
+
+		private void invokeErrorHandlerBySingleRecord(final ConsumerRecord<K, V> cRecord, RuntimeException rte) {
+			if (this.commonErrorHandler.seeksAfterHandling() || rte instanceof CommitFailedException) {
+				try {
+					if (this.producer == null) {
+						processCommits();
+					}
+				}
+				catch (Exception ex) { // NO SONAR
+					this.logger.error(ex, "Failed to commit before handling error");
+				}
+				List<ConsumerRecord<?, ?>> records = new ArrayList<>();
+				records.add(cRecord);
+				this.commonErrorHandler.handleRemaining(rte, records, this.consumer,
+														KafkaMessageListenerContainer.this.thisOrParentContainer);
+			}
+			else {
+				boolean handled = false;
+				try {
+					handled = this.commonErrorHandler.handleOne(rte, cRecord, this.consumer,
+																KafkaMessageListenerContainer.this.thisOrParentContainer);
+				}
+				catch (Exception ex) {
+					this.logger.error(ex, "ErrorHandler threw unexpected exception");
+				}
+				Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new LinkedHashMap<>();
+				if (!handled) {
+					records.computeIfAbsent(new TopicPartition(cRecord.topic(), cRecord.partition()),
+											tp -> new ArrayList<>()).add(cRecord);
+				}
+				if (!records.isEmpty()) {
+					this.remainingRecords = new ConsumerRecords<>(records);
+					this.pauseForPending = true;
 				}
 			}
 		}
