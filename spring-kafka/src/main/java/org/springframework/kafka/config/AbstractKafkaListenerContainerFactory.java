@@ -32,7 +32,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.AfterRollbackProcessor;
 import org.springframework.kafka.listener.BatchInterceptor;
@@ -90,7 +90,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	private ApplicationEventPublisher applicationEventPublisher;
 
-	private KafkaTemplate<?, ?> replyTemplate;
+	private KafkaOperations<?, ?> replyTemplate;
 
 	private AfterRollbackProcessor<? super K, ? super V> afterRollbackProcessor;
 
@@ -209,11 +209,11 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
-	 * Set the {@link KafkaTemplate} to use to send replies.
+	 * Set the {@link KafkaOperations} to use to send replies.
 	 * @param replyTemplate the template.
 	 * @since 2.0
 	 */
-	public void setReplyTemplate(KafkaTemplate<?, ?> replyTemplate) {
+	public void setReplyTemplate(KafkaOperations<?, ?> replyTemplate) {
 		if (replyTemplate instanceof ReplyingKafkaOperations) {
 			this.logger.warn(
 					"The 'replyTemplate' should not be an implementation of 'ReplyingKafkaOperations'; "
@@ -401,7 +401,6 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * @param instance the container instance to configure.
 	 * @param endpoint the endpoint.
 	 */
-	@SuppressWarnings("deprecation")
 	protected void initializeContainer(C instance, KafkaListenerEndpoint endpoint) {
 		ContainerProperties properties = instance.getContainerProperties();
 		BeanUtils.copyProperties(this.containerProperties, properties, "topics", "topicPartitions", "topicPattern",

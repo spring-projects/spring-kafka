@@ -45,7 +45,7 @@ import org.springframework.expression.common.LiteralExpression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.expression.spel.support.StandardTypeConverter;
-import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
@@ -136,7 +136,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	private Expression replyTopicExpression;
 
 	@SuppressWarnings("rawtypes")
-	private KafkaTemplate replyTemplate;
+	private KafkaOperations replyTemplate;
 
 	private boolean hasAckParameter;
 
@@ -287,7 +287,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * @param replyTemplate the template.
 	 * @since 2.0
 	 */
-	public void setReplyTemplate(KafkaTemplate<?, ?> replyTemplate) {
+	public void setReplyTemplate(KafkaOperations<?, ?> replyTemplate) {
 		this.replyTemplate = replyTemplate;
 	}
 
