@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -668,23 +669,28 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	protected void asyncFailure(Object request, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer,
 			Throwable t, Message<?> source) {
 
-		if (t.getCause() instanceof AsyncRetryableException) {
-			if (request instanceof ConsumerRecord) {
-				ConsumerRecord<K, V> record = (ConsumerRecord<K, V>) request;
-				AsyncRetryableException ex = (AsyncRetryableException) t.getCause();
-				asyncRetryCallback.accept(record, ex);
-				return;
-			}
-		}
-
 		try {
-			handleException(request, acknowledgment, consumer, source,
-					new ListenerExecutionFailedException(createMessagingErrorMessage(
-							"Async Fail", source.getPayload()), t));
+			if (t instanceof CompletionException) {
+				// For CompletableFuture Object
+				handleException(request, acknowledgment, consumer, source,
+								new ListenerExecutionFailedException(createMessagingErrorMessage(
+										"Async Fail", source.getPayload()), t.getCause()));
+			}
+			else {
+				// For Mono Object.
+				handleException(request, acknowledgment, consumer, source,
+								new ListenerExecutionFailedException(createMessagingErrorMessage(
+										"Async Fail", source.getPayload()), t));
+			}
 		}
 		catch (Throwable ex) {
 			this.logger.error(t, () -> "Future, Mono, or suspend function was completed with an exception for " + source);
 			acknowledge(acknowledgment);
+			if (request instanceof ConsumerRecord &&
+				ex instanceof RuntimeException) {
+				ConsumerRecord<K, V> record = (ConsumerRecord<K, V>) request;
+				asyncRetryCallback.accept(record, (RuntimeException) ex);
+			}
 		}
 	}
 

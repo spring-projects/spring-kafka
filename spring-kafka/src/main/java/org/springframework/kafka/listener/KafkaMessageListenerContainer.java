@@ -74,6 +74,7 @@ import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeader;
 
+import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.ApplicationContext;
@@ -897,10 +898,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.pollThreadStateProcessor = setUpPollProcessor(false);
 				this.observationEnabled = this.containerProperties.isObservationEnabled();
 
-				final BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback
-						= (cRecord, runtimeException) ->
-						this.invokeErrorHandlerBySingleRecord(cRecord, runtimeException);
-				this.listener.setAsyncRetryCallback(asyncRetryCallback);
+				if (!AopUtils.isAopProxy(listener)) {
+					final BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback
+							= (cRecord, runtimeException) ->
+							this.invokeErrorHandlerBySingleRecord(cRecord, runtimeException);
+					this.listener.setAsyncRetryCallback(asyncRetryCallback);
+				}
 			}
 			else {
 				throw new IllegalArgumentException("Listener must be one of 'MessageListener', "
