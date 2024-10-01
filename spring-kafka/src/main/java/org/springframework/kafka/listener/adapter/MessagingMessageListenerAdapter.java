@@ -47,8 +47,8 @@ import org.springframework.expression.common.LiteralExpression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.expression.spel.support.StandardTypeConverter;
+import org.springframework.kafka.core.FailedRecordTuple;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.listener.AsyncRetryableException;
 import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
@@ -94,6 +94,7 @@ import reactor.core.publisher.Mono;
  * @author Wang ZhiYang
  * @author Huijin Hong
  * @author Soby Chacko
+ * @author Sanghyeok An
  */
 public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware, AsyncRepliesAware {
 
@@ -157,6 +158,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	private BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback;
 
+	private java.util.function.Consumer<FailedRecordTuple> callbackForAsyncFailureQueue;
+
 	/**
 	 * Create an instance with the provided bean and method.
 	 * @param bean the bean.
@@ -164,6 +167,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 */
 	protected MessagingMessageListenerAdapter(Object bean, Method method) {
 		this(bean, method, null);
+		System.out.println("here");
 	}
 
 	/**
@@ -689,7 +693,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			if (request instanceof ConsumerRecord &&
 				ex instanceof RuntimeException) {
 				ConsumerRecord<K, V> record = (ConsumerRecord<K, V>) request;
-				asyncRetryCallback.accept(record, (RuntimeException) ex);
+				FailedRecordTuple failedRecordTuple = new FailedRecordTuple(record, (RuntimeException) ex);
+				this.callbackForAsyncFailureQueue.accept(failedRecordTuple);
 			}
 		}
 	}
@@ -908,6 +913,10 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	public void setAsyncRetryCallback(BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback) {
 		this.asyncRetryCallback = asyncRetryCallback;
+	}
+
+	public void putInAsyncFailureQueue(java.util.function.Consumer<FailedRecordTuple> callbackForAsyncFailureQueue) {
+		this.callbackForAsyncFailureQueue = callbackForAsyncFailureQueue;
 	}
 
 }

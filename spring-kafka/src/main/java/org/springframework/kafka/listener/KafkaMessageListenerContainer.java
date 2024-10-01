@@ -16,7 +16,6 @@
 
 package org.springframework.kafka.listener;
 
-import java.lang.Thread.UncaughtExceptionHandler;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.AbstractMap.SimpleEntry;
@@ -39,6 +38,7 @@ import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledFuture;
@@ -84,6 +84,7 @@ import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.FailedRecordTuple;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaResourceHolder;
 import org.springframework.kafka.event.ConsumerFailedToStartEvent;
@@ -107,6 +108,7 @@ import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.listener.ContainerProperties.EOSMode;
+import org.springframework.kafka.listener.FailedRecordTracker.FailedRecord;
 import org.springframework.kafka.listener.adapter.AsyncRepliesAware;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -842,6 +844,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private volatile long lastPoll = System.currentTimeMillis();
 
+		private final ConcurrentLinkedDeque<FailedRecordTuple<K, V>> failedRecords = new ConcurrentLinkedDeque();
+
+
 		@SuppressWarnings(UNCHECKED)
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType,
 				ObservationRegistry observationRegistry) {
@@ -899,10 +904,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.observationEnabled = this.containerProperties.isObservationEnabled();
 
 				if (!AopUtils.isAopProxy(listener)) {
-					final BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback
-							= (cRecord, runtimeException) ->
-							this.invokeErrorHandlerBySingleRecord(cRecord, runtimeException);
-					this.listener.setAsyncRetryCallback(asyncRetryCallback);
+					final java.util.function.Consumer<FailedRecordTuple> callbackForAsyncFailureQueue =
+							(fRecord) -> this.failedRecords.addLast(fRecord);
+					this.listener.setCallbackForAsyncFailureQueue(callbackForAsyncFailureQueue);
 				}
 			}
 			else {
@@ -1303,6 +1307,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			boolean failedAuthRetry = false;
 			this.lastReceive = System.currentTimeMillis();
 			while (isRunning()) {
+
+				try {
+					handleAsyncFailure();
+				} catch (Exception e) {
+					// TODO: Need to improve error handling.
+					// TODO: Need to determine how to handle a failed message.
+					logger.error("Failed to process re-try messages. ");
+				}
+
 				try {
 					pollAndInvoke();
 					if (failedAuthRetry) {
@@ -1441,6 +1454,19 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (!this.consumerPaused) {
 					resumePartitionsIfNecessary();
 				}
+			}
+		}
+
+		protected void handleAsyncFailure() {
+			List<FailedRecordTuple> copyFailedRecords = new ArrayList<>();
+			while (!this.failedRecords.isEmpty()) {
+				FailedRecordTuple failedRecordTuple = this.failedRecords.pollFirst();
+				copyFailedRecords.add(failedRecordTuple);
+			}
+
+			if (!copyFailedRecords.isEmpty()) {
+				copyFailedRecords.forEach(failedRecordTuple ->
+												  this.invokeErrorHandlerBySingleRecord(failedRecordTuple.record(), failedRecordTuple.ex()));
 			}
 		}
 
