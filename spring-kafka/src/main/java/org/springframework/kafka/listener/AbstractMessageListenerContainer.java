@@ -75,7 +75,7 @@ import org.springframework.util.StringUtils;
  */
 public abstract class AbstractMessageListenerContainer<K, V>
 		implements GenericMessageListenerContainer<K, V>, BeanNameAware, ApplicationEventPublisherAware,
-			ApplicationContextAware {
+		ApplicationContextAware {
 
 	/**
 	 * The default {@link org.springframework.context.SmartLifecycle} phase for listener
@@ -142,7 +142,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	@Nullable
 	private KafkaAdmin kafkaAdmin;
-
 
 	/**
 	 * Construct an instance with the provided factory and properties.
@@ -609,27 +608,35 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @since 2.3.8
 	 */
 	public final void stop(boolean wait) {
-		this.lifecycleLock.lock();
-		try {
-			if (isRunning()) {
-				if (wait) {
-					final CountDownLatch latch = new CountDownLatch(1);
+		if (isRunning()) {
+			if (wait) {
+				final CountDownLatch latch = new CountDownLatch(1);
+				this.lifecycleLock.lock();
+				try {
+
 					doStop(latch::countDown);
-					try {
-						latch.await(this.containerProperties.getShutdownTimeout(), TimeUnit.MILLISECONDS); // NOSONAR
-						publishContainerStoppedEvent();
-					}
-					catch (@SuppressWarnings("unused") InterruptedException e) {
-						Thread.currentThread().interrupt();
-					}
 				}
-				else {
-					doStop(this::publishContainerStoppedEvent);
+				finally {
+					this.lifecycleLock.unlock();
+				}
+				try {
+					latch.await(this.containerProperties.getShutdownTimeout(), TimeUnit.MILLISECONDS); // NOSONAR
+					publishContainerStoppedEvent();
+				}
+				catch (@SuppressWarnings("unused") InterruptedException e) {
+					Thread.currentThread().interrupt();
 				}
 			}
-		}
-		finally {
-			this.lifecycleLock.unlock();
+			else {
+				this.lifecycleLock.lock();
+				try {
+					doStop(this::publishContainerStoppedEvent);
+				}
+				finally {
+					this.lifecycleLock.unlock();
+				}
+
+			}
 		}
 	}
 
@@ -706,7 +713,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 			@Override
 			public void onPartitionsLost(Collection<TopicPartition> partitions) {
 				AbstractMessageListenerContainer.this.logger.info(() ->
-				getGroupId() + ": partitions lost: " + partitions);
+						getGroupId() + ": partitions lost: " + partitions);
 			}
 
 		};

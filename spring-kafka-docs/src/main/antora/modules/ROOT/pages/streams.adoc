@@ -82,9 +82,16 @@ A new `KafkaStreams` is created on each `start()`.
 You might also consider using different `StreamsBuilderFactoryBean` instances, if you would like to control the lifecycles for `KStream` instances separately.
 
 You also can specify `KafkaStreams.StateListener`, `Thread.UncaughtExceptionHandler`, and `StateRestoreListener` options on the `StreamsBuilderFactoryBean`, which are delegated to the internal `KafkaStreams` instance.
-Also, apart from setting those options indirectly on `StreamsBuilderFactoryBean`, starting with _version 2.1.5_, you can use a `KafkaStreamsCustomizer` callback interface to configure an inner `KafkaStreams` instance.
+
+Also, apart from setting those options indirectly on `StreamsBuilderFactoryBean`, you can use a `KafkaStreamsCustomizer` callback interface to:
+
+1. (from _version 2.1.5_) configure an inner `KafkaStreams` instance using `customize(KafkaStreams)`
+2. (from _version 3.3.0_) instantiate a custom implementation of `KafkaStreams` using `initKafkaStreams(Topology, Properties, KafkaClientSupplier)`
+
 Note that `KafkaStreamsCustomizer` overrides the options provided by `StreamsBuilderFactoryBean`.
+
 If you need to perform some `KafkaStreams` operations directly, you can access that internal `KafkaStreams` instance by using `StreamsBuilderFactoryBean.getKafkaStreams()`.
+
 You can autowire `StreamsBuilderFactoryBean` bean by type, but you should be sure to use the full type in the bean definition, as the following example shows:
 
 [source,java]
@@ -375,9 +382,9 @@ When calling this method, the user can specifially ask for the proper state stor
 
 When trying to retrieve the state store using the `KafkaStreamsInteractiveQueryService`, there is a chance that the state store might not be found for various reasons.
 If those reasons are transitory, `KafkaStreamsInteractiveQueryService` provides an option to retry the retrieval of the state store by allowing to inject a custom `RetryTemplate`.
-By default, the `RetryTemmplate` that is used in `KafkaStreamsInteractiveQueryService` uses a maximum attempts of three with a fixed backoff of one second.
+By default, the `RetryTemplate` that is used in `KafkaStreamsInteractiveQueryService` uses a maximum attempts of three with a fixed backoff of one second.
 
-Here is how you can inject a custom `RetryTemmplate` into `KafkaStreamsInteractiveQueryService` with the maximum attempts of ten.
+Here is how you can inject a custom `RetryTemplate` into `KafkaStreamsInteractiveQueryService` with the maximum attempts of ten.
 
 [source, java]
 ----

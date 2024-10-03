@@ -50,3 +50,9 @@ When using `DeadLetterPublishingRecovererFactory`, the user applications can ove
 === Customize Admin client in KafkaAdmin
 
 When extending `KafkaAdmin`, user applications may override the `createAdmin` method to customize Admin client creation.
+
+[[x33-customize-kafka-streams-implementation]]
+=== Customizing The Implementation of Kafka Streams
+
+When using `KafkaStreamsCustomizer` it is now possible to return a custom implementation of the `KafkaStreams` object by overriding the `initKafkaStreams` method.
+
