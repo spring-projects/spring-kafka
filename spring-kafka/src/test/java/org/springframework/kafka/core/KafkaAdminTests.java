@@ -70,6 +70,7 @@ import org.springframework.util.ReflectionUtils;
 /**
  * @author Gary Russell
  * @author Adrian Gygax
+ * @author Anders Swanson
  *
  * @since 1.3
  */

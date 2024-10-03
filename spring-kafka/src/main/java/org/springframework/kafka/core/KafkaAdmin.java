@@ -77,6 +77,7 @@ import org.springframework.util.Assert;
  * @author Adrian Gygax
  * @author Sanghyeok An
  * @author Valentina Armenise
+ * @author Anders Swanson
  *
  * @since 1.3
  */
@@ -394,7 +395,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 	 * Creates a new {@link Admin} client instance using the {@link AdminClient} class.
 	 * @return the new {@link Admin} client instance.
 	 * @since 3.3.0
-	 * @see AdminClient#create(Map) 
+	 * @see AdminClient#create(Map)
 	 */
 	protected Admin createAdmin() {
 		return AdminClient.create(getAdminConfig());
