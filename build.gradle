@@ -57,7 +57,7 @@ ext {
 	jacksonBomVersion = '2.18.0'
 	jaywayJsonPathVersion = '2.9.0'
 	junit4Version = '4.13.2'
-	junitJupiterVersion = '5.11.1'
+	junitJupiterVersion = '5.11.2'
 	kafkaVersion = '3.8.0'
 	kotlinCoroutinesVersion = '1.8.1'
 	log4jVersion = '2.24.0'
