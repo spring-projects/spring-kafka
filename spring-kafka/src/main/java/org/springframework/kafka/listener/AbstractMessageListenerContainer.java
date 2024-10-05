@@ -193,6 +193,14 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		}
 	}
 
+	/**
+	 *	To be used only with {@link ConcurrentMessageListenerContainerRef}.
+	 */
+	AbstractMessageListenerContainer() {
+		this.containerProperties = null;
+		this.consumerFactory = null;
+	}
+
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
 		this.applicationContext = applicationContext;
@@ -280,6 +288,10 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	protected void setFenced(boolean fenced) {
 		this.fenced = fenced;
+	}
+
+	boolean isFenced() {
+		return this.fenced;
 	}
 
 	@Deprecated(since = "3.2", forRemoval = true)
@@ -722,7 +734,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	protected void publishContainerStoppedEvent() {
 		ApplicationEventPublisher eventPublisher = getApplicationEventPublisher();
 		if (eventPublisher != null) {
-			eventPublisher.publishEvent(new ContainerStoppedEvent(this, parentOrThis()));
+			eventPublisher.publishEvent(new ContainerStoppedEvent(this, parentContainerOrThis()));
 		}
 	}
 
@@ -733,6 +745,20 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 */
 	protected AbstractMessageListenerContainer<?, ?> parentOrThis() {
 		return this;
+	}
+
+	/**
+	 * Return the actual {@link ConcurrentMessageListenerContainer} if the parent is instance of
+	 * {@link ConcurrentMessageListenerContainerRef}.
+	 *
+	 * @return the parent or this
+	 * @since 3.3
+	 */
+	AbstractMessageListenerContainer<?, ?> parentContainerOrThis() {
+		if (parentOrThis() instanceof ConcurrentMessageListenerContainerRef) {
+			return ((ConcurrentMessageListenerContainerRef) parentOrThis()).getConcurrentContainer();
+		}
+		return parentOrThis();
 	}
 
 	/**

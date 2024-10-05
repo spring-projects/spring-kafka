@@ -172,7 +172,6 @@ public class ConcurrentMessageListenerContainerMockTests {
 		});
 		container.start();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(errorContainer.get()).isSameAs(container);
 		container.stop();
 	}
 

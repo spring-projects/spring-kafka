@@ -305,13 +305,17 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			@Nullable TopicPartitionOffset[] topicPartitions, int i) {
 
 		KafkaMessageListenerContainer<K, V> container;
+		ConcurrentMessageListenerContainerRef concurrentMessageListenerContainerRef =
+				new ConcurrentMessageListenerContainerRef<>(this, this.lifecycleLock);
 		if (topicPartitions == null) {
-			container = new KafkaMessageListenerContainer<>(this, this.consumerFactory, containerProperties); // NOSONAR
+			container = new KafkaMessageListenerContainer<>(concurrentMessageListenerContainerRef, this.consumerFactory,
+					containerProperties); // NOSONAR
 		}
 		else {
-			container = new KafkaMessageListenerContainer<>(this, this.consumerFactory, // NOSONAR
-					containerProperties, partitionSubset(containerProperties, i));
+			container = new KafkaMessageListenerContainer<>(concurrentMessageListenerContainerRef, this.consumerFactory,
+					containerProperties, partitionSubset(containerProperties, i)); // NOSONAR
 		}
+		concurrentMessageListenerContainerRef.setKafkaMessageListenerContainer(container);
 		return container;
 	}
 
