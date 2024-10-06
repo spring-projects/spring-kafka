@@ -29,6 +29,6 @@ public ApplicationRunner runner(KafkaTemplate<String, Object> template, KafkaLis
 }
 ----
 
-As the code above shows, the application uses the `KafkaListenerEndpointRegistry` to gain access to the message listener container and then calling the `enforceRebalnce` API on it.  
+As the code above shows, the application uses the `KafkaListenerEndpointRegistry` to gain access to the message listener container and then calling the `enforceRebalance` API on it.
 When calling the `enforceRebalance` on the listener container, it delegates the call to the underlying Kafka consumer.
 The Kafka consumer will trigger a rebalance as part of the next `poll()` operation.

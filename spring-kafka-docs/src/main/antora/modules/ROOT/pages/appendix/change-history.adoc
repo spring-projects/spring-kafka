@@ -906,7 +906,7 @@ Also, a `StringOrBytesSerializer` is now available; it can serialize `byte[]`, `
 See xref:kafka/serdes.adoc#messaging-message-conversion[Spring Messaging Message Conversion] for more information.
 
 The `JsonSerializer`, `JsonDeserializer` and `JsonSerde` now have fluent APIs to make programmatic configuration simpler.
-See the javadocs, xref:kafka/serdes.adoc[Serialization, Deserialization, and Message Conversion], and xref:streams.adoc#serde[Streams JSON Serialization and Deserialization] for more informaion.
+See the javadocs, xref:kafka/serdes.adoc[Serialization, Deserialization, and Message Conversion], and xref:streams.adoc#serde[Streams JSON Serialization and Deserialization] for more information.
 
 [[cb-2-2-and-2-3-replyingkafkatemplate]]
 === ReplyingKafkaTemplate
