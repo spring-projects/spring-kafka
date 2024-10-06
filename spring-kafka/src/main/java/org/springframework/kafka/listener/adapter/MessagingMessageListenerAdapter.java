@@ -911,10 +911,6 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	}
 
-	public void setAsyncRetryCallback(BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback) {
-		this.asyncRetryCallback = asyncRetryCallback;
-	}
-
 	public void putInAsyncFailureQueue(java.util.function.Consumer<FailedRecordTuple> callbackForAsyncFailureQueue) {
 		this.callbackForAsyncFailureQueue = callbackForAsyncFailureQueue;
 	}

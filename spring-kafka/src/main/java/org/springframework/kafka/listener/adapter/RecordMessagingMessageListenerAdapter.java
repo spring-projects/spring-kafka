@@ -21,6 +21,7 @@ import java.lang.reflect.Method;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import org.springframework.kafka.core.FailedRecordTuple;
 import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.support.Acknowledgment;
@@ -85,4 +86,9 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 		invoke(record, acknowledgment, consumer, message);
 	}
 
+	@Override
+	public void setCallbackForAsyncFailureQueue(
+			java.util.function.Consumer<FailedRecordTuple> asyncRetryCallback) {
+		putInAsyncFailureQueue(asyncRetryCallback);
+	}
 }
