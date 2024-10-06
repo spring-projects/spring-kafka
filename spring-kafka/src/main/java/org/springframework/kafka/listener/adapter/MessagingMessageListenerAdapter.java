@@ -690,13 +690,17 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		catch (Throwable ex) {
 			this.logger.error(t, () -> "Future, Mono, or suspend function was completed with an exception for " + source);
 			acknowledge(acknowledgment);
-			if (request instanceof ConsumerRecord &&
-				ex instanceof RuntimeException) {
+			if (canAsyncRetry(request, ex)) {
 				ConsumerRecord<K, V> record = (ConsumerRecord<K, V>) request;
 				FailedRecordTuple failedRecordTuple = new FailedRecordTuple(record, (RuntimeException) ex);
 				this.callbackForAsyncFailureQueue.accept(failedRecordTuple);
 			}
 		}
+	}
+
+	private boolean canAsyncRetry(Object request, Throwable exception) {
+		// The async retry with @RetryableTopic only support in case of SingleRecord Listener.
+		return request instanceof ConsumerRecord && exception instanceof RuntimeException;
 	}
 
 	protected void handleException(Object records, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer,
