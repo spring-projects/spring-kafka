@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 the original author or authors.
+ * Copyright 2022-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import org.springframework.kafka.listener.MessageListener
 
 /**
  * @author Gary Russell
+ * @author Soby Chacko
  * @since 2.8.9
  */
 @SpringBootApplication
@@ -47,8 +48,8 @@ class Application {
         return ApplicationRunner { _: ApplicationArguments? ->
 // tag::getBeans[]
 
-applicationContext.getBean(MyPojo::class.java, "one", arrayOf("topic2"))
-applicationContext.getBean(MyPojo::class.java, "two", arrayOf("topic3"))
+applicationContext.getBean(MyPojo::class.java, "one", "topic2")
+applicationContext.getBean(MyPojo::class.java, "two", "topic3")
 // end::getBeans[]
         }
     }
@@ -88,7 +89,7 @@ private fun createContainer(
 
 @Bean
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
-fun pojo(id: String?, topic: String?): MyPojo {
+fun pojo(id: String, topic: String): MyPojo {
     return MyPojo(id, topic)
 }
 //end::pojoBean[]
@@ -114,9 +115,9 @@ class MyListener : MessageListener<String?, String?> {
 
 // tag::pojo[]
 
-class MyPojo(id: String?, topic: String?) {
+class MyPojo(val id: String, val topic: String) {
 
-    @KafkaListener(id = "#{__listener.id}", topics = ["#{__listener.topics}"])
+    @KafkaListener(id = "#{__listener.id}", topics = ["#{__listener.topic}"])
     fun listen(`in`: String?) {
         println(`in`)
     }
