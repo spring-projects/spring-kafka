@@ -16,7 +16,7 @@
 
 package org.springframework.kafka.listener;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
@@ -28,6 +28,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
 import org.junit.jupiter.api.Test;
+
 import org.springframework.kafka.support.KafkaHeaders;
 
 /**
@@ -37,7 +38,6 @@ import org.springframework.kafka.support.KafkaHeaders;
  */
 
 class DeliveryAttemptAwareRetryListenerTest {
-
 
 	@Test
 	void should_have_single_header_and_header_value_should_be_1() {

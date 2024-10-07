@@ -35,6 +35,7 @@ import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -128,7 +129,6 @@ class DeliveryAttemptAwareRetryListenerIntegrationTest {
 		}
 	}
 
-
 	private Map<Integer, Integer> convertToMap(List<Header> headers) {
 		Map<Integer, Integer> map = new HashMap<>();
 		for (Header header : headers) {
@@ -139,6 +139,15 @@ class DeliveryAttemptAwareRetryListenerIntegrationTest {
 		return map;
 	}
 
+	private boolean awaitLatch(CountDownLatch latch) {
+		try {
+			return latch.await(60, TimeUnit.SECONDS);
+		}
+		catch (Exception e) {
+			fail(e.getMessage());
+			throw new RuntimeException(e);
+		}
+	}
 
 	static class TestTopicListener0 {
 		final List<Header> receivedHeaders = new ArrayList<>();
@@ -291,19 +300,9 @@ class DeliveryAttemptAwareRetryListenerIntegrationTest {
 			containerProperties.setDeliveryAttemptHeader(true);
 
 			return factory;
+
 		}
 
-
-	}
-
-	private boolean awaitLatch(CountDownLatch latch) {
-		try {
-			return latch.await(60, TimeUnit.SECONDS);
-		}
-		catch (Exception e) {
-			fail(e.getMessage());
-			throw new RuntimeException(e);
-		}
 	}
 
 }

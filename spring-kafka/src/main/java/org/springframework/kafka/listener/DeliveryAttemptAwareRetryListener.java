@@ -23,10 +23,11 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
+
 import org.springframework.kafka.support.KafkaHeaders;
 
 /**
- * DeliveryAttemptAwareRetryListener class for {@link RetryListener} implementations.
+ * The DeliveryAttemptAwareRetryListener class for {@link RetryListener} implementations.
  * The DeliveryAttemptAwareRetryListener adds the {@link KafkaHeaders}.DELIVERY_ATTEMPT header
  * to the record's headers when batch records fail and are retried.
  * Note that DeliveryAttemptAwareRetryListener modifies the headers of the original record.
