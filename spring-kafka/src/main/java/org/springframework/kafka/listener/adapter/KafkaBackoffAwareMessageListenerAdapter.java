@@ -20,7 +20,6 @@ import java.math.BigInteger;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
-import java.util.function.BiConsumer;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -148,7 +147,7 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 	}
 
 	@Override
-	public void setCallbackForAsyncFailureQueue(java.util.function.Consumer<FailedRecordTuple> callbackForAsyncFailureQueue) {
+	public void setCallbackForAsyncFailureQueue(java.util.function.Consumer<FailedRecordTuple<K, V>> callbackForAsyncFailureQueue) {
 		this.delegate.setCallbackForAsyncFailureQueue(callbackForAsyncFailureQueue);
 	}
 }

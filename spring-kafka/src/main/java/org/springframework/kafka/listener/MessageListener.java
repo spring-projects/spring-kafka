@@ -19,6 +19,7 @@ package org.springframework.kafka.listener;
 import java.util.function.Consumer;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+
 import org.springframework.kafka.core.FailedRecordTuple;
 
 /**
@@ -34,7 +35,7 @@ import org.springframework.kafka.core.FailedRecordTuple;
 @FunctionalInterface
 public interface MessageListener<K, V> extends GenericMessageListener<ConsumerRecord<K, V>> {
 
-	default void setCallbackForAsyncFailureQueue(Consumer<FailedRecordTuple> asyncRetryCallback) {
+	default void setCallbackForAsyncFailureQueue(Consumer<FailedRecordTuple<K, V>> asyncRetryCallback) {
 		//
 	}
 }

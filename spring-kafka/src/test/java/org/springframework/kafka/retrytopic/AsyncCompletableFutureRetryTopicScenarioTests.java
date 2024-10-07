@@ -36,6 +36,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -43,7 +44,6 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
-import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -95,7 +95,6 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 
 	public final static String TEST_TOPIC6 = "myRetryTopic6";
 
-
 	@Autowired
 	private KafkaTemplate<String, String> kafkaTemplate;
 
@@ -105,44 +104,11 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 	@Autowired
 	DestinationTopicContainer topicContainer;
 
-	@KafkaListener(
-			id = "0-topicId",
-			topics = TEST_TOPIC0,
-			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
-			errorHandler = "myCustomErrorHandler",
-			contentTypeConverter = "myCustomMessageConverter",
-			concurrency = "2")
-	static class TestTopicListener0 {
-
-		@Autowired
-		CountDownLatchContainer container;
-
-		private final List<String> receivedMsgs = new ArrayList<>();
-		private final List<String> receivedTopics = new ArrayList<>();
-
-		@KafkaHandler
-		public CompletableFuture<Void> listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
-			this.receivedMsgs.add(message);
-			this.receivedTopics.add(receivedTopic);
-			return CompletableFuture.supplyAsync(() -> {
-				container.extraCountDownLatch0.countDown();
-				container.countDownLatch0.countDown();
-				try {
-					Thread.sleep(1);
-				} catch (InterruptedException e) {
-					throw new RuntimeException(e);
-				}
-				throw new RuntimeException("Woooops... in topic " + receivedTopic);
-			});
-		}
-
-	}
-
 	@Test
-	void allFailCaseTest(@Autowired KafkaListenerEndpointRegistry registry,
-												 @Autowired TestTopicListener0 zeroTopicListener,
-												 @Autowired MyCustomDltProcessor myCustomDltProcessor0,
-												 @Autowired ThreadPoolTaskExecutor executor) {
+	void allFailCaseTest(
+			@Autowired TestTopicListener0 zeroTopicListener,
+			@Autowired MyCustomDltProcessor myCustomDltProcessor0,
+			@Autowired ThreadPoolTaskExecutor executor) {
 		// All Fail case.
 		String shortFailedMsg1 = "0";
 		String shortFailedMsg2 = "1";
@@ -211,47 +177,11 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(latchContainer.extraDltCountdownLatch0.getCount()).isEqualTo(1000 - CountDownLatchContainer.DLT_COUNT0);
 	}
 
-	@KafkaListener(
-			id = "1-topicId",
-			topics = TEST_TOPIC1,
-			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
-			errorHandler = "myCustomErrorHandler",
-			contentTypeConverter = "myCustomMessageConverter",
-			concurrency = "2")
-	static class TestTopicListener1 {
-
-		@Autowired
-		CountDownLatchContainer container;
-
-		private final List<String> receivedMsgs = new ArrayList<>();
-		private final List<String> receivedTopics = new ArrayList<>();
-
-
-		@KafkaHandler
-		public CompletableFuture<String> listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
-			this.receivedMsgs.add(message);
-			this.receivedTopics.add(receivedTopic);
-			return CompletableFuture.supplyAsync(() -> {
-				container.extraCountDownLatch1.countDown();
-				container.countDownLatch1.countDown();
-				try {
-					Thread.sleep(Integer.parseInt(message));
-				} catch (InterruptedException e) {
-					throw new RuntimeException(e);
-				}
-				if (message.equals("1")) {
-					throw new RuntimeException("Woooops... in topic " + receivedTopic);
-				}
-				return "Task Completed";
-			});
-		}
-
-	}
-
 	@Test
-	void firstShortFailAndLastLongSuccessRetryTest(@Autowired TestTopicListener1 testTopicListener1,
-												   @Autowired MyCustomDltProcessor myCustomDltProcessor1,
-												   @Autowired ThreadPoolTaskExecutor executor) {
+	void firstShortFailAndLastLongSuccessRetryTest(
+			@Autowired TestTopicListener1 testTopicListener1,
+			@Autowired MyCustomDltProcessor myCustomDltProcessor1,
+			@Autowired ThreadPoolTaskExecutor executor) {
 		// Given
 		String longSuccessMsg = "3";
 		String shortFailedMsg = "1";
@@ -300,48 +230,11 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(latchContainer.extraDltCountdownLatch1.getCount()).isEqualTo(1000 - CountDownLatchContainer.DLT_COUNT1);
 	}
 
-	@KafkaListener(
-			id = "2-topicId",
-			topics = TEST_TOPIC2,
-			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
-			errorHandler = "myCustomErrorHandler",
-			contentTypeConverter = "myCustomMessageConverter",
-			concurrency = "2")
-	static class TestTopicListener2 {
-
-		@Autowired
-		CountDownLatchContainer container;
-
-		protected final List<String> receivedMsgs = new ArrayList<>();
-		private final List<String> receivedTopics = new ArrayList<>();
-
-		@KafkaHandler
-		public CompletableFuture<String> listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
-			this.receivedMsgs.add(message);
-			this.receivedTopics.add(receivedTopic);
-
-			return CompletableFuture.supplyAsync(() -> {
-				container.extraCountDownLatch2.countDown();
-				container.countDownLatch2.countDown();
-				long count = container.countDownLatch2.getCount();
-				try {
-					Thread.sleep(Integer.parseInt(message));
-				} catch (InterruptedException e) {
-					throw new RuntimeException(e);
-				}
-
-				if (message.equals("1")) {
-					throw new RuntimeException("Woooops... in topic " + receivedTopic);
-				}
-				return "Task Completed";
-			});
-		}
-	}
-
 	@Test
-	void firstLongSuccessAndLastShortFailed(@Autowired TestTopicListener2 zero2TopicListener,
-											@Autowired MyCustomDltProcessor myCustomDltProcessor2,
-											@Autowired ThreadPoolTaskExecutor executor) {
+	void firstLongSuccessAndLastShortFailed(
+			@Autowired TestTopicListener2 zero2TopicListener,
+			@Autowired MyCustomDltProcessor myCustomDltProcessor2,
+			@Autowired ThreadPoolTaskExecutor executor) {
 		// Given
 		String shortFailedMsg = "1";
 		String longSuccessMsg = "3";
@@ -389,54 +282,11 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(latchContainer.extraDltCountdownLatch2.getCount()).isEqualTo(1000 - CountDownLatchContainer.DLT_COUNT2);
 	}
 
-
-	@KafkaListener(
-			id = "3-topicId",
-			topics = TEST_TOPIC3,
-			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
-			errorHandler = "myCustomErrorHandler",
-			contentTypeConverter = "myCustomMessageConverter",
-			concurrency = "2")
-	static class TestTopicListener3 {
-
-		@Autowired
-		CountDownLatchContainer container;
-
-		protected final List<String> receivedMsgs = new ArrayList<>();
-		private final List<String> receivedTopics = new ArrayList<>();
-
-		public static final String LONG_FAIL_MSG = "5000";
-		public static final String SHORT_SUCCESS_MSG = "1";
-
-
-		@KafkaHandler
-		public CompletableFuture<String> listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
-			this.receivedMsgs.add(message);
-			this.receivedTopics.add(receivedTopic);
-
-			return CompletableFuture.supplyAsync(() -> {
-				container.extraCountDownLatch3.countDown();
-				container.countDownLatch3.countDown();
-				long count = container.countDownLatch3.getCount();
-				try {
-					Thread.sleep(Integer.parseInt(message));
-				} catch (InterruptedException e) {
-					throw new RuntimeException(e);
-				}
-
-				if (message.equals(LONG_FAIL_MSG)) {
-					throw new RuntimeException("Woooops... in topic " + receivedTopic);
-				}
-				return "Task Completed";
-			});
-		}
-	}
-
-
 	@Test
-	void longFailMsgTwiceThenShortSucessMsgThird(@Autowired TestTopicListener3 testTopicListener3,
-												 @Autowired MyCustomDltProcessor myCustomDltProcessor3,
-												 @Autowired ThreadPoolTaskExecutor executor) {
+	void longFailMsgTwiceThenShortSucessMsgThird(
+			@Autowired TestTopicListener3 testTopicListener3,
+			@Autowired MyCustomDltProcessor myCustomDltProcessor3,
+			@Autowired ThreadPoolTaskExecutor executor) {
 		// Given
 		DestinationTopic destinationTopic = topicContainer.getNextDestinationTopicFor("3-topicId", TEST_TOPIC3);
 
@@ -499,51 +349,11 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(latchContainer.extraDltCountdownLatch3.getCount()).isEqualTo(1000 - CountDownLatchContainer.DLT_COUNT3);
 	}
 
-	@KafkaListener(
-			id = "4-TopicId",
-			topics = TEST_TOPIC4,
-			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
-			errorHandler = "myCustomErrorHandler",
-			contentTypeConverter = "myCustomMessageConverter",
-			concurrency = "2")
-	static class TestTopicListener4 {
-
-		@Autowired
-		CountDownLatchContainer container;
-
-		protected final List<String> receivedMsgs = new ArrayList<>();
-		private final List<String> receivedTopics = new ArrayList<>();
-
-		public static final String LONG_SUCCESS_MSG = "5000";
-		public static final String SHORT_FAIL_MSG = "1";
-
-		@KafkaHandler
-		public CompletableFuture<String> listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
-			this.receivedMsgs.add(message);
-			this.receivedTopics.add(receivedTopic);
-
-			return CompletableFuture.supplyAsync(() -> {
-				container.extraCountDownLatch4.countDown();
-				container.countDownLatch4.countDown();
-				try {
-					Thread.sleep(Integer.parseInt(message));
-				} catch (InterruptedException e) {
-					throw new RuntimeException(e);
-				}
-
-				if (message.equals(SHORT_FAIL_MSG)) {
-					throw new RuntimeException("Woooops... in topic " + receivedTopic);
-				}
-				return "Task Completed";
-			});
-		}
-	}
-
-
 	@Test
-	void longSuccessMsgTwiceThenShortFailMsgTwice(@Autowired TestTopicListener4 topicListener4,
-												  @Autowired MyCustomDltProcessor myCustomDltProcessor4,
-												  @Autowired ThreadPoolTaskExecutor executor) {
+	void longSuccessMsgTwiceThenShortFailMsgTwice(
+			@Autowired TestTopicListener4 topicListener4,
+			@Autowired MyCustomDltProcessor myCustomDltProcessor4,
+			@Autowired ThreadPoolTaskExecutor executor) {
 		// Given
 		DestinationTopic destinationTopic = topicContainer.getNextDestinationTopicFor("4-TopicId", TEST_TOPIC4);
 
@@ -603,53 +413,11 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(latchContainer.extraDltCountdownLatch4.getCount()).isEqualTo(1000 - CountDownLatchContainer.DLT_COUNT4);
 	}
 
-
-
-	@KafkaListener(
-			id = "5-TopicId",
-			topics = TEST_TOPIC5,
-			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
-			errorHandler = "myCustomErrorHandler",
-			contentTypeConverter = "myCustomMessageConverter",
-			concurrency = "2")
-	static class TestTopicListener5 {
-
-		@Autowired
-		CountDownLatchContainer container;
-
-		protected final List<String> receivedMsgs = new ArrayList<>();
-		private final List<String> receivedTopics = new ArrayList<>();
-
-		public static final String LONG_SUCCESS_MSG = "5000";
-		public static final String SHORT_FAIL_MSG = "1";
-
-		@KafkaHandler
-		public CompletableFuture<String> listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
-			this.receivedMsgs.add(message);
-			this.receivedTopics.add(receivedTopic);
-
-			return CompletableFuture.supplyAsync(() -> {
-				container.extraCountDownLatch5.countDown();
-				container.countDownLatch5.countDown();
-				try {
-					Thread.sleep(Integer.parseInt(message));
-				} catch (InterruptedException e) {
-					throw new RuntimeException(e);
-				}
-
-				if (message.startsWith(SHORT_FAIL_MSG)) {
-					throw new RuntimeException("Woooops... in topic " + receivedTopic);
-				}
-				return "Task Completed";
-			});
-		}
-	}
-
-
 	@Test
-	void oneLongSuccessMsgBetweenHunderedShortFailMsg(@Autowired TestTopicListener5 topicListener5,
-													  @Autowired MyCustomDltProcessor myCustomDltProcessor5,
-													  @Autowired ThreadPoolTaskExecutor executor) {
+	void oneLongSuccessMsgBetweenHunderedShortFailMsg(
+			@Autowired TestTopicListener5 topicListener5,
+			@Autowired MyCustomDltProcessor myCustomDltProcessor5,
+			@Autowired ThreadPoolTaskExecutor executor) {
 		// Given
 		DestinationTopic destinationTopic = topicContainer.getNextDestinationTopicFor("5-TopicId", TEST_TOPIC5);
 
@@ -699,57 +467,11 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(latchContainer.extraDltCountdownLatch5.getCount()).isEqualTo(1000 - CountDownLatchContainer.DLT_COUNT5);
 	}
 
-
-	@KafkaListener(
-			id = "6-TopicId",
-			topics = TEST_TOPIC6,
-			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
-			errorHandler = "myCustomErrorHandler",
-			contentTypeConverter = "myCustomMessageConverter",
-			concurrency = "2")
-	static class TestTopicListener6 {
-
-		@Autowired
-		CountDownLatchContainer container;
-
-		protected final List<String> receivedMsgs = new ArrayList<>();
-		private final List<String> receivedTopics = new ArrayList<>();
-
-		public static final String SUCCESS_SUFFIX = ",s";
-		public static final String FAIL_SUFFIX = ",f";
-
-		@KafkaHandler
-		public CompletableFuture<String> listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
-			this.receivedMsgs.add(message);
-			this.receivedTopics.add(receivedTopic);
-
-			return CompletableFuture.supplyAsync(() -> {
-				container.extraCountDownLatch6.countDown();
-				container.countDownLatch6.countDown();
-
-				String[] split = message.split(",");
-				String sleepAWhile = split[0];
-				String failOrSuccess = split[1];
-
-				try {
-					Thread.sleep(Integer.parseInt(sleepAWhile));
-				} catch (InterruptedException e) {
-					throw new RuntimeException(e);
-				}
-
-				if (failOrSuccess.equals("f")) {
-					throw new RuntimeException("Woooops... in topic " + receivedTopic);
-				}
-				return "Task Completed";
-			});
-		}
-	}
-
-
 	@Test
-	void halfSuccessMsgAndHalfFailedMsgWithRandomSleepTime(@Autowired TestTopicListener6 topicListener6,
-														   @Autowired MyCustomDltProcessor myCustomDltProcessor6,
-														   @Autowired ThreadPoolTaskExecutor executor) {
+	void halfSuccessMsgAndHalfFailedMsgWithRandomSleepTime(
+			@Autowired TestTopicListener6 topicListener6,
+			@Autowired MyCustomDltProcessor myCustomDltProcessor6,
+			@Autowired ThreadPoolTaskExecutor executor) {
 		// Given
 		DestinationTopic destinationTopic = topicContainer.getNextDestinationTopicFor("6-TopicId", TEST_TOPIC6);
 
@@ -805,12 +527,12 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 
 
 		long actualReceivedOriginalTopicMsgCount = topicListener6.receivedTopics.stream()
-												  .filter(topic -> topic.equals(TEST_TOPIC6))
-												  .count();
+												.filter(topic -> topic.equals(TEST_TOPIC6))
+												.count();
 
 		long actualReceivedRetryTopicMsgCount = topicListener6.receivedTopics.stream()
-												  .filter(topic -> topic.equals(expectedRetryTopic))
-												  .count();
+												.filter(topic -> topic.equals(expectedRetryTopic))
+												.count();
 
 		assertThat(actualReceivedSuccessMsgCount).isEqualTo(expectedSuccessMsgCount);
 		assertThat(actualReceivedFailedMsgCount).isEqualTo(expectedFailedMsgCount);
@@ -821,7 +543,324 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(latchContainer.extraDltCountdownLatch6.getCount()).isEqualTo(1000 - CountDownLatchContainer.DLT_COUNT6);
 	}
 
+	private boolean awaitLatch(CountDownLatch latch) {
+		try {
+			return latch.await(60, TimeUnit.SECONDS);
+		}
+		catch (Exception e) {
+			fail(e.getMessage());
+			throw new RuntimeException(e);
+		}
 
+	}
+
+	private void waitAWhile(ThreadPoolTaskExecutor executor, int sleep) {
+		CountDownLatch countDownLatch = new CountDownLatch(1);
+
+		Thread thread = new Thread(() -> {
+			try {
+				Thread.sleep(sleep);
+			}
+			catch (InterruptedException e) {
+				throw new RuntimeException(e);
+			}
+			countDownLatch.countDown();
+		});
+
+		executor.execute(thread);
+		assertThat(awaitLatch(countDownLatch)).isTrue();
+	}
+
+	@KafkaListener(
+			id = "0-topicId",
+			topics = TEST_TOPIC0,
+			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
+			errorHandler = "myCustomErrorHandler",
+			contentTypeConverter = "myCustomMessageConverter",
+			concurrency = "2")
+	static class TestTopicListener0 {
+
+		@Autowired
+		CountDownLatchContainer container;
+
+		private final List<String> receivedMsgs = new ArrayList<>();
+
+		private final List<String> receivedTopics = new ArrayList<>();
+
+		@KafkaHandler
+		public CompletableFuture<Void> listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
+			this.receivedMsgs.add(message);
+			this.receivedTopics.add(receivedTopic);
+			return CompletableFuture.supplyAsync(() -> {
+				container.extraCountDownLatch0.countDown();
+				container.countDownLatch0.countDown();
+				try {
+					Thread.sleep(1);
+				}
+				catch (InterruptedException e) {
+					throw new RuntimeException(e);
+				}
+				throw new RuntimeException("Woooops... in topic " + receivedTopic);
+			});
+		}
+
+	}
+
+	@KafkaListener(
+			id = "1-topicId",
+			topics = TEST_TOPIC1,
+			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
+			errorHandler = "myCustomErrorHandler",
+			contentTypeConverter = "myCustomMessageConverter",
+			concurrency = "2")
+	static class TestTopicListener1 {
+
+		@Autowired
+		CountDownLatchContainer container;
+
+		private final List<String> receivedMsgs = new ArrayList<>();
+
+		private final List<String> receivedTopics = new ArrayList<>();
+
+		@KafkaHandler
+		public CompletableFuture<String> listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
+			this.receivedMsgs.add(message);
+			this.receivedTopics.add(receivedTopic);
+			return CompletableFuture.supplyAsync(() -> {
+				container.extraCountDownLatch1.countDown();
+				container.countDownLatch1.countDown();
+				try {
+					Thread.sleep(Integer.parseInt(message));
+				}
+				catch (InterruptedException e) {
+					throw new RuntimeException(e);
+				}
+				if (message.equals("1")) {
+					throw new RuntimeException("Woooops... in topic " + receivedTopic);
+				}
+				return "Task Completed";
+			});
+		}
+
+	}
+
+	@KafkaListener(
+			id = "2-topicId",
+			topics = TEST_TOPIC2,
+			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
+			errorHandler = "myCustomErrorHandler",
+			contentTypeConverter = "myCustomMessageConverter",
+			concurrency = "2")
+	static class TestTopicListener2 {
+
+		@Autowired
+		CountDownLatchContainer container;
+
+		protected final List<String> receivedMsgs = new ArrayList<>();
+
+		private final List<String> receivedTopics = new ArrayList<>();
+
+		@KafkaHandler
+		public CompletableFuture<String> listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
+			this.receivedMsgs.add(message);
+			this.receivedTopics.add(receivedTopic);
+
+			return CompletableFuture.supplyAsync(() -> {
+				container.extraCountDownLatch2.countDown();
+				container.countDownLatch2.countDown();
+				long count = container.countDownLatch2.getCount();
+				try {
+					Thread.sleep(Integer.parseInt(message));
+				}
+				catch (InterruptedException e) {
+					throw new RuntimeException(e);
+				}
+
+				if (message.equals("1")) {
+					throw new RuntimeException("Woooops... in topic " + receivedTopic);
+				}
+				return "Task Completed";
+			});
+		}
+	}
+
+	@KafkaListener(
+			id = "3-topicId",
+			topics = TEST_TOPIC3,
+			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
+			errorHandler = "myCustomErrorHandler",
+			contentTypeConverter = "myCustomMessageConverter",
+			concurrency = "2")
+	static class TestTopicListener3 {
+
+		@Autowired
+		CountDownLatchContainer container;
+
+		protected final List<String> receivedMsgs = new ArrayList<>();
+
+		private final List<String> receivedTopics = new ArrayList<>();
+
+		public static final String LONG_FAIL_MSG = "5000";
+
+		public static final String SHORT_SUCCESS_MSG = "1";
+
+		@KafkaHandler
+		public CompletableFuture<String> listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
+			this.receivedMsgs.add(message);
+			this.receivedTopics.add(receivedTopic);
+
+			return CompletableFuture.supplyAsync(() -> {
+				container.extraCountDownLatch3.countDown();
+				container.countDownLatch3.countDown();
+				long count = container.countDownLatch3.getCount();
+				try {
+					Thread.sleep(Integer.parseInt(message));
+				}
+				catch (InterruptedException e) {
+					throw new RuntimeException(e);
+				}
+
+				if (message.equals(LONG_FAIL_MSG)) {
+					throw new RuntimeException("Woooops... in topic " + receivedTopic);
+				}
+				return "Task Completed";
+			});
+		}
+	}
+
+	@KafkaListener(
+			id = "4-TopicId",
+			topics = TEST_TOPIC4,
+			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
+			errorHandler = "myCustomErrorHandler",
+			contentTypeConverter = "myCustomMessageConverter",
+			concurrency = "2")
+	static class TestTopicListener4 {
+
+		@Autowired
+		CountDownLatchContainer container;
+
+		protected final List<String> receivedMsgs = new ArrayList<>();
+
+		private final List<String> receivedTopics = new ArrayList<>();
+
+		public static final String LONG_SUCCESS_MSG = "5000";
+
+		public static final String SHORT_FAIL_MSG = "1";
+
+		@KafkaHandler
+		public CompletableFuture<String> listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
+			this.receivedMsgs.add(message);
+			this.receivedTopics.add(receivedTopic);
+
+			return CompletableFuture.supplyAsync(() -> {
+				container.extraCountDownLatch4.countDown();
+				container.countDownLatch4.countDown();
+				try {
+					Thread.sleep(Integer.parseInt(message));
+				}
+				catch (InterruptedException e) {
+					throw new RuntimeException(e);
+				}
+
+				if (message.equals(SHORT_FAIL_MSG)) {
+					throw new RuntimeException("Woooops... in topic " + receivedTopic);
+				}
+				return "Task Completed";
+			});
+		}
+	}
+
+	@KafkaListener(
+			id = "5-TopicId",
+			topics = TEST_TOPIC5,
+			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
+			errorHandler = "myCustomErrorHandler",
+			contentTypeConverter = "myCustomMessageConverter",
+			concurrency = "2")
+	static class TestTopicListener5 {
+
+		@Autowired
+		CountDownLatchContainer container;
+
+		protected final List<String> receivedMsgs = new ArrayList<>();
+
+		private final List<String> receivedTopics = new ArrayList<>();
+
+		public static final String LONG_SUCCESS_MSG = "5000";
+
+		public static final String SHORT_FAIL_MSG = "1";
+
+		@KafkaHandler
+		public CompletableFuture<String> listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
+			this.receivedMsgs.add(message);
+			this.receivedTopics.add(receivedTopic);
+
+			return CompletableFuture.supplyAsync(() -> {
+				container.extraCountDownLatch5.countDown();
+				container.countDownLatch5.countDown();
+				try {
+					Thread.sleep(Integer.parseInt(message));
+				}
+				catch (InterruptedException e) {
+					throw new RuntimeException(e);
+				}
+
+				if (message.startsWith(SHORT_FAIL_MSG)) {
+					throw new RuntimeException("Woooops... in topic " + receivedTopic);
+				}
+				return "Task Completed";
+			});
+		}
+	}
+
+	@KafkaListener(
+			id = "6-TopicId",
+			topics = TEST_TOPIC6,
+			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
+			errorHandler = "myCustomErrorHandler",
+			contentTypeConverter = "myCustomMessageConverter",
+			concurrency = "2")
+	static class TestTopicListener6 {
+
+		@Autowired
+		CountDownLatchContainer container;
+
+		protected final List<String> receivedMsgs = new ArrayList<>();
+
+		private final List<String> receivedTopics = new ArrayList<>();
+
+		public static final String SUCCESS_SUFFIX = ",s";
+
+		public static final String FAIL_SUFFIX = ",f";
+
+		@KafkaHandler
+		public CompletableFuture<String> listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
+			this.receivedMsgs.add(message);
+			this.receivedTopics.add(receivedTopic);
+
+			return CompletableFuture.supplyAsync(() -> {
+				container.extraCountDownLatch6.countDown();
+				container.countDownLatch6.countDown();
+
+				String[] split = message.split(",");
+				String sleepAWhile = split[0];
+				String failOrSuccess = split[1];
+
+				try {
+					Thread.sleep(Integer.parseInt(sleepAWhile));
+				}
+				catch (InterruptedException e) {
+					throw new RuntimeException(e);
+				}
+
+				if (failOrSuccess.equals("f")) {
+					throw new RuntimeException("Woooops... in topic " + receivedTopic);
+				}
+				return "Task Completed";
+			});
+		}
+	}
 
 	static class CountDownLatchContainer {
 
@@ -873,7 +912,6 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 
 		CountDownLatch extraDltCountdownLatch3 = new CountDownLatch(1000);
 
-
 		static int COUNT4 = 12;
 
 		static int DLT_COUNT4 = 2;
@@ -886,7 +924,6 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 
 		CountDownLatch extraDltCountdownLatch4 = new CountDownLatch(1000);
 
-
 		static int COUNT5 = 501;
 
 		static int DLT_COUNT5 = 100;
@@ -898,7 +935,6 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		CountDownLatch dltCountdownLatch5 = new CountDownLatch(DLT_COUNT5);
 
 		CountDownLatch extraDltCountdownLatch5 = new CountDownLatch(1000);
-
 
 		static int COUNT6 = 250;
 
@@ -922,7 +958,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 
 		final List<String> receivedMsg = new ArrayList<>();
 
-		public MyCustomDltProcessor(KafkaTemplate<String, String> kafkaTemplate,
+		MyCustomDltProcessor(KafkaTemplate<String, String> kafkaTemplate,
 									CountDownLatch latch,
 									CountDownLatch extraLatch) {
 			this.kafkaTemplate = kafkaTemplate;
@@ -979,53 +1015,59 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 
 		@Bean
 		RetryTopicConfiguration testRetryTopic0(KafkaTemplate<String, String> template) {
-			return createRetryTopicConfiguration(template,
-												 TEST_TOPIC0,
-												 "myCustomDltProcessor0");
+			return createRetryTopicConfiguration(
+					template,
+					TEST_TOPIC0,
+					"myCustomDltProcessor0");
 		}
 
 		@Bean
 		RetryTopicConfiguration testRetryTopic1(KafkaTemplate<String, String> template) {
-			return createRetryTopicConfiguration(template,
-												 TEST_TOPIC1,
-												 "myCustomDltProcessor1");
+			return createRetryTopicConfiguration(
+					template,
+					TEST_TOPIC1,
+					"myCustomDltProcessor1");
 		}
 
 		@Bean
 		RetryTopicConfiguration testRetryTopic2(KafkaTemplate<String, String> template) {
-			return createRetryTopicConfiguration(template,
-												 TEST_TOPIC2,
-												 "myCustomDltProcessor2");
+			return createRetryTopicConfiguration(
+					template,
+					TEST_TOPIC2,
+					"myCustomDltProcessor2");
 		}
 
 		@Bean
 		RetryTopicConfiguration testRetryTopic3(KafkaTemplate<String, String> template) {
-			return createRetryTopicConfiguration(template,
-												 TEST_TOPIC3,
-												 "myCustomDltProcessor3");
+			return createRetryTopicConfiguration(
+					template,
+					TEST_TOPIC3,
+					"myCustomDltProcessor3");
 		}
 
 		@Bean
 		RetryTopicConfiguration testRetryTopic4(KafkaTemplate<String, String> template) {
-			return createRetryTopicConfiguration(template,
-												 TEST_TOPIC4,
-												 "myCustomDltProcessor4");
+			return createRetryTopicConfiguration(
+					template,
+					TEST_TOPIC4,
+					"myCustomDltProcessor4");
 		}
 
 		@Bean
 		RetryTopicConfiguration testRetryTopic5(KafkaTemplate<String, String> template) {
-			return createRetryTopicConfiguration(template,
-												 TEST_TOPIC5,
-												 "myCustomDltProcessor5");
+			return createRetryTopicConfiguration(
+					template,
+					TEST_TOPIC5,
+					"myCustomDltProcessor5");
 		}
 
 		@Bean
 		RetryTopicConfiguration testRetryTopic6(KafkaTemplate<String, String> template) {
-			return createRetryTopicConfiguration(template,
-												 TEST_TOPIC6,
-												 "myCustomDltProcessor6");
+			return createRetryTopicConfiguration(
+					template,
+					TEST_TOPIC6,
+					"myCustomDltProcessor6");
 		}
-
 
 		@Bean
 		KafkaListenerErrorHandler myCustomErrorHandler(
@@ -1090,56 +1132,63 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		}
 
 		@Bean
-		MyCustomDltProcessor myCustomDltProcessor0(KafkaTemplate<String, String> kafkaTemplate,
-												   CountDownLatchContainer latchContainer) {
+		MyCustomDltProcessor myCustomDltProcessor0(
+				KafkaTemplate<String, String> kafkaTemplate,
+				CountDownLatchContainer latchContainer) {
 			return new MyCustomDltProcessor(kafkaTemplate,
 											latchContainer.dltCountdownLatch0,
 											latchContainer.extraDltCountdownLatch0);
 		}
 
 		@Bean
-		MyCustomDltProcessor myCustomDltProcessor1(KafkaTemplate<String, String> kafkaTemplate,
-												   CountDownLatchContainer latchContainer) {
+		MyCustomDltProcessor myCustomDltProcessor1(
+				KafkaTemplate<String, String> kafkaTemplate,
+				CountDownLatchContainer latchContainer) {
 			return new MyCustomDltProcessor(kafkaTemplate,
 											latchContainer.dltCountdownLatch1,
 											latchContainer.extraDltCountdownLatch1);
 		}
 
 		@Bean
-		MyCustomDltProcessor myCustomDltProcessor2(KafkaTemplate<String, String> kafkaTemplate,
-												   CountDownLatchContainer latchContainer) {
+		MyCustomDltProcessor myCustomDltProcessor2(
+				KafkaTemplate<String, String> kafkaTemplate,
+				CountDownLatchContainer latchContainer) {
 			return new MyCustomDltProcessor(kafkaTemplate,
 											latchContainer.dltCountdownLatch2,
 											latchContainer.extraDltCountdownLatch2);
 		}
 
 		@Bean
-		MyCustomDltProcessor myCustomDltProcessor3(KafkaTemplate<String, String> kafkaTemplate,
-												   CountDownLatchContainer latchContainer) {
+		MyCustomDltProcessor myCustomDltProcessor3(
+				KafkaTemplate<String, String> kafkaTemplate,
+				CountDownLatchContainer latchContainer) {
 			return new MyCustomDltProcessor(kafkaTemplate,
 											latchContainer.dltCountdownLatch3,
 											latchContainer.extraDltCountdownLatch3);
 		}
 
 		@Bean
-		MyCustomDltProcessor myCustomDltProcessor4(KafkaTemplate<String, String> kafkaTemplate,
-												   CountDownLatchContainer latchContainer) {
+		MyCustomDltProcessor myCustomDltProcessor4(
+				KafkaTemplate<String, String> kafkaTemplate,
+				CountDownLatchContainer latchContainer) {
 			return new MyCustomDltProcessor(kafkaTemplate,
 											latchContainer.dltCountdownLatch4,
 											latchContainer.extraDltCountdownLatch4);
 		}
 
 		@Bean
-		MyCustomDltProcessor myCustomDltProcessor5(KafkaTemplate<String, String> kafkaTemplate,
-												   CountDownLatchContainer latchContainer) {
+		MyCustomDltProcessor myCustomDltProcessor5(
+				KafkaTemplate<String, String> kafkaTemplate,
+				CountDownLatchContainer latchContainer) {
 			return new MyCustomDltProcessor(kafkaTemplate,
 											latchContainer.dltCountdownLatch5,
 											latchContainer.extraDltCountdownLatch5);
 		}
 
 		@Bean
-		MyCustomDltProcessor myCustomDltProcessor6(KafkaTemplate<String, String> kafkaTemplate,
-												   CountDownLatchContainer latchContainer) {
+		MyCustomDltProcessor myCustomDltProcessor6(
+				KafkaTemplate<String, String> kafkaTemplate,
+				CountDownLatchContainer latchContainer) {
 			return new MyCustomDltProcessor(kafkaTemplate,
 											latchContainer.dltCountdownLatch6,
 											latchContainer.extraDltCountdownLatch6);
@@ -1172,6 +1221,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		KafkaTemplate<String, String> kafkaTemplate() {
 			return new KafkaTemplate<>(producerFactory());
 		}
+
 	}
 
 	@EnableKafka
@@ -1187,7 +1237,6 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 			configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, this.broker.getBrokersAsString());
 			return new KafkaAdmin(configs);
 		}
-
 
 		@Bean
 		ConsumerFactory<String, String> consumerFactory() {
@@ -1253,32 +1302,6 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 			return new ThreadPoolTaskExecutor();
 		}
 
-	}
-
-	private boolean awaitLatch(CountDownLatch latch) {
-		try {
-			return latch.await(60, TimeUnit.SECONDS);
-		}
-		catch (Exception e) {
-			fail(e.getMessage());
-			throw new RuntimeException(e);
-		}
-	}
-
-	private void waitAWhile(ThreadPoolTaskExecutor executor, int sleep) {
-		CountDownLatch countDownLatch = new CountDownLatch(1);
-
-		Thread thread = new Thread(() -> {
-			try {
-				Thread.sleep(sleep);
-			} catch (InterruptedException e) {
-				throw new RuntimeException(e);
-			}
-			countDownLatch.countDown();
-		});
-
-		executor.execute(thread);
-		assertThat(awaitLatch(countDownLatch)).isTrue();
 	}
 
 }

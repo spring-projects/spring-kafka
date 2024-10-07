@@ -108,7 +108,6 @@ import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.listener.ContainerProperties.EOSMode;
-import org.springframework.kafka.listener.FailedRecordTracker.FailedRecord;
 import org.springframework.kafka.listener.adapter.AsyncRepliesAware;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -846,7 +845,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final ConcurrentLinkedDeque<FailedRecordTuple<K, V>> failedRecords = new ConcurrentLinkedDeque();
 
-
 		@SuppressWarnings(UNCHECKED)
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType,
 				ObservationRegistry observationRegistry) {
@@ -904,7 +902,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.observationEnabled = this.containerProperties.isObservationEnabled();
 
 				if (!AopUtils.isAopProxy(listener)) {
-					final java.util.function.Consumer<FailedRecordTuple> callbackForAsyncFailureQueue =
+					final java.util.function.Consumer<FailedRecordTuple<K, V>> callbackForAsyncFailureQueue =
 							(fRecord) -> this.failedRecords.addLast(fRecord);
 					this.listener.setCallbackForAsyncFailureQueue(callbackForAsyncFailureQueue);
 				}
@@ -1310,10 +1308,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 				try {
 					handleAsyncFailure();
-				} catch (Exception e) {
+				}
+				catch (Exception e) {
 					// TODO: Need to improve error handling.
 					// TODO: Need to determine how to handle a failed message.
-					logger.error("Failed to process re-try messages. ");
+					this.logger.error("Failed to process re-try messages. ");
 				}
 
 				try {
@@ -1466,7 +1465,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			if (!copyFailedRecords.isEmpty()) {
 				copyFailedRecords.forEach(failedRecordTuple ->
-												  this.invokeErrorHandlerBySingleRecord(failedRecordTuple.record(), failedRecordTuple.ex()));
+											this.invokeErrorHandlerBySingleRecord(failedRecordTuple.record(), failedRecordTuple.ex()));
 			}
 		}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +46,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -94,12 +95,13 @@ import reactor.core.publisher.Mono;
 
 @SpringJUnitConfig
 @DirtiesContext
-@EmbeddedKafka(topics = { AsyncMonoFutureRetryTopicClassLevelIntegrationTests.FIRST_TOPIC,
-						  AsyncMonoFutureRetryTopicClassLevelIntegrationTests.SECOND_TOPIC,
-						  AsyncMonoFutureRetryTopicClassLevelIntegrationTests.THIRD_TOPIC,
-						  AsyncMonoFutureRetryTopicClassLevelIntegrationTests.FOURTH_TOPIC,
-						  AsyncMonoFutureRetryTopicClassLevelIntegrationTests.TWO_LISTENERS_TOPIC,
-						  AsyncMonoFutureRetryTopicClassLevelIntegrationTests.MANUAL_TOPIC })
+@EmbeddedKafka(topics = {
+		AsyncMonoFutureRetryTopicClassLevelIntegrationTests.FIRST_TOPIC,
+		AsyncMonoFutureRetryTopicClassLevelIntegrationTests.SECOND_TOPIC,
+		AsyncMonoFutureRetryTopicClassLevelIntegrationTests.THIRD_TOPIC,
+		AsyncMonoFutureRetryTopicClassLevelIntegrationTests.FOURTH_TOPIC,
+		AsyncMonoFutureRetryTopicClassLevelIntegrationTests.TWO_LISTENERS_TOPIC,
+		AsyncMonoFutureRetryTopicClassLevelIntegrationTests.MANUAL_TOPIC })
 @TestPropertySource(properties = { "five.attempts=5", "kafka.template=customKafkaTemplate"})
 public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 
@@ -167,8 +169,9 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 	}
 
 	@Test
-	void shouldRetryThirdTopicWithTimeout(@Autowired KafkaAdmin admin,
-										  @Autowired KafkaListenerEndpointRegistry registry) throws Exception {
+	void shouldRetryThirdTopicWithTimeout(
+			@Autowired KafkaAdmin admin,
+			@Autowired KafkaListenerEndpointRegistry registry) throws Exception {
 
 		kafkaTemplate.send(THIRD_TOPIC, "Testing topic 3");
 		assertThat(awaitLatch(latchContainer.countDownLatch3)).isTrue();
@@ -215,27 +218,33 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 	}
 
 	@Test
-	void shouldRetryFifthTopicWithTwoListenersAndManualAssignment(@Autowired
-																  FifthTopicListener1 listener1,
-																  @Autowired
-																  FifthTopicListener2 listener2) {
+	void shouldRetryFifthTopicWithTwoListenersAndManualAssignment(
+			@Autowired FifthTopicListener1 listener1,
+			@Autowired FifthTopicListener2 listener2) {
 
 		kafkaTemplate.send(TWO_LISTENERS_TOPIC, 0, "0", "Testing topic 5 - 0");
 		kafkaTemplate.send(TWO_LISTENERS_TOPIC, 1, "0", "Testing topic 5 - 1");
 		assertThat(awaitLatch(latchContainer.countDownLatch51)).isTrue();
 		assertThat(awaitLatch(latchContainer.countDownLatch52)).isTrue();
 		assertThat(awaitLatch(latchContainer.countDownLatchDltThree)).isTrue();
-		assertThat(listener1.topics).containsExactly(TWO_LISTENERS_TOPIC, TWO_LISTENERS_TOPIC
-																		  + "-listener1-0", TWO_LISTENERS_TOPIC + "-listener1-1", TWO_LISTENERS_TOPIC + "-listener1-2",
-													 TWO_LISTENERS_TOPIC + "-listener1-dlt");
-		assertThat(listener2.topics).containsExactly(TWO_LISTENERS_TOPIC, TWO_LISTENERS_TOPIC
-																		  + "-listener2-0", TWO_LISTENERS_TOPIC + "-listener2-1", TWO_LISTENERS_TOPIC + "-listener2-2",
-													 TWO_LISTENERS_TOPIC + "-listener2-dlt");
+		assertThat(listener1.topics).containsExactly(
+				TWO_LISTENERS_TOPIC,
+				TWO_LISTENERS_TOPIC + "-listener1-0",
+				TWO_LISTENERS_TOPIC + "-listener1-1",
+				TWO_LISTENERS_TOPIC + "-listener1-2",
+				TWO_LISTENERS_TOPIC + "-listener1-dlt");
+		assertThat(listener2.topics).containsExactly(
+				TWO_LISTENERS_TOPIC,
+				TWO_LISTENERS_TOPIC + "-listener2-0",
+				TWO_LISTENERS_TOPIC + "-listener2-1",
+				TWO_LISTENERS_TOPIC + "-listener2-2",
+				TWO_LISTENERS_TOPIC + "-listener2-dlt");
 	}
 
 	@Test
-	void shouldRetryManualTopicWithDefaultDlt(@Autowired KafkaListenerEndpointRegistry registry,
-											  @Autowired ConsumerFactory<String, String> cf) {
+	void shouldRetryManualTopicWithDefaultDlt(
+			@Autowired KafkaListenerEndpointRegistry registry,
+			@Autowired ConsumerFactory<String, String> cf) {
 
 		kafkaTemplate.send(MANUAL_TOPIC, "Testing topic 6");
 		assertThat(awaitLatch(latchContainer.countDownLatch6)).isTrue();
@@ -244,9 +253,10 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 				.forEach(id -> {
 					ConcurrentMessageListenerContainer<?, ?> container =
 							(ConcurrentMessageListenerContainer<?, ?>) registry.getListenerContainer(id);
-					assertThat(container).extracting("commonErrorHandler")
-										 .extracting("seekAfterError", InstanceOfAssertFactories.BOOLEAN)
-										 .isFalse();
+					assertThat(container)
+							.extracting("commonErrorHandler")
+							.extracting("seekAfterError", InstanceOfAssertFactories.BOOLEAN)
+							.isFalse();
 				});
 		Consumer<String, String> consumer = cf.createConsumer("manual-dlt", "");
 		Set<org.apache.kafka.common.TopicPartition> tp =
@@ -265,11 +275,10 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 	}
 
 	@Test
-	void shouldFirstReuseRetryTopic(@Autowired
-									FirstReuseRetryTopicListener listener1,
-									@Autowired
-									SecondReuseRetryTopicListener listener2, @Autowired
-									ThirdReuseRetryTopicListener listener3) {
+	void shouldFirstReuseRetryTopic(
+			@Autowired FirstReuseRetryTopicListener listener1,
+			@Autowired SecondReuseRetryTopicListener listener2,
+			@Autowired ThirdReuseRetryTopicListener listener3) {
 
 		kafkaTemplate.send(FIRST_REUSE_RETRY_TOPIC, "Testing reuse topic 1");
 		kafkaTemplate.send(SECOND_REUSE_RETRY_TOPIC, "Testing reuse topic 2");
@@ -277,14 +286,21 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 		assertThat(awaitLatch(latchContainer.countDownLatchReuseOne)).isTrue();
 		assertThat(awaitLatch(latchContainer.countDownLatchReuseTwo)).isTrue();
 		assertThat(awaitLatch(latchContainer.countDownLatchReuseThree)).isTrue();
-		assertThat(listener1.topics).containsExactly(FIRST_REUSE_RETRY_TOPIC,
-													 FIRST_REUSE_RETRY_TOPIC + "-retry");
-		assertThat(listener2.topics).containsExactly(SECOND_REUSE_RETRY_TOPIC,
-													 SECOND_REUSE_RETRY_TOPIC + "-retry-30", SECOND_REUSE_RETRY_TOPIC + "-retry-60",
-													 SECOND_REUSE_RETRY_TOPIC + "-retry-100", SECOND_REUSE_RETRY_TOPIC + "-retry-100");
-		assertThat(listener3.topics).containsExactly(THIRD_REUSE_RETRY_TOPIC,
-													 THIRD_REUSE_RETRY_TOPIC + "-retry", THIRD_REUSE_RETRY_TOPIC + "-retry",
-													 THIRD_REUSE_RETRY_TOPIC + "-retry", THIRD_REUSE_RETRY_TOPIC + "-retry");
+		assertThat(listener1.topics).containsExactly(
+				FIRST_REUSE_RETRY_TOPIC,
+				FIRST_REUSE_RETRY_TOPIC + "-retry");
+		assertThat(listener2.topics).containsExactly(
+				SECOND_REUSE_RETRY_TOPIC,
+				SECOND_REUSE_RETRY_TOPIC + "-retry-30",
+				SECOND_REUSE_RETRY_TOPIC + "-retry-60",
+				SECOND_REUSE_RETRY_TOPIC + "-retry-100",
+				SECOND_REUSE_RETRY_TOPIC + "-retry-100");
+		assertThat(listener3.topics).containsExactly(
+				THIRD_REUSE_RETRY_TOPIC,
+				THIRD_REUSE_RETRY_TOPIC + "-retry",
+				THIRD_REUSE_RETRY_TOPIC + "-retry",
+				THIRD_REUSE_RETRY_TOPIC + "-retry",
+				THIRD_REUSE_RETRY_TOPIC + "-retry");
 	}
 
 	@Test
@@ -320,12 +336,15 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 		CountDownLatchContainer container;
 
 		@KafkaHandler
-		public Mono<Void> listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
+		public Mono<Void> listen(
+				String message,
+				@Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			return Mono.fromCallable(() -> {
 				container.countDownLatch1.countDown();
 				try {
 					Thread.sleep(1);
-				} catch (InterruptedException e) {
+				}
+				catch (InterruptedException e) {
 					throw new RuntimeException(e);
 				}
 				throw new RuntimeException("Woooops... in topic " + receivedTopic);
@@ -341,12 +360,15 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 		CountDownLatchContainer container;
 
 		@KafkaHandler
-		public Mono<Void> listenAgain(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
+		public Mono<Void> listenAgain(
+				String message,
+				@Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			return Mono.fromCallable(() -> {
 				container.countDownIfNotKnown(receivedTopic, container.countDownLatch2);
 				try {
 					Thread.sleep(1);
-				} catch (InterruptedException e) {
+				}
+				catch (InterruptedException e) {
 					throw new RuntimeException(e);
 				}
 				throw new IllegalStateException("Another woooops... " + receivedTopic);
@@ -373,12 +395,15 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 		CountDownLatchContainer container;
 
 		@KafkaHandler
-		public Mono<Void> listenWithAnnotation(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
+		public Mono<Void> listenWithAnnotation(
+				String message,
+				@Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			return Mono.fromCallable(() -> {
 				container.countDownIfNotKnown(receivedTopic, container.countDownLatch3);
 				try {
 					Thread.sleep(1);
-				} catch (InterruptedException e) {
+				}
+				catch (InterruptedException e) {
 					throw new RuntimeException(e);
 				}
 				throw new MyRetryException("Annotated woooops... " + receivedTopic);
@@ -401,12 +426,15 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 		CountDownLatchContainer container;
 
 		@KafkaHandler
-		public Mono<Void> listenNoDlt(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
+		public Mono<Void> listenNoDlt(
+				String message,
+				@Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			return Mono.fromCallable(() -> {
 				container.countDownIfNotKnown(receivedTopic, container.countDownLatch4);
 				try {
 					Thread.sleep(1);
-				} catch (InterruptedException e) {
+				}
+				catch (InterruptedException e) {
 					throw new RuntimeException(e);
 				}
 				throw new IllegalStateException("Another woooops... " + receivedTopic);
@@ -448,8 +476,7 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 			topicPartitions = {@org.springframework.kafka.annotation.TopicPartition(topic = TWO_LISTENERS_TOPIC,
 					partitionOffsets = @PartitionOffset(partition = "0", initialOffset = "0"))},
 			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
-	static class FifthTopicListener1 extends
-									 AbstractFifthTopicListener {
+	static class FifthTopicListener1 extends AbstractFifthTopicListener {
 
 		@KafkaHandler
 		public Mono<Void> listenWithAnnotation(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
@@ -458,7 +485,8 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 				container.countDownIfNotKnown(receivedTopic, container.countDownLatch51);
 				try {
 					Thread.sleep(1);
-				} catch (InterruptedException e) {
+				}
+				catch (InterruptedException e) {
 					throw new RuntimeException(e);
 				}
 				throw new RuntimeException("Annotated woooops... " + receivedTopic);
@@ -481,8 +509,7 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 			topicPartitions = {@org.springframework.kafka.annotation.TopicPartition(topic = TWO_LISTENERS_TOPIC,
 					partitionOffsets = @PartitionOffset(partition = "1", initialOffset = "0"))},
 			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
-	static class FifthTopicListener2 extends
-									 AbstractFifthTopicListener {
+	static class FifthTopicListener2 extends AbstractFifthTopicListener {
 
 		@KafkaHandler
 		public Mono<Void> listenWithAnnotation2(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
@@ -491,7 +518,8 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 				container.countDownLatch52.countDown();
 				try {
 					Thread.sleep(1);
-				} catch (InterruptedException e) {
+				}
+				catch (InterruptedException e) {
 					throw new RuntimeException(e);
 				}
 				throw new RuntimeException("Annotated woooops... " + receivedTopic);
@@ -514,13 +542,16 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 		CountDownLatchContainer container;
 
 		@KafkaHandler
-		public Mono<Void> listenNoDlt(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic,
-												   @SuppressWarnings("unused") Acknowledgment ack) {
+		public Mono<Void> listenNoDlt(
+				String message,
+				@Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic,
+				@SuppressWarnings("unused") Acknowledgment ack) {
 			return Mono.fromCallable(() -> {
 				container.countDownIfNotKnown(receivedTopic, container.countDownLatch6);
 				try {
 					Thread.sleep(1);
-				} catch (InterruptedException e) {
+				}
+				catch (InterruptedException e) {
 					throw new RuntimeException(e);
 				}
 				throw new IllegalStateException("Another woooops... " + receivedTopic);
@@ -548,7 +579,8 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 				container.countDownIfNotKnown(receivedTopic, container.countDownLatchNoRetry);
 				try {
 					Thread.sleep(1);
-				} catch (InterruptedException e) {
+				}
+				catch (InterruptedException e) {
 					throw new RuntimeException(e);
 				}
 				throw new MyDontRetryException("Annotated second woooops... " + receivedTopic);
@@ -582,7 +614,8 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 				container.countDownLatchReuseOne.countDown();
 				try {
 					Thread.sleep(1);
-				} catch (InterruptedException e) {
+				}
+				catch (InterruptedException e) {
 					throw new RuntimeException(e);
 				}
 				throw new RuntimeException("Another woooops... " + receivedTopic);
@@ -612,7 +645,8 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 				container.countDownLatchReuseTwo.countDown();
 				try {
 					Thread.sleep(1);
-				} catch (InterruptedException e) {
+				}
+				catch (InterruptedException e) {
 					throw new RuntimeException(e);
 				}
 				throw new RuntimeException("Another woooops... " + receivedTopic);
@@ -638,7 +672,8 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 				container.countDownLatchReuseThree.countDown();
 				try {
 					Thread.sleep(1);
-				} catch (InterruptedException e) {
+				}
+				catch (InterruptedException e) {
 					throw new RuntimeException(e);
 				}
 				throw new RuntimeException("Another woooops... " + receivedTopic);

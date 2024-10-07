@@ -158,7 +158,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	private BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback;
 
-	private java.util.function.Consumer<FailedRecordTuple> callbackForAsyncFailureQueue;
+	private java.util.function.Consumer<FailedRecordTuple<K, V>> callbackForAsyncFailureQueue;
 
 	/**
 	 * Create an instance with the provided bean and method.
@@ -167,7 +167,6 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 */
 	protected MessagingMessageListenerAdapter(Object bean, Method method) {
 		this(bean, method, null);
-		System.out.println("here");
 	}
 
 	/**
@@ -692,7 +691,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			acknowledge(acknowledgment);
 			if (canAsyncRetry(request, ex)) {
 				ConsumerRecord<K, V> record = (ConsumerRecord<K, V>) request;
-				FailedRecordTuple failedRecordTuple = new FailedRecordTuple(record, (RuntimeException) ex);
+				FailedRecordTuple<K, V> failedRecordTuple = new FailedRecordTuple<>(record, (RuntimeException) ex);
 				this.callbackForAsyncFailureQueue.accept(failedRecordTuple);
 			}
 		}
@@ -897,6 +896,10 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		return parameterType instanceof ParameterizedType pType && pType.getRawType().equals(type);
 	}
 
+	public void putInAsyncFailureQueue(java.util.function.Consumer<FailedRecordTuple<K, V>> callbackForAsyncFailureQueue) {
+		this.callbackForAsyncFailureQueue = callbackForAsyncFailureQueue;
+	}
+
 	/**
 	 * Root object for reply expression evaluation.
 	 * @param request the request.
@@ -913,10 +916,6 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		public void acknowledge() {
 		}
 
-	}
-
-	public void putInAsyncFailureQueue(java.util.function.Consumer<FailedRecordTuple> callbackForAsyncFailureQueue) {
-		this.callbackForAsyncFailureQueue = callbackForAsyncFailureQueue;
 	}
 
 }

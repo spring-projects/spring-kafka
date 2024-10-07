@@ -88,7 +88,7 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 
 	@Override
 	public void setCallbackForAsyncFailureQueue(
-			java.util.function.Consumer<FailedRecordTuple> asyncRetryCallback) {
+			java.util.function.Consumer<FailedRecordTuple<K, V>> asyncRetryCallback) {
 		putInAsyncFailureQueue(asyncRetryCallback);
 	}
 }
