@@ -157,13 +157,13 @@ class DeliveryAttemptAwareRetryListenerIntegrationTest {
 				containerFactory = MAIN_TOPIC_CONTAINER_FACTORY0,
 				batch = "true")
 		public void listen(List<ConsumerRecord<?, ?>> records) {
-			latch0.countDown();
 			for (ConsumerRecord<?, ?> record : records) {
 				Iterable<Header> headers = record.headers().headers(KafkaHeaders.DELIVERY_ATTEMPT);
 				for (Header header : headers) {
 					receivedHeaders.add(header);
 				}
 			}
+			latch0.countDown();
 			throw new RuntimeException("Failed.");
 		}
 	}
@@ -176,13 +176,13 @@ class DeliveryAttemptAwareRetryListenerIntegrationTest {
 				containerFactory = MAIN_TOPIC_CONTAINER_FACTORY1,
 				batch = "true")
 		public void listen(List<ConsumerRecord<?, ?>> records) {
-			latch1.countDown();
 			for (ConsumerRecord<?, ?> record : records) {
 				Iterable<Header> headers = record.headers().headers(KafkaHeaders.DELIVERY_ATTEMPT);
 				for (Header header : headers) {
 					receivedHeaders.add(header);
 				}
 			}
+			latch1.countDown();
 			throw new RuntimeException("Failed.");
 		}
 	}
