@@ -55,4 +55,4 @@ When using `KafkaStreamsCustomizer` it is now possible to return a custom implem
 === KafkaHeaders.DELIVERY_ATTEMPT for batch listeners
 When using a `BatchListener`, the `ConsumerRecord` can have the `KafkaHeaders.DELIVERY_ATTMPT` header in its headers fields.
 If the `DeliveryAttemptAwareRetryListener` is set to error handler as retry listener, each `ConsumerRecord` has delivery attempt header.
-For more details, see xref:retrytopic/kafka-headers-for-batch-listener.adoc[kafka-headers-for-batch-listener].
+For more details, see xref:kafka/annotation-error-handling.adoc#delivery-attempts-header-for-batch-listener[kafka-headers-for-batch-listener].

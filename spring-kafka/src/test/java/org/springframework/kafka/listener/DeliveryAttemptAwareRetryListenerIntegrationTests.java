@@ -51,6 +51,7 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.util.backoff.FixedBackOff;
@@ -209,23 +210,36 @@ class DeliveryAttemptAwareRetryListenerIntegrationTests {
 
 		@Bean
 		ProducerFactory<String, String> producerFactory() {
-			Map<String, Object> configProps = new HashMap<>();
-			configProps.put(
-					ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
+			Map<String, Object> props = KafkaTestUtils.producerProps(
 					this.broker.getBrokersAsString());
-			configProps.put(
-					ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
-					StringSerializer.class);
-			configProps.put(
-					ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-					StringSerializer.class);
-			return new DefaultKafkaProducerFactory<>(configProps);
+			props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+			props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+			return new DefaultKafkaProducerFactory<>(props);
 		}
 
 		@Bean("customKafkaTemplate")
 		KafkaTemplate<String, String> kafkaTemplate() {
 			return new KafkaTemplate<>(producerFactory());
 		}
+	}
+
+	private static CommonErrorHandler createErrorHandler(int interval, int maxAttemptCount) {
+		final FixedBackOff fixedBackOff = new FixedBackOff(interval, maxAttemptCount);
+		DefaultErrorHandler errorHandler = new DefaultErrorHandler(fixedBackOff);
+		errorHandler.setRetryListeners(new DeliveryAttemptAwareRetryListener());
+		return errorHandler;
+	}
+
+	private static ConcurrentKafkaListenerContainerFactory<String, String> createListenerContainerFactory(
+			ConsumerFactory<String, String> consumerFactory, CommonErrorHandler errorHandler) {
+
+		ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
+		factory.setConsumerFactory(consumerFactory);
+		factory.setCommonErrorHandler(errorHandler);
+
+		final ContainerProperties containerProperties = factory.getContainerProperties();
+		containerProperties.setDeliveryAttemptHeader(true);
+		return factory;
 	}
 
 	@EnableKafka
@@ -236,29 +250,14 @@ class DeliveryAttemptAwareRetryListenerIntegrationTests {
 		EmbeddedKafkaBroker broker;
 
 		@Bean
-		KafkaAdmin kafkaAdmin() {
-			Map<String, Object> configs = new HashMap<>();
-			configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, this.broker.getBrokersAsString());
-			return new KafkaAdmin(configs);
-		}
-
-		@Bean
 		ConsumerFactory<String, String> consumerFactory() {
-			Map<String, Object> props = new HashMap<>();
-			props.put(
-					ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-					this.broker.getBrokersAsString());
-			props.put(
-					ConsumerConfig.GROUP_ID_CONFIG,
-					"groupId");
-			props.put(
-					ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
-					StringDeserializer.class);
-			props.put(
-					ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-					StringDeserializer.class);
-			props.put(
-					ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG, false);
+			Map<String, Object> props = KafkaTestUtils.consumerProps(
+					this.broker.getBrokersAsString(),
+					"DeliveryAttemptAwareRetryListenerIntegrationTestsGroupId",
+					"true");
+			props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+			props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+			props.put(ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG, false);
 			props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
 			return new DefaultKafkaConsumerFactory<>(props);
@@ -267,40 +266,15 @@ class DeliveryAttemptAwareRetryListenerIntegrationTests {
 		@Bean
 		ConcurrentKafkaListenerContainerFactory<String, String>
 		deliveryMyTestKafkaListenerContainerFactory0(ConsumerFactory<String, String> consumerFactory) {
-
-			final FixedBackOff fixedBackOff = new FixedBackOff(1, MAX_ATTEMPT_COUNT0);
-			DefaultErrorHandler errorHandler = new DefaultErrorHandler(fixedBackOff);
-			errorHandler.setRetryListeners(new DeliveryAttemptAwareRetryListener());
-
-			ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
-			factory.setConsumerFactory(consumerFactory);
-			factory.setCommonErrorHandler(errorHandler);
-
-
-			final ContainerProperties containerProperties = factory.getContainerProperties();
-			containerProperties.setDeliveryAttemptHeader(true);
-
-			return factory;
+			CommonErrorHandler errorHandler = createErrorHandler(1, MAX_ATTEMPT_COUNT0);
+			return createListenerContainerFactory(consumerFactory, errorHandler);
 		}
 
 		@Bean
 		ConcurrentKafkaListenerContainerFactory<String, String>
 		deliveryMyTestKafkaListenerContainerFactory1(ConsumerFactory<String, String> consumerFactory) {
-
-			final FixedBackOff fixedBackOff = new FixedBackOff(1, MAX_ATTEMPT_COUNT1);
-			DefaultErrorHandler errorHandler = new DefaultErrorHandler(fixedBackOff);
-			errorHandler.setRetryListeners(new DeliveryAttemptAwareRetryListener());
-
-			ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
-			factory.setConsumerFactory(consumerFactory);
-			factory.setCommonErrorHandler(errorHandler);
-
-
-			final ContainerProperties containerProperties = factory.getContainerProperties();
-			containerProperties.setDeliveryAttemptHeader(true);
-
-			return factory;
-
+			CommonErrorHandler errorHandler = createErrorHandler(1, MAX_ATTEMPT_COUNT1);
+			return createListenerContainerFactory(consumerFactory, errorHandler);
 		}
 
 	}

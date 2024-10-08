@@ -32,7 +32,6 @@ import org.springframework.kafka.support.KafkaHeaders;
  *
  * @author Sanghyeok An
  * @since 3.3
- * @see KafkaConsumerBackoffManager
  */
 
 public class DeliveryAttemptAwareRetryListener implements RetryListener {
