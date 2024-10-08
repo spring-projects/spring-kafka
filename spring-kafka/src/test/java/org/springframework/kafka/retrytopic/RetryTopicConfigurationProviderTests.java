@@ -89,7 +89,7 @@ class RetryTopicConfigurationProviderTests {
 	void shouldProvideFromAnnotation() {
 
 		// setup
-		willReturn(kafkaOperations).given(beanFactory).getBean("retryTopicDefaultKafkaTemplate", KafkaOperations.class);
+		willReturn(kafkaOperations).given(beanFactory).getBean(RetryTopicBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME, KafkaOperations.class);
 
 		// given
 		RetryTopicConfigurationProvider provider = new RetryTopicConfigurationProvider(beanFactory);
@@ -149,7 +149,7 @@ class RetryTopicConfigurationProviderTests {
 	void shouldProvideFromMetaAnnotation() {
 
 		// setup
-		willReturn(kafkaOperations).given(beanFactory).getBean("retryTopicDefaultKafkaTemplate", KafkaOperations.class);
+		willReturn(kafkaOperations).given(beanFactory).getBean(RetryTopicBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME, KafkaOperations.class);
 
 		// given
 		RetryTopicConfigurationProvider provider = new RetryTopicConfigurationProvider(beanFactory);
