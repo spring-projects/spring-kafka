@@ -83,7 +83,6 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
-import org.springframework.stereotype.Component;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -94,6 +93,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  *
  * @author Wang Zhiyang
  * @author Artem Bilan
+ * @author Sanghyeok An
  *
  * @since 3.2
  */
@@ -304,7 +304,6 @@ class RetryTopicClassLevelIntegrationTests {
 		}
 	}
 
-	@Component
 	@KafkaListener(id = "firstTopicId", topics = FIRST_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
 			errorHandler = "myCustomErrorHandler", contentTypeConverter = "myCustomMessageConverter",
 			concurrency = "2")
@@ -324,7 +323,6 @@ class RetryTopicClassLevelIntegrationTests {
 
 	}
 
-	@Component
 	@KafkaListener(topics = SECOND_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 	static class SecondTopicListener {
 
@@ -338,7 +336,6 @@ class RetryTopicClassLevelIntegrationTests {
 		}
 	}
 
-	@Component
 	@RetryableTopic(attempts = "${five.attempts}",
 			backoff = @Backoff(delay = 250, maxDelay = 1000, multiplier = 1.5),
 			numPartitions = "#{3}",
@@ -365,7 +362,6 @@ class RetryTopicClassLevelIntegrationTests {
 		}
 	}
 
-	@Component
 	@RetryableTopic(dltStrategy = DltStrategy.NO_DLT, attempts = "4", backoff = @Backoff(300),
 			sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS,
 			kafkaTemplate = "${kafka.template}")
@@ -444,7 +440,6 @@ class RetryTopicClassLevelIntegrationTests {
 
 	}
 
-	@Component
 	@RetryableTopic(attempts = "4", backoff = @Backoff(50),
 			sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS)
 	@KafkaListener(id = "manual", topics = MANUAL_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
@@ -463,7 +458,6 @@ class RetryTopicClassLevelIntegrationTests {
 
 	}
 
-	@Component
 	@RetryableTopic(attempts = "3", numPartitions = "3", exclude = MyDontRetryException.class,
 			backoff = @Backoff(delay = 50, maxDelay = 100, multiplier = 3),
 			traversingCauses = "true", kafkaTemplate = "${kafka.template}")
@@ -485,7 +479,6 @@ class RetryTopicClassLevelIntegrationTests {
 		}
 	}
 
-	@Component
 	@RetryableTopic(attempts = "2", backoff = @Backoff(50))
 	@KafkaListener(id = "reuseRetry1", topics = FIRST_REUSE_RETRY_TOPIC,
 			containerFactory = "retryTopicListenerContainerFactory")
@@ -505,7 +498,6 @@ class RetryTopicClassLevelIntegrationTests {
 
 	}
 
-	@Component
 	@RetryableTopic(attempts = "5", backoff = @Backoff(delay = 30, maxDelay = 100, multiplier = 2))
 	@KafkaListener(id = "reuseRetry2", topics = SECOND_REUSE_RETRY_TOPIC,
 			containerFactory = "retryTopicListenerContainerFactory")
@@ -525,7 +517,6 @@ class RetryTopicClassLevelIntegrationTests {
 
 	}
 
-	@Component
 	@RetryableTopic(attempts = "5", backoff = @Backoff(delay = 1, maxDelay = 5, multiplier = 1.4))
 	@KafkaListener(id = "reuseRetry3", topics = THIRD_REUSE_RETRY_TOPIC,
 			containerFactory = "retryTopicListenerContainerFactory")
@@ -545,7 +536,6 @@ class RetryTopicClassLevelIntegrationTests {
 
 	}
 
-	@Component
 	static class CountDownLatchContainer {
 
 		CountDownLatch countDownLatch1 = new CountDownLatch(5);
@@ -594,7 +584,6 @@ class RetryTopicClassLevelIntegrationTests {
 		}
 	}
 
-	@Component
 	static class MyCustomDltProcessor {
 
 		@Autowired

@@ -84,7 +84,6 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
-import org.springframework.stereotype.Component;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -94,6 +93,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  * @author Tomaz Fernandes
  * @author Gary Russell
  * @author Wang Zhiyang
+ * @author Sanghyeok An
  * @since 2.7
  */
 @SpringJUnitConfig
@@ -315,7 +315,6 @@ public class RetryTopicIntegrationTests {
 		}
 	}
 
-	@Component
 	static class FirstTopicListener {
 
 		@Autowired
@@ -335,7 +334,6 @@ public class RetryTopicIntegrationTests {
 
 	}
 
-	@Component
 	static class SecondTopicListener {
 
 		@Autowired
@@ -349,7 +347,6 @@ public class RetryTopicIntegrationTests {
 		}
 	}
 
-	@Component
 	static class ThirdTopicListener {
 
 		@Autowired
@@ -377,7 +374,6 @@ public class RetryTopicIntegrationTests {
 		}
 	}
 
-	@Component
 	static class FourthTopicListener {
 
 		@Autowired
@@ -465,7 +461,6 @@ public class RetryTopicIntegrationTests {
 
 	}
 
-	@Component
 	static class SixthTopicDefaultDLTListener {
 
 		@Autowired
@@ -484,7 +479,6 @@ public class RetryTopicIntegrationTests {
 
 	}
 
-	@Component
 	static class NoRetryTopicListener {
 
 		@Autowired
@@ -507,7 +501,6 @@ public class RetryTopicIntegrationTests {
 		}
 	}
 
-	@Component
 	static class FirstReuseRetryTopicListener {
 
 		final List<String> topics = Collections.synchronizedList(new ArrayList<>());
@@ -527,7 +520,6 @@ public class RetryTopicIntegrationTests {
 
 	}
 
-	@Component
 	static class SecondReuseRetryTopicListener {
 
 		final List<String> topics = Collections.synchronizedList(new ArrayList<>());
@@ -547,7 +539,6 @@ public class RetryTopicIntegrationTests {
 
 	}
 
-	@Component
 	static class ThirdReuseRetryTopicListener {
 
 		final List<String> topics = Collections.synchronizedList(new ArrayList<>());
@@ -567,7 +558,6 @@ public class RetryTopicIntegrationTests {
 
 	}
 
-	@Component
 	static class CountDownLatchContainer {
 
 		CountDownLatch countDownLatch1 = new CountDownLatch(5);
@@ -618,7 +608,6 @@ public class RetryTopicIntegrationTests {
 		}
 	}
 
-	@Component
 	static class MyCustomDltProcessor {
 
 		@Autowired
