@@ -81,7 +81,7 @@ public @interface RetryableTopic {
 	 *
 	 * The bean name of the {@link org.springframework.kafka.core.KafkaTemplate} bean that
 	 * will be used to forward the message to the retry and Dlt topics. If not specified,
-	 * a bean with name {@code retryTopicDefaultKafkaTemplate} or {@code kafkaTemplate}
+	 * a bean with name {@code defaultRetryTopicKafkaTemplate} or {@code kafkaTemplate}
 	 * will be looked up.
 	 *
 	 * @return the kafkaTemplate bean name.
