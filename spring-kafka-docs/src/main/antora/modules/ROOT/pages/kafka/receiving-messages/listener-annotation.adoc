@@ -256,7 +256,7 @@ public KafkaListenerContainerFactory<?> batchFactory() {
 }
 ----
 
-NOTE: Starting with version 2.8, you can override the factory's `batchListener` propery using the `batch` property on the `@KafkaListener` annotation.
+NOTE: Starting with version 2.8, you can override the factory's `batchListener` property using the `batch` property on the `@KafkaListener` annotation.
 This, together with the changes to xref:kafka/annotation-error-handling.adoc#error-handlers[Container Error Handlers] allows the same factory to be used for both record and batch listeners.
 
 NOTE: Starting with version 2.9.6, the container factory has separate setters for the `recordMessageConverter` and `batchMessageConverter` properties.
@@ -404,7 +404,7 @@ public class Listener {
 }
 ----
 
-If, in the unlikely event that you have an actual bean called `__listener`, you can change the expression token byusing the `beanRef` attribute.
+If, in the unlikely event that you have an actual bean called `__listener`, you can change the expression token by using the `beanRef` attribute.
 The following example shows how to do so:
 
 [source, java]

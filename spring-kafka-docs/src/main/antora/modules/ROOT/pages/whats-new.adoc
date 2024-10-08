@@ -46,6 +46,11 @@ For more details, see xref:kafka/sending-messages.adoc[Sending Messages] section
 
 When using `DeadLetterPublishingRecovererFactory`, the user applications can override the `maybeLogListenerException` method to customize the logging behavior.
 
+[[x33-customize-admin-client-in-KafkaAdmin]]
+=== Customize Admin client in KafkaAdmin
+
+When extending `KafkaAdmin`, user applications may override the `createAdmin` method to customize Admin client creation.
+
 [[x33-customize-kafka-streams-implementation]]
 === Customizing The Implementation of Kafka Streams
 
@@ -56,3 +61,4 @@ When using `KafkaStreamsCustomizer` it is now possible to return a custom implem
 When using a `BatchListener`, the `ConsumerRecord` can have the `KafkaHeaders.DELIVERY_ATTMPT` header in its headers fields.
 If the `DeliveryAttemptAwareRetryListener` is set to error handler as retry listener, each `ConsumerRecord` has delivery attempt header.
 For more details, see xref:retrytopic/kafka-headers-for-batch-listener.adoc[kafka-headers-for-batch-listener].
+

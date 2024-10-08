@@ -216,7 +216,7 @@ Example:
 public class MyListener extends AbstractConsumerSeekAware {
 
     @KafkaListener(...)
-    void listn(...) {
+    void listen(...) {
         ...
     }
 }

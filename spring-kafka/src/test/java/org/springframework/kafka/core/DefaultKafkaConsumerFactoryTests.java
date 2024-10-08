@@ -503,10 +503,11 @@ public class DefaultKafkaConsumerFactoryTests {
 	void configDeserializer() {
 		Deserializer key = mock(Deserializer.class);
 		Deserializer value = mock(Deserializer.class);
-		Map<String, Object> config = new HashMap<>();
+		Map<String, Object> config = KafkaTestUtils.consumerProps("mockGroup", "false", this.embeddedKafka);
 		DefaultKafkaConsumerFactory cf = new DefaultKafkaConsumerFactory(config, key, value);
 		Deserializer keyDeserializer = cf.getKeyDeserializer();
 		assertThat(keyDeserializer).isSameAs(key);
+		cf.createKafkaConsumer(config);
 		verify(key).configure(config, true);
 		Deserializer valueDeserializer = cf.getValueDeserializer();
 		assertThat(valueDeserializer).isSameAs(value);
