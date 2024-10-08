@@ -34,10 +34,9 @@ import org.springframework.kafka.support.KafkaHeaders;
 /**
  * @author Sanghyeok An
  * @since 3.3
- *
  */
 
-class DeliveryAttemptAwareRetryListenerTest {
+class DeliveryAttemptAwareRetryListenerTests {
 
 	@Test
 	void should_have_single_header_and_header_value_should_be_1() {

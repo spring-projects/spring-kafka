@@ -20,8 +20,6 @@ import java.nio.ByteBuffer;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.common.header.Header;
-import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 
 import org.springframework.kafka.support.KafkaHeaders;
@@ -45,10 +43,9 @@ public class DeliveryAttemptAwareRetryListener implements RetryListener {
 	}
 
 	/**
-	 * Called after a delivery failed for batch records.
+	 * Invoke after delivery failure for batch records.
 	 * If the {@link KafkaHeaders}.DELIVERY_ATTEMPT header already exists in the {@link ConsumerRecord}'s headers,
 	 * it will be removed. Then, the provided `deliveryAttempt` is added to the {@link ConsumerRecord}'s headers.
-	 *
 	 * @param records the records.
 	 * @param ex the exception.
 	 * @param deliveryAttempt the delivery attempt, if available.
@@ -56,17 +53,7 @@ public class DeliveryAttemptAwareRetryListener implements RetryListener {
 	@Override
 	public void failedDelivery(ConsumerRecords<?, ?> records, Exception ex, int deliveryAttempt) {
 		for (ConsumerRecord<?, ?> record : records) {
-
-			Headers headers = record.headers();
-			int headerCount = 0;
-			Iterable<Header> iterator = record.headers().headers(KafkaHeaders.DELIVERY_ATTEMPT);
-			for (Header header : iterator) {
-				headerCount += 1;
-			}
-
-			if (headerCount > 0) {
-				headers.remove(KafkaHeaders.DELIVERY_ATTEMPT);
-			}
+			record.headers().remove(KafkaHeaders.DELIVERY_ATTEMPT);
 
 			byte[] buff = new byte[4]; // NOSONAR (magic #)
 			ByteBuffer bb = ByteBuffer.wrap(buff);

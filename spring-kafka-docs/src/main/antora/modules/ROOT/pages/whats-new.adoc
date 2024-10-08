@@ -50,3 +50,9 @@ When using `DeadLetterPublishingRecovererFactory`, the user applications can ove
 === Customizing The Implementation of Kafka Streams
 
 When using `KafkaStreamsCustomizer` it is now possible to return a custom implementation of the `KafkaStreams` object by overriding the `initKafkaStreams` method.
+
+[[x33-kafka-headers-for-batch-listeners]]
+=== KafkaHeaders.DELIVERY_ATTEMPT for batch listeners
+When using a `BatchListener`, the `ConsumerRecord` can have the `KafkaHeaders.DELIVERY_ATTMPT` header in its headers fields.
+If the `DeliveryAttemptAwareRetryListener` is set to error handler as retry listener, each `ConsumerRecord` has delivery attempt header.
+For more details, see xref:retrytopic/kafka-headers-for-batch-listener.adoc[kafka-headers-for-batch-listener].
