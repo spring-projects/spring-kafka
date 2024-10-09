@@ -40,7 +40,7 @@ import org.springframework.core.annotation.AliasFor;
 import org.springframework.kafka.annotation.AliasPropertiesTests.Config.ClassAndMethodLevelListener;
 import org.springframework.kafka.annotation.KafkaListenerAnnotationBeanPostProcessor.AnnotationEnhancer;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
-import org.springframework.kafka.config.KafkaListenerConfigUtils;
+import org.springframework.kafka.config.KafkaListenerConfigTypes;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
@@ -132,7 +132,7 @@ public class AliasPropertiesTests {
 			return new OrderedEnhancer(orderedCalledFirst);
 		}
 
-		@Bean(KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)
+		@Bean(KafkaListenerConfigTypes.KAFKA_CONFIG_PATH.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)
 		public KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry() {
 			return new KafkaListenerEndpointRegistry();
 		}
