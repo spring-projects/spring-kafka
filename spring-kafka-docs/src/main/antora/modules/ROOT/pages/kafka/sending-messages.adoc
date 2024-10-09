@@ -184,7 +184,7 @@ This section shows examples of sending messages to Kafka:
 public void sendToKafka(final MyOutputData data) {
     final ProducerRecord<String, String> record = createRecord(data);
 
-    CompletableFuture<SendResult<Integer, String>> future = template.send(record);
+    CompletableFuture<SendResult<String, String>> future = template.send(record);
     future.whenComplete((result, ex) -> {
         if (ex == null) {
             handleSuccess(data);
