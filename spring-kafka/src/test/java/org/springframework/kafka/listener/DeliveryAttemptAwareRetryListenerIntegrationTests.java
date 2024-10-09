@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -45,7 +44,6 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
-import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -150,6 +148,25 @@ class DeliveryAttemptAwareRetryListenerIntegrationTests {
 		}
 	}
 
+	private static CommonErrorHandler createErrorHandler(int interval, int maxAttemptCount) {
+		final FixedBackOff fixedBackOff = new FixedBackOff(interval, maxAttemptCount);
+		DefaultErrorHandler errorHandler = new DefaultErrorHandler(fixedBackOff);
+		errorHandler.setRetryListeners(new DeliveryAttemptAwareRetryListener());
+		return errorHandler;
+	}
+
+	private static ConcurrentKafkaListenerContainerFactory<String, String> createListenerContainerFactory(
+			ConsumerFactory<String, String> consumerFactory, CommonErrorHandler errorHandler) {
+
+		ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
+		factory.setConsumerFactory(consumerFactory);
+		factory.setCommonErrorHandler(errorHandler);
+
+		final ContainerProperties containerProperties = factory.getContainerProperties();
+		containerProperties.setDeliveryAttemptHeader(true);
+		return factory;
+	}
+
 	static class TestTopicListener0 {
 		final List<Header> receivedHeaders = new ArrayList<>();
 
@@ -221,25 +238,6 @@ class DeliveryAttemptAwareRetryListenerIntegrationTests {
 		KafkaTemplate<String, String> kafkaTemplate() {
 			return new KafkaTemplate<>(producerFactory());
 		}
-	}
-
-	private static CommonErrorHandler createErrorHandler(int interval, int maxAttemptCount) {
-		final FixedBackOff fixedBackOff = new FixedBackOff(interval, maxAttemptCount);
-		DefaultErrorHandler errorHandler = new DefaultErrorHandler(fixedBackOff);
-		errorHandler.setRetryListeners(new DeliveryAttemptAwareRetryListener());
-		return errorHandler;
-	}
-
-	private static ConcurrentKafkaListenerContainerFactory<String, String> createListenerContainerFactory(
-			ConsumerFactory<String, String> consumerFactory, CommonErrorHandler errorHandler) {
-
-		ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
-		factory.setConsumerFactory(consumerFactory);
-		factory.setCommonErrorHandler(errorHandler);
-
-		final ContainerProperties containerProperties = factory.getContainerProperties();
-		containerProperties.setDeliveryAttemptHeader(true);
-		return factory;
 	}
 
 	@EnableKafka
