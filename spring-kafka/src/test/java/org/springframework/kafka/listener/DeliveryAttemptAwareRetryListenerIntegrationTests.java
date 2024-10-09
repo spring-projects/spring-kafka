@@ -149,7 +149,7 @@ class DeliveryAttemptAwareRetryListenerIntegrationTests {
 	}
 
 	private static CommonErrorHandler createErrorHandler(int interval, int maxAttemptCount) {
-		final FixedBackOff fixedBackOff = new FixedBackOff(interval, maxAttemptCount);
+		FixedBackOff fixedBackOff = new FixedBackOff(interval, maxAttemptCount);
 		DefaultErrorHandler errorHandler = new DefaultErrorHandler(fixedBackOff);
 		errorHandler.setRetryListeners(new DeliveryAttemptAwareRetryListener());
 		return errorHandler;
@@ -162,7 +162,7 @@ class DeliveryAttemptAwareRetryListenerIntegrationTests {
 		factory.setConsumerFactory(consumerFactory);
 		factory.setCommonErrorHandler(errorHandler);
 
-		final ContainerProperties containerProperties = factory.getContainerProperties();
+		ContainerProperties containerProperties = factory.getContainerProperties();
 		containerProperties.setDeliveryAttemptHeader(true);
 		return factory;
 	}
@@ -229,8 +229,6 @@ class DeliveryAttemptAwareRetryListenerIntegrationTests {
 		ProducerFactory<String, String> producerFactory() {
 			Map<String, Object> props = KafkaTestUtils.producerProps(
 					this.broker.getBrokersAsString());
-			props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-			props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 			return new DefaultKafkaProducerFactory<>(props);
 		}
 
@@ -253,11 +251,6 @@ class DeliveryAttemptAwareRetryListenerIntegrationTests {
 					this.broker.getBrokersAsString(),
 					"DeliveryAttemptAwareRetryListenerIntegrationTestsGroupId",
 					"true");
-			props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-			props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-			props.put(ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG, false);
-			props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
 			return new DefaultKafkaConsumerFactory<>(props);
 		}
 
