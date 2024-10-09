@@ -52,7 +52,7 @@ containerProperties.setConsumerRebalanceListener(new ConsumerAwareRebalanceListe
 ----
 
 IMPORTANT: Starting with version 2.4, a new method `onPartitionsLost()` has been added (similar to a method with the same name in `ConsumerRebalanceLister`).
-The default implementation on `ConsumerRebalanceLister` simply calls `onPartionsRevoked`.
+The default implementation on `ConsumerRebalanceLister` simply calls `onPartitionsRevoked`.
 The default implementation on `ConsumerAwareRebalanceListener` does nothing.
 When supplying the listener container with a custom listener (of either type), it is important that your implementation does not call `onPartitionsRevoked` from `onPartitionsLost`.
 If you implement `ConsumerRebalanceListener` you should override the default method.

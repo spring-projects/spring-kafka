@@ -166,7 +166,7 @@ public void sendToKafka(String in) {
 [[tip-json]]
 == Customizing the JsonSerializer and JsonDeserializer
 
-The serializer and deserializer support a number of cusomizations using properties, see xref:kafka/serdes.adoc#json-serde[JSON] for more information.
+The serializer and deserializer support a number of customizations using properties, see xref:kafka/serdes.adoc#json-serde[JSON] for more information.
 The `kafka-clients` code, not Spring, instantiates these objects, unless you inject them directly into the consumer and producer factories.
 If you wish to configure the (de)serializer using properties, but wish to use, say, a custom `ObjectMapper`, simply create a subclass and pass the custom mapper into the `super` constructor. For example:
 

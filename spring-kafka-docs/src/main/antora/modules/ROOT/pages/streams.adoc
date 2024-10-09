@@ -336,7 +336,7 @@ Of course, the `recoverer()` bean can be your own implementation of `ConsumerRec
 Starting with version 3.2, Spring for Apache Kafka provides basic facilities required for interactive queries in Kafka Streams.
 Interactive queries are useful in stateful Kafka Streams applications since they provide a way to constantly query the stateful stores in the application.
 Thus, if an application wants to materialize the current view of the system under consideration, interactive queries provide a way to do that.
-To learn more about interacive queries, see this https://kafka.apache.org/36/documentation/streams/developer-guide/interactive-queries.html[article].
+To learn more about interactive queries, see this https://kafka.apache.org/36/documentation/streams/developer-guide/interactive-queries.html[article].
 The support in Spring for Apache Kafka is centered around an API called `KafkaStreamsInteractiveQueryService` which is a facade around interactive queries APIs in Kafka Streams library.
 An application can create an instance of this service as a bean and then later on use it to retrieve the state store by its name.
 
@@ -376,7 +376,7 @@ Here is the type signature from the API.
 public <T> T retrieveQueryableStore(String storeName, QueryableStoreType<T> storeType)
 ----
 
-When calling this method, the user can specifially ask for the proper state store type, as we have done in the above example.
+When calling this method, the user can specifically ask for the proper state store type, as we have done in the above example.
 
 === Retrying State Store Retrieval
 
