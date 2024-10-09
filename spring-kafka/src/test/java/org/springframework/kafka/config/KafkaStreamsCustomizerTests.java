@@ -166,10 +166,6 @@ public class KafkaStreamsCustomizerTests {
 		public KafkaStreamsConfiguration kStreamsConfigs() {
 			Map<String, Object> props =
 					KafkaTestUtils.streamsProps(APPLICATION_ID, this.broker.getBrokersAsString());
-//			Map<String, Object> props = new HashMap<>();
-//			props.put(StreamsConfig.APPLICATION_ID_CONFIG, APPLICATION_ID);
-//			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG,
-//					Collections.singletonList(this.broker.getBrokersAsString()));
 			props.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, Foo.class);
 			props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 1000);
 			return new KafkaStreamsConfiguration(props);
