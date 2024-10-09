@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2023 the original author or authors.
+ * Copyright 2019-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,6 +43,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  * Tests for container customizations.
  *
  * @author Francois Rosiere
+ * @author Soby Chacko
  * @since 3.1
  */
 @SuppressWarnings("unused")
@@ -129,7 +130,7 @@ class ContainerCustomizationTests {
 				id = CONTAINER_CUSTOMIZER_AND_POST_PROCESSOR,
 				topics = TOPIC,
 				containerFactory = "containerFactoryWithCustomizer",
-				containerPostProcessor = "infoContainerPostProcessor")
+				containerPostProcessor = "#{__listener.infoContainerPostProcessor}")
 		public void containerCustomizerAndPostProcessor(String foo) {
 		}
 
