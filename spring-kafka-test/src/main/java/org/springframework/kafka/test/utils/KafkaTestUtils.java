@@ -89,6 +89,7 @@ public final class KafkaTestUtils {
 	 * @param brokers the bootstrapServers property.
 	 * @param group the group id.
 	 * @return the properties.
+	 * @since 3.3
 	 */
 	public static Map<String, Object> consumerProps(String brokers, String group) {
 		return consumerProps(brokers, group, "false");
@@ -141,8 +142,8 @@ public final class KafkaTestUtils {
 	}
 
 	/**
-	 * Set up test properties for an {@code <Integer, String>} Kafka Streams.
-	 * @param applicationId the applicationId for Kafka Streams.
+	 * Set up test properties for the Kafka Streams.
+	 * @param applicationId the applicationId for the Kafka Streams.
 	 * @param brokers the bootstrapServers property.
 	 * @return the properties.
 	 * @since 3.3
