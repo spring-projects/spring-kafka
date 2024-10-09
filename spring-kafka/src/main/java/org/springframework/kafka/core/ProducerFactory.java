@@ -35,6 +35,7 @@ import org.springframework.lang.Nullable;
  *
  * @author Gary Russell
  * @author Thomas Strauß
+ * @author  Kwon YongHyun
  */
 public interface ProducerFactory<K, V> {
 
@@ -42,6 +43,11 @@ public interface ProducerFactory<K, V> {
 	 * The default close timeout duration as 30 seconds.
 	 */
 	Duration DEFAULT_PHYSICAL_CLOSE_TIMEOUT = Duration.ofSeconds(30);
+
+	/**
+	 * Error message for unsupported factory methods.
+	 */
+	String FACTORY_DOES_NOT_SUPPORT_METHOD = "This factory does not support this method";
 
 	/**
 	 * Create a producer which will be transactional if the factory is so configured.
@@ -57,7 +63,7 @@ public interface ProducerFactory<K, V> {
 	 * @since 2.3
 	 */
 	default Producer<K, V> createProducer(@Nullable @SuppressWarnings("unused") String txIdPrefix) {
-		throw new UnsupportedOperationException("This factory does not support this method");
+		throw new UnsupportedOperationException(FACTORY_DOES_NOT_SUPPORT_METHOD);
 	}
 
 	/**
@@ -67,7 +73,7 @@ public interface ProducerFactory<K, V> {
 	 * @see #transactionCapable()
 	 */
 	default Producer<K, V> createNonTransactionalProducer() {
-		throw new UnsupportedOperationException("This factory does not support this method");
+		throw new UnsupportedOperationException(FACTORY_DOES_NOT_SUPPORT_METHOD);
 	}
 
 	/**
