@@ -44,8 +44,8 @@ import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
-
 import org.apache.kafka.streams.StreamsConfig;
+
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
