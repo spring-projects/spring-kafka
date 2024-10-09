@@ -84,7 +84,6 @@ import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.core.FailedRecordTuple;
 import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaResourceHolder;
 import org.springframework.kafka.event.ConsumerFailedToStartEvent;
@@ -902,8 +901,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.observationEnabled = this.containerProperties.isObservationEnabled();
 
 				if (!AopUtils.isAopProxy(listener)) {
-					final java.util.function.Consumer<FailedRecordTuple<K, V>> callbackForAsyncFailureQueue =
-							(fRecord) -> this.failedRecords.addLast(fRecord);
+					BiConsumer<ConsumerRecord<K, V>, RuntimeException> callbackForAsyncFailureQueue =
+							(cRecord, ex) -> {
+								FailedRecordTuple<K, V> failedRecord = new FailedRecordTuple<>(cRecord, ex);
+								this.failedRecords.addLast(failedRecord);
+							};
 					this.listener.setCallbackForAsyncFailureQueue(callbackForAsyncFailureQueue);
 				}
 			}
@@ -3982,5 +3984,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 	}
+
+	record FailedRecordTuple<K, V>(ConsumerRecord<K, V> record, RuntimeException ex) { };
 
 }

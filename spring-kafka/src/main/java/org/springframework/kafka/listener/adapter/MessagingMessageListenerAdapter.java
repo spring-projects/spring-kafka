@@ -47,7 +47,6 @@ import org.springframework.expression.common.LiteralExpression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.expression.spel.support.StandardTypeConverter;
-import org.springframework.kafka.core.FailedRecordTuple;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
@@ -156,9 +155,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	private String correlationHeaderName = KafkaHeaders.CORRELATION_ID;
 
-	private BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback;
-
-	private java.util.function.Consumer<FailedRecordTuple<K, V>> callbackForAsyncFailureQueue;
+	private BiConsumer<ConsumerRecord<K, V>, RuntimeException> callbackForAsyncFailureQueue;
 
 	/**
 	 * Create an instance with the provided bean and method.
@@ -691,8 +688,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			acknowledge(acknowledgment);
 			if (canAsyncRetry(request, ex)) {
 				ConsumerRecord<K, V> record = (ConsumerRecord<K, V>) request;
-				FailedRecordTuple<K, V> failedRecordTuple = new FailedRecordTuple<>(record, (RuntimeException) ex);
-				this.callbackForAsyncFailureQueue.accept(failedRecordTuple);
+				this.callbackForAsyncFailureQueue.accept(record, (RuntimeException) ex);
 			}
 		}
 	}
@@ -896,7 +892,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		return parameterType instanceof ParameterizedType pType && pType.getRawType().equals(type);
 	}
 
-	public void putInAsyncFailureQueue(java.util.function.Consumer<FailedRecordTuple<K, V>> callbackForAsyncFailureQueue) {
+	public void putInAsyncFailureQueue(BiConsumer<ConsumerRecord<K, V>, RuntimeException> callbackForAsyncFailureQueue) {
 		this.callbackForAsyncFailureQueue = callbackForAsyncFailureQueue;
 	}
 

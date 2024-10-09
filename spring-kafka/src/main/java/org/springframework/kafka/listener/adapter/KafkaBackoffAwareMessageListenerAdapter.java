@@ -20,12 +20,12 @@ import java.math.BigInteger;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.function.BiConsumer;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 
-import org.springframework.kafka.core.FailedRecordTuple;
 import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.KafkaBackoffException;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
@@ -147,7 +147,7 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 	}
 
 	@Override
-	public void setCallbackForAsyncFailureQueue(java.util.function.Consumer<FailedRecordTuple<K, V>> callbackForAsyncFailureQueue) {
+	public void setCallbackForAsyncFailureQueue(BiConsumer<ConsumerRecord<K, V>, RuntimeException> callbackForAsyncFailureQueue) {
 		this.delegate.setCallbackForAsyncFailureQueue(callbackForAsyncFailureQueue);
 	}
 }
