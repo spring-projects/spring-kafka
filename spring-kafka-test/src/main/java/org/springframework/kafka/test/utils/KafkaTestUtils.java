@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2022 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,6 +45,7 @@ import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 
+import org.apache.kafka.streams.StreamsConfig;
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -57,6 +58,7 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  * @author Hugo Wood
  * @author Artem Bilan
+ * @author Sanghyeok An
  */
 public final class KafkaTestUtils {
 
@@ -80,6 +82,16 @@ public final class KafkaTestUtils {
 			EmbeddedKafkaBroker embeddedKafka) {
 
 		return consumerProps(embeddedKafka.getBrokersAsString(), group, autoCommit);
+	}
+
+	/**
+	 * Set up test properties for an {@code <Integer, String>} consumer.
+	 * @param brokers the bootstrapServers property.
+	 * @param group the group id.
+	 * @return the properties.
+	 */
+	public static Map<String, Object> consumerProps(String brokers, String group) {
+		return consumerProps(brokers, group, "false");
 	}
 
 	/**
@@ -125,6 +137,20 @@ public final class KafkaTestUtils {
 		props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, "33554432");
 		props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
 		props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+		return props;
+	}
+
+	/**
+	 * Set up test properties for an {@code <Integer, String>} Kafka Streams.
+	 * @param applicationId the applicationId for Kafka Streams.
+	 * @param brokers the bootstrapServers property.
+	 * @return the properties.
+	 * @since 3.3
+	 */
+	public static Map<String, Object> streamsProps(String applicationId, String brokers) {
+		Map<String, Object> props = new HashMap<>();
+		props.put(StreamsConfig.APPLICATION_ID_CONFIG, applicationId);
+		props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, brokers);
 		return props;
 	}
 

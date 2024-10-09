@@ -54,6 +54,7 @@ import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.scheduling.TaskScheduler;
@@ -67,6 +68,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 /**
  * Tests for https://github.com/spring-projects/spring-kafka/issues/1828
  * @author Deepesh Verma
+ * @author Sanghyeok An
  * @since 2.7
  */
 @SpringJUnitConfig
@@ -276,9 +278,7 @@ public class ExistingRetryTopicIntegrationTests {
 
 		@Bean
 		public ProducerFactory<String, String> producerFactory() {
-			Map<String, Object> configProps = new HashMap<>();
-			configProps.put(
-					ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
+			Map<String, Object> configProps = KafkaTestUtils.producerProps(
 					this.broker.getBrokersAsString());
 			configProps.put(
 					ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
@@ -311,13 +311,8 @@ public class ExistingRetryTopicIntegrationTests {
 
 		@Bean
 		public ConsumerFactory<String, String> consumerFactory() {
-			Map<String, Object> props = new HashMap<>();
-			props.put(
-					ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-					this.broker.getBrokersAsString());
-			props.put(
-					ConsumerConfig.GROUP_ID_CONFIG,
-					"groupId");
+			Map<String, Object> props = KafkaTestUtils.consumerProps(
+					this.broker.getBrokersAsString(), "groupId");
 			props.put(
 					ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
 					StringDeserializer.class);

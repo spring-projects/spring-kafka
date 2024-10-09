@@ -76,6 +76,7 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.CompositeMessageConverter;
 import org.springframework.messaging.converter.GenericMessageConverter;
@@ -94,6 +95,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  * @author Tomaz Fernandes
  * @author Gary Russell
  * @author Wang Zhiyang
+ * @author Sanghyeok An
  * @since 2.7
  */
 @SpringJUnitConfig
@@ -776,9 +778,7 @@ public class RetryTopicIntegrationTests {
 
 		@Bean
 		public ProducerFactory<String, String> producerFactory() {
-			Map<String, Object> configProps = new HashMap<>();
-			configProps.put(
-					ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
+			Map<String, Object> configProps = KafkaTestUtils.producerProps(
 					this.broker.getBrokersAsString());
 			configProps.put(
 					ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
@@ -821,13 +821,8 @@ public class RetryTopicIntegrationTests {
 
 		@Bean
 		public ConsumerFactory<String, String> consumerFactory() {
-			Map<String, Object> props = new HashMap<>();
-			props.put(
-					ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-					this.broker.getBrokersAsString());
-			props.put(
-					ConsumerConfig.GROUP_ID_CONFIG,
-					"groupId");
+			Map<String, Object> props = KafkaTestUtils.consumerProps(
+					this.broker.getBrokersAsString(), "groupId");
 			props.put(
 					ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
 					StringDeserializer.class);
