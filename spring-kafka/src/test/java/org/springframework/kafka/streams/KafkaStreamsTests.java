@@ -83,6 +83,7 @@ import kafka.server.BrokerServer;
  * @author Gary Russell
  * @author Elliot Metsger
  * @author Zach Olauson
+ * @author Sanghyeok An
  *
  * @since 1.1.4
  */
@@ -195,9 +196,7 @@ public class KafkaStreamsTests {
 
 		@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
 		public KafkaStreamsConfiguration kStreamsConfigs() {
-			Map<String, Object> props = new HashMap<>();
-			props.put(StreamsConfig.APPLICATION_ID_CONFIG, "testStreams");
-			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.brokerAddresses);
+			Map<String, Object> props = KafkaTestUtils.streamsProps("testStreams", this.brokerAddresses);
 			props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.Integer().getClass().getName());
 			props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
 			props.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG,

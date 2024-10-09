@@ -91,6 +91,7 @@ import reactor.core.publisher.Mono;
  * @author Wang ZhiYang
  * @author Huijin Hong
  * @author Soby Chacko
+ * @author Sanghyeok An
  */
 public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware, AsyncRepliesAware {
 
@@ -421,7 +422,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				return this.handlerMethod.invoke(message, data, ack, consumer);
 			}
 		}
-		catch (org.springframework.messaging.converter.MessageConversionException ex) {
+		catch (MessageConversionException ex) {
 			throw checkAckArg(ack, message, new MessageConversionException("Cannot handle message", ex));
 		}
 		catch (MethodArgumentNotValidException ex) {

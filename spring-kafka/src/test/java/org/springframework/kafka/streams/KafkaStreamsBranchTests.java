@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package org.springframework.kafka.streams;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -58,6 +57,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  * @author Elliot Kennedy
  * @author Artem Bilan
  * @author Ivan Ponomarev
+ * @author Sanghyeok An
  *
  * @since 1.3.3
  */
@@ -146,9 +146,7 @@ public class KafkaStreamsBranchTests {
 
 		@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
 		public KafkaStreamsConfiguration kStreamsConfigs() {
-			Map<String, Object> props = new HashMap<>();
-			props.put(StreamsConfig.APPLICATION_ID_CONFIG, "testStreams");
-			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, this.brokerAddresses);
+			Map<String, Object> props = KafkaTestUtils.streamsProps("testStreams", this.brokerAddresses);
 			props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
 			props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
 			return new KafkaStreamsConfiguration(props);

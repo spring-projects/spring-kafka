@@ -19,7 +19,6 @@ package org.springframework.kafka.config;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -49,6 +48,7 @@ import org.springframework.kafka.annotation.KafkaStreamsDefaultConfiguration;
 import org.springframework.kafka.streams.KafkaStreamsMicrometerListener;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
@@ -60,6 +60,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
  * @author Nurettin Yilmaz
  * @author Artem Bilan
  * @author Almog Gavra
+ * @author Sanghyeok An
  *
  * @since 2.1.5
  */
@@ -90,7 +91,7 @@ public class KafkaStreamsCustomizerTests {
 		assertThat(STATE_LISTENER.getCurrentState()).isEqualTo(state);
 		Properties properties = configuration.asProperties();
 		assertThat(properties.get(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG))
-				.isEqualTo(Collections.singletonList(config.broker.getBrokersAsString()));
+				.isEqualTo(config.broker.getBrokersAsString());
 		assertThat(properties.get(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG))
 				.isEqualTo(Foo.class);
 		assertThat(properties.get(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG))
@@ -163,10 +164,8 @@ public class KafkaStreamsCustomizerTests {
 		@SuppressWarnings("deprecation")
 		@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
 		public KafkaStreamsConfiguration kStreamsConfigs() {
-			Map<String, Object> props = new HashMap<>();
-			props.put(StreamsConfig.APPLICATION_ID_CONFIG, APPLICATION_ID);
-			props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG,
-					Collections.singletonList(this.broker.getBrokersAsString()));
+			Map<String, Object> props =
+					KafkaTestUtils.streamsProps(APPLICATION_ID, this.broker.getBrokersAsString());
 			props.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, Foo.class);
 			props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 1000);
 			return new KafkaStreamsConfiguration(props);
