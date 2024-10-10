@@ -35,7 +35,7 @@ import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.context.expression.BeanFactoryResolver;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.expression.BeanResolver;
-import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.listener.BatchMessageListener;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.MessageListenerContainer;
@@ -97,7 +97,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private Boolean batchListener;
 
-	private KafkaTemplate<?, ?> replyTemplate;
+	private KafkaOperations<?, ?> replyTemplate;
 
 	private String clientIdPrefix;
 
@@ -302,16 +302,16 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	/**
-	 * Set the {@link KafkaTemplate} to use to send replies.
+	 * Set the {@link KafkaOperations} to use to send replies.
 	 * @param replyTemplate the template.
 	 * @since 2.0
 	 */
-	public void setReplyTemplate(KafkaTemplate<?, ?> replyTemplate) {
+	public void setReplyTemplate(KafkaOperations<?, ?> replyTemplate) {
 		this.replyTemplate = replyTemplate;
 	}
 
 	@Nullable
-	protected KafkaTemplate<?, ?> getReplyTemplate() {
+	protected KafkaOperations<?, ?> getReplyTemplate() {
 		return this.replyTemplate;
 	}
 
