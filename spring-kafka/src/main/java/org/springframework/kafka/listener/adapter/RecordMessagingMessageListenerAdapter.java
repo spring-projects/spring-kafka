@@ -89,6 +89,6 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 	@Override
 	public void setCallbackForAsyncFailure(
 			BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback) {
-		super.setCallbackForAsyncFailure(asyncRetryCallback);
+		setAsyncFailureCallback(asyncRetryCallback);
 	}
 }
