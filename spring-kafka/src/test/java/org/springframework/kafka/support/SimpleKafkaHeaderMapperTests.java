@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 the original author or authors.
+ * Copyright 2019-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.entry;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.common.header.Header;
@@ -34,13 +35,15 @@ import org.springframework.messaging.MessageHeaders;
 
 /**
  * @author Gary Russell
+ * @author Grzegorz Poznachowski
+ *
  * @since 2.2.5
  *
  */
-public class SimpleKafkaHeaderMapperTests {
+class SimpleKafkaHeaderMapperTests {
 
 	@Test
-	public void testSpecificStringConvert() {
+	void testSpecificStringConvert() {
 		SimpleKafkaHeaderMapper mapper = new SimpleKafkaHeaderMapper();
 		Map<String, Boolean> rawMappedHeaders = new HashMap<>();
 		rawMappedHeaders.put("thisOnesAString", true);
@@ -66,7 +69,27 @@ public class SimpleKafkaHeaderMapperTests {
 	}
 
 	@Test
-	public void testNotStringConvert() {
+	void testIterableHeaderConvert() {
+		SimpleKafkaHeaderMapper mapper = new SimpleKafkaHeaderMapper();
+		Map<String, Boolean> rawMappedHeaders = new HashMap<>();
+		rawMappedHeaders.put("stringHeader", true);
+		mapper.setRawMappedHeaders(rawMappedHeaders);
+		Map<String, Object> headersMap = new HashMap<>();
+		headersMap.put("stringHeader", List.of("firstValue", "secondValue"));
+		MessageHeaders headers = new MessageHeaders(headersMap);
+		Headers target = new RecordHeaders();
+		mapper.fromHeaders(headers, target);
+		assertThat(target).containsExactly(
+				new RecordHeader("stringHeader", "firstValue".getBytes()),
+				new RecordHeader("stringHeader", "secondValue".getBytes())
+		);
+		headersMap.clear();
+		mapper.toHeaders(target, headersMap);
+		assertThat(headersMap).contains(entry("stringHeader", List.of("secondValue", "firstValue")));
+	}
+
+	@Test
+	void testNotStringConvert() {
 		SimpleKafkaHeaderMapper mapper = new SimpleKafkaHeaderMapper();
 		Map<String, Boolean> rawMappedHeaders = new HashMap<>();
 		rawMappedHeaders.put("thisOnesBytes", false);
@@ -89,7 +112,7 @@ public class SimpleKafkaHeaderMapperTests {
 	}
 
 	@Test
-	public void testAlwaysStringConvert() {
+	void testAlwaysStringConvert() {
 		SimpleKafkaHeaderMapper mapper = new SimpleKafkaHeaderMapper();
 		mapper.setMapAllStringsOut(true);
 		Map<String, Boolean> rawMappedHeaders = new HashMap<>();
@@ -115,7 +138,7 @@ public class SimpleKafkaHeaderMapperTests {
 	}
 
 	@Test
-	public void testDefaultHeaderPatterns() {
+	void testDefaultHeaderPatterns() {
 		SimpleKafkaHeaderMapper mapper = new SimpleKafkaHeaderMapper();
 		mapper.setMapAllStringsOut(true);
 		Map<String, Object> headersMap = new HashMap<>();

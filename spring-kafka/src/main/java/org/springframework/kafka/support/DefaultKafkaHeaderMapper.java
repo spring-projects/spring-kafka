@@ -19,6 +19,7 @@ package org.springframework.kafka.support;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -26,10 +27,12 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
+import org.assertj.core.util.Streams;
 
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.Assert;
@@ -49,11 +52,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Soby Chacko
+ * @author Grzegorz Poznachowski
  *
  * @since 1.3
- *
  */
 public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
+
+	private static final String ITERABLE_HEADER_TYPE_PATTERN = "%s#%s";
 
 	private static final String JAVA_LANG_STRING = "java.lang.String";
 
@@ -97,6 +102,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * {@code "!id", "!timestamp" and "*"}. In addition, most of the headers in
 	 * {@link KafkaHeaders} are never mapped as headers since they represent data in
 	 * consumer/producer records.
+	 *
 	 * @see #DefaultKafkaHeaderMapper(ObjectMapper)
 	 */
 	public DefaultKafkaHeaderMapper() {
@@ -111,6 +117,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * {@code "!id", "!timestamp" and "*"}. In addition, most of the headers in
 	 * {@link KafkaHeaders} are never mapped as headers since they represent data in
 	 * consumer/producer records.
+	 *
 	 * @param objectMapper the object mapper.
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
 	 */
@@ -129,6 +136,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * generally should not map the {@code "id" and "timestamp"} headers. Note:
 	 * most of the headers in {@link KafkaHeaders} are ever mapped as headers since they
 	 * represent data in consumer/producer records.
+	 *
 	 * @param patterns the patterns.
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
 	 */
@@ -144,8 +152,9 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * you generally should not map the {@code "id" and "timestamp"} headers. Note: most
 	 * of the headers in {@link KafkaHeaders} are never mapped as headers since they
 	 * represent data in consumer/producer records.
+	 *
 	 * @param objectMapper the object mapper.
-	 * @param patterns the patterns.
+	 * @param patterns     the patterns.
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
 	 */
 	public DefaultKafkaHeaderMapper(ObjectMapper objectMapper, String... patterns) {
@@ -161,6 +170,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 
 	/**
 	 * Create an instance for inbound mapping only with pattern matching.
+	 *
 	 * @param patterns the patterns to match.
 	 * @return the header mapper.
 	 * @since 2.8.8
@@ -171,8 +181,9 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 
 	/**
 	 * Create an instance for inbound mapping only with pattern matching.
+	 *
 	 * @param objectMapper the object mapper.
-	 * @param patterns the patterns to match.
+	 * @param patterns     the patterns to match.
 	 * @return the header mapper.
 	 * @since 2.8.8
 	 */
@@ -182,6 +193,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 
 	/**
 	 * Return the object mapper.
+	 *
 	 * @return the mapper.
 	 */
 	protected ObjectMapper getObjectMapper() {
@@ -190,6 +202,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 
 	/**
 	 * Provide direct access to the trusted packages set for subclasses.
+	 *
 	 * @return the trusted packages.
 	 * @since 2.2
 	 */
@@ -199,6 +212,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 
 	/**
 	 * Provide direct access to the toString() classes by subclasses.
+	 *
 	 * @return the toString() classes.
 	 * @since 2.2
 	 */
@@ -215,6 +229,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * raw String value is converted to a byte array using the configured charset. Set to
 	 * true if a consumer of the outbound record is using Spring for Apache Kafka version
 	 * less than 2.3
+	 *
 	 * @param encodeStrings true to encode (default false).
 	 * @since 2.3
 	 */
@@ -235,6 +250,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * If any of the supplied packages is {@code "*"}, all packages are trusted.
 	 * If a class for a non-trusted package is encountered, the header is returned to the
 	 * application with value of type {@link NonTrustedHeaderType}.
+	 *
 	 * @param packagesToTrust the packages to trust.
 	 */
 	public void addTrustedPackages(String... packagesToTrust) {
@@ -254,6 +270,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	/**
 	 * Add class names that the outbound mapper should perform toString() operations on
 	 * before mapping.
+	 *
 	 * @param classNames the class names.
 	 * @since 2.2
 	 */
@@ -265,32 +282,15 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	public void fromHeaders(MessageHeaders headers, Headers target) {
 		final Map<String, String> jsonHeaders = new HashMap<>();
 		final ObjectMapper headerObjectMapper = getObjectMapper();
-		headers.forEach((key, rawValue) -> {
-			if (matches(key, rawValue)) {
-				Object valueToAdd = headerValueToAddOut(key, rawValue);
-				if (valueToAdd instanceof byte[]) {
-					target.add(new RecordHeader(key, (byte[]) valueToAdd));
+		headers.forEach((key, value) -> {
+			if (matches(key, value)) {
+				if (value instanceof List<?> values) {
+					for (int i = 0; i < values.size(); i++) {
+						resolveHeader(key, values.get(i), target, jsonHeaders, i);
+					}
 				}
 				else {
-					try {
-						String className = valueToAdd.getClass().getName();
-						boolean encodeToJson = this.encodeStrings;
-						if (this.toStringClasses.contains(className)) {
-							valueToAdd = valueToAdd.toString();
-							className = JAVA_LANG_STRING;
-							encodeToJson = true;
-						}
-						if (!encodeToJson && valueToAdd instanceof String) {
-							target.add(new RecordHeader(key, ((String) valueToAdd).getBytes(getCharset())));
-						}
-						else {
-							target.add(new RecordHeader(key, headerObjectMapper.writeValueAsBytes(valueToAdd)));
-						}
-						jsonHeaders.put(key, className);
-					}
-					catch (Exception e) {
-						logger.error(e, () -> "Could not map " + key + " with type " + rawValue.getClass().getName());
-					}
+					resolveHeader(key, value, target, jsonHeaders, null);
 				}
 			}
 		});
@@ -304,34 +304,84 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 		}
 	}
 
-	@Override
-	public void toHeaders(Headers source, final Map<String, Object> headers) {
-		final Map<String, String> jsonTypes = decodeJsonTypes(source);
-		source.forEach(header -> {
-			String headerName = header.key();
-			if (headerName.equals(KafkaHeaders.DELIVERY_ATTEMPT) && matchesForInbound(headerName)) {
-				headers.put(headerName, ByteBuffer.wrap(header.value()).getInt());
-			}
-			else if (headerName.equals(KafkaHeaders.LISTENER_INFO) && matchesForInbound(headerName)) {
-				headers.put(headerName, new String(header.value(), getCharset()));
-			}
-			else if (headerName.equals(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER) ||
-					headerName.equals(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER)) {
-				headers.put(headerName, header);
-			}
-			else if (!(headerName.equals(JSON_TYPES)) && matchesForInbound(headerName)) {
-				if (jsonTypes.containsKey(headerName)) {
-					String requestedType = jsonTypes.get(headerName);
-					populateJsonValueHeader(header, requestedType, headers);
+	private void resolveHeader(String headerName, Object value, Headers target, Map<String, String> jsonHeaders, Integer headerIndex) {
+		Object valueToAdd = headerValueToAddOut(headerName, value);
+		if (valueToAdd instanceof byte[] byteArray) {
+			target.add(new RecordHeader(headerName, byteArray));
+		}
+		else {
+			try {
+				String className = valueToAdd.getClass().getName();
+				boolean encodeToJson = this.encodeStrings;
+				if (this.toStringClasses.contains(className)) {
+					valueToAdd = valueToAdd.toString();
+					className = JAVA_LANG_STRING;
+					encodeToJson = true;
+				}
+				if (!encodeToJson && valueToAdd instanceof String stringValue) {
+					target.add(new RecordHeader(headerName, stringValue.getBytes(getCharset())));
 				}
 				else {
-					headers.put(headerName, headerValueToAddIn(header));
+					target.add(new RecordHeader(headerName, this.objectMapper.writeValueAsBytes(valueToAdd)));
 				}
+				jsonHeaders.put(headerIndex == null ?
+						headerName :
+						ITERABLE_HEADER_TYPE_PATTERN.formatted(headerName, headerIndex), className);
 			}
-		});
+			catch (Exception e) {
+				logger.error(e, () -> "Could not map " + headerName + " with type " + value.getClass().getName());
+			}
+		}
 	}
 
-	private void populateJsonValueHeader(Header header, String requestedType, Map<String, Object> headers) {
+	@Override
+	public void toHeaders(Headers source, final Map<String, Object> target) {
+		final Map<String, String> jsonTypes = decodeJsonTypes(source);
+
+		Streams.stream(source)
+				.collect(Collectors.groupingBy(Header::key))
+				.forEach((headerName, headers) -> {
+					Header lastHeader = headers.get(headers.size() - 1);
+					if (headerName.equals(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER) ||
+							headerName.equals(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER)) {
+						target.put(headerName, lastHeader);
+					}
+					else if (headerName.equals(KafkaHeaders.DELIVERY_ATTEMPT) && matchesForInbound(headerName)) {
+						target.put(headerName, ByteBuffer.wrap(lastHeader.value()).getInt());
+					}
+					else if (headerName.equals(KafkaHeaders.LISTENER_INFO) && matchesForInbound(headerName)) {
+						target.put(headerName, new String(lastHeader.value(), getCharset()));
+					}
+					else if (!(headerName.equals(JSON_TYPES)) && matchesForInbound(headerName)) {
+						if (headers.size() == 1) {
+							if (jsonTypes.containsKey(headerName)) {
+								String requestedType = jsonTypes.get(headerName);
+								target.put(headerName, resolveJsonValueHeader(headers.get(0), requestedType));
+							}
+							else {
+								target.put(headerName, headerValueToAddIn(headers.get(0)));
+							}
+						}
+						else {
+							List<Object> valueList = new ArrayList<>();
+							for (int i = 0; i < headers.size(); i++) {
+								var jsonTypeIterableHeader = ITERABLE_HEADER_TYPE_PATTERN.formatted(headerName, i);
+								if (jsonTypes.containsKey(jsonTypeIterableHeader)) {
+									String requestedType = jsonTypes.get(jsonTypeIterableHeader);
+									valueList.add(resolveJsonValueHeader(headers.get(i), requestedType));
+								}
+								else {
+									valueList.add(headerValueToAddIn(headers.get(i)));
+								}
+							}
+							Collections.reverse(valueList);
+							target.put(headerName, valueList);
+						}
+					}
+				});
+	}
+
+	private Object resolveJsonValueHeader(Header header, String requestedType) {
 		Class<?> type = Object.class;
 		boolean trusted = false;
 		try {
@@ -344,22 +394,21 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 			logger.error(e, () -> "Could not load class for header: " + header.key());
 		}
 		if (String.class.equals(type) && (header.value().length == 0 || header.value()[0] != '"')) {
-			headers.put(header.key(), new String(header.value(), getCharset()));
+			return new String(header.value(), getCharset());
 		}
 		else {
 			if (trusted) {
 				try {
-					Object value = decodeValue(header, type);
-					headers.put(header.key(), value);
+					return decodeValue(header, type);
 				}
 				catch (IOException e) {
 					logger.error(e, () ->
 							"Could not decode json type: " + requestedType + " for key: " + header.key());
-					headers.put(header.key(), header.value());
+					return header.value();
 				}
 			}
 			else {
-				headers.put(header.key(), new NonTrustedHeaderType(header.value(), requestedType));
+				return new NonTrustedHeaderType(header.value(), requestedType);
 			}
 		}
 	}
