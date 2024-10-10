@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledFuture;
@@ -73,6 +74,7 @@ import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeader;
 
+import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.ApplicationContext;
@@ -840,6 +842,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private volatile long lastPoll = System.currentTimeMillis();
 
+		private final ConcurrentLinkedDeque<FailedRecordTuple<K, V>> failedRecords = new ConcurrentLinkedDeque();
+
 		@SuppressWarnings(UNCHECKED)
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType,
 				ObservationRegistry observationRegistry) {
@@ -895,6 +899,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.wantsFullRecords = false;
 				this.pollThreadStateProcessor = setUpPollProcessor(false);
 				this.observationEnabled = this.containerProperties.isObservationEnabled();
+
+				if (!AopUtils.isAopProxy(listener)) {
+					BiConsumer<ConsumerRecord<K, V>, RuntimeException> callbackForAsyncFailureQueue =
+							(cRecord, ex) -> {
+								FailedRecordTuple<K, V> failedRecord = new FailedRecordTuple<>(cRecord, ex);
+								this.failedRecords.addLast(failedRecord);
+							};
+					this.listener.setCallbackForAsyncFailure(callbackForAsyncFailureQueue);
+				}
 			}
 			else {
 				throw new IllegalArgumentException("Listener must be one of 'MessageListener', "
@@ -1294,6 +1307,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			boolean failedAuthRetry = false;
 			this.lastReceive = System.currentTimeMillis();
 			while (isRunning()) {
+
+				try {
+					handleAsyncFailure();
+				}
+				catch (Exception e) {
+					ListenerConsumer.this.logger.error(
+							"Failed to process async retry messages. skip this time, try it again next loop.");
+				}
+
 				try {
 					pollAndInvoke();
 					if (failedAuthRetry) {
@@ -1432,6 +1454,21 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (!this.consumerPaused) {
 					resumePartitionsIfNecessary();
 				}
+			}
+		}
+
+		protected void handleAsyncFailure() {
+			List<FailedRecordTuple> copyFailedRecords = new ArrayList<>();
+			while (!this.failedRecords.isEmpty()) {
+				FailedRecordTuple failedRecordTuple = this.failedRecords.pollFirst();
+				copyFailedRecords.add(failedRecordTuple);
+			}
+
+			// If any copied and failed record fails to complete due to an unexpected error,
+			// We will give up on retrying with the remaining copied and failed Records.
+			if (!copyFailedRecords.isEmpty()) {
+				copyFailedRecords.forEach(failedRecordTuple ->
+											this.invokeErrorHandlerBySingleRecord(failedRecordTuple.record(), failedRecordTuple.ex()));
 			}
 		}
 
@@ -2827,6 +2864,42 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		private void invokeErrorHandlerBySingleRecord(final ConsumerRecord<K, V> cRecord, RuntimeException rte) {
+			if (this.commonErrorHandler.seeksAfterHandling() || rte instanceof CommitFailedException) {
+				try {
+					if (this.producer == null) {
+						processCommits();
+					}
+				}
+				catch (Exception ex) { // NO SONAR
+					this.logger.error(ex, "Failed to commit before handling error");
+				}
+				List<ConsumerRecord<?, ?>> records = new ArrayList<>();
+				records.add(cRecord);
+				this.commonErrorHandler.handleRemaining(rte, records, this.consumer,
+														KafkaMessageListenerContainer.this.thisOrParentContainer);
+			}
+			else {
+				boolean handled = false;
+				try {
+					handled = this.commonErrorHandler.handleOne(rte, cRecord, this.consumer,
+																KafkaMessageListenerContainer.this.thisOrParentContainer);
+				}
+				catch (Exception ex) {
+					this.logger.error(ex, "ErrorHandler threw unexpected exception");
+				}
+				Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new LinkedHashMap<>();
+				if (!handled) {
+					records.computeIfAbsent(new TopicPartition(cRecord.topic(), cRecord.partition()),
+											tp -> new ArrayList<>()).add(cRecord);
+				}
+				if (!records.isEmpty()) {
+					this.remainingRecords = new ConsumerRecords<>(records);
+					this.pauseForPending = true;
+				}
+			}
+		}
+
 		private void invokeErrorHandler(final ConsumerRecord<K, V> cRecord,
 				Iterator<ConsumerRecord<K, V>> iterator, RuntimeException rte) {
 
@@ -3912,5 +3985,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 	}
+
+	record FailedRecordTuple<K, V>(ConsumerRecord<K, V> record, RuntimeException ex) { };
 
 }

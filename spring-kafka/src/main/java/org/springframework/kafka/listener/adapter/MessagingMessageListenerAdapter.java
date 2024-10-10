@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
@@ -152,6 +154,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	private boolean splitIterables = true;
 
 	private String correlationHeaderName = KafkaHeaders.CORRELATION_ID;
+
+	private BiConsumer<ConsumerRecord<K, V>, RuntimeException> callbackForAsyncFailureQueue;
 
 	/**
 	 * Create an instance with the provided bean and method.
@@ -666,14 +670,24 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			Throwable t, Message<?> source) {
 
 		try {
+			Throwable cause = t instanceof CompletionException ? t.getCause() : t;
 			handleException(request, acknowledgment, consumer, source,
-					new ListenerExecutionFailedException(createMessagingErrorMessage(
-							"Async Fail", source.getPayload()), t));
+							new ListenerExecutionFailedException(createMessagingErrorMessage(
+									"Async Fail", source.getPayload()), cause));
 		}
 		catch (Throwable ex) {
 			this.logger.error(t, () -> "Future, Mono, or suspend function was completed with an exception for " + source);
 			acknowledge(acknowledgment);
+			if (canAsyncRetry(request, ex)) {
+				ConsumerRecord<K, V> record = (ConsumerRecord<K, V>) request;
+				this.callbackForAsyncFailureQueue.accept(record, (RuntimeException) ex);
+			}
 		}
+	}
+
+	private boolean canAsyncRetry(Object request, Throwable exception) {
+		// The async retry with @RetryableTopic only support in case of SingleRecord Listener.
+		return request instanceof ConsumerRecord && exception instanceof RuntimeException;
 	}
 
 	protected void handleException(Object records, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer,
@@ -868,6 +882,10 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	private boolean rawByParameterIsType(Type parameterType, Type type) {
 		return parameterType instanceof ParameterizedType pType && pType.getRawType().equals(type);
+	}
+
+	protected void setAsyncFailureCallback(BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback) {
+		this.callbackForAsyncFailureQueue = asyncRetryCallback;
 	}
 
 	/**
