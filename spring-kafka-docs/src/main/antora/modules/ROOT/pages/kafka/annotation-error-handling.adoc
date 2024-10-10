@@ -562,6 +562,27 @@ It is disabled by default to avoid the (small) overhead of looking up the state 
 
 The `DefaultErrorHandler` and `DefaultAfterRollbackProcessor` support this feature.
 
+[[delivery-attempts-header-for-batch-listener]]
+== Delivery Attempts Header for batch listener
+
+When processing `ConsumerRecord` with the `BatchListener`, the `KafkaHeaders.DELIVERY_ATTEMPT` header can be present in a different way compared to `SingleRecordListener`.
+
+Starting with version 3.3, if you want to inject the `KafkaHeaders.DELIVERY_ATTEMPT` header into the `ConsumerRecord` when using the `BatchListener`, set the `DeliveryAttemptAwareRetryListener` as the `RetryListener` in the `ErrorHandler`.
+
+Please refer to the code below.
+[source, java]
+----
+final FixedBackOff fixedBackOff = new FixedBackOff(1, 10);
+final DefaultErrorHandler errorHandler = new DefaultErrorHandler(fixedBackOff);
+errorHandler.setRetryListeners(new DeliveryAttemptAwareRetryListener());
+
+ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
+factory.setConsumerFactory(consumerFactory);
+factory.setCommonErrorHandler(errorHandler);
+----
+
+Then, whenever a batch fails to complete, the `DeliveryAttemptAwareRetryListener` will inject a `KafkaHeaders.DELIVERY_ATTMPT` header into the `ConsumerRecord`.
+
 [[li-header]]
 == Listener Info Header
 
@@ -796,4 +817,3 @@ DefaultErrorHandler handler() {
 ----
 
 This will retry after `1, 2, 4, 8, 10, 10` seconds, before calling the recoverer.
-
