@@ -906,7 +906,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 								FailedRecordTuple<K, V> failedRecord = new FailedRecordTuple<>(cRecord, ex);
 								this.failedRecords.addLast(failedRecord);
 							};
-					this.listener.setCallbackForAsyncFailureQueue(callbackForAsyncFailureQueue);
+					this.listener.setCallbackForAsyncFailure(callbackForAsyncFailureQueue);
 				}
 			}
 			else {

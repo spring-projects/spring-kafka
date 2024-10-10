@@ -33,7 +33,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 @FunctionalInterface
 public interface MessageListener<K, V> extends GenericMessageListener<ConsumerRecord<K, V>> {
 
-	default void setCallbackForAsyncFailureQueue(
+	default void setCallbackForAsyncFailure(
 			BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback) {
 		//
 	}

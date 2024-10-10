@@ -147,7 +147,7 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 	}
 
 	@Override
-	public void setCallbackForAsyncFailureQueue(BiConsumer<ConsumerRecord<K, V>, RuntimeException> callbackForAsyncFailureQueue) {
-		this.delegate.setCallbackForAsyncFailureQueue(callbackForAsyncFailureQueue);
+	public void setCallbackForAsyncFailure(BiConsumer<ConsumerRecord<K, V>, RuntimeException> callbackForAsyncFailureQueue) {
+		this.delegate.setCallbackForAsyncFailure(callbackForAsyncFailureQueue);
 	}
 }

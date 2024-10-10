@@ -884,8 +884,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		return parameterType instanceof ParameterizedType pType && pType.getRawType().equals(type);
 	}
 
-	public void putInAsyncFailureQueue(BiConsumer<ConsumerRecord<K, V>, RuntimeException> callbackForAsyncFailureQueue) {
-		this.callbackForAsyncFailureQueue = callbackForAsyncFailureQueue;
+	protected void setCallbackForAsyncFailure(BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback) {
+		this.callbackForAsyncFailureQueue = asyncRetryCallback;
 	}
 
 	/**
