@@ -17,11 +17,11 @@ buildscript {
 plugins {
 	id 'base'
 	id 'idea'
-	id 'org.ajoberstar.grgit' version '5.2.2'
+	id 'org.ajoberstar.grgit' version '5.3.0'
 	id 'io.spring.nohttp' version '0.0.11'
 	id 'io.spring.dependency-management' version '1.1.6' apply false
 	id 'com.github.spotbugs' version '6.0.24'
-	id 'io.freefair.aggregate-javadoc' version '8.6'
+	id 'io.freefair.aggregate-javadoc' version '8.10.2'
 }
 
 apply plugin: 'io.spring.nohttp'
@@ -52,7 +52,7 @@ ext {
 
 	assertjVersion = '3.25.3'
 	awaitilityVersion = '4.2.2'
-	hamcrestVersion = '2.2'
+	hamcrestVersion = '3.0'
 	hibernateValidationVersion = '8.0.1.Final'
 	jacksonBomVersion = '2.18.0'
 	jaywayJsonPathVersion = '2.9.0'
@@ -64,11 +64,11 @@ ext {
 	micrometerDocsVersion = '1.0.4'
 	micrometerVersion = '1.14.0-SNAPSHOT'
 	micrometerTracingVersion = '1.4.0-SNAPSHOT'
-	mockitoVersion = '5.13.0'
+	mockitoVersion = '5.14.1'
 	reactorVersion = '2024.0.0-SNAPSHOT'
 	scalaVersion = '2.13'
 	springBootVersion = '3.3.4' // docs module
-	springDataVersion = '2024.0.4'
+	springDataVersion = '2024.1.0-SNAPSHOT'
 	springRetryVersion = '2.0.9'
 	springVersion = '6.2.0-SNAPSHOT'
 	zookeeperVersion = '3.8.4'
@@ -129,8 +129,6 @@ configure(javaProjects) { subproject ->
 
 	apply from: "${rootProject.projectDir}/gradle/publish-maven.gradle"
 
-	def scopeAttribute = Attribute.of('dependency.scope', String)
-
 	java {
 		withJavadocJar()
 		withSourcesJar()
@@ -180,8 +178,8 @@ configure(javaProjects) { subproject ->
 
 	test {
 		testLogging {
-			events "skipped", "failed"
-			showStandardStreams = project.hasProperty("showStandardStreams") ?: false
+			events 'skipped', 'failed'
+			showStandardStreams = project.hasProperty('showStandardStreams') ?: false
 			showExceptions = true
 			showStackTraces = true
 			exceptionFormat = 'full'
@@ -192,8 +190,8 @@ configure(javaProjects) { subproject ->
 	}
 
 	checkstyle {
-		configDirectory.set(rootProject.file("src/checkstyle"))
-		toolVersion = '10.12.5'
+		configDirectory.set(rootProject.file('src/checkstyle'))
+		toolVersion = '10.18.2'
 	}
 
 	publishing {
@@ -243,7 +241,7 @@ configure(javaProjects) { subproject ->
 					'Created-By': "JDK ${System.properties['java.version']} (${System.properties['java.specification.vendor']})",
 					'Implementation-Title': subproject.name,
 					'Implementation-Vendor-Id': subproject.group,
-					'Implementation-Vendor': 'VMware Inc.',
+					'Implementation-Vendor': 'Broadcom Inc.',
 					'Implementation-URL': linkHomepage,
 					'Automatic-Module-Name': subproject.name.replace('-', '.')  // for Jigsaw
 			)
@@ -291,7 +289,7 @@ project ('spring-kafka') {
 		}
 
 		// Spring Data projection message binding support
-		optionalApi ("org.springframework.data:spring-data-commons") {
+		optionalApi ('org.springframework.data:spring-data-commons') {
 			exclude group: 'org.springframework'
 			exclude group: 'io.micrometer'
 		}
@@ -306,13 +304,8 @@ project ('spring-kafka') {
 		testImplementation 'io.projectreactor:reactor-test'
 		testImplementation "org.mockito:mockito-junit-jupiter:$mockitoVersion"
 		testImplementation "org.hibernate.validator:hibernate-validator:$hibernateValidationVersion"
-		testImplementation ('io.micrometer:micrometer-observation-test') {
-			exclude group: "org.mockito"
-		}
-		testImplementation 'io.micrometer:micrometer-tracing-bridge-brave'
-		testImplementation 'io.micrometer:micrometer-tracing-test'
 		testImplementation ('io.micrometer:micrometer-tracing-integration-test') {
-			exclude group: "org.mockito"
+			exclude group: 'org.mockito'
 		}
 	}
 }
@@ -346,9 +339,7 @@ project ('spring-kafka-test') {
 	dependencies {
 		api 'org.springframework:spring-context'
 		api 'org.springframework:spring-test'
-		api ("org.springframework.retry:spring-retry:$springRetryVersion") {
-			exclude group: 'org.springframework'
-		}
+		api "org.springframework.retry:spring-retry:$springRetryVersion"
 
 		api ("org.apache.zookeeper:zookeeper:$zookeeperVersion") {
 			exclude group: 'org.slf4j', module: 'slf4j-log4j12'
