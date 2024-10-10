@@ -74,6 +74,7 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.CompositeMessageConverter;
 import org.springframework.messaging.converter.GenericMessageConverter;
@@ -95,13 +96,7 @@ import reactor.core.publisher.Mono;
 
 @SpringJUnitConfig
 @DirtiesContext
-@EmbeddedKafka(topics = {
-		AsyncMonoFutureRetryTopicClassLevelIntegrationTests.FIRST_TOPIC,
-		AsyncMonoFutureRetryTopicClassLevelIntegrationTests.SECOND_TOPIC,
-		AsyncMonoFutureRetryTopicClassLevelIntegrationTests.THIRD_TOPIC,
-		AsyncMonoFutureRetryTopicClassLevelIntegrationTests.FOURTH_TOPIC,
-		AsyncMonoFutureRetryTopicClassLevelIntegrationTests.TWO_LISTENERS_TOPIC,
-		AsyncMonoFutureRetryTopicClassLevelIntegrationTests.MANUAL_TOPIC })
+@EmbeddedKafka
 @TestPropertySource(properties = { "five.attempts=5", "kafka.template=customKafkaTemplate"})
 public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 
@@ -886,17 +881,10 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 
 		@Bean
 		ProducerFactory<String, String> producerFactory() {
-			Map<String, Object> configProps = new HashMap<>();
-			configProps.put(
-					ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
+			Map<String, Object> props = KafkaTestUtils.producerProps(
 					this.broker.getBrokersAsString());
-			configProps.put(
-					ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
-					StringSerializer.class);
-			configProps.put(
-					ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-					StringSerializer.class);
-			return new DefaultKafkaProducerFactory<>(configProps);
+			props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+			return new DefaultKafkaProducerFactory<>(props);
 		}
 
 		@Bean("customKafkaTemplate")
@@ -931,23 +919,13 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 
 		@Bean
 		ConsumerFactory<String, String> consumerFactory() {
-			Map<String, Object> props = new HashMap<>();
-			props.put(
-					ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-					this.broker.getBrokersAsString());
-			props.put(
-					ConsumerConfig.GROUP_ID_CONFIG,
-					"groupId");
+			Map<String, Object> props = KafkaTestUtils.consumerProps(
+					this.broker.getBrokersAsString(),
+					"groupId",
+					"false");
 			props.put(
 					ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
 					StringDeserializer.class);
-			props.put(
-					ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-					StringDeserializer.class);
-			props.put(
-					ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG, false);
-			props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
 			return new DefaultKafkaConsumerFactory<>(props);
 		}
 

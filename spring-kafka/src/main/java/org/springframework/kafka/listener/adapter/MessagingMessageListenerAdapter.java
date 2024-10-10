@@ -670,18 +670,10 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			Throwable t, Message<?> source) {
 
 		try {
-			if (t instanceof CompletionException) {
-				// For CompletableFuture Object
-				handleException(request, acknowledgment, consumer, source,
-								new ListenerExecutionFailedException(createMessagingErrorMessage(
-										"Async Fail", source.getPayload()), t.getCause()));
-			}
-			else {
-				// For Mono Object.
-				handleException(request, acknowledgment, consumer, source,
-								new ListenerExecutionFailedException(createMessagingErrorMessage(
-										"Async Fail", source.getPayload()), t));
-			}
+			Throwable cause = t instanceof CompletionException ? t.getCause() : t;
+			handleException(request, acknowledgment, consumer, source,
+							new ListenerExecutionFailedException(createMessagingErrorMessage(
+									"Async Fail", source.getPayload()), cause));
 		}
 		catch (Throwable ex) {
 			this.logger.error(t, () -> "Future, Mono, or suspend function was completed with an exception for " + source);

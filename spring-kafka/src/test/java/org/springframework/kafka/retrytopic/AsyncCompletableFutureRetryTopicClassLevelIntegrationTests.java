@@ -75,6 +75,7 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.CompositeMessageConverter;
 import org.springframework.messaging.converter.GenericMessageConverter;
@@ -86,7 +87,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
-
+import org.springframework.util.ReflectionUtils;
 
 /**
  * @author Sanghyeok An
@@ -95,13 +96,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 @SpringJUnitConfig
 @DirtiesContext
-@EmbeddedKafka(topics = {
-		AsyncCompletableFutureRetryTopicClassLevelIntegrationTests.FIRST_TOPIC,
-		AsyncCompletableFutureRetryTopicClassLevelIntegrationTests.SECOND_TOPIC,
-		AsyncCompletableFutureRetryTopicClassLevelIntegrationTests.THIRD_TOPIC,
-		AsyncCompletableFutureRetryTopicClassLevelIntegrationTests.FOURTH_TOPIC,
-		AsyncCompletableFutureRetryTopicClassLevelIntegrationTests.TWO_LISTENERS_TOPIC,
-		AsyncCompletableFutureRetryTopicClassLevelIntegrationTests.MANUAL_TOPIC })
+@EmbeddedKafka
 @TestPropertySource(properties = { "five.attempts=5", "kafka.template=customKafkaTemplate"})
 public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 
@@ -181,7 +176,7 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 		assertThat(topics.get(THIRD_TOPIC + "-dlt").partitions()).hasSize(3);
 		assertThat(topics.get(FOURTH_TOPIC).partitions()).hasSize(2);
 		AtomicReference<Method> method = new AtomicReference<>();
-		org.springframework.util.ReflectionUtils.doWithMethods(KafkaAdmin.class, m -> {
+		ReflectionUtils.doWithMethods(KafkaAdmin.class, m -> {
 			m.setAccessible(true);
 			method.set(m);
 		}, m -> m.getName().equals("newTopics"));
@@ -881,17 +876,10 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 
 		@Bean
 		ProducerFactory<String, String> producerFactory() {
-			Map<String, Object> configProps = new HashMap<>();
-			configProps.put(
-					ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
+			Map<String, Object> props = KafkaTestUtils.producerProps(
 					this.broker.getBrokersAsString());
-			configProps.put(
-					ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
-					StringSerializer.class);
-			configProps.put(
-					ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-					StringSerializer.class);
-			return new DefaultKafkaProducerFactory<>(configProps);
+			props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+			return new DefaultKafkaProducerFactory<>(props);
 		}
 
 		@Bean("customKafkaTemplate")
@@ -926,23 +914,13 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 
 		@Bean
 		ConsumerFactory<String, String> consumerFactory() {
-			Map<String, Object> props = new HashMap<>();
-			props.put(
-					ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-					this.broker.getBrokersAsString());
-			props.put(
-					ConsumerConfig.GROUP_ID_CONFIG,
-					"groupId");
+			Map<String, Object> props = KafkaTestUtils.consumerProps(
+					this.broker.getBrokersAsString(),
+					"groupId",
+					"false");
 			props.put(
 					ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
 					StringDeserializer.class);
-			props.put(
-					ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-					StringDeserializer.class);
-			props.put(
-					ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG, false);
-			props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
 			return new DefaultKafkaConsumerFactory<>(props);
 		}
 

@@ -1312,9 +1312,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					handleAsyncFailure();
 				}
 				catch (Exception e) {
-					// TODO: Need to improve error handling.
-					// TODO: Need to determine how to handle a failed message.
-					this.logger.error("Failed to process re-try messages. ");
+					ListenerConsumer.this.logger.error(
+							"Failed to process async retry messages. skip this time, try it again next loop.");
 				}
 
 				try {
@@ -1465,6 +1464,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				copyFailedRecords.add(failedRecordTuple);
 			}
 
+			// If any copied and failed record fails to complete due to an unexpected error,
+			// We will give up on retrying with the remaining copied and failed Records.
 			if (!copyFailedRecords.isEmpty()) {
 				copyFailedRecords.forEach(failedRecordTuple ->
 											this.invokeErrorHandlerBySingleRecord(failedRecordTuple.record(), failedRecordTuple.ex()));

@@ -31,9 +31,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.admin.AdminClientConfig;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
 
@@ -56,6 +54,7 @@ import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.CompositeMessageConverter;
 import org.springframework.messaging.converter.GenericMessageConverter;
@@ -949,20 +948,6 @@ public class AsyncMonoRetryTopicScenarioTests {
 		}
 	}
 
-	@SuppressWarnings("serial")
-	static class MyRetryException extends RuntimeException {
-		MyRetryException(String msg) {
-			super(msg);
-		}
-	}
-
-	@SuppressWarnings("serial")
-	static class MyDontRetryException extends RuntimeException {
-		MyDontRetryException(String msg) {
-			super(msg);
-		}
-	}
-
 	@Configuration
 	static class RetryTopicConfigurations extends RetryTopicConfigurationSupport {
 
@@ -1174,17 +1159,10 @@ public class AsyncMonoRetryTopicScenarioTests {
 
 		@Bean
 		ProducerFactory<String, String> producerFactory() {
-			Map<String, Object> configProps = new HashMap<>();
-			configProps.put(
-					ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
+			Map<String, Object> props = KafkaTestUtils.producerProps(
 					this.broker.getBrokersAsString());
-			configProps.put(
-					ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG,
-					StringSerializer.class);
-			configProps.put(
-					ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-					StringSerializer.class);
-			return new DefaultKafkaProducerFactory<>(configProps);
+			props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+			return new DefaultKafkaProducerFactory<>(props);
 		}
 
 		@Bean("customKafkaTemplate")
@@ -1209,23 +1187,10 @@ public class AsyncMonoRetryTopicScenarioTests {
 
 		@Bean
 		ConsumerFactory<String, String> consumerFactory() {
-			Map<String, Object> props = new HashMap<>();
-			props.put(
-					ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-					this.broker.getBrokersAsString());
-			props.put(
-					ConsumerConfig.GROUP_ID_CONFIG,
-					"groupId");
-			props.put(
-					ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
-					StringDeserializer.class);
-			props.put(
-					ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
-					StringDeserializer.class);
-			props.put(
-					ConsumerConfig.ALLOW_AUTO_CREATE_TOPICS_CONFIG, false);
-			props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
+			Map<String, Object> props = KafkaTestUtils.consumerProps(
+					this.broker.getBrokersAsString(),
+					"groupId",
+					"false");
 			return new DefaultKafkaConsumerFactory<>(props);
 		}
 
