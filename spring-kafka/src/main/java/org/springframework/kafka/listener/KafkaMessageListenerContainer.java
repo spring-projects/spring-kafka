@@ -108,6 +108,8 @@ import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.listener.ContainerProperties.EOSMode;
 import org.springframework.kafka.listener.adapter.AsyncRepliesAware;
+import org.springframework.kafka.listener.adapter.KafkaBackoffAwareMessageListenerAdapter;
+import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
@@ -842,7 +844,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private volatile long lastPoll = System.currentTimeMillis();
 
-		private final ConcurrentLinkedDeque<FailedRecordTuple<K, V>> failedRecords = new ConcurrentLinkedDeque();
+		private final ConcurrentLinkedDeque<FailedRecordTuple<K, V>> failedRecords = new ConcurrentLinkedDeque<>();
 
 		@SuppressWarnings(UNCHECKED)
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType,
@@ -900,13 +902,20 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.pollThreadStateProcessor = setUpPollProcessor(false);
 				this.observationEnabled = this.containerProperties.isObservationEnabled();
 
-				if (!AopUtils.isAopProxy(listener)) {
-					BiConsumer<ConsumerRecord<K, V>, RuntimeException> callbackForAsyncFailureQueue =
-							(cRecord, ex) -> {
-								FailedRecordTuple<K, V> failedRecord = new FailedRecordTuple<>(cRecord, ex);
-								this.failedRecords.addLast(failedRecord);
-							};
-					this.listener.setCallbackForAsyncFailure(callbackForAsyncFailureQueue);
+				if (!AopUtils.isAopProxy(this.genericListener) &&
+					this.genericListener instanceof KafkaBackoffAwareMessageListenerAdapter<?, ?>) {
+					KafkaBackoffAwareMessageListenerAdapter<K, V> genListener =
+							(KafkaBackoffAwareMessageListenerAdapter<K, V>) this.genericListener;
+					if (genListener.getDelegate() instanceof RecordMessagingMessageListenerAdapter<K, V>) {
+
+						RecordMessagingMessageListenerAdapter<K, V> recordAdapterListener =
+								(RecordMessagingMessageListenerAdapter<K, V>) genListener.getDelegate();
+
+						BiConsumer<ConsumerRecord<K, V>, RuntimeException> callbackForAsyncFailure =
+								(cRecord, ex) -> this.failedRecords.addLast(new FailedRecordTuple<>(cRecord, ex));
+						recordAdapterListener.setCallbackForAsyncFailure(callbackForAsyncFailure);
+					}
+
 				}
 			}
 			else {
@@ -1458,17 +1467,25 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		protected void handleAsyncFailure() {
-			List<FailedRecordTuple> copyFailedRecords = new ArrayList<>();
+			List<FailedRecordTuple<K, V>> copyFailedRecords = new ArrayList<>();
 			while (!this.failedRecords.isEmpty()) {
-				FailedRecordTuple failedRecordTuple = this.failedRecords.pollFirst();
+				FailedRecordTuple<K, V> failedRecordTuple = this.failedRecords.pollFirst();
 				copyFailedRecords.add(failedRecordTuple);
 			}
 
 			// If any copied and failed record fails to complete due to an unexpected error,
 			// We will give up on retrying with the remaining copied and failed Records.
-			if (!copyFailedRecords.isEmpty()) {
-				copyFailedRecords.forEach(failedRecordTuple ->
-											this.invokeErrorHandlerBySingleRecord(failedRecordTuple.record(), failedRecordTuple.ex()));
+			for (FailedRecordTuple<K, V> copyFailedRecord : copyFailedRecords) {
+				try {
+					invokeErrorHandlerBySingleRecord(copyFailedRecord);
+				}
+				catch (Exception e) {
+					this.logger.warn(() ->
+								"Async failed record failed to complete, thus skip it. record :"
+								+ copyFailedRecord.toString()
+								+ ", Exception : "
+								+ e.getMessage());
+				}
 			}
 		}
 
@@ -2864,7 +2881,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void invokeErrorHandlerBySingleRecord(final ConsumerRecord<K, V> cRecord, RuntimeException rte) {
+		private void invokeErrorHandlerBySingleRecord(final FailedRecordTuple<K, V> failedRecordTuple) {
+			final ConsumerRecord<K, V> cRecord = failedRecordTuple.record;
+			RuntimeException rte = failedRecordTuple.ex;
 			if (this.commonErrorHandler.seeksAfterHandling() || rte instanceof CommitFailedException) {
 				try {
 					if (this.producer == null) {
@@ -3986,6 +4005,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	}
 
-	record FailedRecordTuple<K, V>(ConsumerRecord<K, V> record, RuntimeException ex) { };
+	private record FailedRecordTuple<K, V>(ConsumerRecord<K, V> record, RuntimeException ex) { };
 
 }

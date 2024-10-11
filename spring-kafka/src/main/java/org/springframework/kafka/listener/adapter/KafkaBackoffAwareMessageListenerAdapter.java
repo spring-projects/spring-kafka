@@ -20,7 +20,6 @@ import java.math.BigInteger;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
-import java.util.function.BiConsumer;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -44,7 +43,6 @@ import org.springframework.lang.Nullable;
  * @param <K> the record key type.
  * @param <V> the record value type.
  * @author Tomaz Fernandes
- * @author Sanghyeok An
  * @since 2.7
  *
  */
@@ -146,8 +144,4 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 		onMessage(data, null, consumer);
 	}
 
-	@Override
-	public void setCallbackForAsyncFailure(BiConsumer<ConsumerRecord<K, V>, RuntimeException> callbackForAsyncFailureQueue) {
-		this.delegate.setCallbackForAsyncFailure(callbackForAsyncFailureQueue);
-	}
 }

@@ -17,7 +17,6 @@
 package org.springframework.kafka.listener.adapter;
 
 import java.lang.reflect.Method;
-import java.util.function.BiConsumer;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -86,9 +85,4 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 		invoke(record, acknowledgment, consumer, message);
 	}
 
-	@Override
-	public void setCallbackForAsyncFailure(
-			BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback) {
-		setAsyncFailureCallback(asyncRetryCallback);
-	}
 }

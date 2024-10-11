@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.listener;
 
-import java.util.function.BiConsumer;
-
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 /**
@@ -28,13 +26,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
  *
  * @author Marius Bogoevici
  * @author Gary Russell
- * @author Sanghyeok An
  */
 @FunctionalInterface
 public interface MessageListener<K, V> extends GenericMessageListener<ConsumerRecord<K, V>> {
 
-	default void setCallbackForAsyncFailure(
-			BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback) {
-		//
-	}
 }

@@ -155,7 +155,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	private String correlationHeaderName = KafkaHeaders.CORRELATION_ID;
 
-	private BiConsumer<ConsumerRecord<K, V>, RuntimeException> callbackForAsyncFailureQueue;
+	@Nullable
+	private BiConsumer<ConsumerRecord<K, V>, RuntimeException> callbackForAsyncFailure;
 
 	/**
 	 * Create an instance with the provided bean and method.
@@ -678,9 +679,10 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		catch (Throwable ex) {
 			this.logger.error(t, () -> "Future, Mono, or suspend function was completed with an exception for " + source);
 			acknowledge(acknowledgment);
-			if (canAsyncRetry(request, ex)) {
+			if (canAsyncRetry(request, ex) &&
+				Objects.nonNull(this.callbackForAsyncFailure)) {
 				ConsumerRecord<K, V> record = (ConsumerRecord<K, V>) request;
-				this.callbackForAsyncFailureQueue.accept(record, (RuntimeException) ex);
+				this.callbackForAsyncFailure.accept(record, (RuntimeException) ex);
 			}
 		}
 	}
@@ -884,8 +886,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		return parameterType instanceof ParameterizedType pType && pType.getRawType().equals(type);
 	}
 
-	protected void setAsyncFailureCallback(BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback) {
-		this.callbackForAsyncFailureQueue = asyncRetryCallback;
+	public void setCallbackForAsyncFailure(BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback) {
+		this.callbackForAsyncFailure = asyncRetryCallback;
 	}
 
 	/**
