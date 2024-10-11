@@ -143,5 +143,4 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 	public void onMessage(ConsumerRecord<K, V> data, Consumer<?, ?> consumer) {
 		onMessage(data, null, consumer);
 	}
-
 }
