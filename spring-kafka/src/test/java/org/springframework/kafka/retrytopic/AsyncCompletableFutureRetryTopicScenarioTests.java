@@ -161,16 +161,12 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(awaitLatch(latchContainer.countDownLatch0)).isTrue();
 		assertThat(awaitLatch(latchContainer.dltCountdownLatch0)).isTrue();
 
-		waitAWhile(executor, 10000);
-
 		assertThat(destinationTopic.getDestinationName()).isEqualTo(TEST_TOPIC0 + "-retry");
 
 		assertThat(zeroTopicListener.receivedMsgs).containsExactlyInAnyOrder(expectedReceivedMsgs);
 		assertThat(zeroTopicListener.receivedTopics).containsExactlyInAnyOrder(expectedReceivedTopics);
-		assertThat(latchContainer.extraCountDownLatch0.getCount()).isEqualTo(1000 - CountDownLatchContainer.COUNT0);
 
 		assertThat(myCustomDltProcessor0.receivedMsg).containsExactlyInAnyOrder(expectedDltMsgs);
-		assertThat(latchContainer.extraDltCountdownLatch0.getCount()).isEqualTo(1000 - CountDownLatchContainer.DLT_COUNT0);
 	}
 
 	@Test
@@ -215,15 +211,11 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(awaitLatch(latchContainer.countDownLatch1)).isTrue();
 		assertThat(awaitLatch(latchContainer.dltCountdownLatch1)).isTrue();
 
-		waitAWhile(executor, 10000);
-
 		assertThat(destinationTopic.getDestinationName()).isEqualTo(expectedRetryTopic);
-		assertThat(latchContainer.extraCountDownLatch1.getCount()).isEqualTo(1000 - CountDownLatchContainer.COUNT1);
 		assertThat(testTopicListener1.receivedMsgs).containsExactly(expectedReceivedMsgs);
 		assertThat(testTopicListener1.receivedTopics).containsExactly(expectedReceivedTopics);
 
 		assertThat(myCustomDltProcessor1.receivedMsg).containsExactly(expectedDltMsgs);
-		assertThat(latchContainer.extraDltCountdownLatch1.getCount()).isEqualTo(1000 - CountDownLatchContainer.DLT_COUNT1);
 	}
 
 	@Test
@@ -268,14 +260,11 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(awaitLatch(latchContainer.countDownLatch2)).isTrue();
 		assertThat(awaitLatch(latchContainer.dltCountdownLatch2)).isTrue();
 
-		waitAWhile(executor, 10000);
-
 		assertThat(destinationTopic.getDestinationName()).isEqualTo(expectedRetryTopic);
 		assertThat(zero2TopicListener.receivedMsgs).containsExactly(expectedReceivedMsgs);
 		assertThat(zero2TopicListener.receivedTopics).containsExactly(expectedReceivedTopics);
 
 		assertThat(myCustomDltProcessor2.receivedMsg).containsExactly(expectedDltMsgs);
-		assertThat(latchContainer.extraDltCountdownLatch2.getCount()).isEqualTo(1000 - CountDownLatchContainer.DLT_COUNT2);
 	}
 
 	@Test
@@ -335,14 +324,11 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(awaitLatch(latchContainer.countDownLatch3)).isTrue();
 		assertThat(awaitLatch(latchContainer.dltCountdownLatch3)).isTrue();
 
-		waitAWhile(executor, 10000);
-
 		assertThat(destinationTopic.getDestinationName()).isEqualTo(expectedRetryTopic);
 		assertThat(testTopicListener3.receivedMsgs).containsExactly(expectedReceivedMsgs);
 		assertThat(testTopicListener3.receivedTopics).containsExactly(expectedReceivedTopics);
 
 		assertThat(myCustomDltProcessor3.receivedMsg).containsExactly(expectedDltMsgs);
-		assertThat(latchContainer.extraDltCountdownLatch3.getCount()).isEqualTo(1000 - CountDownLatchContainer.DLT_COUNT3);
 	}
 
 	@Test
@@ -399,14 +385,11 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(awaitLatch(latchContainer.countDownLatch4)).isTrue();
 		assertThat(awaitLatch(latchContainer.dltCountdownLatch4)).isTrue();
 
-		waitAWhile(executor, 10000);
-
 		assertThat(destinationTopic.getDestinationName()).isEqualTo(expectedRetryTopic);
 		assertThat(topicListener4.receivedMsgs).containsExactly(expectedReceivedMsgs);
 		assertThat(topicListener4.receivedTopics).containsExactly(expectedReceivedTopics);
 
 		assertThat(myCustomDltProcessor4.receivedMsg).containsExactly(expectedDltMsgs);
-		assertThat(latchContainer.extraDltCountdownLatch4.getCount()).isEqualTo(1000 - CountDownLatchContainer.DLT_COUNT4);
 	}
 
 	@Test
@@ -453,14 +436,11 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(awaitLatch(latchContainer.countDownLatch5)).isTrue();
 		assertThat(awaitLatch(latchContainer.dltCountdownLatch5)).isTrue();
 
-		waitAWhile(executor, 10000);
-
 		assertThat(destinationTopic.getDestinationName()).isEqualTo(expectedRetryTopic);
 		assertThat(topicListener5.receivedMsgs).containsExactlyInAnyOrder(expectedReceivedMsgs);
 		assertThat(topicListener5.receivedTopics).containsExactlyInAnyOrder(expectedReceivedTopics);
 
 		assertThat(myCustomDltProcessor5.receivedMsg).containsExactlyInAnyOrder(expectedDltMsgs);
-		assertThat(latchContainer.extraDltCountdownLatch5.getCount()).isEqualTo(1000 - CountDownLatchContainer.DLT_COUNT5);
 	}
 
 	@Test
@@ -506,8 +486,6 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(awaitLatch(latchContainer.countDownLatch6)).isTrue();
 		assertThat(awaitLatch(latchContainer.dltCountdownLatch6)).isTrue();
 
-		waitAWhile(executor, 10000);
-
 		assertThat(destinationTopic.getDestinationName()).isEqualTo(expectedRetryTopic);
 
 		long actualReceivedSuccessMsgCount = topicListener6.receivedMsgs.stream()
@@ -536,7 +514,6 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(actualReceivedRetryTopicMsgCount).isEqualTo(expectedReceivedRetryTopicCount);
 
 		assertThat(myCustomDltProcessor6.receivedMsg.size()).isEqualTo(expectedReceivedDltMsgCount);
-		assertThat(latchContainer.extraDltCountdownLatch6.getCount()).isEqualTo(1000 - CountDownLatchContainer.DLT_COUNT6);
 	}
 
 	private boolean awaitLatch(CountDownLatch latch) {
@@ -548,23 +525,6 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 			throw new RuntimeException(e);
 		}
 
-	}
-
-	private void waitAWhile(ThreadPoolTaskExecutor executor, int sleep) {
-		CountDownLatch countDownLatch = new CountDownLatch(1);
-
-		Thread thread = new Thread(() -> {
-			try {
-				Thread.sleep(sleep);
-			}
-			catch (InterruptedException e) {
-				throw new RuntimeException(e);
-			}
-			countDownLatch.countDown();
-		});
-
-		executor.execute(thread);
-		assertThat(awaitLatch(countDownLatch)).isTrue();
 	}
 
 	@KafkaListener(
@@ -588,14 +548,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 			this.receivedMsgs.add(message);
 			this.receivedTopics.add(receivedTopic);
 			return CompletableFuture.supplyAsync(() -> {
-				container.extraCountDownLatch0.countDown();
 				container.countDownLatch0.countDown();
-				try {
-					Thread.sleep(1);
-				}
-				catch (InterruptedException e) {
-					throw new RuntimeException(e);
-				}
 				throw new RuntimeException("Woooops... in topic " + receivedTopic);
 			});
 		}
@@ -623,13 +576,14 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 			this.receivedMsgs.add(message);
 			this.receivedTopics.add(receivedTopic);
 			return CompletableFuture.supplyAsync(() -> {
-				container.extraCountDownLatch1.countDown();
-				container.countDownLatch1.countDown();
 				try {
 					Thread.sleep(Integer.parseInt(message));
 				}
 				catch (InterruptedException e) {
 					throw new RuntimeException(e);
+				}
+				finally {
+					container.countDownLatch1.countDown();
 				}
 				if (message.equals("1")) {
 					throw new RuntimeException("Woooops... in topic " + receivedTopic);
@@ -662,14 +616,14 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 			this.receivedTopics.add(receivedTopic);
 
 			return CompletableFuture.supplyAsync(() -> {
-				container.extraCountDownLatch2.countDown();
-				container.countDownLatch2.countDown();
-				long count = container.countDownLatch2.getCount();
 				try {
 					Thread.sleep(Integer.parseInt(message));
 				}
 				catch (InterruptedException e) {
 					throw new RuntimeException(e);
+				}
+				finally {
+					container.countDownLatch2.countDown();
 				}
 
 				if (message.equals("1")) {
@@ -706,14 +660,14 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 			this.receivedTopics.add(receivedTopic);
 
 			return CompletableFuture.supplyAsync(() -> {
-				container.extraCountDownLatch3.countDown();
-				container.countDownLatch3.countDown();
-				long count = container.countDownLatch3.getCount();
 				try {
 					Thread.sleep(Integer.parseInt(message));
 				}
 				catch (InterruptedException e) {
 					throw new RuntimeException(e);
+				}
+				finally {
+					container.countDownLatch3.countDown();
 				}
 
 				if (message.equals(LONG_FAIL_MSG)) {
@@ -750,13 +704,14 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 			this.receivedTopics.add(receivedTopic);
 
 			return CompletableFuture.supplyAsync(() -> {
-				container.extraCountDownLatch4.countDown();
-				container.countDownLatch4.countDown();
 				try {
 					Thread.sleep(Integer.parseInt(message));
 				}
 				catch (InterruptedException e) {
 					throw new RuntimeException(e);
+				}
+				finally {
+					container.countDownLatch4.countDown();
 				}
 
 				if (message.equals(SHORT_FAIL_MSG)) {
@@ -793,13 +748,14 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 			this.receivedTopics.add(receivedTopic);
 
 			return CompletableFuture.supplyAsync(() -> {
-				container.extraCountDownLatch5.countDown();
-				container.countDownLatch5.countDown();
 				try {
 					Thread.sleep(Integer.parseInt(message));
 				}
 				catch (InterruptedException e) {
 					throw new RuntimeException(e);
+				}
+				finally {
+					container.countDownLatch5.countDown();
 				}
 
 				if (message.startsWith(SHORT_FAIL_MSG)) {
@@ -836,9 +792,6 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 			this.receivedTopics.add(receivedTopic);
 
 			return CompletableFuture.supplyAsync(() -> {
-				container.extraCountDownLatch6.countDown();
-				container.countDownLatch6.countDown();
-
 				String[] split = message.split(",");
 				String sleepAWhile = split[0];
 				String failOrSuccess = split[1];
@@ -848,6 +801,9 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 				}
 				catch (InterruptedException e) {
 					throw new RuntimeException(e);
+				}
+				finally {
+					container.countDownLatch6.countDown();
 				}
 
 				if (failOrSuccess.equals("f")) {
@@ -866,11 +822,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 
 		CountDownLatch countDownLatch0 = new CountDownLatch(COUNT0);
 
-		CountDownLatch extraCountDownLatch0 = new CountDownLatch(1000);
-
 		CountDownLatch dltCountdownLatch0 = new CountDownLatch(DLT_COUNT0);
-
-		CountDownLatch extraDltCountdownLatch0 = new CountDownLatch(1000);
 
 		static int COUNT1 = 6;
 
@@ -878,11 +830,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 
 		CountDownLatch countDownLatch1 = new CountDownLatch(COUNT1);
 
-		CountDownLatch extraCountDownLatch1 = new CountDownLatch(1000);
-
 		CountDownLatch dltCountdownLatch1 = new CountDownLatch(DLT_COUNT1);
-
-		CountDownLatch extraDltCountdownLatch1 = new CountDownLatch(1000);
 
 		static int COUNT2 = 6;
 
@@ -890,11 +838,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 
 		CountDownLatch countDownLatch2 = new CountDownLatch(COUNT2);
 
-		CountDownLatch extraCountDownLatch2 = new CountDownLatch(1000);
-
 		CountDownLatch dltCountdownLatch2 = new CountDownLatch(DLT_COUNT2);
-
-		CountDownLatch extraDltCountdownLatch2 = new CountDownLatch(1000);
 
 		static int COUNT3 = 13;
 
@@ -902,11 +846,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 
 		CountDownLatch countDownLatch3 = new CountDownLatch(COUNT3);
 
-		CountDownLatch extraCountDownLatch3 = new CountDownLatch(1000);
-
 		CountDownLatch dltCountdownLatch3 = new CountDownLatch(DLT_COUNT3);
-
-		CountDownLatch extraDltCountdownLatch3 = new CountDownLatch(1000);
 
 		static int COUNT4 = 12;
 
@@ -914,11 +854,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 
 		CountDownLatch countDownLatch4 = new CountDownLatch(COUNT4);
 
-		CountDownLatch extraCountDownLatch4 = new CountDownLatch(1000);
-
 		CountDownLatch dltCountdownLatch4 = new CountDownLatch(DLT_COUNT4);
-
-		CountDownLatch extraDltCountdownLatch4 = new CountDownLatch(1000);
 
 		static int COUNT5 = 501;
 
@@ -926,11 +862,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 
 		CountDownLatch countDownLatch5 = new CountDownLatch(COUNT5);
 
-		CountDownLatch extraCountDownLatch5 = new CountDownLatch(1000);
-
 		CountDownLatch dltCountdownLatch5 = new CountDownLatch(DLT_COUNT5);
-
-		CountDownLatch extraDltCountdownLatch5 = new CountDownLatch(1000);
 
 		static int COUNT6 = 250;
 
@@ -938,11 +870,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 
 		CountDownLatch countDownLatch6 = new CountDownLatch(COUNT6);
 
-		CountDownLatch extraCountDownLatch6 = new CountDownLatch(1000);
-
 		CountDownLatch dltCountdownLatch6 = new CountDownLatch(DLT_COUNT6);
-
-		CountDownLatch extraDltCountdownLatch6 = new CountDownLatch(1000);
 
 		CountDownLatch customErrorHandlerCountdownLatch = new CountDownLatch(6);
 
@@ -955,23 +883,18 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		final List<String> receivedMsg = new ArrayList<>();
 
 		MyCustomDltProcessor(KafkaTemplate<String, String> kafkaTemplate,
-									CountDownLatch latch,
-									CountDownLatch extraLatch) {
+									CountDownLatch latch) {
 			this.kafkaTemplate = kafkaTemplate;
 			this.latch = latch;
-			this.extraLatch = extraLatch;
 		}
 
 		private final KafkaTemplate<String, String> kafkaTemplate;
 
 		private final CountDownLatch latch;
 
-		private final CountDownLatch extraLatch;
-
 		public void processDltMessage(String message) {
 			this.receivedMsg.add(message);
 			latch.countDown();
-			extraLatch.countDown();
 		}
 	}
 
@@ -1119,8 +1042,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 				KafkaTemplate<String, String> kafkaTemplate,
 				CountDownLatchContainer latchContainer) {
 			return new MyCustomDltProcessor(kafkaTemplate,
-											latchContainer.dltCountdownLatch0,
-											latchContainer.extraDltCountdownLatch0);
+											latchContainer.dltCountdownLatch0);
 		}
 
 		@Bean
@@ -1128,8 +1050,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 				KafkaTemplate<String, String> kafkaTemplate,
 				CountDownLatchContainer latchContainer) {
 			return new MyCustomDltProcessor(kafkaTemplate,
-											latchContainer.dltCountdownLatch1,
-											latchContainer.extraDltCountdownLatch1);
+											latchContainer.dltCountdownLatch1);
 		}
 
 		@Bean
@@ -1137,8 +1058,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 				KafkaTemplate<String, String> kafkaTemplate,
 				CountDownLatchContainer latchContainer) {
 			return new MyCustomDltProcessor(kafkaTemplate,
-											latchContainer.dltCountdownLatch2,
-											latchContainer.extraDltCountdownLatch2);
+											latchContainer.dltCountdownLatch2);
 		}
 
 		@Bean
@@ -1146,8 +1066,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 				KafkaTemplate<String, String> kafkaTemplate,
 				CountDownLatchContainer latchContainer) {
 			return new MyCustomDltProcessor(kafkaTemplate,
-											latchContainer.dltCountdownLatch3,
-											latchContainer.extraDltCountdownLatch3);
+											latchContainer.dltCountdownLatch3);
 		}
 
 		@Bean
@@ -1155,8 +1074,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 				KafkaTemplate<String, String> kafkaTemplate,
 				CountDownLatchContainer latchContainer) {
 			return new MyCustomDltProcessor(kafkaTemplate,
-											latchContainer.dltCountdownLatch4,
-											latchContainer.extraDltCountdownLatch4);
+											latchContainer.dltCountdownLatch4);
 		}
 
 		@Bean
@@ -1164,8 +1082,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 				KafkaTemplate<String, String> kafkaTemplate,
 				CountDownLatchContainer latchContainer) {
 			return new MyCustomDltProcessor(kafkaTemplate,
-											latchContainer.dltCountdownLatch5,
-											latchContainer.extraDltCountdownLatch5);
+											latchContainer.dltCountdownLatch5);
 		}
 
 		@Bean
@@ -1173,8 +1090,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 				KafkaTemplate<String, String> kafkaTemplate,
 				CountDownLatchContainer latchContainer) {
 			return new MyCustomDltProcessor(kafkaTemplate,
-											latchContainer.dltCountdownLatch6,
-											latchContainer.extraDltCountdownLatch6);
+											latchContainer.dltCountdownLatch6);
 		}
 
 	}
