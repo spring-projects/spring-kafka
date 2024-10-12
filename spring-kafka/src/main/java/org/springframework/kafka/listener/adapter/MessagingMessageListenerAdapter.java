@@ -886,6 +886,13 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		return parameterType instanceof ParameterizedType pType && pType.getRawType().equals(type);
 	}
 
+	/**
+	 * Sets the retry callback for failures of both {@link CompletableFuture} and {@link Mono}.
+	 * {@link MessagingMessageListenerAdapter#asyncFailure(Object, Acknowledgment, Consumer, Throwable, Message)}
+	 * will invoke {@link MessagingMessageListenerAdapter#callbackForAsyncFailure} when
+	 * {@link CompletableFuture} or {@link Mono} fails to complete.
+	 * @param asyncRetryCallback the callback for async retry.
+	 */
 	public void setCallbackForAsyncFailure(BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback) {
 		this.callbackForAsyncFailure = asyncRetryCallback;
 	}
