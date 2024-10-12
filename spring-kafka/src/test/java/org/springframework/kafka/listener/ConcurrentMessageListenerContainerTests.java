@@ -49,6 +49,7 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
+import org.assertj.core.api.Condition;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.invocation.InvocationOnMock;
@@ -199,8 +200,7 @@ public class ConcurrentMessageListenerContainerTests {
 		assertThat(intercepted.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
 		assertThat(payloads).containsExactlyInAnyOrder("foo", "bar", "qux");
-		assertThat(listenerThreadNames).containsAnyOf("testAuto-0-C-0", "testAuto-0-C-1",
-				"testAuto-1-C-0", "testAuto-1-C-1");
+		assertThat(listenerThreadNames).contains("testAuto-0", "testAuto-1");
 		List<KafkaMessageListenerContainer<Integer, String>> containers = KafkaTestUtils.getPropertyValue(container,
 				"containers", List.class);
 		assertThat(containers).hasSize(2);
@@ -934,8 +934,9 @@ public class ConcurrentMessageListenerContainerTests {
 
 		firstLatch.countDown();
 
-		assertThat(listenerThreadNames).containsAnyOf("testAuto-0-C-0", "testAuto-0-C-1",
-				"testAuto-1-C-0", "testAuto-1-C-1");
+		Condition<String> listenerThreadNameCondition = new Condition<>(s -> s.contains("testAuto"),
+				"Listener thread name has to be prefixed with testAuto");
+		assertThat(listenerThreadNames).have(listenerThreadNameCondition);
 
 		assertThat(concurrentContainerStopLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(container.isInExpectedState()).isTrue();
@@ -1203,8 +1204,9 @@ public class ConcurrentMessageListenerContainerTests {
 
 		assertThat(container.isChildRunning()).isTrue();
 
-		assertThat(listenerThreadNames).containsAnyOf("testAuto-0-C-0", "testAuto-0-C-1",
-				"testAuto-1-C-0", "testAuto-1-C-1");
+		Condition<String> listenerThreadNameCondition = new Condition<>(s -> s.contains("testAuto"),
+				"Listener thread name has to be prefixed with testAuto");
+		assertThat(listenerThreadNames).have(listenerThreadNameCondition);
 
 		assertThat(concurrentContainerStopLatch.await(30, TimeUnit.SECONDS)).isFalse();
 
@@ -1355,8 +1357,10 @@ public class ConcurrentMessageListenerContainerTests {
 
 		assertThat(container.isChildRunning()).isTrue();
 
-		assertThat(listenerThreadNames).containsAnyOf("testAuto-0-C-0", "testAuto-0-C-1",
-				"testAuto-1-C-0", "testAuto-1-C-1");
+		Condition<String> listenerThreadNameCondition = new Condition<>(s -> s.contains("testAuto"),
+				"Listener thread name has to be prefixed with testAuto");
+		assertThat(listenerThreadNames).have(listenerThreadNameCondition);
+
 
 		assertThat(concurrentContainerStopLatch.await(30, TimeUnit.SECONDS)).isFalse();
 

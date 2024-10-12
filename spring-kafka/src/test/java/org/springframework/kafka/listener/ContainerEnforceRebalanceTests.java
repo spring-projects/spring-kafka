@@ -64,11 +64,11 @@ public class ContainerEnforceRebalanceTests {
 		assertThat(config.listenerLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(listenerContainer).isNotNull();
 		listenerContainer.enforceRebalance();
-		assertThat(((ConcurrentMessageListenerContainer<?, ?>) listenerContainer).enforceRebalanceRequested).isTrue();
+		assertThat(((ConcurrentMessageListenerContainer<?, ?>) listenerContainer).isEnforceRebalanceRequested()).isTrue();
 		// The test is expecting partition revoke once and assign twice.
 		assertThat(config.partitionRevokedLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(config.partitionAssignedLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(((ConcurrentMessageListenerContainer<?, ?>) listenerContainer).enforceRebalanceRequested).isFalse();
+		assertThat(((ConcurrentMessageListenerContainer<?, ?>) listenerContainer).isEnforceRebalanceRequested()).isFalse();
 		listenerContainer.pause();
 		await().timeout(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(listenerContainer.isPauseRequested()).isTrue());
 		await().timeout(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(listenerContainer.isContainerPaused()).isTrue());

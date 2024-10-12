@@ -19,14 +19,19 @@ package org.springframework.kafka.listener;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
 
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
+import org.springframework.lang.Nullable;
 
 /**
  * Reference of {@link ConcurrentMessageListenerContainer} to be passed to the {@link KafkaMessageListenerContainer}.
@@ -268,18 +273,141 @@ class ConcurrentMessageListenerContainerRef<K, V> extends AbstractMessageListene
 		}
 	}
 
-	AbstractMessageListenerContainer<?, ?> getConcurrentContainer() {
-		return this.concurrentMessageListenerContainer;
+	@Nullable
+	protected ApplicationContext getApplicationContext() {
+		return this.concurrentMessageListenerContainer.getApplicationContext();
 	}
 
-	@Override
-	public int hashCode() {
-		return this.concurrentMessageListenerContainer.hashCode();
+	/**
+	 * Get the event publisher.
+	 * @return the publisher
+	 */
+	@Nullable
+	public ApplicationEventPublisher getApplicationEventPublisher() {
+		return this.concurrentMessageListenerContainer.getApplicationEventPublisher();
 	}
 
-	@Override
-	public boolean equals(Object obj) {
-		return this.concurrentMessageListenerContainer.equals(obj);
+	/**
+	 * Get the {@link CommonErrorHandler}.
+	 * @return the handler.
+	 * @since 2.8
+	 */
+	@Nullable
+	public CommonErrorHandler getCommonErrorHandler() {
+		return this.concurrentMessageListenerContainer.getCommonErrorHandler();
+	}
+
+	protected boolean isStoppedNormally() {
+		return this.concurrentMessageListenerContainer.isStoppedNormally();
+	}
+
+	protected void setStoppedNormally(boolean stoppedNormally) {
+		this.concurrentMessageListenerContainer.setStoppedNormally(stoppedNormally);
+	}
+
+	protected void setRunning(boolean running) {
+		this.concurrentMessageListenerContainer.setRunning(running);
+	}
+
+	protected boolean isEnforceRebalanceRequested() {
+		return this.concurrentMessageListenerContainer.isEnforceRebalanceRequested();
+	}
+
+	protected void setEnforceRebalanceRequested(boolean enforceRebalance) {
+		this.concurrentMessageListenerContainer.setEnforceRebalanceRequested(enforceRebalance);
+	}
+
+	/**
+	 * Return the currently configured {@link AfterRollbackProcessor}.
+	 * @return the after rollback processor.
+	 * @since 2.2.14
+	 */
+	public AfterRollbackProcessor<? super K, ? super V> getAfterRollbackProcessor() {
+		return this.concurrentMessageListenerContainer.getAfterRollbackProcessor();
+	}
+
+	public boolean isChangeConsumerThreadName() {
+		return this.concurrentMessageListenerContainer.isChangeConsumerThreadName();
+	}
+
+	/**
+	 * Set to true to instruct the container to change the consumer thread name during
+	 * initialization.
+	 * @param changeConsumerThreadName true to change.
+	 * @since 3.0.1
+	 * @see #setThreadNameSupplier(Function)
+	 */
+	public void setChangeConsumerThreadName(boolean changeConsumerThreadName) {
+		this.concurrentMessageListenerContainer.setChangeConsumerThreadName(changeConsumerThreadName);
+	}
+
+	/**
+	 * Return the {@link KafkaAdmin}, used to find the cluster id for observation, if
+	 * present.
+	 * @return the kafkaAdmin
+	 * @since 3.0.5
+	 */
+	@Nullable
+	public KafkaAdmin getKafkaAdmin() {
+		return this.concurrentMessageListenerContainer.getKafkaAdmin();
+	}
+
+	public void setKafkaAdmin(KafkaAdmin kafkaAdmin) {
+		this.concurrentMessageListenerContainer.setKafkaAdmin(kafkaAdmin);
+	}
+
+	protected RecordInterceptor<K, V> getRecordInterceptor() {
+		return this.concurrentMessageListenerContainer.getRecordInterceptor();
+	}
+
+	/**
+	 * Set an interceptor to be called before calling the record listener.
+	 * Does not apply to batch listeners.
+	 * @param recordInterceptor the interceptor.
+	 * @since 2.2.7
+	 * @see #setInterceptBeforeTx(boolean)
+	 */
+	public void setRecordInterceptor(RecordInterceptor recordInterceptor) {
+		this.concurrentMessageListenerContainer.setRecordInterceptor(recordInterceptor);
+	}
+
+	protected BatchInterceptor<K, V> getBatchInterceptor() {
+		return this.concurrentMessageListenerContainer.getBatchInterceptor();
+	}
+
+	/**
+	 * Set an interceptor to be called before calling the record listener.
+	 * @param batchInterceptor the interceptor.
+	 * @since 2.6.6
+	 * @see #setInterceptBeforeTx(boolean)
+	 */
+	public void setBatchInterceptor(BatchInterceptor batchInterceptor) {
+		this.concurrentMessageListenerContainer.setBatchInterceptor(batchInterceptor);
+	}
+
+	protected boolean isInterceptBeforeTx() {
+		return this.concurrentMessageListenerContainer.isInterceptBeforeTx();
+	}
+
+	/**
+	 * When false, invoke the interceptor after the transaction starts.
+	 * @param interceptBeforeTx false to intercept within the transaction.
+	 * Default true since 2.8.
+	 * @since 2.3.4
+	 * @see #setRecordInterceptor(RecordInterceptor)
+	 * @see #setBatchInterceptor(BatchInterceptor)
+	 */
+	public void setInterceptBeforeTx(boolean interceptBeforeTx) {
+		this.concurrentMessageListenerContainer.setInterceptBeforeTx(interceptBeforeTx);
+	}
+
+	/**
+	 * Return this or a parent container if this has a parent.
+	 * @return the parent or this.
+	 * @since 2.2.1
+	 */
+	protected AbstractMessageListenerContainer<?, ?> parentOrThis() {
+		return this;
 	}
 
 }
