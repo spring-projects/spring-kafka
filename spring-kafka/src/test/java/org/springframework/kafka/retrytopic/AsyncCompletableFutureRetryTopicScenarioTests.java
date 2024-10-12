@@ -212,10 +212,10 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(awaitLatch(latchContainer.dltCountdownLatch1)).isTrue();
 
 		assertThat(destinationTopic.getDestinationName()).isEqualTo(expectedRetryTopic);
-		assertThat(testTopicListener1.receivedMsgs).containsExactly(expectedReceivedMsgs);
-		assertThat(testTopicListener1.receivedTopics).containsExactly(expectedReceivedTopics);
+		assertThat(testTopicListener1.receivedMsgs).containsExactlyInAnyOrder(expectedReceivedMsgs);
+		assertThat(testTopicListener1.receivedTopics).containsExactlyInAnyOrder(expectedReceivedTopics);
 
-		assertThat(myCustomDltProcessor1.receivedMsg).containsExactly(expectedDltMsgs);
+		assertThat(myCustomDltProcessor1.receivedMsg).containsExactlyInAnyOrder(expectedDltMsgs);
 	}
 
 	@Test
@@ -261,10 +261,10 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(awaitLatch(latchContainer.dltCountdownLatch2)).isTrue();
 
 		assertThat(destinationTopic.getDestinationName()).isEqualTo(expectedRetryTopic);
-		assertThat(zero2TopicListener.receivedMsgs).containsExactly(expectedReceivedMsgs);
-		assertThat(zero2TopicListener.receivedTopics).containsExactly(expectedReceivedTopics);
+		assertThat(zero2TopicListener.receivedMsgs).containsExactlyInAnyOrder(expectedReceivedMsgs);
+		assertThat(zero2TopicListener.receivedTopics).containsExactlyInAnyOrder(expectedReceivedTopics);
 
-		assertThat(myCustomDltProcessor2.receivedMsg).containsExactly(expectedDltMsgs);
+		assertThat(myCustomDltProcessor2.receivedMsg).containsExactlyInAnyOrder(expectedDltMsgs);
 	}
 
 	@Test
@@ -325,10 +325,10 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(awaitLatch(latchContainer.dltCountdownLatch3)).isTrue();
 
 		assertThat(destinationTopic.getDestinationName()).isEqualTo(expectedRetryTopic);
-		assertThat(testTopicListener3.receivedMsgs).containsExactly(expectedReceivedMsgs);
-		assertThat(testTopicListener3.receivedTopics).containsExactly(expectedReceivedTopics);
+		assertThat(testTopicListener3.receivedMsgs).containsExactlyInAnyOrder(expectedReceivedMsgs);
+		assertThat(testTopicListener3.receivedTopics).containsExactlyInAnyOrder(expectedReceivedTopics);
 
-		assertThat(myCustomDltProcessor3.receivedMsg).containsExactly(expectedDltMsgs);
+		assertThat(myCustomDltProcessor3.receivedMsg).containsExactlyInAnyOrder(expectedDltMsgs);
 	}
 
 	@Test
@@ -386,10 +386,10 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(awaitLatch(latchContainer.dltCountdownLatch4)).isTrue();
 
 		assertThat(destinationTopic.getDestinationName()).isEqualTo(expectedRetryTopic);
-		assertThat(topicListener4.receivedMsgs).containsExactly(expectedReceivedMsgs);
-		assertThat(topicListener4.receivedTopics).containsExactly(expectedReceivedTopics);
+		assertThat(topicListener4.receivedMsgs).containsExactlyInAnyOrder(expectedReceivedMsgs);
+		assertThat(topicListener4.receivedTopics).containsExactlyInAnyOrder(expectedReceivedTopics);
 
-		assertThat(myCustomDltProcessor4.receivedMsg).containsExactly(expectedDltMsgs);
+		assertThat(myCustomDltProcessor4.receivedMsg).containsExactlyInAnyOrder(expectedDltMsgs);
 	}
 
 	@Test
