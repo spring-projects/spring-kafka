@@ -887,11 +887,12 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	}
 
 	/**
-	 * Sets the retry callback for failures of both {@link CompletableFuture} and {@link Mono}.
+	 * Set the retry callback for failures of both {@link CompletableFuture} and {@link Mono}.
 	 * {@link MessagingMessageListenerAdapter#asyncFailure(Object, Acknowledgment, Consumer, Throwable, Message)}
 	 * will invoke {@link MessagingMessageListenerAdapter#callbackForAsyncFailure} when
 	 * {@link CompletableFuture} or {@link Mono} fails to complete.
 	 * @param asyncRetryCallback the callback for async retry.
+	 * @since 3.3
 	 */
 	public void setCallbackForAsyncFailure(BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback) {
 		this.callbackForAsyncFailure = asyncRetryCallback;
