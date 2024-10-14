@@ -908,7 +908,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					AbstractDelegatingMessageListenerAdapter<MessageListener<K, V>> genListener =
 							(AbstractDelegatingMessageListenerAdapter<MessageListener<K, V>>) this.genericListener;
 					if (genListener.getDelegate() instanceof RecordMessagingMessageListenerAdapter<K, V> adapterListener) {
-						adapterListener.setCallbackForAsyncFailure(getCallbackForAsyncFailure());
+						adapterListener.setCallbackForAsyncFailure(this::callbackForAsyncFailure);
 					}
 				}
 			}
@@ -3385,8 +3385,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					.values();
 		}
 
-		private BiConsumer<ConsumerRecord<K, V>, RuntimeException> getCallbackForAsyncFailure() {
-			return (cRecord, ex) -> this.failedRecords.addLast(new FailedRecordTuple<>(cRecord, ex));
+		private void callbackForAsyncFailure(ConsumerRecord<K, V> cRecord, RuntimeException ex) {
+			this.failedRecords.addLast(new FailedRecordTuple<>(cRecord, ex));
 		}
 
 		@Override
