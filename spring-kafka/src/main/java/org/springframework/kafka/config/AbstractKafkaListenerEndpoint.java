@@ -63,6 +63,7 @@ import org.springframework.util.ObjectUtils;
  * @author Artem Bilan
  * @author Wang Zhiyang
  * @author Sanghyeok An
+ * @author Borahm Lee
  *
  * @see MethodKafkaListenerEndpoint
  */
@@ -537,8 +538,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		if (this.recordFilterStrategy != null) {
 			if (isBatchListener()) {
 				if (((MessagingMessageListenerAdapter<K, V>) messageListener).isConsumerRecords()) {
-					this.logger.warn(() -> "Filter strategy ignored when consuming 'ConsumerRecords' instead of a List"
-							+ (this.id != null ? " id: " + this.id : ""));
+					this.logger.warn(() -> "Filter strategy is ignored when consuming 'ConsumerRecords' directly instead of a List of records."
+							+ (this.id != null ? " listenerId: " + this.id : ""));
 				}
 				else {
 					messageListener = new FilteringBatchMessageListenerAdapter<>(
