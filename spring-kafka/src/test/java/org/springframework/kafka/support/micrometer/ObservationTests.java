@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -87,6 +88,7 @@ import io.micrometer.tracing.handler.PropagatingSenderTracingObservationHandler;
 import io.micrometer.tracing.propagation.Propagator;
 import io.micrometer.tracing.test.simple.SimpleSpan;
 import io.micrometer.tracing.test.simple.SimpleTracer;
+import reactor.core.publisher.Mono;
 
 /**
  * @author Gary Russell
@@ -112,7 +114,11 @@ public class ObservationTests {
 
 	public final static String OBSERVATION_RUNTIME_EXCEPTION = "observation.runtime-exception";
 
-	public final static String OBSERVATION_ERROR = "observation.error";
+	public final static String OBSERVATION_ERROR = "observation.error.sync";
+
+	public final static String OBSERVATION_ERROR_COMPLETABLE_FUTURE = "observation.error.completableFuture";
+
+	public final static String OBSERVATION_ERROR_MONO = "observation.error.mono";
 
 	@Test
 	void endToEnd(@Autowired Listener listener, @Autowired KafkaTemplate<Integer, String> template,
@@ -388,6 +394,41 @@ public class ObservationTests {
 	}
 
 	@Test
+	void observationErrorExceptionWhenCompletableFutureReturned(@Autowired ExceptionListener listener, @Autowired SimpleTracer tracer,
+			@Autowired @Qualifier("throwableTemplate") KafkaTemplate<Integer, String> errorTemplate,
+			@Autowired KafkaListenerEndpointRegistry endpointRegistry)
+			throws ExecutionException, InterruptedException, TimeoutException {
+		errorTemplate.send(OBSERVATION_ERROR_COMPLETABLE_FUTURE, "testError").get(10, TimeUnit.SECONDS);
+		Deque<SimpleSpan> spans = tracer.getSpans();
+		await().untilAsserted(() -> assertThat(spans).hasSize(2));
+		SimpleSpan span = spans.poll();
+		assertThat(span.getTags().get("spring.kafka.template.name")).isEqualTo("throwableTemplate");
+		span = spans.poll();
+		assertThat(span.getTags().get("spring.kafka.listener.id")).isEqualTo("obs6-0");
+		assertThat(span.getError())
+				.isInstanceOf(Error.class)
+				.hasMessage("Should report metric.");
+	}
+
+	@Test
+	void observationErrorExceptionWhenMonoReturned(@Autowired ExceptionListener listener, @Autowired SimpleTracer tracer,
+			@Autowired @Qualifier("throwableTemplate") KafkaTemplate<Integer, String> errorTemplate,
+			@Autowired KafkaListenerEndpointRegistry endpointRegistry)
+			throws ExecutionException, InterruptedException, TimeoutException {
+
+		errorTemplate.send(OBSERVATION_ERROR_MONO, "testError").get(10, TimeUnit.SECONDS);
+		Deque<SimpleSpan> spans = tracer.getSpans();
+		await().untilAsserted(() -> assertThat(spans).hasSize(2));
+		SimpleSpan span = spans.poll();
+		assertThat(span.getTags().get("spring.kafka.template.name")).isEqualTo("throwableTemplate");
+		span = spans.poll();
+		assertThat(span.getTags().get("spring.kafka.listener.id")).isEqualTo("obs7-0");
+		assertThat(span.getError())
+				.isInstanceOf(Error.class)
+				.hasMessage("Should report metric.");
+	}
+
+	@Test
 	void kafkaAdminNotRecreatedIfBootstrapServersSameInProducerAndAdminConfig(
 			@Autowired @Qualifier("reuseAdminBeanKafkaTemplate") KafkaTemplate<Integer, String> template,
 			@Autowired KafkaAdmin kafkaAdmin) {
@@ -590,14 +631,34 @@ public class ObservationTests {
 
 		@KafkaListener(id = "obs4", topics = OBSERVATION_RUNTIME_EXCEPTION)
 		void listenRuntimeException(ConsumerRecord<Integer, String> in) {
-			this.latch4.countDown();
-			throw new IllegalStateException("obs4 run time exception");
+			try {
+				throw new IllegalStateException("obs4 run time exception");
+			}
+			finally {
+				this.latch4.countDown();
+			}
 		}
 
 		@KafkaListener(id = "obs5", topics = OBSERVATION_ERROR)
 		void listenError(ConsumerRecord<Integer, String> in) {
-			this.latch5.countDown();
-			throw new Error("obs5 error");
+			try {
+				throw new Error("obs5 error");
+			}
+			finally {
+				this.latch5.countDown();
+			}
+		}
+
+		@KafkaListener(id = "obs6", topics = OBSERVATION_ERROR_COMPLETABLE_FUTURE)
+		CompletableFuture<Void> receive(ConsumerRecord<Object, Object> record) {
+			return CompletableFuture.supplyAsync(() -> {
+				throw new Error("Should report metric.");
+			});
+		}
+
+		@KafkaListener(id = "obs7", topics = OBSERVATION_ERROR_MONO)
+		Mono<Void> receive1(ConsumerRecord<Object, Object> record) {
+			return Mono.error(new Error("Should report metric."));
 		}
 
 	}
