@@ -106,7 +106,6 @@ import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.listener.ContainerProperties.EOSMode;
 import org.springframework.kafka.listener.adapter.AsyncRepliesAware;
-import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -2720,7 +2719,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			catch (RuntimeException e) {
 				failureTimer(sample, cRecord);
 				recordInterceptAfter(cRecord, e);
-				if (!(this.listener instanceof MessagingMessageListenerAdapter<?, ?>)) {
+				if (!(this.listener instanceof RecordMessagingMessageListenerAdapter<K, V>)) {
 					observation.error(e);
 				}
 				if (this.commonErrorHandler == null) {
@@ -2748,7 +2747,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			finally {
-				if (!(this.listener instanceof MessagingMessageListenerAdapter<?, ?>)) {
+				if (!(this.listener instanceof RecordMessagingMessageListenerAdapter<K, V>)) {
 					observation.stop();
 				}
 			}

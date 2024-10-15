@@ -252,6 +252,15 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		this.handlerMethod = handlerMethod;
 	}
 
+	/**
+	 * Set the {@link ObservationRegistry} to handle observability.
+	 * @param observationRegistry {@link ObservationRegistry} instance.
+	 * @since 3.3.0
+	 */
+	public void setObservationRegistry(ObservationRegistry observationRegistry) {
+		this.observationRegistry = observationRegistry;
+	}
+
 	public boolean isAsyncReplies() {
 		return this.handlerMethod != null && this.handlerMethod.isAsyncReplies();
 	}
@@ -499,24 +508,27 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				invocationResult.messageReturnType() :
 				this.messageReturnType;
 
+		CompletableFuture<?> completableFutureResult;
+
 		if (monoPresent && result instanceof Mono<?> mono) {
 			if (acknowledgment == null || !acknowledgment.isOutOfOrderCommit()) {
 				this.logger.warn("Container 'Acknowledgment' must be async ack for Mono<?> return type " +
 						"(or Kotlin suspend function); otherwise the container will ack the message immediately");
 			}
-			result = mono.toFuture();
+			completableFutureResult = mono.toFuture();
 		}
 		else if (!(result instanceof CompletableFuture<?>)) {
-			result = CompletableFuture.completedFuture(result);
+			completableFutureResult = CompletableFuture.completedFuture(result);
 		}
 		else {
+			completableFutureResult = (CompletableFuture<?>) result;
 			if (acknowledgment == null || !acknowledgment.isOutOfOrderCommit()) {
 				this.logger.warn("Container 'Acknowledgment' must be async ack for Future<?> return type; "
 						+ "otherwise the container will ack the message immediately");
 			}
 		}
 
-		((CompletableFuture<?>) result).whenComplete((r, t) -> {
+		completableFutureResult.whenComplete((r, t) -> {
 			try {
 				if (t == null) {
 					asyncSuccess(r, replyTopic, source, messageReturnType);
@@ -897,10 +909,6 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	private boolean rawByParameterIsType(Type parameterType, Type type) {
 		return parameterType instanceof ParameterizedType pType && pType.getRawType().equals(type);
-	}
-
-	public void setObservationRegistry(ObservationRegistry observationRegistry) {
-		this.observationRegistry = observationRegistry;
 	}
 
 	/**

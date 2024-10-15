@@ -398,6 +398,7 @@ public class ObservationTests {
 			@Autowired @Qualifier("throwableTemplate") KafkaTemplate<Integer, String> errorTemplate,
 			@Autowired KafkaListenerEndpointRegistry endpointRegistry)
 			throws ExecutionException, InterruptedException, TimeoutException {
+
 		errorTemplate.send(OBSERVATION_ERROR_COMPLETABLE_FUTURE, "testError").get(10, TimeUnit.SECONDS);
 		Deque<SimpleSpan> spans = tracer.getSpans();
 		await().untilAsserted(() -> assertThat(spans).hasSize(2));
