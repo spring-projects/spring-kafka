@@ -335,8 +335,15 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 				String message,
 				@Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			return Mono.fromCallable(() -> {
-				container.countDownLatch1.countDown();
-				throw new RuntimeException("Woooops... in topic " + receivedTopic);
+				try {
+					throw new RuntimeException("Woooops... in topic " + receivedTopic);
+				}
+				catch (RuntimeException e) {
+					throw e;
+				}
+				finally {
+					container.countDownLatch1.countDown();
+				}
 			}).then();
 		}
 
@@ -353,8 +360,15 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 				String message,
 				@Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			return Mono.fromCallable(() -> {
-				container.countDownIfNotKnown(receivedTopic, container.countDownLatch2);
-				throw new IllegalStateException("Another woooops... " + receivedTopic);
+				try {
+					throw new IllegalStateException("Another woooops... " + receivedTopic);
+				}
+				catch (IllegalStateException e) {
+					throw e;
+				}
+				finally {
+					container.countDownIfNotKnown(receivedTopic, container.countDownLatch2);
+				}
 			}).then();
 		}
 	}
@@ -382,8 +396,15 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 				String message,
 				@Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			return Mono.fromCallable(() -> {
-				container.countDownIfNotKnown(receivedTopic, container.countDownLatch3);
-				throw new MyRetryException("Annotated woooops... " + receivedTopic);
+				try {
+					throw new MyRetryException("Annotated woooops... " + receivedTopic);
+				}
+				catch (MyRetryException e) {
+					throw e;
+				}
+				finally {
+					container.countDownIfNotKnown(receivedTopic, container.countDownLatch3);
+				}
 			}).then();
 		}
 
@@ -407,8 +428,15 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 				String message,
 				@Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			return Mono.fromCallable(() -> {
-				container.countDownIfNotKnown(receivedTopic, container.countDownLatch4);
-				throw new IllegalStateException("Another woooops... " + receivedTopic);
+				try {
+					throw new IllegalStateException("Another woooops... " + receivedTopic);
+				}
+				catch (IllegalStateException e) {
+					throw e;
+				}
+				finally {
+					container.countDownIfNotKnown(receivedTopic, container.countDownLatch4);
+				}
 			}).then();
 		}
 
@@ -453,8 +481,15 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 		public Mono<Void> listenWithAnnotation(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			this.topics.add(receivedTopic);
 			return Mono.fromCallable(() -> {
-				container.countDownIfNotKnown(receivedTopic, container.countDownLatch51);
-				throw new RuntimeException("Annotated woooops... " + receivedTopic);
+				try {
+					throw new RuntimeException("Annotated woooops... " + receivedTopic);
+				}
+				catch (RuntimeException e) {
+					throw e;
+				}
+				finally {
+					container.countDownIfNotKnown(receivedTopic, container.countDownLatch51);
+				}
 			}).then();
 		}
 
@@ -480,8 +515,15 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 		public Mono<Void> listenWithAnnotation2(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			this.topics.add(receivedTopic);
 			return Mono.fromCallable(() -> {
-				container.countDownLatch52.countDown();
-				throw new RuntimeException("Annotated woooops... " + receivedTopic);
+				try {
+					throw new RuntimeException("Annotated woooops... " + receivedTopic);
+				}
+				catch (RuntimeException e) {
+					throw e;
+				}
+				finally {
+					container.countDownLatch52.countDown();
+				}
 			}).then();
 		}
 
@@ -506,8 +548,16 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 				@Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic,
 				@SuppressWarnings("unused") Acknowledgment ack) {
 			return Mono.fromCallable(() -> {
-				container.countDownIfNotKnown(receivedTopic, container.countDownLatch6);
-				throw new IllegalStateException("Another woooops... " + receivedTopic);
+				try {
+					throw new IllegalStateException("Another woooops... " + receivedTopic);
+
+				}
+				catch (IllegalStateException e) {
+					throw e;
+				}
+				finally {
+					container.countDownIfNotKnown(receivedTopic, container.countDownLatch6);
+				}
 			}).then();
 		}
 
@@ -529,8 +579,15 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 		@KafkaHandler
 		public Mono<Void> listenWithAnnotation2(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			return Mono.fromCallable(() -> {
-				container.countDownIfNotKnown(receivedTopic, container.countDownLatchNoRetry);
-				throw new MyDontRetryException("Annotated second woooops... " + receivedTopic);
+				try {
+					throw new MyDontRetryException("Annotated second woooops... " + receivedTopic);
+				}
+				catch (MyDontRetryException e) {
+					throw e;
+				}
+				finally {
+					container.countDownIfNotKnown(receivedTopic, container.countDownLatchNoRetry);
+				}
 			}).then();
 		}
 
@@ -558,8 +615,15 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 		public Mono<Void> listen1(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			this.topics.add(receivedTopic);
 			return Mono.fromCallable(() -> {
-				container.countDownLatchReuseOne.countDown();
-				throw new RuntimeException("Another woooops... " + receivedTopic);
+				try {
+					throw new RuntimeException("Another woooops... " + receivedTopic);
+				}
+				catch (RuntimeException e) {
+					throw e;
+				}
+				finally {
+					container.countDownLatchReuseOne.countDown();
+				}
 			}).then();
 		}
 
@@ -583,8 +647,15 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 		public Mono<Void> listen2(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			this.topics.add(receivedTopic);
 			return Mono.fromCallable(() -> {
-				container.countDownLatchReuseTwo.countDown();
-				throw new RuntimeException("Another woooops... " + receivedTopic);
+				try {
+					throw new RuntimeException("Another woooops... " + receivedTopic);
+				}
+				catch (RuntimeException e) {
+					throw e;
+				}
+				finally {
+					container.countDownLatchReuseTwo.countDown();
+				}
 			}).then();
 		}
 
@@ -604,8 +675,15 @@ public class AsyncMonoFutureRetryTopicClassLevelIntegrationTests {
 		public Mono<Void> listen3(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			this.topics.add(receivedTopic);
 			return Mono.fromCallable(() -> {
-				container.countDownLatchReuseThree.countDown();
-				throw new RuntimeException("Another woooops... " + receivedTopic);
+				try {
+					throw new RuntimeException("Another woooops... " + receivedTopic);
+				}
+				catch (RuntimeException e) {
+					throw e;
+				}
+				finally {
+					container.countDownLatchReuseThree.countDown();
+				}
 			}).then();
 		}
 

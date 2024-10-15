@@ -335,8 +335,15 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 		@KafkaHandler
 		public CompletableFuture<Void> listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			return CompletableFuture.supplyAsync(() -> {
-				container.countDownLatch1.countDown();
-				throw new RuntimeException("Woooops... in topic " + receivedTopic);
+				try {
+					throw new RuntimeException("Woooops... in topic " + receivedTopic);
+				}
+				catch (RuntimeException e) {
+					throw e;
+				}
+				finally {
+					container.countDownLatch1.countDown();
+				}
 			});
 		}
 
@@ -351,8 +358,15 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 		@KafkaHandler
 		public CompletableFuture<Void> listenAgain(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			return CompletableFuture.supplyAsync(() -> {
-				container.countDownIfNotKnown(receivedTopic, container.countDownLatch2);
-				throw new IllegalStateException("Another woooops... " + receivedTopic);
+				try {
+					throw new IllegalStateException("Another woooops... " + receivedTopic);
+				}
+				catch (IllegalStateException e){
+					throw e;
+				}
+				finally {
+					container.countDownIfNotKnown(receivedTopic, container.countDownLatch2);
+				}
 			});
 		}
 	}
@@ -378,8 +392,15 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 		@KafkaHandler
 		public CompletableFuture<Void> listenWithAnnotation(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			return CompletableFuture.supplyAsync(() -> {
-				container.countDownIfNotKnown(receivedTopic, container.countDownLatch3);
-				throw new MyRetryException("Annotated woooops... " + receivedTopic);
+				try {
+					throw new MyRetryException("Annotated woooops... " + receivedTopic);
+				}
+				catch (MyRetryException e) {
+					throw e;
+				}
+				finally {
+					container.countDownIfNotKnown(receivedTopic, container.countDownLatch3);
+				}
 			});
 		}
 
@@ -401,8 +422,15 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 		@KafkaHandler
 		public CompletableFuture<Void> listenNoDlt(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			return CompletableFuture.supplyAsync(() -> {
-				container.countDownIfNotKnown(receivedTopic, container.countDownLatch4);
-				throw new IllegalStateException("Another woooops... " + receivedTopic);
+				try {
+					throw new IllegalStateException("Another woooops... " + receivedTopic);
+				}
+				catch (IllegalStateException e) {
+					throw e;
+				}
+				finally {
+					container.countDownIfNotKnown(receivedTopic, container.countDownLatch4);
+				}
 			});
 		}
 
@@ -447,8 +475,15 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 		public CompletableFuture<Void> listenWithAnnotation(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			this.topics.add(receivedTopic);
 			return CompletableFuture.supplyAsync(() -> {
-				container.countDownIfNotKnown(receivedTopic, container.countDownLatch51);
-				throw new RuntimeException("Annotated woooops... " + receivedTopic);
+				try {
+					throw new RuntimeException("Annotated woooops... " + receivedTopic);
+				}
+				catch (RuntimeException e) {
+					throw e;
+				}
+				finally {
+					container.countDownIfNotKnown(receivedTopic, container.countDownLatch51);
+				}
 			});
 		}
 
@@ -474,8 +509,15 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 		public CompletableFuture<Void> listenWithAnnotation2(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			this.topics.add(receivedTopic);
 			return CompletableFuture.supplyAsync(() -> {
-				container.countDownLatch52.countDown();
-				throw new RuntimeException("Annotated woooops... " + receivedTopic);
+				try {
+					throw new RuntimeException("Annotated woooops... " + receivedTopic);
+				}
+				catch (RuntimeException e) {
+					throw e;
+				}
+				finally {
+					container.countDownLatch52.countDown();
+				}
 			});
 		}
 
@@ -500,8 +542,15 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 				@Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic,
 				@SuppressWarnings("unused") Acknowledgment ack) {
 			return CompletableFuture.supplyAsync(() -> {
-				container.countDownIfNotKnown(receivedTopic, container.countDownLatch6);
-				throw new IllegalStateException("Another woooops... " + receivedTopic);
+				try {
+					throw new IllegalStateException("Another woooops... " + receivedTopic);
+				}
+				catch (IllegalStateException e) {
+					throw e;
+				}
+				finally {
+					container.countDownIfNotKnown(receivedTopic, container.countDownLatch6);
+				}
 			});
 		}
 
@@ -523,8 +572,15 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 		@KafkaHandler
 		public CompletableFuture<Object> listenWithAnnotation2(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			return CompletableFuture.supplyAsync(() -> {
-				container.countDownIfNotKnown(receivedTopic, container.countDownLatchNoRetry);
-				throw new MyDontRetryException("Annotated second woooops... " + receivedTopic);
+				try {
+					throw new MyDontRetryException("Annotated second woooops... " + receivedTopic);
+				}
+				catch (MyDontRetryException e) {
+					throw e;
+				}
+				finally {
+					container.countDownIfNotKnown(receivedTopic, container.countDownLatchNoRetry);
+				}
 			});
 		}
 
@@ -552,8 +608,15 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 		public CompletableFuture<Void> listen1(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			this.topics.add(receivedTopic);
 			return CompletableFuture.supplyAsync(() -> {
-				container.countDownLatchReuseOne.countDown();
-				throw new RuntimeException("Another woooops... " + receivedTopic);
+				try {
+					throw new RuntimeException("Another woooops... " + receivedTopic);
+				}
+				catch (RuntimeException e) {
+					throw e;
+				}
+				finally {
+					container.countDownLatchReuseOne.countDown();
+				}
 			});
 		}
 
@@ -577,8 +640,15 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 		public CompletableFuture<Void> listen2(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			this.topics.add(receivedTopic);
 			return CompletableFuture.supplyAsync(() -> {
-				container.countDownLatchReuseTwo.countDown();
-				throw new RuntimeException("Another woooops... " + receivedTopic);
+				try {
+					throw new RuntimeException("Another woooops... " + receivedTopic);
+				}
+				catch (RuntimeException e) {
+					throw e;
+				}
+				finally {
+					container.countDownLatchReuseTwo.countDown();
+				}
 			});
 		}
 
@@ -598,8 +668,15 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 		public CompletableFuture<Void> listen3(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			this.topics.add(receivedTopic);
 			return CompletableFuture.supplyAsync(() -> {
-				container.countDownLatchReuseThree.countDown();
-				throw new RuntimeException("Another woooops... " + receivedTopic);
+				try {
+					throw new RuntimeException("Another woooops... " + receivedTopic);
+				}
+				catch (RuntimeException e) {
+					throw e;
+				}
+				finally {
+					container.countDownLatchReuseThree.countDown();
+				}
 			});
 
 		}

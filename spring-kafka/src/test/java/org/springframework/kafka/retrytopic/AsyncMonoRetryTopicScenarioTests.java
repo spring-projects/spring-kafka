@@ -57,7 +57,6 @@ import org.springframework.messaging.converter.GenericMessageConverter;
 import org.springframework.messaging.converter.SmartMessageConverter;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.scheduling.TaskScheduler;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
@@ -104,8 +103,7 @@ public class AsyncMonoRetryTopicScenarioTests {
 	@Test
 	void allFailCaseTest(
 			@Autowired TestTopicListener0 zeroTopicListener,
-			@Autowired MyCustomDltProcessor myCustomDltProcessor0,
-			@Autowired ThreadPoolTaskExecutor executor) {
+			@Autowired MyCustomDltProcessor myCustomDltProcessor0) {
 		// Given
 		String shortFailedMsg1 = "0";
 		String shortFailedMsg2 = "1";
@@ -173,8 +171,7 @@ public class AsyncMonoRetryTopicScenarioTests {
 	@Test
 	void firstShortFailAndLastLongSuccessRetryTest(
 			@Autowired TestTopicListener1 testTopicListener1,
-			@Autowired MyCustomDltProcessor myCustomDltProcessor1,
-			@Autowired ThreadPoolTaskExecutor executor) {
+			@Autowired MyCustomDltProcessor myCustomDltProcessor1) {
 		// Given
 		String longSuccessMsg = "3";
 		String shortFailedMsg = "1";
@@ -221,8 +218,7 @@ public class AsyncMonoRetryTopicScenarioTests {
 	@Test
 	void firstLongSuccessAndLastShortFailed(
 			@Autowired TestTopicListener2 zero2TopicListener,
-			@Autowired MyCustomDltProcessor myCustomDltProcessor2,
-			@Autowired ThreadPoolTaskExecutor executor) {
+			@Autowired MyCustomDltProcessor myCustomDltProcessor2) {
 		// Given
 		String shortFailedMsg = "1";
 		String longSuccessMsg = "3";
@@ -269,8 +265,7 @@ public class AsyncMonoRetryTopicScenarioTests {
 	@Test
 	void longFailMsgTwiceThenShortSuccessMsgThird(
 			@Autowired TestTopicListener3 testTopicListener3,
-			@Autowired MyCustomDltProcessor myCustomDltProcessor3,
-			@Autowired ThreadPoolTaskExecutor executor) {
+			@Autowired MyCustomDltProcessor myCustomDltProcessor3) {
 		// Given
 		DestinationTopic destinationTopic = topicContainer.getNextDestinationTopicFor("3-topicId", TEST_TOPIC3);
 
@@ -333,8 +328,7 @@ public class AsyncMonoRetryTopicScenarioTests {
 	@Test
 	void longSuccessMsgTwiceThenShortFailMsgTwice(
 			@Autowired TestTopicListener4 topicListener4,
-			@Autowired MyCustomDltProcessor myCustomDltProcessor4,
-			@Autowired ThreadPoolTaskExecutor executor) {
+			@Autowired MyCustomDltProcessor myCustomDltProcessor4) {
 		// Given
 		DestinationTopic destinationTopic = topicContainer.getNextDestinationTopicFor("4-TopicId", TEST_TOPIC4);
 
@@ -392,10 +386,9 @@ public class AsyncMonoRetryTopicScenarioTests {
 	}
 
 	@Test
-	void oneLongSuccessMsgBetweenHunderedShortFailMsg(
+	void oneLongSuccessMsgBetween100ShortFailMsgs(
 			@Autowired TestTopicListener5 topicListener5,
-			@Autowired MyCustomDltProcessor myCustomDltProcessor5,
-			@Autowired ThreadPoolTaskExecutor executor) {
+			@Autowired MyCustomDltProcessor myCustomDltProcessor5) {
 		// Given
 		DestinationTopic destinationTopic = topicContainer.getNextDestinationTopicFor("5-TopicId", TEST_TOPIC5);
 
@@ -444,8 +437,7 @@ public class AsyncMonoRetryTopicScenarioTests {
 	@Test
 	void halfSuccessMsgAndHalfFailedMsgWithRandomSleepTime(
 			@Autowired TestTopicListener6 topicListener6,
-			@Autowired MyCustomDltProcessor myCustomDltProcessor6,
-			@Autowired ThreadPoolTaskExecutor executor) {
+			@Autowired MyCustomDltProcessor myCustomDltProcessor6) {
 		// Given
 		DestinationTopic destinationTopic = topicContainer.getNextDestinationTopicFor("6-TopicId", TEST_TOPIC6);
 
@@ -545,8 +537,15 @@ public class AsyncMonoRetryTopicScenarioTests {
 			this.receivedMsgs.add(message);
 			this.receivedTopics.add(receivedTopic);
 			return Mono.fromCallable(() -> {
-				container.countDownLatch0.countDown();
-				throw new RuntimeException("Woooops... in topic " + receivedTopic);
+				try {
+					throw new RuntimeException("Woooops... in topic " + receivedTopic);
+				}
+				catch (Exception e) {
+					throw e;
+				}
+				finally {
+					container.countDownLatch0.countDown();
+				}
 			}).then();
 		}
 
@@ -576,16 +575,20 @@ public class AsyncMonoRetryTopicScenarioTests {
 			return Mono.fromCallable(() -> {
 				try {
 					Thread.sleep(Integer.parseInt(message));
+					if (message.equals("1")) {
+						throw new RuntimeException("Woooops... in topic " + receivedTopic);
+					}
 				}
 				catch (InterruptedException e) {
 					throw new RuntimeException(e);
 				}
+				catch (RuntimeException e) {
+					throw e;
+				}
 				finally {
 					container.countDownLatch1.countDown();
 				}
-				if (message.equals("1")) {
-					throw new RuntimeException("Woooops... in topic " + receivedTopic);
-				}
+
 				return "Task Completed";
 			});
 
@@ -616,17 +619,20 @@ public class AsyncMonoRetryTopicScenarioTests {
 			return Mono.fromCallable(() -> {
 				try {
 					Thread.sleep(Integer.parseInt(message));
+					if (message.equals("1")) {
+						throw new RuntimeException("Woooops... in topic " + receivedTopic);
+					}
 				}
 				catch (InterruptedException e) {
 					throw new RuntimeException(e);
+				}
+				catch (RuntimeException e) {
+					throw e;
 				}
 				finally {
 					container.countDownLatch2.countDown();
 				}
 
-				if (message.equals("1")) {
-					throw new RuntimeException("Woooops... in topic " + receivedTopic);
-				}
 				return "Task Completed";
 			});
 		}
@@ -648,7 +654,7 @@ public class AsyncMonoRetryTopicScenarioTests {
 
 		private final List<String> receivedTopics = new ArrayList<>();
 
-		public static final String LONG_FAIL_MSG = "5000";
+		public static final String LONG_FAIL_MSG = "100";
 
 		public static final String SHORT_SUCCESS_MSG = "1";
 
@@ -660,17 +666,20 @@ public class AsyncMonoRetryTopicScenarioTests {
 			return Mono.fromCallable(() -> {
 				try {
 					Thread.sleep(Integer.parseInt(message));
+					if (message.equals(LONG_FAIL_MSG)) {
+						throw new RuntimeException("Woooops... in topic " + receivedTopic);
+					}
 				}
 				catch (InterruptedException e) {
 					throw new RuntimeException(e);
+				}
+				catch (RuntimeException e) {
+					throw e;
 				}
 				finally {
 					container.countDownLatch3.countDown();
 				}
 
-				if (message.equals(LONG_FAIL_MSG)) {
-					throw new RuntimeException("Woooops... in topic " + receivedTopic);
-				}
 				return "Task Completed";
 			});
 
@@ -694,7 +703,7 @@ public class AsyncMonoRetryTopicScenarioTests {
 
 		private final List<String> receivedTopics = new ArrayList<>();
 
-		public static final String LONG_SUCCESS_MSG = "5000";
+		public static final String LONG_SUCCESS_MSG = "100";
 
 		public static final String SHORT_FAIL_MSG = "1";
 
@@ -706,17 +715,20 @@ public class AsyncMonoRetryTopicScenarioTests {
 			return Mono.fromCallable(() -> {
 				try {
 					Thread.sleep(Integer.parseInt(message));
+					if (message.equals(SHORT_FAIL_MSG)) {
+						throw new RuntimeException("Woooops... in topic " + receivedTopic);
+					}
 				}
 				catch (InterruptedException e) {
 					throw new RuntimeException(e);
+				}
+				catch (RuntimeException e) {
+					throw e;
 				}
 				finally {
 					container.countDownLatch4.countDown();
 				}
 
-				if (message.equals(SHORT_FAIL_MSG)) {
-					throw new RuntimeException("Woooops... in topic " + receivedTopic);
-				}
 				return "Task Completed";
 			});
 
@@ -739,7 +751,7 @@ public class AsyncMonoRetryTopicScenarioTests {
 
 		private final List<String> receivedTopics = new ArrayList<>();
 
-		public static final String LONG_SUCCESS_MSG = "5000";
+		public static final String LONG_SUCCESS_MSG = "100";
 
 		public static final String SHORT_FAIL_MSG = "1";
 
@@ -751,17 +763,20 @@ public class AsyncMonoRetryTopicScenarioTests {
 			return Mono.fromCallable(() -> {
 				try {
 					Thread.sleep(Integer.parseInt(message));
+					if (message.equals(SHORT_FAIL_MSG)) {
+						throw new RuntimeException("Woooops... in topic " + receivedTopic);
+					}
 				}
 				catch (InterruptedException e) {
 					throw new RuntimeException(e);
+				}
+				catch (RuntimeException e) {
+					throw e;
 				}
 				finally {
 					container.countDownLatch5.countDown();
 				}
 
-				if (message.startsWith(SHORT_FAIL_MSG)) {
-					throw new RuntimeException("Woooops... in topic " + receivedTopic);
-				}
 				return "Task Completed";
 			});
 		}
@@ -799,17 +814,20 @@ public class AsyncMonoRetryTopicScenarioTests {
 
 				try {
 					Thread.sleep(Integer.parseInt(sleepAWhile));
+					if (failOrSuccess.equals("f")) {
+						throw new RuntimeException("Woooops... in topic " + receivedTopic);
+					}
 				}
 				catch (InterruptedException e) {
 					throw new RuntimeException(e);
+				}
+				catch (RuntimeException e) {
+					throw e;
 				}
 				finally {
 					container.countDownLatch6.countDown();
 				}
 
-				if (failOrSuccess.equals("f")) {
-					throw new RuntimeException("Woooops... in topic " + receivedTopic);
-				}
 				return "Task Completed";
 			});
 		}
@@ -1166,11 +1184,6 @@ public class AsyncMonoRetryTopicScenarioTests {
 		@Bean
 		TaskScheduler sched() {
 			return new ThreadPoolTaskScheduler();
-		}
-
-		@Bean
-		ThreadPoolTaskExecutor threadPoolTaskExecutor() {
-			return new ThreadPoolTaskExecutor();
 		}
 
 	}
