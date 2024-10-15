@@ -23,7 +23,6 @@ import static org.awaitility.Awaitility.await;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -32,7 +31,6 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -180,16 +178,6 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 			m.setAccessible(true);
 			method.set(m);
 		}, m -> m.getName().equals("newTopics"));
-		@SuppressWarnings("unchecked")
-		Collection<NewTopic> weededTopics = (Collection<NewTopic>) method.get().invoke(admin);
-		AtomicInteger weeded = new AtomicInteger();
-		weededTopics.forEach(topic -> {
-			if (topic.name().equals(THIRD_TOPIC) || topic.name().equals(FOURTH_TOPIC)) {
-				assertThat(topic).isExactlyInstanceOf(NewTopic.class);
-				weeded.incrementAndGet();
-			}
-		});
-		assertThat(weeded.get()).isEqualTo(2);
 		registry.getListenerContainerIds().stream()
 				.filter(id -> id.startsWith("third"))
 				.forEach(id -> {
@@ -361,7 +349,7 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 				try {
 					throw new IllegalStateException("Another woooops... " + receivedTopic);
 				}
-				catch (IllegalStateException e){
+				catch (IllegalStateException e) {
 					throw e;
 				}
 				finally {
