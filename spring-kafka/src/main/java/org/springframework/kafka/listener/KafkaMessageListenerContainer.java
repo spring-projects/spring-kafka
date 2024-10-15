@@ -109,6 +109,7 @@ import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOp
 import org.springframework.kafka.listener.ContainerProperties.EOSMode;
 import org.springframework.kafka.listener.adapter.AbstractDelegatingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.AsyncRepliesAware;
+import org.springframework.kafka.listener.adapter.KafkaBackoffAwareMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -904,10 +905,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.observationEnabled = this.containerProperties.isObservationEnabled();
 
 				if (!AopUtils.isAopProxy(this.genericListener) &&
-					this.genericListener instanceof AbstractDelegatingMessageListenerAdapter<?>) {
-					AbstractDelegatingMessageListenerAdapter<MessageListener<K, V>> genListener =
-							(AbstractDelegatingMessageListenerAdapter<MessageListener<K, V>>) this.genericListener;
+					this.genericListener instanceof KafkaBackoffAwareMessageListenerAdapter<?,?>) {
+					KafkaBackoffAwareMessageListenerAdapter<K, V> genListener =
+							(KafkaBackoffAwareMessageListenerAdapter<K, V>) this.genericListener;
 					if (genListener.getDelegate() instanceof RecordMessagingMessageListenerAdapter<K, V> adapterListener) {
+						// This means that the async retry feature is supported only for SingleRecordListener with @RetryableTopic.
 						adapterListener.setCallbackForAsyncFailure(this::callbackForAsyncFailure);
 					}
 				}
