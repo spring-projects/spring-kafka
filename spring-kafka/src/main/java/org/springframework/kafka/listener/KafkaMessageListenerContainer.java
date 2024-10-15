@@ -107,7 +107,6 @@ import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.listener.ContainerProperties.EOSMode;
-import org.springframework.kafka.listener.adapter.AbstractDelegatingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.AsyncRepliesAware;
 import org.springframework.kafka.listener.adapter.KafkaBackoffAwareMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
@@ -905,7 +904,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.observationEnabled = this.containerProperties.isObservationEnabled();
 
 				if (!AopUtils.isAopProxy(this.genericListener) &&
-					this.genericListener instanceof KafkaBackoffAwareMessageListenerAdapter<?,?>) {
+					this.genericListener instanceof KafkaBackoffAwareMessageListenerAdapter<?, ?>) {
 					KafkaBackoffAwareMessageListenerAdapter<K, V> genListener =
 							(KafkaBackoffAwareMessageListenerAdapter<K, V>) this.genericListener;
 					if (genListener.getDelegate() instanceof RecordMessagingMessageListenerAdapter<K, V> adapterListener) {
