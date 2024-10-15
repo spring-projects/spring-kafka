@@ -69,7 +69,6 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  * @since 3.3.0
  */
 
-@Tag("async-retry-flaky-test")
 @SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka
