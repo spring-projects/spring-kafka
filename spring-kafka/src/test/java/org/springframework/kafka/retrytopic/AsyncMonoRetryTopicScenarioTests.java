@@ -891,10 +891,6 @@ public class AsyncMonoRetryTopicScenarioTests {
 
 		CountDownLatch dltCountdownLatch6 = new CountDownLatch(DLT_COUNT6);
 
-		CountDownLatch customErrorHandlerCountdownLatch = new CountDownLatch(6);
-
-		CountDownLatch customMessageConverterCountdownLatch = new CountDownLatch(6);
-
 	}
 
 	static class MyCustomDltProcessor {
@@ -997,7 +993,6 @@ public class AsyncMonoRetryTopicScenarioTests {
 		KafkaListenerErrorHandler myCustomErrorHandler(
 				CountDownLatchContainer container) {
 			return (message, exception) -> {
-				container.customErrorHandlerCountdownLatch.countDown();
 				throw exception;
 			};
 		}
@@ -1009,7 +1004,6 @@ public class AsyncMonoRetryTopicScenarioTests {
 
 				@Override
 				public Object fromMessage(Message<?> message, Class<?> targetClass, Object conversionHint) {
-					container.customMessageConverterCountdownLatch.countDown();
 					return super.fromMessage(message, targetClass, conversionHint);
 				}
 			};
