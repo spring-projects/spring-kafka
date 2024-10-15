@@ -681,14 +681,15 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			acknowledge(acknowledgment);
 			if (canAsyncRetry(request, ex) &&
 				Objects.nonNull(this.callbackForAsyncFailure)) {
+				@SuppressWarnings("unchecked")
 				ConsumerRecord<K, V> record = (ConsumerRecord<K, V>) request;
 				this.callbackForAsyncFailure.accept(record, (RuntimeException) ex);
 			}
 		}
 	}
 
-	private boolean canAsyncRetry(Object request, Throwable exception) {
-		// The async retry with @RetryableTopic only support in case of SingleRecord Listener.
+	private static boolean canAsyncRetry(Object request, Throwable exception) {
+		// The async retry with @RetryableTopic is only supported for SingleRecord Listener.
 		return request instanceof ConsumerRecord && exception instanceof RuntimeException;
 	}
 
