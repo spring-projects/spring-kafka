@@ -19,7 +19,11 @@ package org.springframework.kafka.support.converter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.HashMap;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -28,6 +32,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.utils.Bytes;
 
+import org.jetbrains.annotations.NotNull;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
@@ -139,8 +144,8 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 	}
 
 	@Override // NOSONAR
-	public Message<?> toMessage(List<ConsumerRecord<?, ?>> records, @Nullable Acknowledgment acknowledgment,
-			Consumer<?, ?> consumer, Type type) {
+	public @NotNull Message<?> toMessage(List<ConsumerRecord<?, ?>> records, @Nullable Acknowledgment acknowledgment,
+										 Consumer<?, ?> consumer, Type type) {
 
 		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(this.generateMessageId,
 				this.generateTimestamp);
@@ -163,7 +168,6 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 				timestamps);
 		records.forEach(record -> processRecord(record, payloads, keys, topics, partitions, offsets, timestampTypes, timestamps,
 				convertedHeaders, natives, raws, conversionFailures, rawHeaders, type));
-
 		return MessageBuilder.createMessage(payloads, kafkaMessageHeaders);
 	}
 
