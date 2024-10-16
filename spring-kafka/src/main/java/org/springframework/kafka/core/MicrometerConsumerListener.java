@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2022 the original author or authors.
+ * Copyright 2020-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,14 @@
 
 package org.springframework.kafka.core;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+
 
 import org.apache.kafka.clients.consumer.Consumer;
 
-import io.micrometer.core.instrument.ImmutableTag;
+import org.springframework.scheduling.TaskScheduler;
+
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
@@ -36,16 +35,12 @@ import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
  * @param <V> the value type.
  *
  * @author Gary Russell
- * @since 2.5
+ * @author Artem Bilan
  *
+ * @since 2.5
  */
-public class MicrometerConsumerListener<K, V> implements ConsumerFactory.Listener<K, V> {
-
-	private final MeterRegistry meterRegistry;
-
-	private final List<Tag> tags;
-
-	private final Map<String, KafkaClientMetrics> metrics = new HashMap<>();
+public class MicrometerConsumerListener<K, V> extends KafkaMetricsSupport<Consumer<K, V>>
+		implements ConsumerFactory.Listener<K, V> {
 
 	/**
 	 * Construct an instance with the provided registry.
@@ -56,31 +51,43 @@ public class MicrometerConsumerListener<K, V> implements ConsumerFactory.Listene
 	}
 
 	/**
+	 * Construct an instance with the provided registry and task scheduler.
+	 * @param meterRegistry the registry.
+	 * @param taskScheduler the task scheduler.
+	 * @since 3.3
+	 */
+	public MicrometerConsumerListener(MeterRegistry meterRegistry, TaskScheduler taskScheduler) {
+		this(meterRegistry, Collections.emptyList(), taskScheduler);
+	}
+
+	/**
 	 * Construct an instance with the provided registry and tags.
 	 * @param meterRegistry the registry.
 	 * @param tags the tags.
 	 */
 	public MicrometerConsumerListener(MeterRegistry meterRegistry, List<Tag> tags) {
-		this.meterRegistry = meterRegistry;
-		this.tags = tags;
+		super(meterRegistry, tags);
+	}
+
+	/**
+	 * Construct an instance with the provided registry, tags and task scheduler.
+	 * @param meterRegistry the registry.
+	 * @param tags the tags.
+	 * @param taskScheduler the task scheduler.
+	 * @since 3.3
+	 */
+	public MicrometerConsumerListener(MeterRegistry meterRegistry, List<Tag> tags, TaskScheduler taskScheduler) {
+		super(meterRegistry, tags, taskScheduler);
 	}
 
 	@Override
 	public synchronized void consumerAdded(String id, Consumer<K, V> consumer) {
-		if (!this.metrics.containsKey(id)) {
-			List<Tag> consumerTags = new ArrayList<>(this.tags);
-			consumerTags.add(new ImmutableTag("spring.id", id));
-			this.metrics.put(id, new KafkaClientMetrics(consumer, consumerTags));
-			this.metrics.get(id).bindTo(this.meterRegistry);
-		}
+		clientAdded(id, consumer);
 	}
 
 	@Override
 	public synchronized void consumerRemoved(String id, Consumer<K, V> consumer) {
-		KafkaClientMetrics removed = this.metrics.remove(id);
-		if (removed != null) {
-			removed.close();
-		}
+		clientRemoved(id, consumer);
 	}
 
 }

@@ -16,15 +16,13 @@
 
 package org.springframework.kafka.core;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.kafka.clients.producer.Producer;
 
-import io.micrometer.core.instrument.ImmutableTag;
+import org.springframework.scheduling.TaskScheduler;
+
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
@@ -36,16 +34,12 @@ import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
  * @param <V> the value type.
  *
  * @author Gary Russell
- * @since 2.5
+ * @author Artem Bilan
  *
+ * @since 2.5
  */
-public class MicrometerProducerListener<K, V> implements ProducerFactory.Listener<K, V> {
-
-	private final MeterRegistry meterRegistry;
-
-	private final List<Tag> tags;
-
-	private final Map<String, KafkaClientMetrics> metrics = new HashMap<>();
+public class MicrometerProducerListener<K, V> extends KafkaMetricsSupport<Producer<K, V>>
+		implements ProducerFactory.Listener<K, V> {
 
 	/**
 	 * Construct an instance with the provided registry.
@@ -56,31 +50,43 @@ public class MicrometerProducerListener<K, V> implements ProducerFactory.Listene
 	}
 
 	/**
+	 * Construct an instance with the provided registry and task scheduler.
+	 * @param meterRegistry the registry.
+	 * @param taskScheduler the task scheduler.
+	 * @since 3.3
+	 */
+	public MicrometerProducerListener(MeterRegistry meterRegistry, TaskScheduler taskScheduler) {
+		this(meterRegistry, Collections.emptyList(), taskScheduler);
+	}
+
+	/**
 	 * Construct an instance with the provided registry and tags.
 	 * @param meterRegistry the registry.
 	 * @param tags the tags.
 	 */
 	public MicrometerProducerListener(MeterRegistry meterRegistry, List<Tag> tags) {
-		this.meterRegistry = meterRegistry;
-		this.tags = tags;
+		super(meterRegistry, tags);
+	}
+
+	/**
+	 * Construct an instance with the provided registry, tags and task scheduler.
+	 * @param meterRegistry the registry.
+	 * @param tags the tags.
+	 * @param taskScheduler the task scheduler.
+	 * @since 3.3
+	 */
+	public MicrometerProducerListener(MeterRegistry meterRegistry, List<Tag> tags, TaskScheduler taskScheduler) {
+		super(meterRegistry, tags, taskScheduler);
 	}
 
 	@Override
 	public synchronized void producerAdded(String id, Producer<K, V> producer) {
-		if (!this.metrics.containsKey(id)) {
-			List<Tag> producerTags = new ArrayList<>(this.tags);
-			producerTags.add(new ImmutableTag("spring.id", id));
-			this.metrics.put(id, new KafkaClientMetrics(producer, producerTags));
-			this.metrics.get(id).bindTo(this.meterRegistry);
-		}
+		clientAdded(id, producer);
 	}
 
 	@Override
 	public synchronized void producerRemoved(String id, Producer<K, V> producer) {
-		KafkaClientMetrics removed = this.metrics.remove(id);
-		if (removed != null) {
-			removed.close();
-		}
+		clientRemoved(id, producer);
 	}
 
 }

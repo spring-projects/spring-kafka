@@ -152,6 +152,7 @@ import org.springframework.messaging.handler.annotation.support.MethodArgumentNo
 import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
 import org.springframework.messaging.support.GenericMessage;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.scheduling.concurrent.SimpleAsyncTaskScheduler;
 import org.springframework.stereotype.Component;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
@@ -1489,8 +1490,9 @@ public class EnableKafkaIntegrationTests {
 			Map<String, Object> configs = consumerConfigs();
 			configs.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
 			DefaultKafkaConsumerFactory<byte[], String> cf = new DefaultKafkaConsumerFactory<>(configs);
-			cf.addListener(new MicrometerConsumerListener<byte[], String>(meterRegistry(),
-					Collections.singletonList(new ImmutableTag("consumerTag", "bytesString"))));
+			cf.addListener(new MicrometerConsumerListener<>(meterRegistry(),
+					Collections.singletonList(new ImmutableTag("consumerTag", "bytesString")),
+					new SimpleAsyncTaskScheduler()));
 			return cf;
 		}
 
@@ -1580,7 +1582,8 @@ public class EnableKafkaIntegrationTests {
 			configs.put(ProducerConfig.CLIENT_ID_CONFIG, "bsPF");
 			DefaultKafkaProducerFactory<byte[], String> pf = new DefaultKafkaProducerFactory<>(configs);
 			pf.addListener(new MicrometerProducerListener<>(meterRegistry(),
-					Collections.singletonList(new ImmutableTag("producerTag", "bytesString"))));
+					Collections.singletonList(new ImmutableTag("producerTag", "bytesString")),
+					new SimpleAsyncTaskScheduler()));
 			return pf;
 		}
 

@@ -16,35 +16,31 @@
 
 package org.springframework.kafka.streams;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.kafka.streams.KafkaStreams;
 
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
+import org.springframework.kafka.core.KafkaMetricsSupport;
+import org.springframework.scheduling.TaskScheduler;
 
-import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.binder.MeterBinder;
 import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics;
 
 /**
  * Creates a {@link KafkaStreamsMetrics} for the {@link KafkaStreams}.
  *
  * @author Gary Russell
+ * @author Artem Bilan
+ *
  * @since 2.5.3
  *
  */
-public class KafkaStreamsMicrometerListener implements StreamsBuilderFactoryBean.Listener {
-
-	private final MeterRegistry meterRegistry;
-
-	private final List<Tag> tags;
-
-	private final Map<String, KafkaStreamsMetrics> metrics = new HashMap<>();
+public class KafkaStreamsMicrometerListener extends KafkaMetricsSupport<KafkaStreams>
+		implements StreamsBuilderFactoryBean.Listener {
 
 	/**
 	 * Construct an instance with the provided registry.
@@ -55,31 +51,50 @@ public class KafkaStreamsMicrometerListener implements StreamsBuilderFactoryBean
 	}
 
 	/**
+	 * Construct an instance with the provided registry and task scheduler.
+	 * @param meterRegistry the registry.
+	 * @param taskScheduler the task scheduler.
+	 * @since 3.3
+	 */
+	public KafkaStreamsMicrometerListener(MeterRegistry meterRegistry, TaskScheduler taskScheduler) {
+		this(meterRegistry, Collections.emptyList(), taskScheduler);
+	}
+
+	/**
 	 * Construct an instance with the provided registry and tags.
 	 * @param meterRegistry the registry.
 	 * @param tags the tags.
 	 */
 	public KafkaStreamsMicrometerListener(MeterRegistry meterRegistry, List<Tag> tags) {
-		this.meterRegistry = meterRegistry;
-		this.tags = tags;
+		super(meterRegistry, tags);
+	}
+
+	/**
+	 * Construct an instance with the provided registry, tags and task scheduler.
+	 * @param meterRegistry the registry.
+	 * @param tags the tags.
+	 * @param taskScheduler the task scheduler.
+	 * @since 3.3
+	 */
+	public KafkaStreamsMicrometerListener(MeterRegistry meterRegistry, List<Tag> tags, TaskScheduler taskScheduler) {
+		super(meterRegistry, tags, taskScheduler);
 	}
 
 	@Override
 	public synchronized void streamsAdded(String id, KafkaStreams kafkaStreams) {
-		if (!this.metrics.containsKey(id)) {
-			List<Tag> streamsTags = new ArrayList<>(this.tags);
-			streamsTags.add(new ImmutableTag("spring.id", id));
-			this.metrics.put(id, new KafkaStreamsMetrics(kafkaStreams, streamsTags));
-			this.metrics.get(id).bindTo(this.meterRegistry);
-		}
+		clientAdded(id, kafkaStreams);
+	}
+
+	@Override
+	protected MeterBinder createClientMetrics(KafkaStreams client, List<Tag> tags) {
+		return this.scheduler != null
+				? new KafkaStreamsMetrics(client, tags, this.scheduler)
+				: new KafkaStreamsMetrics(client, tags);
 	}
 
 	@Override
 	public synchronized void streamsRemoved(String id, KafkaStreams streams) {
-		KafkaStreamsMetrics removed = this.metrics.remove(id);
-		if (removed != null) {
-			removed.close();
-		}
+		clientRemoved(id, streams);
 	}
 
 }

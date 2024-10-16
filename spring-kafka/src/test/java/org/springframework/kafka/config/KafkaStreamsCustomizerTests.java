@@ -49,6 +49,7 @@ import org.springframework.kafka.streams.KafkaStreamsMicrometerListener;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.scheduling.concurrent.SimpleAsyncTaskScheduler;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
@@ -157,7 +158,8 @@ public class KafkaStreamsCustomizerTests {
 
 			});
 			streamsBuilderFactoryBean.addListener(new KafkaStreamsMicrometerListener(meterRegistry(),
-					Collections.singletonList(new ImmutableTag("customTag", "stream"))));
+					Collections.singletonList(new ImmutableTag("customTag", "stream")),
+					new SimpleAsyncTaskScheduler()));
 			return streamsBuilderFactoryBean;
 		}
 
