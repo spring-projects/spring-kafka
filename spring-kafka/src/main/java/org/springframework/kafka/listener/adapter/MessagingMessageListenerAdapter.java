@@ -718,10 +718,10 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		catch (Throwable ex) {
 			this.logger.error(t, () -> "Future, Mono, or suspend function was completed with an exception for " + source);
 			acknowledge(acknowledgment);
-			if (canAsyncRetry(request, ex) && this.callbackForAsyncFailure != null) {
+			if (canAsyncRetry(request, ex) && this.asyncRetryCallback != null) {
 				@SuppressWarnings("unchecked")
 				ConsumerRecord<K, V> record = (ConsumerRecord<K, V>) request;
-				this.callbackForAsyncFailure.accept(record, (RuntimeException) ex);
+				this.asyncRetryCallback.accept(record, (RuntimeException) ex);
 			}
 		}
 	}
@@ -929,7 +929,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	/**
 	 * Set the retry callback for failures of both {@link CompletableFuture} and {@link Mono}.
 	 * {@link MessagingMessageListenerAdapter#asyncFailure(Object, Acknowledgment, Consumer, Throwable, Message)}
-	 * will invoke {@link MessagingMessageListenerAdapter#callbackForAsyncFailure} when
+	 * will invoke {@link MessagingMessageListenerAdapter#asyncRetryCallback} when
 	 * {@link CompletableFuture} or {@link Mono} fails to complete.
 	 * @param asyncRetryCallback the callback for async retry.
 	 * @since 3.3
@@ -937,7 +937,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	public void setCallbackForAsyncFailure(
 			@Nullable BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback) {
 
-		this.callbackForAsyncFailure = asyncRetryCallback;
+		this.asyncRetryCallback = asyncRetryCallback;
 	}
 
 	/**
