@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
@@ -73,6 +74,8 @@ import org.springframework.util.ClassUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 import reactor.core.publisher.Mono;
 
 /**
@@ -152,6 +155,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	private boolean splitIterables = true;
 
 	private String correlationHeaderName = KafkaHeaders.CORRELATION_ID;
+
+	private ObservationRegistry observationRegistry = ObservationRegistry.NOOP;
 
 	/**
 	 * Create an instance with the provided bean and method.
@@ -245,6 +250,15 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 */
 	public void setHandlerMethod(HandlerAdapter handlerMethod) {
 		this.handlerMethod = handlerMethod;
+	}
+
+	/**
+	 * Set the {@link ObservationRegistry} to handle observability.
+	 * @param observationRegistry {@link ObservationRegistry} instance.
+	 * @since 3.3.0
+	 */
+	public void setObservationRegistry(ObservationRegistry observationRegistry) {
+		this.observationRegistry = observationRegistry;
 	}
 
 	public boolean isAsyncReplies() {
@@ -382,15 +396,34 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	protected void invoke(Object records, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer,
 			final Message<?> message) {
 
+		Throwable listenerError = null;
+		Object result = null;
+		Observation currentObservation = getCurrentObservation();
 		try {
-			Object result = invokeHandler(records, acknowledgment, message, consumer);
+			result = invokeHandler(records, acknowledgment, message, consumer);
 			if (result != null) {
 				handleResult(result, records, acknowledgment, consumer, message);
 			}
 		}
-		catch (ListenerExecutionFailedException e) { // NOSONAR ex flow control
+		catch (ListenerExecutionFailedException e) {
+			listenerError = e;
+			currentObservation.error(e);
 			handleException(records, acknowledgment, consumer, message, e);
 		}
+		catch (Error e) {
+			listenerError = e;
+			currentObservation.error(e);
+		}
+		finally {
+			if (listenerError != null || result == null) {
+				currentObservation.stop();
+			}
+		}
+	}
+
+	private Observation getCurrentObservation() {
+		Observation currentObservation = this.observationRegistry.getCurrentObservation();
+		return currentObservation == null ? Observation.NOOP : currentObservation;
 	}
 
 	/**
@@ -402,6 +435,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * @param consumer the consumer.
 	 * @return the result of invocation.
 	 */
+	@Nullable
 	protected final Object invokeHandler(Object data, @Nullable Acknowledgment acknowledgment, Message<?> message,
 			Consumer<?, ?> consumer) {
 
@@ -460,7 +494,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 */
 	protected void handleResult(Object resultArg, Object request, @Nullable Acknowledgment acknowledgment,
 			Consumer<?, ?> consumer, @Nullable Message<?> source) {
-
+		final Observation observation = getCurrentObservation();
 		this.logger.debug(() -> "Listener method returned result [" + resultArg
 				+ "] - generating response message for it");
 		String replyTopic = evaluateReplyTopic(request, source, resultArg);
@@ -474,35 +508,42 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				invocationResult.messageReturnType() :
 				this.messageReturnType;
 
-		if (result instanceof CompletableFuture<?> completable) {
+		CompletableFuture<?> completableFutureResult;
+
+		if (monoPresent && result instanceof Mono<?> mono) {
+			if (acknowledgment == null || !acknowledgment.isOutOfOrderCommit()) {
+				this.logger.warn("Container 'Acknowledgment' must be async ack for Mono<?> return type " +
+						"(or Kotlin suspend function); otherwise the container will ack the message immediately");
+			}
+			completableFutureResult = mono.toFuture();
+		}
+		else if (!(result instanceof CompletableFuture<?>)) {
+			completableFutureResult = CompletableFuture.completedFuture(result);
+		}
+		else {
+			completableFutureResult = (CompletableFuture<?>) result;
 			if (acknowledgment == null || !acknowledgment.isOutOfOrderCommit()) {
 				this.logger.warn("Container 'Acknowledgment' must be async ack for Future<?> return type; "
 						+ "otherwise the container will ack the message immediately");
 			}
-			completable.whenComplete((r, t) -> {
+		}
+
+		completableFutureResult.whenComplete((r, t) -> {
+			try {
 				if (t == null) {
 					asyncSuccess(r, replyTopic, source, messageReturnType);
 					acknowledge(acknowledgment);
 				}
 				else {
-					asyncFailure(request, acknowledgment, consumer, t, source);
+					Throwable cause = t instanceof CompletionException ? t.getCause() : t;
+					observation.error(cause);
+					asyncFailure(request, acknowledgment, consumer, cause, source);
 				}
-			});
-		}
-		else if (monoPresent && result instanceof Mono<?> mono) {
-			if (acknowledgment == null || !acknowledgment.isOutOfOrderCommit()) {
-				this.logger.warn("Container 'Acknowledgment' must be async ack for Mono<?> return type " +
-						"(or Kotlin suspend function); otherwise the container will ack the message immediately");
 			}
-			mono.subscribe(
-					r -> asyncSuccess(r, replyTopic, source, messageReturnType),
-					t -> asyncFailure(request, acknowledgment, consumer, t, source),
-					() -> acknowledge(acknowledgment)
-			);
-		}
-		else {
-			sendResponse(result, replyTopic, source, messageReturnType);
-		}
+			finally {
+				observation.stop();
+			}
+		});
 	}
 
 	@Nullable

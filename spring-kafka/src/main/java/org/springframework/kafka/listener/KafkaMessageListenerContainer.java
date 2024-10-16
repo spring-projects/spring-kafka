@@ -106,6 +106,7 @@ import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.listener.ContainerProperties.EOSMode;
 import org.springframework.kafka.listener.adapter.AsyncRepliesAware;
+import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
@@ -948,6 +949,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.lastAlertPartition = new HashMap<>();
 			this.wasIdlePartition = new HashMap<>();
 			this.kafkaAdmin = obtainAdmin();
+
+			if (this.listener instanceof RecordMessagingMessageListenerAdapter<?, ?> rmmla) {
+				rmmla.setObservationRegistry(observationRegistry);
+			}
 		}
 
 		private AckMode determineAckMode() {
@@ -2693,6 +2698,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		 * @throws Error an error.
 		 */
 		@Nullable
+		@SuppressWarnings("try")
 		private RuntimeException doInvokeRecordListener(final ConsumerRecord<K, V> cRecord, // NOSONAR
 				Iterator<ConsumerRecord<K, V>> iterator) {
 
@@ -2703,42 +2709,49 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					() -> new KafkaRecordReceiverContext(cRecord, getListenerId(), getClientId(), this.consumerGroupId,
 							this::clusterId),
 					this.observationRegistry);
-			return observation.observe(() -> {
-				try {
-					invokeOnMessage(cRecord);
-					successTimer(sample, cRecord);
-					recordInterceptAfter(cRecord, null);
-				}
-				catch (RuntimeException e) {
-					failureTimer(sample, cRecord);
-					recordInterceptAfter(cRecord, e);
-					if (this.commonErrorHandler == null) {
-						throw e;
-					}
+
+			observation.start();
+			try (Observation.Scope ignored = observation.openScope()) {
+				invokeOnMessage(cRecord);
+				successTimer(sample, cRecord);
+				recordInterceptAfter(cRecord, null);
+			}
+			catch (RuntimeException e) {
+				failureTimer(sample, cRecord);
+				recordInterceptAfter(cRecord, e);
+				if (!(this.listener instanceof RecordMessagingMessageListenerAdapter<K, V>)) {
 					observation.error(e);
-					try {
-						invokeErrorHandler(cRecord, iterator, e);
-						commitOffsetsIfNeededAfterHandlingError(cRecord);
-					}
-					catch (RecordInRetryException rire) {
-						this.logger.info("Record in retry and not yet recovered");
-						return rire;
-					}
-					catch (KafkaException ke) {
-						ke.selfLog(ERROR_HANDLER_THREW_AN_EXCEPTION, this.logger);
-						return ke;
-					}
-					catch (RuntimeException ee) {
-						this.logger.error(ee, ERROR_HANDLER_THREW_AN_EXCEPTION);
-						return ee;
-					}
-					catch (Error er) { // NOSONAR
-						this.logger.error(er, "Error handler threw an error");
-						throw er;
-					}
 				}
-				return null;
-			});
+				if (this.commonErrorHandler == null) {
+					throw e;
+				}
+				try {
+					invokeErrorHandler(cRecord, iterator, e);
+					commitOffsetsIfNeededAfterHandlingError(cRecord);
+				}
+				catch (RecordInRetryException rire) {
+					this.logger.info("Record in retry and not yet recovered");
+					return rire;
+				}
+				catch (KafkaException ke) {
+					ke.selfLog(ERROR_HANDLER_THREW_AN_EXCEPTION, this.logger);
+					return ke;
+				}
+				catch (RuntimeException ee) {
+					this.logger.error(ee, ERROR_HANDLER_THREW_AN_EXCEPTION);
+					return ee;
+				}
+				catch (Error er) { // NOSONAR
+					this.logger.error(er, "Error handler threw an error");
+					throw er;
+				}
+			}
+			finally {
+				if (!(this.listener instanceof RecordMessagingMessageListenerAdapter<K, V>)) {
+					observation.stop();
+				}
+			}
+			return null;
 		}
 
 		private void commitOffsetsIfNeededAfterHandlingError(final ConsumerRecord<K, V> cRecord) {
