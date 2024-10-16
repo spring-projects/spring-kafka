@@ -19,11 +19,11 @@ package org.springframework.kafka.support.converter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Optional;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -32,7 +32,6 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.utils.Bytes;
 
-import org.jetbrains.annotations.NotNull;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
@@ -144,8 +143,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 	}
 
 	@Override // NOSONAR
-	public @NotNull Message<?> toMessage(List<ConsumerRecord<?, ?>> records, @Nullable Acknowledgment acknowledgment,
-										 Consumer<?, ?> consumer, Type type) {
+	public Message<?> toMessage(List<ConsumerRecord<?, ?>> records, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer, Type type) {
 
 		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(this.generateMessageId,
 				this.generateTimestamp);
@@ -172,10 +170,10 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 	}
 
 	private void processRecord(ConsumerRecord<?, ?> record, List<Object> payloads, List<Object> keys,
-							   List<String> topics, List<Integer> partitions, List<Long> offsets,
-							   List<String> timestampTypes, List<Long> timestamps, List<Map<String, Object>> convertedHeaders,
-							   List<Headers> natives, List<ConsumerRecord<?, ?>> raws, List<ConversionException> conversionFailures,
-							   Map<String, Object> rawHeaders, Type type) {
+			List<String> topics, List<Integer> partitions, List<Long> offsets,
+			List<String> timestampTypes, List<Long> timestamps, List<Map<String, Object>> convertedHeaders,
+			List<Headers> natives, List<ConsumerRecord<?, ?>> raws, List<ConversionException> conversionFailures,
+			Map<String, Object> rawHeaders, Type type) {
 		payloads.add(obtainPayload(type, record, conversionFailures));
 		keys.add(record.key());
 		topics.add(record.topic());
