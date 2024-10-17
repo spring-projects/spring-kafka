@@ -32,8 +32,10 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
@@ -65,6 +67,8 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 /**
  * @author Sanghyeok An
+ * @author Artem Bilan
+ *
  * @since 3.3.0
  */
 
@@ -437,9 +441,12 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 	}
 
 	@Test
+	@DisabledIfEnvironmentVariable(named = "GITHUB_ACTION", matches = ".*?",
+			disabledReason = "Fails sporadically. Perhaps uses too much Apache Kafka resources")
 	void halfSuccessMsgAndHalfFailedMsgWithRandomSleepTime(
 			@Autowired TestTopicListener6 topicListener6,
-			@Autowired MyCustomDltProcessor myCustomDltProcessor6) {
+			@Autowired @Qualifier("myCustomDltProcessor6") MyCustomDltProcessor myCustomDltProcessor6) {
+
 		// Given
 		DestinationTopic destinationTopic = topicContainer.getNextDestinationTopicFor("6-TopicId", TEST_TOPIC6);
 
