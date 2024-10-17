@@ -81,12 +81,12 @@ public class MicrometerProducerListener<K, V> extends KafkaMetricsSupport<Produc
 
 	@Override
 	public synchronized void producerAdded(String id, Producer<K, V> producer) {
-		clientAdded(id, producer);
+		bindClient(id, producer);
 	}
 
 	@Override
 	public synchronized void producerRemoved(String id, Producer<K, V> producer) {
-		clientRemoved(id, producer);
+		unbindClient(id, producer);
 	}
 
 }

@@ -67,4 +67,4 @@ For more details, see xref:kafka/annotation-error-handling.adoc#delivery-attempt
 === Kafka Metrics Listeners and `TaskScheduler`
 
 The `MicrometerProducerListener`, `MicrometerConsumerListener` and `KafkaStreamsMicrometerListener` can now be configured with a `TaskScheduler`.
-See `KafkaMetrics` JavaDocs and xref:kafka/micrometer.adoc[Micrometer Support] for more information.
+See `KafkaMetricsSupport` JavaDocs and xref:kafka/micrometer.adoc[Micrometer Support] for more information.

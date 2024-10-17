@@ -82,12 +82,12 @@ public class MicrometerConsumerListener<K, V> extends KafkaMetricsSupport<Consum
 
 	@Override
 	public synchronized void consumerAdded(String id, Consumer<K, V> consumer) {
-		clientAdded(id, consumer);
+		bindClient(id, consumer);
 	}
 
 	@Override
 	public synchronized void consumerRemoved(String id, Consumer<K, V> consumer) {
-		clientRemoved(id, consumer);
+		unbindClient(id, consumer);
 	}
 
 }

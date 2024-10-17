@@ -82,7 +82,7 @@ public class KafkaStreamsMicrometerListener extends KafkaMetricsSupport<KafkaStr
 
 	@Override
 	public synchronized void streamsAdded(String id, KafkaStreams kafkaStreams) {
-		clientAdded(id, kafkaStreams);
+		bindClient(id, kafkaStreams);
 	}
 
 	@Override
@@ -94,7 +94,7 @@ public class KafkaStreamsMicrometerListener extends KafkaMetricsSupport<KafkaStr
 
 	@Override
 	public synchronized void streamsRemoved(String id, KafkaStreams streams) {
-		clientRemoved(id, streams);
+		unbindClient(id, streams);
 	}
 
 }

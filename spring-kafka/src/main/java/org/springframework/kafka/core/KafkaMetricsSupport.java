@@ -38,7 +38,6 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.util.Assert;
 import org.springframework.util.ReflectionUtils;
 
-
 import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
@@ -46,13 +45,15 @@ import io.micrometer.core.instrument.binder.MeterBinder;
 import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
 
 /**
- * An abstract class to manage {@link io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics}.
+ * An abstract class to manage {@link KafkaClientMetrics}.
  *
  * @param <C> the Kafka Client type.
  *
  * @author Artem Bilan
  *
  * @since 3.3
+ *
+ * @see KafkaClientMetrics
  */
 public abstract class KafkaMetricsSupport<C> {
 
@@ -67,7 +68,6 @@ public abstract class KafkaMetricsSupport<C> {
 
 	/**
 	 * Construct an instance with the provided registry.
-	 *
 	 * @param meterRegistry the registry.
 	 */
 	protected KafkaMetricsSupport(MeterRegistry meterRegistry) {
@@ -76,7 +76,6 @@ public abstract class KafkaMetricsSupport<C> {
 
 	/**
 	 * Construct an instance with the provided {@link MeterRegistry} and {@link TaskScheduler}.
-	 *
 	 * @param meterRegistry the registry.
 	 * @param taskScheduler the task scheduler.
 	 */
@@ -86,7 +85,6 @@ public abstract class KafkaMetricsSupport<C> {
 
 	/**
 	 * Construct an instance with the provided {@link MeterRegistry} and tags.
-	 *
 	 * @param meterRegistry the registry.
 	 * @param tags          the tags.
 	 */
@@ -99,7 +97,6 @@ public abstract class KafkaMetricsSupport<C> {
 
 	/**
 	 * Construct an instance with the provided {@link MeterRegistry}, tags and {@link TaskScheduler}.
-	 *
 	 * @param meterRegistry the registry.
 	 * @param tags          the tags.
 	 * @param taskScheduler the task scheduler.
@@ -112,7 +109,12 @@ public abstract class KafkaMetricsSupport<C> {
 		this.scheduler = obtainScheduledExecutorService(taskScheduler);
 	}
 
-	protected void clientAdded(String id, C client) {
+	/**
+	 * Bind metrics for the Apache Kafka client with provided id.
+	 * @param id the unique identifier for the client to manage in store.
+	 * @param client the Kafka client instance to bind.
+	 */
+	protected final void bindClient(String id, C client) {
 		if (!this.metrics.containsKey(id)) {
 			List<Tag> clientTags = new ArrayList<>(this.tags);
 			clientTags.add(new ImmutableTag("spring.id", id));
@@ -121,6 +123,15 @@ public abstract class KafkaMetricsSupport<C> {
 		}
 	}
 
+	/**
+	 * Create a {@code io.micrometer.core.instrument.binder.kafka.KafkaMetrics} instance
+	 * for the provided Kafka client and metric tags.
+	 * By default, this factory is aware of {@link Consumer}, {@link Producer} and {@link AdminClient} types.
+	 * For other use-case this method can be overridden.
+	 * @param client the client to create a {@code io.micrometer.core.instrument.binder.kafka.KafkaMetrics} instance for.
+	 * @param tags the tags for the {@code io.micrometer.core.instrument.binder.kafka.KafkaMetrics}.
+	 * @return the {@code io.micrometer.core.instrument.binder.kafka.KafkaMetrics}.
+	 */
 	protected MeterBinder createClientMetrics(C client, List<Tag> tags) {
 		if (client instanceof Consumer<?, ?> consumer) {
 			return createConsumerMetrics(consumer, tags);
@@ -153,7 +164,12 @@ public abstract class KafkaMetricsSupport<C> {
 				: new KafkaClientMetrics(adminClient, tags);
 	}
 
-	protected void clientRemoved(String id, C client) {
+	/**
+	 * Unbind a {@code io.micrometer.core.instrument.binder.kafka.KafkaMetrics} for the provided Kafka client.
+	 * @param id the unique identifier for the client to manage in store.
+	 * @param client the Kafka client instance to unbind.
+	 */
+	protected final void unbindClient(String id, C client) {
 		AutoCloseable removed = (AutoCloseable) this.metrics.remove(id);
 		if (removed != null) {
 			try {
