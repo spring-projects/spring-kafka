@@ -58,6 +58,13 @@ When using `KafkaStreamsCustomizer` it is now possible to return a custom implem
 
 [[x33-kafka-headers-for-batch-listeners]]
 === KafkaHeaders.DELIVERY_ATTEMPT for batch listeners
+
 When using a `BatchListener`, the `ConsumerRecord` can have the `KafkaHeaders.DELIVERY_ATTMPT` header in its headers fields.
 If the `DeliveryAttemptAwareRetryListener` is set to error handler as retry listener, each `ConsumerRecord` has delivery attempt header.
-For more details, see xref:kafka/annotation-error-handling.adoc#delivery-attempts-header-for-batch-listener[kafka-headers-for-batch-listener].
+For more details, see xref:kafka/annotation-error-handling.adoc#delivery-attempts-header-for-batch-listener[Kafka Headers for Batch Listener].
+
+[[x33-task-scheduler-for-kafka-metrics]]
+=== Kafka Metrics Listeners and `TaskScheduler`
+
+The `MicrometerProducerListener`, `MicrometerConsumerListener` and `KafkaStreamsMicrometerListener` can now be configured with a `TaskScheduler`.
+See `KafkaMetricsSupport` JavaDocs and xref:kafka/micrometer.adoc[Micrometer Support] for more information.
