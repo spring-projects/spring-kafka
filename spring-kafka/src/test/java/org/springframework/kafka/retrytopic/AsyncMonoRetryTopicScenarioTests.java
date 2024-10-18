@@ -437,7 +437,7 @@ public class AsyncMonoRetryTopicScenarioTests {
 	}
 
 	@Test
-	void oneLongSuccessMsgBetween100ShortFailMsg(
+	void oneLongSuccessMsgBetween49ShortFailMsg(
 			@Autowired TestTopicListener5 topicListener5,
 			@Autowired MyCustomDltProcessor myCustomDltProcessor5) {
 		// Scenario.
