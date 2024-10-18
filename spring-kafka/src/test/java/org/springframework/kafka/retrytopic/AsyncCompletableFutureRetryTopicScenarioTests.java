@@ -74,8 +74,6 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 @DirtiesContext
 @EmbeddedKafka
 @TestPropertySource(properties = { "five.attempts=5", "kafka.template=customKafkaTemplate"})
-@DisabledIfEnvironmentVariable(named = "GITHUB_ACTION", matches = ".*?",
-		disabledReason = "Fails sporadically. Perhaps uses too much Apache Kafka resources")
 public class AsyncCompletableFutureRetryTopicScenarioTests {
 
 	private final static String MAIN_TOPIC_CONTAINER_FACTORY = "kafkaListenerContainerFactory";
