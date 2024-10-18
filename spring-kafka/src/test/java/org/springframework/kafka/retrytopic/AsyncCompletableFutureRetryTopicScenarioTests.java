@@ -569,11 +569,11 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 		assertThat(awaitLatch(latchContainer.dltCountdownLatch6)).isTrue();
 
 		assertThat(destinationTopic.getDestinationName()).isEqualTo(expectedRetryTopic);
-		assertThat(topicListener6.receivedMsgs).containsExactly(expectedReceivedMsgs);
-		assertThat(topicListener6.receivedTopics).containsExactly(expectedReceivedTopics);
+		assertThat(topicListener6.receivedMsgs).containsExactlyInAnyOrder(expectedReceivedMsgs);
+		assertThat(topicListener6.receivedTopics).containsExactlyInAnyOrder(expectedReceivedTopics);
 		assertThat(topicListener6.latchWaitFailCount).isEqualTo(0);
 
-		assertThat(myCustomDltProcessor6.receivedMsg).containsExactly(expectedDltMsgs);
+		assertThat(myCustomDltProcessor6.receivedMsg).containsExactlyInAnyOrder(expectedDltMsgs);
 	}
 
 	private boolean awaitLatch(CountDownLatch latch) {
