@@ -16,9 +16,6 @@
 
 package org.springframework.kafka.test.utils;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +34,9 @@ import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 /**
  * @author Gary Russell
