@@ -16,10 +16,6 @@
 
 package org.springframework.kafka.retrytopic;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
-
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
@@ -39,6 +35,10 @@ import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
 import org.springframework.kafka.support.EndpointHandlerMethod;
 import org.springframework.kafka.support.EndpointHandlerMultiMethod;
 import org.springframework.kafka.support.TopicPartitionOffset;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Tomaz Fernandes

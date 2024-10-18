@@ -19,16 +19,15 @@ package org.springframework.kafka.streams;
 import java.util.Collections;
 import java.util.List;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.binder.MeterBinder;
+import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics;
 import org.apache.kafka.streams.KafkaStreams;
 
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
 import org.springframework.kafka.core.KafkaMetricsSupport;
 import org.springframework.scheduling.TaskScheduler;
-
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Tag;
-import io.micrometer.core.instrument.binder.MeterBinder;
-import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics;
 
 /**
  * Creates a {@link KafkaStreamsMetrics} for the {@link KafkaStreams}.

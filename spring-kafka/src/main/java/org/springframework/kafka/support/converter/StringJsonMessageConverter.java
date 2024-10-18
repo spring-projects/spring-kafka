@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,11 +16,11 @@
 
 package org.springframework.kafka.support.converter;
 
-import org.springframework.kafka.support.KafkaNull;
-import org.springframework.messaging.Message;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import org.springframework.kafka.support.KafkaNull;
+import org.springframework.messaging.Message;
 
 /**
  * JSON Message converter - String on output, String, Bytes, or byte[] on input. Used in

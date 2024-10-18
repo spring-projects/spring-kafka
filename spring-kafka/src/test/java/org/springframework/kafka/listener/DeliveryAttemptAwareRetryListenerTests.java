@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.listener;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.List;
@@ -30,6 +28,8 @@ import org.apache.kafka.common.header.Header;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.support.KafkaHeaders;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Sanghyeok An

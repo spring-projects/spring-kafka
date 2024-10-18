@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,12 +15,11 @@
  */
 package org.springframework.kafka.kdocs.started.consumer
 
-import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.apache.kafka.clients.admin.NewTopic
-import org.springframework.kafka.annotation.KafkaListener
-import kotlin.jvm.JvmStatic
+import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
+import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.kafka.kdocs.started.producer.Application
 
 /**

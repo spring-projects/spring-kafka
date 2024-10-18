@@ -38,6 +38,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import kafka.server.KafkaConfig;
+import kafka.testkit.KafkaClusterTestKit;
+import kafka.testkit.TestKitNodes;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -53,10 +56,6 @@ import org.apache.kafka.common.utils.Utils;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.util.Assert;
-
-import kafka.server.KafkaConfig;
-import kafka.testkit.KafkaClusterTestKit;
-import kafka.testkit.TestKitNodes;
 
 /**
  * An embedded Kafka Broker(s) using KRaft.

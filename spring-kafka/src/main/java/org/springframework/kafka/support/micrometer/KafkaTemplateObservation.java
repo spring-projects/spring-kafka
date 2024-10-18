@@ -16,13 +16,13 @@
 
 package org.springframework.kafka.support.micrometer;
 
-import org.springframework.lang.NonNull;
-
 import io.micrometer.common.KeyValues;
 import io.micrometer.common.docs.KeyName;
 import io.micrometer.observation.Observation.Context;
 import io.micrometer.observation.ObservationConvention;
 import io.micrometer.observation.docs.ObservationDocumentation;
+
+import org.springframework.lang.NonNull;
 
 /**
  * Spring for Apache Kafka Observation for

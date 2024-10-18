@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 the original author or authors.
+ * Copyright 2022-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,8 +16,6 @@
 
 package com.example;
 
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.common.errors.TimeoutException;
@@ -28,6 +26,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.annotation.DirtiesContext;
+
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 /**
  * This test is going to fail from IDE since there is no exposed {@code spring.kafka.bootstrap-servers} system property.

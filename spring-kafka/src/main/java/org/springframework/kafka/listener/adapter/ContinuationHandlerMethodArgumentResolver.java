@@ -16,11 +16,11 @@
 
 package org.springframework.kafka.listener.adapter;
 
+import reactor.core.publisher.Mono;
+
 import org.springframework.core.MethodParameter;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
-
-import reactor.core.publisher.Mono;
 
 /**
  * No-op resolver for method arguments of type {@link kotlin.coroutines.Continuation}.

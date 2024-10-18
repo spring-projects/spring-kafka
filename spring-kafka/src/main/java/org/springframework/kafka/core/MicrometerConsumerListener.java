@@ -19,14 +19,12 @@ package org.springframework.kafka.core;
 import java.util.Collections;
 import java.util.List;
 
-
-import org.apache.kafka.clients.consumer.Consumer;
-
-import org.springframework.scheduling.TaskScheduler;
-
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
+import org.apache.kafka.clients.consumer.Consumer;
+
+import org.springframework.scheduling.TaskScheduler;
 
 /**
  * A consumer factory listener that manages {@link KafkaClientMetrics}.
