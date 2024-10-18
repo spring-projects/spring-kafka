@@ -94,7 +94,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	protected final ReentrantLock lifecycleLock = new ReentrantLock(); // NOSONAR
 
-	protected final AtomicBoolean enforceRebalanceRequested = new AtomicBoolean();
+	private final AtomicBoolean enforceRebalanceRequested = new AtomicBoolean();
 
 	private final Set<TopicPartition> pauseRequestedPartitions = ConcurrentHashMap.newKeySet();
 
@@ -193,6 +193,14 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		}
 	}
 
+	/**
+	 *	To be used only with {@link ConcurrentMessageListenerContainerRef}.
+	 */
+	AbstractMessageListenerContainer() {
+		this.containerProperties = null;
+		this.consumerFactory = null;
+	}
+
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
 		this.applicationContext = applicationContext;
@@ -278,13 +286,25 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		return this.running;
 	}
 
-	protected void setFenced(boolean fenced) {
+	void setFenced(boolean fenced) {
 		this.fenced = fenced;
+	}
+
+	protected boolean isFenced() {
+		return this.fenced;
 	}
 
 	@Deprecated(since = "3.2", forRemoval = true)
 	protected boolean isPaused() {
 		return this.paused;
+	}
+
+	protected boolean isEnforceRebalanceRequested() {
+		return this.enforceRebalanceRequested.get();
+	}
+
+	protected void setEnforceRebalanceRequested(boolean enforceRebalance) {
+		this.enforceRebalanceRequested.set(enforceRebalance);
 	}
 
 	@Override
