@@ -16,13 +16,13 @@
 
 package org.springframework.kafka.test.assertj;
 
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.junit.jupiter.api.Test;
+
 import static org.assertj.core.api.Assertions.allOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.kafka.test.assertj.KafkaConditions.keyValue;
 import static org.springframework.kafka.test.assertj.KafkaConditions.partition;
-
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.junit.jupiter.api.Test;
 
 /**
  * @author Gary Russell

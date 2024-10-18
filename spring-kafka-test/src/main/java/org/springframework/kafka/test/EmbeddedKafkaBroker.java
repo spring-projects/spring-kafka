@@ -19,13 +19,12 @@ package org.springframework.kafka.test;
 import java.util.Map;
 import java.util.Set;
 
+import kafka.server.KafkaConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.Consumer;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
-
-import kafka.server.KafkaConfig;
 
 /**
  * @author Gary Russell

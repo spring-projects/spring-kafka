@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.test.junit;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -48,6 +46,8 @@ import org.junit.platform.launcher.core.LauncherFactory;
 import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
 
 import org.springframework.util.DefaultPropertiesPersister;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Artem Bilan

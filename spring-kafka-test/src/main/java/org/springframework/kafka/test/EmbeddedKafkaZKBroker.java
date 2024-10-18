@@ -42,6 +42,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import kafka.cluster.EndPoint;
+import kafka.server.KafkaConfig;
+import kafka.server.KafkaServer;
+import kafka.utils.CoreUtils;
+import kafka.utils.TestUtils;
+import kafka.zk.ZkFourLetterWords;
+import kafka.zookeeper.ZooKeeperClient;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -66,14 +73,6 @@ import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
-
-import kafka.cluster.EndPoint;
-import kafka.server.KafkaConfig;
-import kafka.server.KafkaServer;
-import kafka.utils.CoreUtils;
-import kafka.utils.TestUtils;
-import kafka.zk.ZkFourLetterWords;
-import kafka.zookeeper.ZooKeeperClient;
 
 /**
  * An embedded Kafka Broker(s) and Zookeeper manager.

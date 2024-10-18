@@ -16,19 +16,19 @@
 
 package org.springframework.kafka.test.hamcrest;
 
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.springframework.kafka.test.hamcrest.KafkaMatchers.hasKey;
-import static org.springframework.kafka.test.hamcrest.KafkaMatchers.hasPartition;
-import static org.springframework.kafka.test.hamcrest.KafkaMatchers.hasTimestamp;
-import static org.springframework.kafka.test.hamcrest.KafkaMatchers.hasValue;
-
 import java.util.Optional;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.record.TimestampType;
 import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.springframework.kafka.test.hamcrest.KafkaMatchers.hasKey;
+import static org.springframework.kafka.test.hamcrest.KafkaMatchers.hasPartition;
+import static org.springframework.kafka.test.hamcrest.KafkaMatchers.hasTimestamp;
+import static org.springframework.kafka.test.hamcrest.KafkaMatchers.hasValue;
 
 /**
  * @author Biju Kunjummen

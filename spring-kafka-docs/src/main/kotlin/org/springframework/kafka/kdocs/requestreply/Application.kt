@@ -15,27 +15,25 @@
  */
 package org.springframework.kafka.kdocs.requestreply
 
-import org.springframework.boot.autoconfigure.SpringBootApplication
-import org.springframework.kafka.core.KafkaAdmin.NewTopics
-import org.springframework.kafka.config.TopicBuilder
-import org.springframework.kafka.core.KafkaTemplate
-import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory
-import org.springframework.kafka.requestreply.ReplyingKafkaTemplate
-import org.springframework.kafka.support.converter.ByteArrayJsonMessageConverter
-import org.springframework.boot.ApplicationRunner
-import org.springframework.boot.ApplicationArguments
-import org.springframework.kafka.requestreply.RequestReplyTypedMessageFuture
-import org.springframework.messaging.support.MessageBuilder
-import org.springframework.core.ParameterizedTypeReference
-import org.springframework.kafka.annotation.KafkaListener
-import org.springframework.messaging.handler.annotation.SendTo
-import kotlin.jvm.JvmStatic
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.slf4j.LoggerFactory
+import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.SpringApplication
+import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.context.annotation.Bean
+import org.springframework.core.ParameterizedTypeReference
+import org.springframework.kafka.annotation.KafkaListener
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory
+import org.springframework.kafka.config.TopicBuilder
+import org.springframework.kafka.core.KafkaAdmin.NewTopics
+import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.core.ProducerFactory
+import org.springframework.kafka.requestreply.ReplyingKafkaTemplate
+import org.springframework.kafka.requestreply.RequestReplyTypedMessageFuture
+import org.springframework.kafka.support.converter.ByteArrayJsonMessageConverter
+import org.springframework.messaging.handler.annotation.SendTo
+import org.springframework.messaging.support.MessageBuilder
 import java.util.concurrent.TimeUnit
 import java.util.function.Consumer
 
