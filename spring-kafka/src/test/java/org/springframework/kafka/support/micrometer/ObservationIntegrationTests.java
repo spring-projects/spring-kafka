@@ -16,14 +16,20 @@
 
 package org.springframework.kafka.support.micrometer;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import io.micrometer.common.KeyValues;
+import io.micrometer.core.tck.MeterRegistryAssert;
+import io.micrometer.observation.ObservationRegistry;
+import io.micrometer.tracing.Span.Kind;
+import io.micrometer.tracing.exporter.FinishedSpan;
+import io.micrometer.tracing.test.SampleTestRunner;
+import io.micrometer.tracing.test.simple.SpanAssert;
+import io.micrometer.tracing.test.simple.SpansAssert;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
@@ -43,14 +49,7 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.EmbeddedKafkaZKBroker;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
-import io.micrometer.common.KeyValues;
-import io.micrometer.core.tck.MeterRegistryAssert;
-import io.micrometer.observation.ObservationRegistry;
-import io.micrometer.tracing.Span.Kind;
-import io.micrometer.tracing.exporter.FinishedSpan;
-import io.micrometer.tracing.test.SampleTestRunner;
-import io.micrometer.tracing.test.simple.SpanAssert;
-import io.micrometer.tracing.test.simple.SpansAssert;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Artem Bilan

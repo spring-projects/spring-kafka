@@ -16,12 +16,6 @@
 
 package org.springframework.kafka.support.serializer;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
@@ -44,6 +38,12 @@ import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.messaging.MessageHeaders;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 /**
  * @author Gary Russell

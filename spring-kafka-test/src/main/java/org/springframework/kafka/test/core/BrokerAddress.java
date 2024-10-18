@@ -16,9 +16,9 @@
 
 package org.springframework.kafka.test.core;
 
-import org.springframework.util.Assert;
-
 import kafka.cluster.BrokerEndPoint;
+
+import org.springframework.util.Assert;
 
 /**
  * Encapsulates the address of a Kafka broker.

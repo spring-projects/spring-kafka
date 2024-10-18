@@ -16,15 +16,11 @@
 
 package org.springframework.kafka.support.converter;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
-import static org.mockito.Mockito.doReturn;
-
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.jayway.jsonpath.DocumentContext;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.utils.Bytes;
 import org.junit.jupiter.api.Test;
@@ -37,7 +33,10 @@ import org.springframework.data.web.JsonPath;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.support.MessageBuilder;
 
-import com.jayway.jsonpath.DocumentContext;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.mockito.Mockito.doReturn;
 
 /**
  * @author Oliver Gierke

@@ -22,12 +22,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.kafka.clients.consumer.Consumer;
-
 import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
+import org.apache.kafka.clients.consumer.Consumer;
 
 /**
  * A consumer factory listener that manages {@link KafkaClientMetrics}.

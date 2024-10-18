@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.retrytopic;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.util.Arrays;
 import java.util.List;
 
@@ -26,6 +24,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.retry.backoff.BackOffPolicy;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.retry.backoff.NoBackOffPolicy;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Tomaz Fernandes

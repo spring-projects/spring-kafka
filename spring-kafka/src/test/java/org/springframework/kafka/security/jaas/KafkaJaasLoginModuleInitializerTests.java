@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.security.jaas;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -26,6 +24,7 @@ import java.util.Map;
 
 import javax.security.auth.login.AppConfigurationEntry;
 
+import com.sun.security.auth.login.ConfigFile;
 import org.apache.kafka.common.security.JaasContext;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
@@ -38,7 +37,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.kafka.security.jaas.KafkaJaasLoginModuleInitializer.ControlFlag;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
-import com.sun.security.auth.login.ConfigFile;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Marius Bogoevici

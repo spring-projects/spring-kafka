@@ -16,9 +16,8 @@
 
 package org.springframework.kafka.support.mapping;
 
-import org.apache.kafka.common.header.Headers;
-
 import com.fasterxml.jackson.databind.JavaType;
+import org.apache.kafka.common.header.Headers;
 
 /**
  * Strategy for setting metadata on messages such that one can create the class that needs

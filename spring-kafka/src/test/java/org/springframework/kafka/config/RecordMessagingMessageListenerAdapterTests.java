@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.config;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +32,8 @@ import org.springframework.kafka.listener.adapter.RecordMessagingMessageListener
 import org.springframework.messaging.converter.GenericMessageConverter;
 import org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory;
 import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Gary Russell

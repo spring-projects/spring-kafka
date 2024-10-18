@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.retrytopic;
 
-import static org.mockito.Mockito.mock;
-
 import org.junit.jupiter.api.Test;
 
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
@@ -30,6 +28,8 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Gary Russell

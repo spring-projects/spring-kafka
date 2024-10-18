@@ -16,13 +16,12 @@
 
 package org.springframework.kafka.support.converter;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.common.utils.Bytes;
 
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.Message;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * JSON Message converter - {@code Bytes} on output, String, Bytes, or byte[] on input.

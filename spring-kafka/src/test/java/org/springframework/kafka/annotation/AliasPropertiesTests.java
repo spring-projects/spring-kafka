@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.annotation;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -53,6 +51,8 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Gary Russell

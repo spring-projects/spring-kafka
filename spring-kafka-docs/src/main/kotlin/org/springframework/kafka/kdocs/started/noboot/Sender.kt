@@ -15,11 +15,7 @@
  */
 package org.springframework.kafka.kdocs.started.noboot
 
-import org.springframework.boot.runApplication
 import org.springframework.kafka.core.KafkaTemplate
-import kotlin.jvm.JvmStatic
-import org.springframework.context.annotation.AnnotationConfigApplicationContext
-import org.springframework.kafka.kdocs.started.producer.Application
 
 /**
  * Code snippet for quick start.

@@ -16,12 +16,12 @@
 
 package org.springframework.kafka.support;
 
-import org.springframework.util.ClassUtils;
-
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+
+import org.springframework.util.ClassUtils;
 
 /**
  * The utilities for Jackson {@link ObjectMapper} instances.

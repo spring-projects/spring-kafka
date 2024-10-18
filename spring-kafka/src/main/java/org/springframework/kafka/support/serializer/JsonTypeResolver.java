@@ -16,9 +16,8 @@
 
 package org.springframework.kafka.support.serializer;
 
-import org.apache.kafka.common.header.Headers;
-
 import com.fasterxml.jackson.databind.JavaType;
+import org.apache.kafka.common.header.Headers;
 
 /**
  * Determine the {@link JavaType} from the topic/data/headers.

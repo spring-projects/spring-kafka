@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.support.serializer;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.util.Collections;
 import java.util.Map;
 
@@ -25,6 +23,8 @@ import org.apache.kafka.common.utils.Bytes;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Gary Russell

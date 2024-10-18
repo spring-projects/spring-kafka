@@ -19,9 +19,8 @@ package org.springframework.kafka.support.micrometer;
 import java.nio.charset.StandardCharsets;
 import java.util.function.Supplier;
 
-import org.apache.kafka.clients.producer.ProducerRecord;
-
 import io.micrometer.observation.transport.SenderContext;
+import org.apache.kafka.clients.producer.ProducerRecord;
 
 /**
  * {@link SenderContext} for {@link ProducerRecord}s.

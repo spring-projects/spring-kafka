@@ -19,12 +19,11 @@ package org.springframework.kafka.support.micrometer;
 import java.nio.charset.StandardCharsets;
 import java.util.function.Supplier;
 
+import io.micrometer.observation.transport.ReceiverContext;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
 
 import org.springframework.lang.Nullable;
-
-import io.micrometer.observation.transport.ReceiverContext;
 
 /**
  * {@link ReceiverContext} for {@link ConsumerRecord}s.

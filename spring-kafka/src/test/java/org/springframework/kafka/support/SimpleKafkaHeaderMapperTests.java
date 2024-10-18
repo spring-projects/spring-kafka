@@ -16,10 +16,6 @@
 
 package org.springframework.kafka.support;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
-import static org.assertj.core.api.Assertions.entry;
-
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
@@ -31,6 +27,10 @@ import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.messaging.MessageHeaders;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.assertj.core.api.Assertions.entry;
 
 /**
  * @author Gary Russell

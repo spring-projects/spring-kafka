@@ -26,14 +26,6 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.reactivestreams.Publisher;
-
-import org.springframework.beans.factory.DisposableBean;
-import org.springframework.kafka.support.KafkaHeaders;
-import org.springframework.kafka.support.converter.MessagingMessageConverter;
-import org.springframework.kafka.support.converter.RecordMessageConverter;
-import org.springframework.messaging.Message;
-import org.springframework.util.Assert;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.kafka.sender.KafkaSender;
@@ -43,6 +35,13 @@ import reactor.kafka.sender.SenderResult;
 import reactor.kafka.sender.TransactionManager;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
+
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.converter.MessagingMessageConverter;
+import org.springframework.kafka.support.converter.RecordMessageConverter;
+import org.springframework.messaging.Message;
+import org.springframework.util.Assert;
 
 /**
  * Reactive kafka producer operations implementation.

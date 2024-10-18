@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.streams;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -37,6 +35,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.expression.Expression;
 import org.springframework.expression.common.LiteralExpression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Gary Russell
