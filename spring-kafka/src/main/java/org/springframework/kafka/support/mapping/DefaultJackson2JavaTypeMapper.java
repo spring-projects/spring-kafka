@@ -20,15 +20,14 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import org.apache.kafka.common.header.Headers;
 
 import org.springframework.messaging.converter.MessageConversionException;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.PatternMatchUtils;
-
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 
 /**
  * Jackson 2 type mapper.

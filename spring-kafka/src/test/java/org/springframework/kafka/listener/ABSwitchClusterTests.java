@@ -16,11 +16,6 @@
 
 package org.springframework.kafka.listener;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.willAnswer;
-import static org.mockito.Mockito.mock;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -43,6 +38,11 @@ import org.springframework.kafka.core.ABSwitchCluster;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Gary Russell

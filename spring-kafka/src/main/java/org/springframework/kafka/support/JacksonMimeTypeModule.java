@@ -18,12 +18,12 @@ package org.springframework.kafka.support;
 
 import java.io.IOException;
 
-import org.springframework.util.MimeType;
-
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
+
+import org.springframework.util.MimeType;
 
 /**
  * A {@link SimpleModule} extension for {@link MimeType} serialization.

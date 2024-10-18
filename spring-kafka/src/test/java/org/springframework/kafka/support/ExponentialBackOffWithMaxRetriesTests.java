@@ -16,9 +16,6 @@
 
 package org.springframework.kafka.support;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -26,6 +23,9 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.util.backoff.BackOffExecution;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 /**
  * @author Gary Russell

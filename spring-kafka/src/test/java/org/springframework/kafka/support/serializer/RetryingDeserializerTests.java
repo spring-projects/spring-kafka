@@ -16,11 +16,6 @@
 
 package org.springframework.kafka.support.serializer;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -30,6 +25,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.retry.RecoveryCallback;
 import org.springframework.retry.RetryContext;
 import org.springframework.retry.support.RetryTemplate;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 /**
  * @author Gary Russell

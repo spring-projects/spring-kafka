@@ -16,9 +16,6 @@
 
 package org.springframework.kafka.support;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.entry;
-
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -46,6 +43,9 @@ import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MimeType;
 import org.springframework.util.MimeTypeUtils;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 /**
  * @author Gary Russell

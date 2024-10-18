@@ -16,13 +16,6 @@
 
 package org.springframework.kafka.listener;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
-
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -41,6 +34,13 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.event.ContainerStoppedEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.support.TopicPartitionOffset;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Gary Russell

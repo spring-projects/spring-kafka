@@ -27,15 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.kafka.common.header.Header;
-import org.apache.kafka.common.header.Headers;
-import org.apache.kafka.common.header.internals.RecordHeader;
-
-import org.springframework.messaging.MessageHeaders;
-import org.springframework.util.Assert;
-import org.springframework.util.ClassUtils;
-import org.springframework.util.MimeType;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -45,6 +36,14 @@ import com.fasterxml.jackson.databind.deser.std.StdNodeBasedDeserializer;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
+import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeader;
+
+import org.springframework.messaging.MessageHeaders;
+import org.springframework.util.Assert;
+import org.springframework.util.ClassUtils;
+import org.springframework.util.MimeType;
 
 /**
  * Default header mapper for Apache Kafka.

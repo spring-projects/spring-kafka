@@ -18,6 +18,9 @@ package org.springframework.kafka.support.serializer;
 
 import java.util.Map;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.common.serialization.Serde;
 
 import org.springframework.core.ResolvableType;
@@ -25,10 +28,6 @@ import org.springframework.kafka.support.JacksonUtils;
 import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
-
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * A {@link org.apache.kafka.common.serialization.Serde} that provides serialization and

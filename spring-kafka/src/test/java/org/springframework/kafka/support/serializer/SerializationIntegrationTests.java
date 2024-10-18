@@ -16,9 +16,6 @@
 
 package org.springframework.kafka.support.serializer;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -34,6 +31,9 @@ import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Gary Russell

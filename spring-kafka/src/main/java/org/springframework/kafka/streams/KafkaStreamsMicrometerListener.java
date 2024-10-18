@@ -22,14 +22,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.kafka.streams.KafkaStreams;
-
-import org.springframework.kafka.config.StreamsBuilderFactoryBean;
-
 import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.binder.kafka.KafkaStreamsMetrics;
+import org.apache.kafka.streams.KafkaStreams;
+
+import org.springframework.kafka.config.StreamsBuilderFactoryBean;
 
 /**
  * Creates a {@link KafkaStreamsMetrics} for the {@link KafkaStreams}.

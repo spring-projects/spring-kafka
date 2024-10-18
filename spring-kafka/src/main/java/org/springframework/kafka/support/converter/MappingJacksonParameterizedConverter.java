@@ -19,6 +19,8 @@ package org.springframework.kafka.support.converter;
 import java.io.IOException;
 import java.lang.reflect.Type;
 
+import com.fasterxml.jackson.databind.JavaType;
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.utils.Bytes;
 
@@ -31,9 +33,6 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.util.Assert;
 import org.springframework.util.MimeType;
-
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 
 /**
  * Subclass of {@link MappingJackson2MessageConverter} that can handle parameterized

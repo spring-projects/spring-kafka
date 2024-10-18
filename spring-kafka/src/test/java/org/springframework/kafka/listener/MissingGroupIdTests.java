@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.listener;
 
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-
 import java.util.Collections;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -38,6 +36,8 @@ import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 /**
  * @author Gary Russell

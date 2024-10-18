@@ -16,17 +16,17 @@
 
 package org.springframework.kafka.support;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.withSettings;
-
 import java.util.function.Supplier;
 
 import org.junit.jupiter.api.Test;
 
 import org.springframework.core.log.LogAccessor;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.withSettings;
 
 /**
  * @author Gary Russell

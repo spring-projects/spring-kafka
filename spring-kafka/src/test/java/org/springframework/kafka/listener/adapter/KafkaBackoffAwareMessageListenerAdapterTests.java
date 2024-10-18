@@ -16,17 +16,6 @@
 
 package org.springframework.kafka.listener.adapter;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.then;
-import static org.mockito.BDDMockito.willThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-
 import java.math.BigInteger;
 import java.time.Clock;
 import java.time.Instant;
@@ -49,6 +38,17 @@ import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
 import org.springframework.kafka.listener.TimestampedException;
 import org.springframework.kafka.retrytopic.RetryTopicHeaders;
 import org.springframework.kafka.support.Acknowledgment;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 
 
 /**

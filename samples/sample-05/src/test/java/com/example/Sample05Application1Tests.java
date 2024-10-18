@@ -16,8 +16,6 @@
 
 package com.example;
 
-import static org.awaitility.Awaitility.await;
-
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -27,6 +25,8 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.annotation.DirtiesContext;
+
+import static org.awaitility.Awaitility.await;
 
 /**
  * This test is going to fail from IDE since there is no exposed {@code spring.embedded.kafka.brokers} system property.

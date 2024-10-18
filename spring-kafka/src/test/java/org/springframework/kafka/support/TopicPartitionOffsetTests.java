@@ -16,14 +16,14 @@
 
 package org.springframework.kafka.support;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.util.Objects;
 
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.support.TopicPartitionOffset.SeekPosition;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Gary Russell

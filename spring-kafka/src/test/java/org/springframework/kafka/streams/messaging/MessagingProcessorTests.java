@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.streams.messaging;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.util.Collections;
 import java.util.Properties;
 
@@ -40,6 +38,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.messaging.support.MessageBuilder;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Gary Russell

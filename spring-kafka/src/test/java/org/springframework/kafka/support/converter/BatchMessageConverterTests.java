@@ -16,9 +16,6 @@
 
 package org.springframework.kafka.support.converter;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -41,6 +38,9 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Biju Kunjummen

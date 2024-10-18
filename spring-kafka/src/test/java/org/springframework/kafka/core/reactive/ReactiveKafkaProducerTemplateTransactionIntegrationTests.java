@@ -16,9 +16,6 @@
 
 package org.springframework.kafka.core.reactive;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -40,17 +37,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscription;
-
-import org.springframework.core.log.LogAccessor;
-import org.springframework.kafka.support.KafkaUtils;
-import org.springframework.kafka.support.converter.MessagingMessageConverter;
-import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
-import org.springframework.kafka.test.condition.LogLevels;
-import org.springframework.kafka.test.condition.LogLevelsCondition;
-import org.springframework.kafka.test.context.EmbeddedKafka;
-import org.springframework.kafka.test.utils.JUnitUtils;
-import org.springframework.kafka.test.utils.KafkaTestUtils;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -62,6 +48,19 @@ import reactor.kafka.sender.SenderRecord;
 import reactor.kafka.sender.SenderResult;
 import reactor.kafka.sender.internals.DefaultKafkaSender;
 import reactor.test.StepVerifier;
+
+import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.support.KafkaUtils;
+import org.springframework.kafka.support.converter.MessagingMessageConverter;
+import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
+import org.springframework.kafka.test.condition.LogLevels;
+import org.springframework.kafka.test.condition.LogLevelsCondition;
+import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.JUnitUtils;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
  * @author Mark Norkin

@@ -16,9 +16,6 @@
 
 package org.springframework.kafka.listener.adapter;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-
 import java.util.Collections;
 import java.util.List;
 
@@ -38,6 +35,9 @@ import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Gary Russell

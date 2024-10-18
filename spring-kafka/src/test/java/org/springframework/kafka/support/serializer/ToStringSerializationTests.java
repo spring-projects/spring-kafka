@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.support.serializer;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
@@ -30,6 +28,8 @@ import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.support.serializer.testentities.DummyEntity;
 import org.springframework.lang.Nullable;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  *

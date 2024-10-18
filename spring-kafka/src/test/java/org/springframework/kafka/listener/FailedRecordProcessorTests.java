@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.listener;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.util.Collections;
 import java.util.List;
 
@@ -26,6 +24,8 @@ import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.util.backoff.FixedBackOff;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Gary Russell

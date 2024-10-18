@@ -16,11 +16,6 @@
 
 package org.springframework.kafka.listener;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.willThrow;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.List;
@@ -33,6 +28,11 @@ import org.springframework.kafka.listener.adapter.BatchMessagingMessageListenerA
 import org.springframework.kafka.listener.adapter.HandlerAdapter;
 import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 /**
  * @author Gary Russell

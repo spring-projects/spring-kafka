@@ -16,12 +16,12 @@
 
 package org.springframework.kafka.listener;
 
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.junit.jupiter.api.Test;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
-
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.junit.jupiter.api.Test;
 
 /**
  * @author Gary Russell

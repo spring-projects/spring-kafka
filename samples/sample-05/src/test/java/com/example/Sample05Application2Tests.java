@@ -16,8 +16,6 @@
 
 package com.example;
 
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.common.errors.TimeoutException;
@@ -28,6 +26,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.annotation.DirtiesContext;
+
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 /**
  * This test is going to fail from IDE since there is no exposed {@code spring.embedded.kafka.brokers} system property.
