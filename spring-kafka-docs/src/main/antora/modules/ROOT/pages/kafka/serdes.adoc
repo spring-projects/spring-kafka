@@ -364,7 +364,7 @@ producerConfigs.put(DelegatingByTopicSerializer.VALUE_SERIALIZATION_TOPIC_CONFIG
             "topic[0-4]:" + ByteArraySerializer.class.getName()
         + ", topic[5-9]:" + StringSerializer.class.getName());
 ...
-ConsumerConfigs.put(DelegatingByTopicDeserializer.VALUE_SERIALIZATION_TOPIC_CONFIG,
+consumerConfigs.put(DelegatingByTopicDeserializer.VALUE_SERIALIZATION_TOPIC_CONFIG,
             "topic[0-4]:" + ByteArrayDeserializer.class.getName()
         + ", topic[5-9]:" + StringDeserializer.class.getName());
 ----
