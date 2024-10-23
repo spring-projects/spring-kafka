@@ -6,6 +6,6 @@ on:
 
 jobs:
   announce-milestone-planning:
-    uses: spring-io/spring-github-workflows/.github/workflows/spring-announce-milestone-planning.yml@main
+    uses: spring-io/spring-github-workflows/.github/workflows/spring-announce-milestone-planning.yml@v4
     secrets:
       SPRING_RELEASE_CHAT_WEBHOOK_URL: ${{ secrets.SPRING_RELEASE_GCHAT_WEBHOOK_URL }}
