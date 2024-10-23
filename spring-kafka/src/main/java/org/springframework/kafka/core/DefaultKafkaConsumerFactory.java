@@ -74,6 +74,7 @@ import org.springframework.util.StringUtils;
  * @author Adrian Gygax
  * @author Yaniv Nahoum
  * @author Sanghyeok An
+ * @author Borahm Lee
  */
 public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 		implements ConsumerFactory<K, V>, BeanNameAware, ApplicationContextAware {
@@ -222,7 +223,7 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 
 	/**
 	 * Set to false (default true) to prevent programmatically provided deserializers (via
-	 * constructor or setters) from being configured using the producer configuration,
+	 * constructor or setters) from being configured using the consumer configuration,
 	 * e.g. if the deserializers are already fully configured.
 	 * @param configureDeserializers false to not configure.
 	 * @since 2.8.7
