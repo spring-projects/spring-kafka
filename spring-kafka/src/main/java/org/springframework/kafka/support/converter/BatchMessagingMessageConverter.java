@@ -176,7 +176,8 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 				if (obj instanceof String) {
 					listenerInfo = (String) obj;
 				}
-			} else {
+			}
+			else {
 				natives.add(record.headers());
 			}
 			if (this.rawRecordHeader) {
@@ -210,8 +211,8 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 	}
 
 	private void addRecordInfo(ConsumerRecord<?, ?> record, Type type, List<Object> payloads, List<Object> keys,
-	    List<String> topics, List<Integer> partitions, List<Long> offsets, List<String> timestampTypes,
-		   List<Long> timestamps, List<ConversionException> conversionFailures) {
+		List<String> topics, List<Integer> partitions, List<Long> offsets, List<String> timestampTypes,
+		List<Long> timestamps, List<ConversionException> conversionFailures) {
 		payloads.add(obtainPayload(type, record, conversionFailures));
 		keys.add(record.key());
 		topics.add(record.topic());
