@@ -172,11 +172,9 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 			addRecordInfo(record, type, payloads, keys, topics, partitions, offsets, timestampTypes, timestamps, conversionFailures);
 			if (this.headerMapper != null && record.headers() != null) {
 				addToConvertedHeaders(record.headers(), convertedHeaders);
-				if (!convertedHeaders.isEmpty()) {
-					Object obj = convertedHeaders.get(convertedHeaders.size() - 1).get(KafkaHeaders.LISTENER_INFO);
-					if (obj != null && obj instanceof String) {
-						listenerInfo = (String) obj;
-					}
+				Object obj = convertedHeaders.get(convertedHeaders.size() - 1).get(KafkaHeaders.LISTENER_INFO);
+				if (obj instanceof String) {
+					listenerInfo = (String) obj;
 				}
 			} else {
 				natives.add(record.headers());
