@@ -67,7 +67,7 @@ ext {
 	mockitoVersion = '5.10.0'
 	reactorVersion = '2023.0.11'
 	scalaVersion = '2.13'
-	springBootVersion = '3.2.10' // docs module
+	springBootVersion = '3.2.11' // docs module
 	springDataVersion = '2024.0.5'
 	springRetryVersion = '2.0.10'
 	springVersion = '6.1.14'
