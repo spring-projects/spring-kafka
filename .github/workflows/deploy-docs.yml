@@ -16,4 +16,4 @@ permissions:
 jobs:
   dispatch-docs-build:
     if: github.repository_owner == 'spring-projects'
-    uses: spring-io/spring-github-workflows/.github/workflows/spring-dispatch-docs-build.yml@v3
+    uses: spring-io/spring-github-workflows/.github/workflows/spring-dispatch-docs-build.yml@v4
