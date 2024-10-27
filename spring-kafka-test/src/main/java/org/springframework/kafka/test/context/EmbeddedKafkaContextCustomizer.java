@@ -47,12 +47,14 @@ import org.springframework.util.StringUtils;
  * @author Oleg Artyomov
  * @author Sergio Lourenco
  * @author Pawel Lozinski
- * @author Dltmd202
+ * @author Seonghwan Lee
+ *
  * @since 1.3
  */
 class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 
 	private final EmbeddedKafka embeddedKafka;
+
 	private final String TRANSACTION_STATE_LOG_REPLICATION_FACTOR = "transaction.state.log.replication.factor";
 
 	EmbeddedKafkaContextCustomizer(EmbeddedKafka embeddedKafka) {
@@ -122,7 +124,7 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 			}
 		}
 
-		properties.putIfAbsent(TRANSACTION_STATE_LOG_REPLICATION_FACTOR, String.valueOf(Math.min(3, embeddedKafka.value())));
+		properties.putIfAbsent(TRANSACTION_STATE_LOG_REPLICATION_FACTOR, String.valueOf(Math.min(3, embeddedKafka.count())));
 
 		embeddedKafkaBroker.brokerProperties((Map<String, String>) (Map<?, ?>) properties);
 		if (StringUtils.hasText(this.embeddedKafka.bootstrapServersProperty())) {

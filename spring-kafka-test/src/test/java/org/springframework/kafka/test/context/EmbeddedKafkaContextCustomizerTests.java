@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.test.context;
 
+import java.util.Map;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -25,7 +27,6 @@ import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -34,6 +35,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Sergio Lourenco
  * @author Artem Bilan
  * @author Gary Russell
+ * @author Seonghwan Lee
+ *
  * @since 1.3
  */
 public class EmbeddedKafkaContextCustomizerTests {
@@ -106,7 +109,6 @@ public class EmbeddedKafkaContextCustomizerTests {
 
 		assertThat(properties.get("transaction.state.log.replication.factor")).isEqualTo("2");
 	}
-
 
 	@EmbeddedKafka(kraft = false)
 	private static final class TestWithEmbeddedKafka {
