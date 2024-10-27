@@ -25,6 +25,8 @@ import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -32,7 +34,6 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Sergio Lourenco
  * @author Artem Bilan
  * @author Gary Russell
- *
  * @since 1.3
  */
 public class EmbeddedKafkaContextCustomizerTests {
@@ -91,6 +92,22 @@ public class EmbeddedKafkaContextCustomizerTests {
 				.matches("127.0.0.1:[0-9]+,127.0.0.1:[0-9]+");
 	}
 
+	@Test
+	void testTransactionReplicationFactor() {
+		EmbeddedKafka annotationWithPorts =
+				AnnotationUtils.findAnnotation(TestWithEmbeddedKafkaTransactionFactor.class, EmbeddedKafka.class);
+		EmbeddedKafkaContextCustomizer customizer = new EmbeddedKafkaContextCustomizer(annotationWithPorts);
+		ConfigurableApplicationContext context = new GenericApplicationContext();
+		customizer.customizeContext(context, null);
+		context.refresh();
+
+		EmbeddedKafkaBroker embeddedKafkaBroker = context.getBean(EmbeddedKafkaBroker.class);
+		Map<String, Object> properties = (Map<String, Object>) KafkaTestUtils.getPropertyValue(embeddedKafkaBroker, "brokerProperties");
+
+		assertThat(properties.get("transaction.state.log.replication.factor")).isEqualTo("2");
+	}
+
+
 	@EmbeddedKafka(kraft = false)
 	private static final class TestWithEmbeddedKafka {
 
@@ -108,6 +125,11 @@ public class EmbeddedKafkaContextCustomizerTests {
 
 	@EmbeddedKafka(kraft = false, count = 2)
 	private static final class TestWithEmbeddedKafkaMulti {
+
+	}
+
+	@EmbeddedKafka(kraft = false, count = 2)
+	private static final class TestWithEmbeddedKafkaTransactionFactor {
 
 	}
 
