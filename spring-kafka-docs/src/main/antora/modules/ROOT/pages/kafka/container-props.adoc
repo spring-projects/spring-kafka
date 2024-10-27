@@ -130,7 +130,7 @@ Also see `idleBeforeDataMultiplier`.
 |[[listenerTaskExecutor]]<<listenerTaskExecutor,`listenerTaskExecutor`>>
 |`SimpleAsyncTaskExecutor`
 |A task executor to run the consumer threads.
-The default executor creates threads named `<name>-C-n`; with the `KafkaMessageListenerContainer`, the name is the bean name; with the `ConcurrentMessageListenerContainer` the name is the bean name suffixed with `-n` where n is incremented for each child container.
+The default executor creates threads named `<name>-C-n`; with the `KafkaMessageListenerContainer`, the name is the bean name; with the `ConcurrentMessageListenerContainer` the name is the bean name suffixed with `-m` where `m` is incremented for each child container. See xref:kafka/receiving-messages/container-thread-naming.adoc#container-thread-naming[Container Thread Naming].
 
 |[[logContainerConfig]]<<logContainerConfig,`logContainerConfig`>>
 |`false`
@@ -239,8 +239,8 @@ Mutually exclusive; at least one must be provided; enforced by `ContainerPropert
 |Deprecated since 3.2, see <<kafkaAwareTransactionManager>>, xref:kafka/transactions.adoc#transaction-synchronization[Other transaction managers].
 |===
 
-[[alc-props]]
-.`AbstractListenerContainer` Properties
+[[amlc-props]]
+.`AbstractMessageListenerContainer` Properties
 [cols="9,10,16", options="header"]
 |===
 | Property
@@ -320,10 +320,6 @@ Also see `interceptBeforeTx`.
 |(read only)
 |The partitions currently assigned to this container (explicitly or not).
 
-|[[assignedPartitionsByClientId]]<<assignedPartitionsByClientId,`assignedPartitionsByClientId`>>
-|(read only)
-|The partitions currently assigned to this container (explicitly or not).
-
 |[[clientIdSuffix]]<<clientIdSuffix,`clientIdSuffix`>>
 |`null`
 |Used by the concurrent container to give each child container's consumer a unique `client.id`.
@@ -347,10 +343,6 @@ Also see `interceptBeforeTx`.
 |[[assignedPartitions2]]<<assignedPartitions2,`assignedPartitions`>>
 |(read only)
 |The aggregate of partitions currently assigned to this container's child `KafkaMessageListenerContainer`+++s+++ (explicitly or not).
-
-|[[assignedPartitionsByClientId2]]<<assignedPartitionsByClientId2,`assignedPartitionsByClientId`>>
-|(read only)
-|The partitions currently assigned to this container's child `KafkaMessageListenerContainer`+++s+++ (explicitly or not), keyed by the child container's consumer's `client.id` property.
 
 |[[concurrency]]<<concurrency,`concurrency`>>
 |1

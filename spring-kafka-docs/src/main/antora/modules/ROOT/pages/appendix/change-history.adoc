@@ -386,7 +386,7 @@ The `@KafkaListener` annotation now has the `filter` attribute, to override the 
 
 The `@KafkaListener` annotation now has the `info` attribute; this is used to populate the new listener container property `listenerInfo`.
 This is then used to populate a `KafkaHeaders.LISTENER_INFO` header in each record which can be used in `RecordInterceptor`, `RecordFilterStrategy`, or the listener itself.
-See xref:kafka/annotation-error-handling.adoc#li-header[Listener Info Header] and xref:kafka/container-props.adoc#alc-props[Abstract Listener Container Properties] for more information.
+See xref:kafka/annotation-error-handling.adoc#li-header[Listener Info Header] and xref:kafka/container-props.adoc#amlc-props[AbstractMessageListenerContainer Properties] for more information.
 
 [[x28-template]]
 === `KafkaTemplate` Changes

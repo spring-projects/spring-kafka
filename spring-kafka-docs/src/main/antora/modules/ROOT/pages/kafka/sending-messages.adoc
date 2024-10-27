@@ -139,10 +139,11 @@ The following listing shows the definition of the `ProducerListener` interface:
 ----
 public interface ProducerListener<K, V> {
 
-    default void onSuccess(ProducerRecord<K, V> producerRecord, RecordMetadata recordMetadata);
+    default void onSuccess(ProducerRecord<K, V> producerRecord, RecordMetadata recordMetadata) {
+	}
 
-    default void onError(ProducerRecord<K, V> producerRecord, RecordMetadata recordMetadata,
-            Exception exception);
+    default void onError(ProducerRecord<K, V> producerRecord, RecordMetadata recordMetadata, Exception exception) {
+	}
 
 }
 ----

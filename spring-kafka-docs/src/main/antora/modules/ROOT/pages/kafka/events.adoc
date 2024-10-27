@@ -111,7 +111,7 @@ You can use this event to restart the container after such a condition:
 
 [source, java]
 ----
-if (event.getReason.equals(Reason.FENCED)) {
+if (event.getReason().equals(Reason.FENCED)) {
     event.getSource(MessageListenerContainer.class).start();
 }
 ----
@@ -205,7 +205,7 @@ Consequently, in the preceding example, we narrow the events received based on t
 Since containers created for the `@KafkaListener` support concurrency, the actual containers are named `id-n` where the `n` is a unique value for each instance to support the concurrency.
 That is why we use `startsWith` in the condition.
 
-CAUTION: If you wish to use the idle event to stop the lister container, you should not call `container.stop()` on the thread that calls the listener.
+CAUTION: If you wish to use the idle event to stop the listener container, you should not call `container.stop()` on the thread that calls the listener.
 Doing so causes delays and unnecessary log messages.
 Instead, you should hand off the event to a different thread that can then stop the container.
 Also, you should not `stop()` the container instance if it is a child container.
