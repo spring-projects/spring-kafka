@@ -117,7 +117,7 @@ The following example shows how to do so:
 ----
 @Bean
 public KafkaTemplate<String, String> myReplyingTemplate() {
-    return new KafkaTemplate<Integer, String>(producerFactory()) {
+    return new KafkaTemplate<String, String>(producerFactory()) {
 
         @Override
         public CompletableFuture<SendResult<String, String>> send(String topic, String data) {
