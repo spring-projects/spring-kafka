@@ -171,8 +171,8 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 		for (ConsumerRecord<?, ?> record : records) {
 			addRecordInfo(record, type, payloads, keys, topics, partitions, offsets, timestampTypes, timestamps, conversionFailures);
 			if (this.headerMapper != null && record.headers() != null) {
-				addToConvertedHeaders(record.headers(), convertedHeaders);
-				Object obj = convertedHeaders.get(convertedHeaders.size() - 1).get(KafkaHeaders.LISTENER_INFO);
+				Map<String, Object> converted = convertHeaders(record.headers(), convertedHeaders);
+				Object obj = converted.get(KafkaHeaders.LISTENER_INFO);
 				if (obj instanceof String) {
 					listenerInfo = (String) obj;
 				}
@@ -230,10 +230,11 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 				: convert(record, type, conversionFailures);
 	}
 
-	private void addToConvertedHeaders(Headers headers, List<Map<String, Object>> convertedHeaders) {
+	private Map<String, Object> convertHeaders(Headers headers, List<Map<String, Object>> convertedHeaders) {
 		Map<String, Object> converted = new HashMap<>();
 		this.headerMapper.toHeaders(headers, converted);
 		convertedHeaders.add(converted);
+		return converted;
 	}
 
 	@Override
