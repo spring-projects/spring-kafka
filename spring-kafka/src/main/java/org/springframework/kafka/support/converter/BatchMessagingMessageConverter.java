@@ -184,7 +184,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 				raws.add(record);
 			}
 		}
-		if (this.headerMapper == null) {
+		if (this.headerMapper == null && !natives.isEmpty()) {
 			this.logger.debug(() ->
 					"No header mapper is available; Jackson is required for the default mapper; "
 							+ "headers (if present) are not mapped but provided raw in "
