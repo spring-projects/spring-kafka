@@ -56,7 +56,7 @@ _you should see branches on origin as well as upstream, including 'main'_
   - For example, to create and switch to a new branch for issue GH-123: `git checkout -b GH-123`
 * You might be working on several different topic branches at any given time, but when at a stopping point for one of those branches, commit (a local operation).
 * Please follow the "Commit Guidelines" described in
-https://git-scm.com/book/en/Distributed-Git-Contributing-to-a-Project[this chapter of Pro Git].
+https://git-scm.com/book/ms/v2/Distributed-Git-Contributing-to-a-Project[this chapter of Pro Git].
 * Then to begin working on another issue (say GH-101): `git checkout GH-101`. The _-b_ flag is not needed if that
 branch already exists in your local repository.
 * When ready to resolve an issue or to collaborate with others, you can push your branch to origin (your fork),
