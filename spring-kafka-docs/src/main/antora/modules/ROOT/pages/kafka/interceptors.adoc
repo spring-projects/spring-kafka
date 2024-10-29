@@ -30,11 +30,9 @@ public class Application {
         Map<String, Object> producerProperties = new HashMap<>();
         // producerProperties.put(..., ...)
         // ...
-        Map<String, Object> producerProperties = properties.buildProducerProperties();
         producerProperties.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, MyProducerInterceptor.class.getName());
         producerProperties.put("some.bean", someBean);
-        DefaultKafkaProducerFactory<?, ?> factory = new DefaultKafkaProducerFactory<>(producerProperties);
-        return factory;
+        return new DefaultKafkaProducerFactory<>(producerProperties);
     }
 
     @Bean
