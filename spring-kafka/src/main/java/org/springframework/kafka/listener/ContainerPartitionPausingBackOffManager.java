@@ -32,12 +32,13 @@ import org.springframework.util.Assert;
  *
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Borahm Lee
  * @since 2.9
  * @see DefaultErrorHandler
  */
 public class ContainerPartitionPausingBackOffManager implements KafkaConsumerBackoffManager {
 
-	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(KafkaConsumerBackoffManager.class));
+	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(ContainerPartitionPausingBackOffManager.class));
 
 	private final ListenerContainerRegistry listenerContainerRegistry;
 

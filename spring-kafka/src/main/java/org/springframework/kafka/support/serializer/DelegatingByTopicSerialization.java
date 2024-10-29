@@ -25,6 +25,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
+import org.apache.commons.logging.LogFactory;
+
 import org.springframework.core.log.LogAccessor;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
@@ -40,6 +42,7 @@ import org.springframework.util.StringUtils;
  * @author Gary Russell
  * @author Wang Zhiyang
  * @author Sanghyeok An
+ * @author Borahm Lee
  *
  * @since 2.8
  *
@@ -48,7 +51,7 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 
 	private static final String UNCHECKED = "unchecked";
 
-	private static final LogAccessor LOGGER = new LogAccessor(DelegatingDeserializer.class);
+	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(DelegatingByTopicSerialization.class));
 
 	/**
 	 * Name of the configuration property containing the serialization selector map for

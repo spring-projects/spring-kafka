@@ -88,12 +88,13 @@ import org.springframework.util.Assert;
  * @author Adrian Chlebosz
  * @author Soby Chacko
  * @author Sanghyeok An
+ * @author Borahm Lee
  *
  * @since 2.2
  */
 public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker {
 
-	private static final LogAccessor logger = new LogAccessor(LogFactory.getLog(EmbeddedKafkaBroker.class)); // NOSONAR
+	private static final LogAccessor logger = new LogAccessor(LogFactory.getLog(EmbeddedKafkaZKBroker.class)); // NOSONAR
 
 	public static final String SPRING_EMBEDDED_ZOOKEEPER_CONNECT = "spring.embedded.zookeeper.connect";
 
