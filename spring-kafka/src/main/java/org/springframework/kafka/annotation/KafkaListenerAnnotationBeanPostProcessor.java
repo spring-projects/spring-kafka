@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -1014,7 +1015,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	private TopicPartitionOffset.SeekPosition resloveTopicPartitionOffsetSeekPosition(@Nullable Object seekPosition) {
 		TopicPartitionOffset.SeekPosition resloveTpoSp = null;
 		if (seekPosition instanceof String seekPositionName) {
-			String capitalLetterSeekPositionName = seekPositionName.trim().toUpperCase();
+			String capitalLetterSeekPositionName = seekPositionName.trim().toUpperCase(Locale.ROOT);
 			if (SeekPosition.BEGINNING.name().equals(capitalLetterSeekPositionName)) {
 				resloveTpoSp = SeekPosition.BEGINNING;
 			}
