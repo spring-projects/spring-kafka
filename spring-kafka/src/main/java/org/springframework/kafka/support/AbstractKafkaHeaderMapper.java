@@ -24,6 +24,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -352,13 +353,13 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 
 		SimplePatternBasedHeaderMatcher(String pattern, boolean negate) {
 			Assert.notNull(pattern, "Pattern must no be null");
-			this.pattern = pattern.toLowerCase();
+			this.pattern = pattern.toLowerCase(Locale.ROOT);
 			this.negate = negate;
 		}
 
 		@Override
 		public boolean matchHeader(String headerName) {
-			String header = headerName.toLowerCase();
+			String header = headerName.toLowerCase(Locale.ROOT);
 			if (PatternMatchUtils.simpleMatch(this.pattern, header)) {
 				LOGGER.debug(() ->
 						MessageFormat.format(
