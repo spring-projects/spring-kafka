@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -291,7 +290,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 			if (original != null) {
 				SerializationUtils.deserializationException(record.headers(), original, ex, false);
 				conversionFailures.add(ex);
-				logger.warn(ex,
+				this.logger.warn(ex,
 						LogMessage.format("Could not convert message for topic=%s, partition=%d, offset=%d",
 								record.topic(),
 								record.partition(),
