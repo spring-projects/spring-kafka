@@ -724,6 +724,24 @@ public void listen(List<Message<Foo>> fooMessages) {
 }
 ----
 
+If record in the batch cannot be converted, its payload is set as `null` into the target `payloads` list.
+The conversion exception is logged as warning for this record and also stored into a `KafkaHeaders.CONVERSION_FAILURES` header as an item of the `List<ConversionException>`.
+The target `@KafkaListener` method may perform Java `Stream` API to filter out those `null` values from the payload list or do something with the conversion exceptions header:
+
+[source, java]
+----
+@KafkaListener(id = "foo", topics = "foo", autoStartup = "false")
+public void listen(List<Foo> list,
+         @Header(KafkaHeaders.CONVERSION_FAILURES) List<ConversionException> conversionFailures) {
+
+    for (int i = 0; i < list.size(); i++) {
+        if (conversionFailures.get(i) != null) {
+            throw new BatchListenerFailedException("Conversion Failed", conversionFailures.get(i), i);
+        }
+    }
+}
+----
+
 [[conversionservice-customization]]
 == `ConversionService` Customization
 
