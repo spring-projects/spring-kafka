@@ -96,6 +96,7 @@ public class EmbeddedKafkaContextCustomizerTests {
 	}
 
 	@Test
+	@SuppressWarnings("unchecked")
 	void testTransactionReplicationFactor() {
 		EmbeddedKafka annotationWithPorts =
 				AnnotationUtils.findAnnotation(TestWithEmbeddedKafkaTransactionFactor.class, EmbeddedKafka.class);
