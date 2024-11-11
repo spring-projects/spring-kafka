@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -73,6 +74,8 @@ import static org.assertj.core.api.Assertions.fail;
 @DirtiesContext
 @EmbeddedKafka
 @TestPropertySource(properties = { "five.attempts=5", "kafka.template=customKafkaTemplate"})
+@DisabledIfEnvironmentVariable(named = "GITHUB_ACTION", matches = "true",
+		disabledReason = "The test is too heavy and rely a lot in the timing.")
 public class AsyncCompletableFutureRetryTopicScenarioTests {
 
 	private final static String MAIN_TOPIC_CONTAINER_FACTORY = "kafkaListenerContainerFactory";
