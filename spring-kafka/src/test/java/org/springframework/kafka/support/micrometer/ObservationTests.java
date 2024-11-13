@@ -153,6 +153,9 @@ public class ObservationTests {
 			}
 		});
 
+		MessageListenerContainer listenerContainer1 = rler.getListenerContainer("obs1");
+		listenerContainer1.stop();
+
 		template.send(OBSERVATION_TEST_1, "test")
 				.thenAccept((sendResult) -> spanFromCallback.set(tracer.currentSpan()))
 				.get(10, TimeUnit.SECONDS);
@@ -166,7 +169,7 @@ public class ObservationTests {
 				"key", "value"));
 
 		assertThat(spanFromCallback.get()).isNotNull();
-		MessageListenerContainer listenerContainer1 = rler.getListenerContainer("obs1");
+		listenerContainer1.start();
 		MessageListenerContainer listenerContainer2 = rler.getListenerContainer("obs2");
 		assertThat(listenerContainer1).isNotNull();
 		assertThat(listenerContainer2).isNotNull();
