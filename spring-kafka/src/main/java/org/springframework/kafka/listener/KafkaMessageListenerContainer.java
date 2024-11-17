@@ -1469,13 +1469,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			// If we use failedRecords.clear() to remove copied record from failed records,
 			// We may encounter race condition during this operation.
-			// Main Thread : copy 100 records from failed records.
-			// Thread A : Oops! I have an exception. Add record to failedRecords. (failedRecords size is 101)
-			// Main Thread : clear failedRecords!
-			// In this case, Main Thread misses one failed record.
-			int shouldRemoveCount = copyFailedRecords.size();
-			for (int i = 0; i < shouldRemoveCount; i++) {
-				failedRecords.pollFirst();
+			// Other, the thread which execute this block, may miss one failed record.
+			int capturedRecordsCount = copyFailedRecords.size();
+			for (int i = 0; i < capturedRecordsCount; i++) {
+				this.failedRecords.pollFirst();
 			}
 
 			// If any copied and failed record fails to complete due to an unexpected error,
