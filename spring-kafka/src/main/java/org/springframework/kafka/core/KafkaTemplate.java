@@ -153,7 +153,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 	private KafkaTemplateObservationConvention observationConvention;
 
-	private ObservationRegistry observationRegistry = ObservationRegistry.NOOP;
+	private ObservationRegistry observationRegistry;
 
 	@Nullable
 	private Function<ProducerRecord<?, ?>, Map<String, String>> micrometerTagsProvider;
@@ -457,6 +457,15 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	}
 
 	/**
+	 * Configure the {@link ObservationRegistry} to use for recording observations.
+	 * @param observationRegistry the observation registry to use.
+	 * @since 3.3
+	 */
+	public void setObservationRegistry(ObservationRegistry observationRegistry) {
+		this.observationRegistry = observationRegistry;
+	}
+
+	/**
 	 * Return the {@link KafkaAdmin}, used to find the cluster id for observation, if
 	 * present.
 	 * @return the kafkaAdmin
@@ -478,7 +487,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 	@Override
 	public void afterSingletonsInstantiated() {
-		if (this.observationEnabled && this.applicationContext != null) {
+		if (this.observationRegistry == null && this.observationEnabled && this.applicationContext != null) {
 			this.observationRegistry = this.applicationContext.getBeanProvider(ObservationRegistry.class)
 					.getIfUnique(() -> this.observationRegistry);
 			if (this.kafkaAdmin == null) {

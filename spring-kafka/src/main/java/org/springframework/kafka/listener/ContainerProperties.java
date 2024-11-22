@@ -42,6 +42,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
+import io.micrometer.observation.ObservationRegistry;
 
 /**
  * Contains runtime properties for a listener container.
@@ -280,6 +281,8 @@ public class ContainerProperties extends ConsumerProperties {
 	private boolean micrometerEnabled = true;
 
 	private boolean observationEnabled;
+
+	private ObservationRegistry observationRegistry;
 
 	private Duration consumerStartTimeout = DEFAULT_CONSUMER_START_TIMEOUT;
 
@@ -716,6 +719,19 @@ public class ContainerProperties extends ConsumerProperties {
 		this.observationEnabled = observationEnabled;
 	}
 
+	public ObservationRegistry getObservationRegistry() {
+		return this.observationRegistry;
+	}
+
+	/**
+	 * Configure the {@link ObservationRegistry} to use for recording observations.
+	 * @param observationRegistry the observation registry to use.
+	 * @since 3.3
+	 */
+	public void setObservationRegistry(ObservationRegistry observationRegistry) {
+		this.observationRegistry = observationRegistry;
+	}
+
 	/**
 	 * Set additional tags for the Micrometer listener timers.
 	 * @param tags the tags.
@@ -1117,6 +1133,9 @@ public class ContainerProperties extends ConsumerProperties {
 				+ "\n observationEnabled=" + this.observationEnabled
 				+ (this.observationConvention != null
 						? "\n observationConvention=" + this.observationConvention
+						: "")
+				+ (this.observationRegistry != null
+						? "\n observationRegistry=" + this.observationRegistry
 						: "")
 				+ "\n restartAfterAuthExceptions=" + this.restartAfterAuthExceptions
 				+ "\n]";
