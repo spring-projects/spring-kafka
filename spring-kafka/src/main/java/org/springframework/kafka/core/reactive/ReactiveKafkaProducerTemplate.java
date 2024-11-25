@@ -33,6 +33,7 @@ import reactor.kafka.sender.SenderOptions;
 import reactor.kafka.sender.SenderRecord;
 import reactor.kafka.sender.SenderResult;
 import reactor.kafka.sender.TransactionManager;
+import reactor.util.annotation.Nullable;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -92,19 +93,19 @@ public class ReactiveKafkaProducerTemplate<K, V> implements AutoCloseable, Dispo
 		return sendTransactionally.single();
 	}
 
-	public Mono<SenderResult<Void>> send(String topic, V value) {
+	public Mono<SenderResult<Void>> send(String topic, @Nullable V value) {
 		return send(new ProducerRecord<>(topic, value));
 	}
 
-	public Mono<SenderResult<Void>> send(String topic, K key, V value) {
+	public Mono<SenderResult<Void>> send(String topic, K key, @Nullable V value) {
 		return send(new ProducerRecord<>(topic, key, value));
 	}
 
-	public Mono<SenderResult<Void>> send(String topic, int partition, K key, V value) {
+	public Mono<SenderResult<Void>> send(String topic, int partition, K key, @Nullable V value) {
 		return send(new ProducerRecord<>(topic, partition, key, value));
 	}
 
-	public Mono<SenderResult<Void>> send(String topic, int partition, long timestamp, K key, V value) {
+	public Mono<SenderResult<Void>> send(String topic, int partition, long timestamp, K key, @Nullable V value) {
 		return send(new ProducerRecord<>(topic, partition, timestamp, key, value));
 	}
 
