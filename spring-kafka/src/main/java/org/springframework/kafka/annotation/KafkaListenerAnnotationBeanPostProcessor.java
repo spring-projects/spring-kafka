@@ -37,6 +37,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -144,6 +146,7 @@ import org.springframework.validation.Validator;
  * @author Wang Zhiyang
  * @author Sanghyeok An
  * @author Soby Chacko
+ * @author Omer Celik
  *
  * @see KafkaListener
  * @see KafkaListenerErrorHandler
@@ -206,6 +209,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	@Nullable
 	private RetryTopicConfigurer retryTopicConfigurer;
+
+	private final Lock globalLock = new ReentrantLock();
 
 	@Override
 	public int getOrder() {
@@ -278,14 +283,20 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	 * {@link #setEndpointRegistry endpoint registry} has to be explicitly configured.
 	 * @param beanFactory the {@link BeanFactory} to be used.
 	 */
-	public synchronized void setBeanFactory(BeanFactory beanFactory) {
-		this.beanFactory = beanFactory;
-		if (beanFactory instanceof ConfigurableListableBeanFactory clbf) {
-			BeanExpressionResolver beanExpressionResolver = clbf.getBeanExpressionResolver();
-			if (beanExpressionResolver != null) {
-				this.resolver = beanExpressionResolver;
+	public void setBeanFactory(BeanFactory beanFactory) {
+		try {
+			this.globalLock.lock();
+			this.beanFactory = beanFactory;
+			if (beanFactory instanceof ConfigurableListableBeanFactory clbf) {
+				BeanExpressionResolver beanExpressionResolver = clbf.getBeanExpressionResolver();
+				if (beanExpressionResolver != null) {
+					this.resolver = beanExpressionResolver;
+				}
+				this.expressionContext = new BeanExpressionContext(clbf, this.listenerScope);
 			}
-			this.expressionContext = new BeanExpressionContext(clbf, this.listenerScope);
+		}
+		finally {
+			this.globalLock.unlock();
 		}
 	}
 
@@ -451,36 +462,48 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 	}
 
-	private synchronized void processMultiMethodListeners(Collection<KafkaListener> classLevelListeners,
+	private void processMultiMethodListeners(Collection<KafkaListener> classLevelListeners,
 			List<Method> multiMethods, Class<?> clazz, Object bean, String beanName) {
 
-		List<Method> checkedMethods = new ArrayList<>();
-		Method defaultMethod = null;
-		for (Method method : multiMethods) {
-			Method checked = checkProxy(method, bean);
-			KafkaHandler annotation = AnnotationUtils.findAnnotation(method, KafkaHandler.class);
-			if (annotation != null && annotation.isDefault()) {
-				Method toAssert = defaultMethod;
-				Assert.state(toAssert == null, () -> "Only one @KafkaHandler can be marked 'isDefault', found: "
-						+ toAssert.toString() + " and " + method);
-				defaultMethod = checked;
+		try {
+			this.globalLock.lock();
+			List<Method> checkedMethods = new ArrayList<>();
+			Method defaultMethod = null;
+			for (Method method : multiMethods) {
+				Method checked = checkProxy(method, bean);
+				KafkaHandler annotation = AnnotationUtils.findAnnotation(method, KafkaHandler.class);
+				if (annotation != null && annotation.isDefault()) {
+					Method toAssert = defaultMethod;
+					Assert.state(toAssert == null, () -> "Only one @KafkaHandler can be marked 'isDefault', found: "
+							+ toAssert.toString() + " and " + method);
+					defaultMethod = checked;
+				}
+				checkedMethods.add(checked);
 			}
-			checkedMethods.add(checked);
+			for (KafkaListener classLevelListener : classLevelListeners) {
+				MultiMethodKafkaListenerEndpoint<K, V> endpoint =
+						new MultiMethodKafkaListenerEndpoint<>(checkedMethods, defaultMethod, bean);
+				processMainAndRetryListeners(classLevelListener, bean, beanName, endpoint, null, clazz);
+			}
 		}
-		for (KafkaListener classLevelListener : classLevelListeners) {
-			MultiMethodKafkaListenerEndpoint<K, V> endpoint =
-					new MultiMethodKafkaListenerEndpoint<>(checkedMethods, defaultMethod, bean);
-			processMainAndRetryListeners(classLevelListener, bean, beanName, endpoint, null, clazz);
+		finally {
+			this.globalLock.unlock();
 		}
 	}
 
-	protected synchronized void processKafkaListener(KafkaListener kafkaListener, Method method, Object bean,
+	protected void processKafkaListener(KafkaListener kafkaListener, Method method, Object bean,
 			String beanName) {
 
-		Method methodToUse = checkProxy(method, bean);
-		MethodKafkaListenerEndpoint<K, V> endpoint = new MethodKafkaListenerEndpoint<>();
-		endpoint.setMethod(methodToUse);
-		processMainAndRetryListeners(kafkaListener, bean, beanName, endpoint, methodToUse, null);
+		try {
+			this.globalLock.lock();
+			Method methodToUse = checkProxy(method, bean);
+			MethodKafkaListenerEndpoint<K, V> endpoint = new MethodKafkaListenerEndpoint<>();
+			endpoint.setMethod(methodToUse);
+			processMainAndRetryListeners(kafkaListener, bean, beanName, endpoint, methodToUse, null);
+		}
+		finally {
+			this.globalLock.unlock();
+		}
 	}
 
 	private void processMainAndRetryListeners(KafkaListener kafkaListener, Object bean, String beanName,
