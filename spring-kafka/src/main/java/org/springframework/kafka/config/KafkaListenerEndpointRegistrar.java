@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.BeanFactoryAware;
@@ -40,6 +42,7 @@ import org.springframework.validation.Validator;
  * @author Gary Russell
  * @author Filip Halemba
  * @author Wang Zhiyang
+ * @author Omer Celik
  *
  * @see org.springframework.kafka.annotation.KafkaListenerConfigurer
  */
@@ -48,6 +51,8 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	private final List<KafkaListenerEndpointDescriptor> endpointDescriptors = new ArrayList<>();
 
 	private List<HandlerMethodArgumentResolver> customMethodArgumentResolvers = new ArrayList<>();
+
+	private final Lock endpointsLock = new ReentrantLock();
 
 	private KafkaListenerEndpointRegistry endpointRegistry;
 
@@ -188,7 +193,8 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	}
 
 	protected void registerAllEndpoints() {
-		synchronized (this.endpointDescriptors) {
+		try {
+			this.endpointsLock.lock();
 			for (KafkaListenerEndpointDescriptor descriptor : this.endpointDescriptors) {
 				if (descriptor.endpoint instanceof MultiMethodKafkaListenerEndpoint<?, ?> mmkle
 						&& this.validator != null) {
@@ -198,6 +204,9 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 						descriptor.endpoint, resolveContainerFactory(descriptor));
 			}
 			this.startImmediately = true;  // trigger immediate startup
+		}
+		finally {
+			this.endpointsLock.unlock();
 		}
 	}
 
@@ -234,7 +243,8 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 		Assert.hasText(endpoint.getId(), "Endpoint id must be set");
 		// Factory may be null, we defer the resolution right before actually creating the container
 		KafkaListenerEndpointDescriptor descriptor = new KafkaListenerEndpointDescriptor(endpoint, factory);
-		synchronized (this.endpointDescriptors) {
+		try {
+			this.endpointsLock.lock();
 			if (this.startImmediately) { // Register and start immediately
 				this.endpointRegistry.registerListenerContainer(descriptor.endpoint,
 						resolveContainerFactory(descriptor), true);
@@ -242,6 +252,9 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 			else {
 				this.endpointDescriptors.add(descriptor);
 			}
+		}
+		finally {
+			this.endpointsLock.unlock();
 		}
 	}
 

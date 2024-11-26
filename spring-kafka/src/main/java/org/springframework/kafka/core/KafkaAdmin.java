@@ -32,6 +32,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -78,6 +80,7 @@ import org.springframework.util.Assert;
  * @author Sanghyeok An
  * @author Valentina Armenise
  * @author Anders Swanson
+ * @author Omer Celik
  *
  * @since 1.3
  */
@@ -94,6 +97,8 @@ public class KafkaAdmin extends KafkaResourceFactory
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(KafkaAdmin.class));
 
 	private static final AtomicInteger CLIENT_ID_COUNTER = new AtomicInteger();
+
+	private final Lock clusterIdLock = new ReentrantLock();
 
 	private final Map<String, Object> configs;
 
@@ -267,12 +272,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 			}
 			if (adminClient != null) {
 				try {
-					synchronized (this) {
-						if (this.clusterId != null) {
-							this.clusterId = adminClient.describeCluster().clusterId().get(this.operationTimeout,
-									TimeUnit.SECONDS);
-						}
-					}
+					updateClusterId(adminClient);
 					addOrModifyTopicsIfNeeded(adminClient, newTopics);
 					return true;
 				}
@@ -295,6 +295,19 @@ public class KafkaAdmin extends KafkaResourceFactory
 		}
 		this.initializingContext = false;
 		return false;
+	}
+
+	private void updateClusterId(Admin adminClient) throws InterruptedException, ExecutionException, TimeoutException {
+		try {
+			this.clusterIdLock.lock();
+			if (this.clusterId != null) {
+				this.clusterId = adminClient.describeCluster().clusterId().get(this.operationTimeout,
+						TimeUnit.SECONDS);
+			}
+		}
+		finally {
+			this.clusterIdLock.unlock();
+		}
 	}
 
 	/**
