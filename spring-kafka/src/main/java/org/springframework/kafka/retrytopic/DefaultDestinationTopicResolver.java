@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -49,6 +51,7 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  * @author Yvette Quinby
  * @author Adrian Chlebosz
+ * @author Omer Celik
  * @since 2.7
  *
  */
@@ -61,6 +64,8 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 			Arrays.asList(ListenerExecutionFailedException.class, TimestampedException.class);
 
 	private final Map<String, Map<String, DestinationTopicHolder>> sourceDestinationsHolderMap;
+
+	private final Lock sourceDestinationsHolderLock = new ReentrantLock();
 
 	private final Clock clock;
 
@@ -210,8 +215,12 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 	}
 
 	private DestinationTopicHolder getDestinationTopicSynchronized(String mainListenerId, String topic) {
-		synchronized (this.sourceDestinationsHolderMap) {
+		try {
+			sourceDestinationsHolderLock.lock();
 			return doGetDestinationFor(mainListenerId, topic);
+		}
+		finally {
+			sourceDestinationsHolderLock.unlock();
 		}
 	}
 
@@ -229,10 +238,14 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 					+ DefaultDestinationTopicResolver.class.getSimpleName() + " is already refreshed.");
 		}
 		validateDestinations(destinationsToAdd);
-		synchronized (this.sourceDestinationsHolderMap) {
+		try {
+			sourceDestinationsHolderLock.lock();
 			Map<String, DestinationTopicHolder> map = this.sourceDestinationsHolderMap.computeIfAbsent(mainListenerId,
 					id -> new HashMap<>());
 			map.putAll(correlatePairSourceAndDestinationValues(destinationsToAdd));
+		}
+		finally {
+			sourceDestinationsHolderLock.unlock();
 		}
 	}
 

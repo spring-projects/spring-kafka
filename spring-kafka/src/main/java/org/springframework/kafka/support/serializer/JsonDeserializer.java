@@ -25,6 +25,8 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -64,6 +66,7 @@ import org.springframework.util.StringUtils;
  * @author Elliot Kennedy
  * @author Torsten Schleede
  * @author Ivan Ponomarev
+ * @author Omer Celik
  */
 public class JsonDeserializer<T> implements Deserializer<T> {
 
@@ -143,6 +146,8 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	private boolean setterCalled;
 
 	private boolean configured;
+
+	private final Lock trustedPackagesLock = new ReentrantLock();
 
 	/**
 	 * Construct an instance with a default {@link ObjectMapper}.
@@ -397,29 +402,35 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	}
 
 	@Override
-	public synchronized void configure(Map<String, ?> configs, boolean isKey) {
-		if (this.configured) {
-			return;
+	public void configure(Map<String, ?> configs, boolean isKey) {
+		try {
+			trustedPackagesLock.lock();
+			if (this.configured) {
+				return;
+			}
+			Assert.state(!this.setterCalled || !configsHasOurKeys(configs),
+					"JsonDeserializer must be configured with property setters, or via configuration properties; not both");
+			doSetUseTypeMapperForKey(isKey);
+			setUpTypePrecedence(configs);
+			setupTarget(configs, isKey);
+			if (configs.containsKey(TRUSTED_PACKAGES)
+					&& configs.get(TRUSTED_PACKAGES) instanceof String) {
+				this.typeMapper.addTrustedPackages(
+						StringUtils.delimitedListToStringArray((String) configs.get(TRUSTED_PACKAGES), ",", " \r\n\f\t"));
+			}
+			if (configs.containsKey(TYPE_MAPPINGS) && !this.typeMapperExplicitlySet
+					&& this.typeMapper instanceof AbstractJavaTypeMapper) {
+				((AbstractJavaTypeMapper) this.typeMapper).setIdClassMapping(createMappings(configs));
+			}
+			if (configs.containsKey(REMOVE_TYPE_INFO_HEADERS)) {
+				this.removeTypeHeaders = Boolean.parseBoolean(configs.get(REMOVE_TYPE_INFO_HEADERS).toString());
+			}
+			setUpTypeMethod(configs, isKey);
+			this.configured = true;
 		}
-		Assert.state(!this.setterCalled || !configsHasOurKeys(configs),
-				"JsonDeserializer must be configured with property setters, or via configuration properties; not both");
-		doSetUseTypeMapperForKey(isKey);
-		setUpTypePrecedence(configs);
-		setupTarget(configs, isKey);
-		if (configs.containsKey(TRUSTED_PACKAGES)
-				&& configs.get(TRUSTED_PACKAGES) instanceof String) {
-			this.typeMapper.addTrustedPackages(
-					StringUtils.delimitedListToStringArray((String) configs.get(TRUSTED_PACKAGES), ",", " \r\n\f\t"));
+		finally {
+			trustedPackagesLock.unlock();
 		}
-		if (configs.containsKey(TYPE_MAPPINGS) && !this.typeMapperExplicitlySet
-				&& this.typeMapper instanceof AbstractJavaTypeMapper) {
-			((AbstractJavaTypeMapper) this.typeMapper).setIdClassMapping(createMappings(configs));
-		}
-		if (configs.containsKey(REMOVE_TYPE_INFO_HEADERS)) {
-			this.removeTypeHeaders = Boolean.parseBoolean(configs.get(REMOVE_TYPE_INFO_HEADERS).toString());
-		}
-		setUpTypeMethod(configs, isKey);
-		this.configured = true;
 	}
 
 	private boolean configsHasOurKeys(Map<String, ?> configs) {
@@ -522,9 +533,15 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @param packages the packages.
 	 * @since 2.1
 	 */
-	public synchronized void addTrustedPackages(String... packages) {
-		doAddTrustedPackages(packages);
-		this.setterCalled = true;
+	public void addTrustedPackages(String... packages) {
+		try {
+			trustedPackagesLock.lock();
+			doAddTrustedPackages(packages);
+			this.setterCalled = true;
+		}
+		finally {
+			trustedPackagesLock.unlock();
+		}
 	}
 
 	private void addMappingsToTrusted(Map<String, Class<?>> mappings) {
@@ -704,10 +721,16 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @return the deserializer.
 	 * @since 2,5
 	 */
-	public synchronized JsonDeserializer<T> trustedPackages(String... packages) {
-		Assert.isTrue(!this.typeMapperExplicitlySet, "When using a custom type mapper, set the trusted packages there");
-		this.typeMapper.addTrustedPackages(packages);
-		return this;
+	public JsonDeserializer<T> trustedPackages(String... packages) {
+		try {
+			trustedPackagesLock.lock();
+			Assert.isTrue(!this.typeMapperExplicitlySet, "When using a custom type mapper, set the trusted packages there");
+			this.typeMapper.addTrustedPackages(packages);
+			return this;
+		}
+		finally {
+			trustedPackagesLock.unlock();
+		}
 	}
 
 	/**

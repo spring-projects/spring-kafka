@@ -19,6 +19,8 @@ package org.springframework.kafka.support.serializer;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JavaType;
@@ -52,6 +54,7 @@ import org.springframework.util.StringUtils;
  * @author Gary Russell
  * @author Elliot Kennedy
  * @author Wang Zhiyang
+ * @author Omer Celik
  */
 public class JsonSerializer<T> implements Serializer<T> {
 
@@ -79,6 +82,8 @@ public class JsonSerializer<T> implements Serializer<T> {
 	private boolean setterCalled;
 
 	private boolean configured;
+
+	private final Lock globalLock = new ReentrantLock();
 
 	public JsonSerializer() {
 		this((JavaType) null, JacksonUtils.enhancedObjectMapper());
@@ -147,30 +152,36 @@ public class JsonSerializer<T> implements Serializer<T> {
 
 	@Override
 	public synchronized void configure(Map<String, ?> configs, boolean isKey) {
-		if (this.configured) {
-			return;
-		}
-		Assert.state(!this.setterCalled
-				|| (!configs.containsKey(ADD_TYPE_INFO_HEADERS) && !configs.containsKey(TYPE_MAPPINGS)),
-				"JsonSerializer must be configured with property setters, or via configuration properties; not both");
-		setUseTypeMapperForKey(isKey);
-		if (configs.containsKey(ADD_TYPE_INFO_HEADERS)) {
-			Object config = configs.get(ADD_TYPE_INFO_HEADERS);
-			if (config instanceof Boolean configBoolean) {
-				this.addTypeInfo = configBoolean;
+		try {
+			globalLock.lock();
+			if (this.configured) {
+				return;
 			}
-			else if (config instanceof String configString) {
-				this.addTypeInfo = Boolean.parseBoolean(configString);
+			Assert.state(!this.setterCalled
+					|| (!configs.containsKey(ADD_TYPE_INFO_HEADERS) && !configs.containsKey(TYPE_MAPPINGS)),
+					"JsonSerializer must be configured with property setters, or via configuration properties; not both");
+			setUseTypeMapperForKey(isKey);
+			if (configs.containsKey(ADD_TYPE_INFO_HEADERS)) {
+				Object config = configs.get(ADD_TYPE_INFO_HEADERS);
+				if (config instanceof Boolean configBoolean) {
+					this.addTypeInfo = configBoolean;
+				}
+				else if (config instanceof String configString) {
+					this.addTypeInfo = Boolean.parseBoolean(configString);
+				}
+				else {
+					throw new IllegalStateException(ADD_TYPE_INFO_HEADERS + " must be Boolean or String");
+				}
 			}
-			else {
-				throw new IllegalStateException(ADD_TYPE_INFO_HEADERS + " must be Boolean or String");
+			if (configs.containsKey(TYPE_MAPPINGS) && !this.typeMapperExplicitlySet
+					&& this.typeMapper instanceof AbstractJavaTypeMapper abstractJavaTypeMapper) {
+				abstractJavaTypeMapper.setIdClassMapping(createMappings((String) configs.get(TYPE_MAPPINGS)));
 			}
+			this.configured = true;
 		}
-		if (configs.containsKey(TYPE_MAPPINGS) && !this.typeMapperExplicitlySet
-				&& this.typeMapper instanceof AbstractJavaTypeMapper abstractJavaTypeMapper) {
-			abstractJavaTypeMapper.setIdClassMapping(createMappings((String) configs.get(TYPE_MAPPINGS)));
+		finally {
+			globalLock.unlock();
 		}
-		this.configured = true;
 	}
 
 	protected static Map<String, Class<?>> createMappings(String mappings) {
