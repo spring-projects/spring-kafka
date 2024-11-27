@@ -272,16 +272,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 			}
 			if (adminClient != null) {
 				try {
-					try {
-						this.clusterIdLock.lock();
-						if (this.clusterId != null) {
-							this.clusterId = adminClient.describeCluster().clusterId().get(this.operationTimeout,
-									TimeUnit.SECONDS);
-						}
-					}
-					finally {
-						this.clusterIdLock.unlock();
-					}
+					updateClusterId(adminClient);
 					addOrModifyTopicsIfNeeded(adminClient, newTopics);
 					return true;
 				}
@@ -304,6 +295,19 @@ public class KafkaAdmin extends KafkaResourceFactory
 		}
 		this.initializingContext = false;
 		return false;
+	}
+
+	private void updateClusterId(Admin adminClient) throws InterruptedException, ExecutionException, TimeoutException {
+		try {
+			this.clusterIdLock.lock();
+			if (this.clusterId != null) {
+				this.clusterId = adminClient.describeCluster().clusterId().get(this.operationTimeout,
+						TimeUnit.SECONDS);
+			}
+		}
+		finally {
+			this.clusterIdLock.unlock();
+		}
 	}
 
 	/**
