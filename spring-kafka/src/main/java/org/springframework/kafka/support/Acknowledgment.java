@@ -46,7 +46,7 @@ public interface Acknowledgment {
 	 * Must be called on the consumer thread.
 	 * <p>
 	 * @param sleep the duration to sleep; the actual sleep time will be larger of this value
-	 * and the container's {@code maxPollInterval}, which defaults to 5 seconds.
+	 * and the container's {@code pollTimeout}, which defaults to 5 seconds.
 	 * @since 2.8.7
 	 */
 	default void nack(Duration sleep) {
@@ -74,7 +74,7 @@ public interface Acknowledgment {
 	 * <p>
 	 * @param index the index of the failed record in the batch.
 	 * @param sleep the duration to sleep; the actual sleep time will be larger of this value
-	 * and the container's {@code maxPollInterval}, which defaults to 5 seconds.
+	 * and the container's {@code pollTimeout}, which defaults to 5 seconds.
 	 * @since 2.8.7
 	 */
 	default void nack(int index, Duration sleep) {
