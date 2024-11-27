@@ -216,11 +216,11 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 
 	private DestinationTopicHolder getDestinationTopicSynchronized(String mainListenerId, String topic) {
 		try {
-			sourceDestinationsHolderLock.lock();
+			this.sourceDestinationsHolderLock.lock();
 			return doGetDestinationFor(mainListenerId, topic);
 		}
 		finally {
-			sourceDestinationsHolderLock.unlock();
+			this.sourceDestinationsHolderLock.unlock();
 		}
 	}
 
@@ -239,13 +239,13 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 		}
 		validateDestinations(destinationsToAdd);
 		try {
-			sourceDestinationsHolderLock.lock();
+			this.sourceDestinationsHolderLock.lock();
 			Map<String, DestinationTopicHolder> map = this.sourceDestinationsHolderMap.computeIfAbsent(mainListenerId,
 					id -> new HashMap<>());
 			map.putAll(correlatePairSourceAndDestinationValues(destinationsToAdd));
 		}
 		finally {
-			sourceDestinationsHolderLock.unlock();
+			this.sourceDestinationsHolderLock.unlock();
 		}
 	}
 

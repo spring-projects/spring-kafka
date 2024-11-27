@@ -151,9 +151,9 @@ public class JsonSerializer<T> implements Serializer<T> {
 	}
 
 	@Override
-	public synchronized void configure(Map<String, ?> configs, boolean isKey) {
+	public void configure(Map<String, ?> configs, boolean isKey) {
 		try {
-			globalLock.lock();
+			this.globalLock.lock();
 			if (this.configured) {
 				return;
 			}
@@ -180,7 +180,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 			this.configured = true;
 		}
 		finally {
-			globalLock.unlock();
+			this.globalLock.unlock();
 		}
 	}
 

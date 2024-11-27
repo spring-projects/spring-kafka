@@ -404,7 +404,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	@Override
 	public void configure(Map<String, ?> configs, boolean isKey) {
 		try {
-			trustedPackagesLock.lock();
+			this.trustedPackagesLock.lock();
 			if (this.configured) {
 				return;
 			}
@@ -429,7 +429,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 			this.configured = true;
 		}
 		finally {
-			trustedPackagesLock.unlock();
+			this.trustedPackagesLock.unlock();
 		}
 	}
 
@@ -535,12 +535,12 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 */
 	public void addTrustedPackages(String... packages) {
 		try {
-			trustedPackagesLock.lock();
+			this.trustedPackagesLock.lock();
 			doAddTrustedPackages(packages);
 			this.setterCalled = true;
 		}
 		finally {
-			trustedPackagesLock.unlock();
+			this.trustedPackagesLock.unlock();
 		}
 	}
 
@@ -723,13 +723,13 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 */
 	public JsonDeserializer<T> trustedPackages(String... packages) {
 		try {
-			trustedPackagesLock.lock();
+			this.trustedPackagesLock.lock();
 			Assert.isTrue(!this.typeMapperExplicitlySet, "When using a custom type mapper, set the trusted packages there");
 			this.typeMapper.addTrustedPackages(packages);
 			return this;
 		}
 		finally {
-			trustedPackagesLock.unlock();
+			this.trustedPackagesLock.unlock();
 		}
 	}
 

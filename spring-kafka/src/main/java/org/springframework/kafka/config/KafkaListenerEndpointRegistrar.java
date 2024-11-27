@@ -194,7 +194,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 
 	protected void registerAllEndpoints() {
 		try {
-			endpointsLock.lock();
+			this.endpointsLock.lock();
 			for (KafkaListenerEndpointDescriptor descriptor : this.endpointDescriptors) {
 				if (descriptor.endpoint instanceof MultiMethodKafkaListenerEndpoint<?, ?> mmkle
 						&& this.validator != null) {
@@ -206,7 +206,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 			this.startImmediately = true;  // trigger immediate startup
 		}
 		finally {
-			endpointsLock.unlock();
+			this.endpointsLock.unlock();
 		}
 	}
 
@@ -244,7 +244,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 		// Factory may be null, we defer the resolution right before actually creating the container
 		KafkaListenerEndpointDescriptor descriptor = new KafkaListenerEndpointDescriptor(endpoint, factory);
 		try {
-			endpointsLock.lock();
+			this.endpointsLock.lock();
 			if (this.startImmediately) { // Register and start immediately
 				this.endpointRegistry.registerListenerContainer(descriptor.endpoint,
 						resolveContainerFactory(descriptor), true);
@@ -254,7 +254,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 			}
 		}
 		finally {
-			endpointsLock.unlock();
+			this.endpointsLock.unlock();
 		}
 	}
 

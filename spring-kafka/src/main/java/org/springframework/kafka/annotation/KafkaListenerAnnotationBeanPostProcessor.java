@@ -285,7 +285,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	 */
 	public void setBeanFactory(BeanFactory beanFactory) {
 		try {
-			globalLock.lock();
+			this.globalLock.lock();
 			this.beanFactory = beanFactory;
 			if (beanFactory instanceof ConfigurableListableBeanFactory clbf) {
 				BeanExpressionResolver beanExpressionResolver = clbf.getBeanExpressionResolver();
@@ -296,7 +296,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			}
 		}
 		finally {
-			globalLock.unlock();
+			this.globalLock.unlock();
 		}
 	}
 
@@ -466,7 +466,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			List<Method> multiMethods, Class<?> clazz, Object bean, String beanName) {
 
 		try {
-			globalLock.lock();
+			this.globalLock.lock();
 			List<Method> checkedMethods = new ArrayList<>();
 			Method defaultMethod = null;
 			for (Method method : multiMethods) {
@@ -487,7 +487,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			}
 		}
 		finally {
-			globalLock.unlock();
+			this.globalLock.unlock();
 		}
 	}
 
@@ -495,14 +495,14 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			String beanName) {
 
 		try {
-			globalLock.lock();
+			this.globalLock.lock();
 			Method methodToUse = checkProxy(method, bean);
 			MethodKafkaListenerEndpoint<K, V> endpoint = new MethodKafkaListenerEndpoint<>();
 			endpoint.setMethod(methodToUse);
 			processMainAndRetryListeners(kafkaListener, bean, beanName, endpoint, methodToUse, null);
 		}
 		finally {
-			globalLock.unlock();
+			this.globalLock.unlock();
 		}
 	}
 
