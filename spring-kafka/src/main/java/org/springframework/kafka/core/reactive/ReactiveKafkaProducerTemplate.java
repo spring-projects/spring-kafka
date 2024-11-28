@@ -26,6 +26,7 @@ import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.reactivestreams.Publisher;
+import org.springframework.lang.Nullable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.kafka.sender.KafkaSender;
@@ -33,7 +34,6 @@ import reactor.kafka.sender.SenderOptions;
 import reactor.kafka.sender.SenderRecord;
 import reactor.kafka.sender.SenderResult;
 import reactor.kafka.sender.TransactionManager;
-import reactor.util.annotation.Nullable;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 
@@ -52,6 +52,7 @@ import org.springframework.util.Assert;
  *
  * @author Mark Norkin
  * @author Adrian Chlebosz
+ * @author Juhyun Kim
  *
  * @since 2.3.0
  */
