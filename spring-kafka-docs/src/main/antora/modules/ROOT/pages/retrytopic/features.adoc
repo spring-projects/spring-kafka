@@ -291,7 +291,6 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
     return RetryTopicConfigurationBuilder
             .newInstance()
             .dltRoutingRules(Map.of("-deserialization", Set.of(DeserializationException.class)))
-            .create(kafkaOperations)
             .create(template);
 }
 ----
