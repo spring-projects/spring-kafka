@@ -65,6 +65,7 @@ import org.springframework.util.ObjectUtils;
  * @author Gary Russell
  * @author Tomaz Fernandes
  * @author Watlas R
+ * @author Borahm Lee
  * @since 2.2
  *
  */
@@ -571,7 +572,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	private void maybeThrow(ConsumerRecord<?, ?> record, Exception exception) {
 		String message = String.format("No destination returned for record %s and exception %s. " +
-				"failIfNoDestinationReturned: %s", KafkaUtils.format(record), exception,
+				"throwIfNoDestinationReturned: %s", KafkaUtils.format(record), exception,
 				this.throwIfNoDestinationReturned);
 		this.logger.warn(message);
 		if (this.throwIfNoDestinationReturned) {

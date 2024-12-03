@@ -22,7 +22,7 @@ public void processMessage(MyPojo message) {
 }
 
 @DltHandler
-public void processMessage(MyPojo message) {
+public void processDltMessage(MyPojo message) {
     // ... message processing, persistence, etc
 }
 ----
