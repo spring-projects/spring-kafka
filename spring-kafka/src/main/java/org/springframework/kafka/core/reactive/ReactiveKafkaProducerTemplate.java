@@ -40,6 +40,7 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
+import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
@@ -51,6 +52,7 @@ import org.springframework.util.Assert;
  *
  * @author Mark Norkin
  * @author Adrian Chlebosz
+ * @author Juhyun Kim
  *
  * @since 2.3.0
  */
@@ -92,19 +94,19 @@ public class ReactiveKafkaProducerTemplate<K, V> implements AutoCloseable, Dispo
 		return sendTransactionally.single();
 	}
 
-	public Mono<SenderResult<Void>> send(String topic, V value) {
+	public Mono<SenderResult<Void>> send(String topic, @Nullable V value) {
 		return send(new ProducerRecord<>(topic, value));
 	}
 
-	public Mono<SenderResult<Void>> send(String topic, K key, V value) {
+	public Mono<SenderResult<Void>> send(String topic, K key, @Nullable V value) {
 		return send(new ProducerRecord<>(topic, key, value));
 	}
 
-	public Mono<SenderResult<Void>> send(String topic, int partition, K key, V value) {
+	public Mono<SenderResult<Void>> send(String topic, int partition, K key, @Nullable V value) {
 		return send(new ProducerRecord<>(topic, partition, key, value));
 	}
 
-	public Mono<SenderResult<Void>> send(String topic, int partition, long timestamp, K key, V value) {
+	public Mono<SenderResult<Void>> send(String topic, int partition, long timestamp, K key, @Nullable V value) {
 		return send(new ProducerRecord<>(topic, partition, timestamp, key, value));
 	}
 
