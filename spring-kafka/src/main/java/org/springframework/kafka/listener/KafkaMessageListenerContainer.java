@@ -372,14 +372,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 		GenericMessageListener<?> listener = (GenericMessageListener<?>) messageListener;
 		ListenerType listenerType = determineListenerType(listener);
-		ObservationRegistry observationRegistry = ObservationRegistry.NOOP;
-		ApplicationContext applicationContext = getApplicationContext();
-		if (applicationContext != null && containerProperties.isObservationEnabled()) {
-			ObjectProvider<ObservationRegistry> registry =
-					applicationContext.getBeanProvider(ObservationRegistry.class);
-			ObservationRegistry reg = registry.getIfUnique();
-			if (reg != null) {
-				observationRegistry = reg;
+		ObservationRegistry observationRegistry = containerProperties.getObservationRegistry();
+		if (observationRegistry == null) {
+			ApplicationContext applicationContext = getApplicationContext();
+			if (applicationContext != null && containerProperties.isObservationEnabled()) {
+				ObjectProvider<ObservationRegistry> registry =
+						applicationContext.getBeanProvider(ObservationRegistry.class);
+				ObservationRegistry reg = registry.getIfUnique();
+				if (reg != null) {
+					observationRegistry = reg;
+				}
 			}
 		}
 		this.listenerConsumer = new ListenerConsumer(listener, listenerType, observationRegistry);
