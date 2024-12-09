@@ -346,6 +346,7 @@ project ('spring-kafka-test') {
 			exclude group: 'log4j'
 		}
 		api "org.apache.kafka:kafka-clients:$kafkaVersion:test"
+		api "org.apache.kafka:kafka-server:$kafkaVersion"
 		api "org.apache.kafka:kafka-metadata:$kafkaVersion"
 		api "org.apache.kafka:kafka-server-common:$kafkaVersion"
 		api "org.apache.kafka:kafka-server-common:$kafkaVersion:test"
