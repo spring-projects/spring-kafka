@@ -89,6 +89,7 @@ import org.springframework.util.Assert;
  * @author Soby Chacko
  * @author Sanghyeok An
  * @author Borahm Lee
+ * @author Wouter Coekaerts
  *
  * @since 2.2
  */
@@ -763,6 +764,8 @@ public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker {
 					+ (seekToEnd ? "end; " : "beginning"));
 			if (seekToEnd) {
 				consumer.seekToEnd(assigned.get());
+				// seekToEnd is asynchronous. query the position to force the seek to happen now.
+				assigned.get().forEach(consumer::position);
 			}
 			else {
 				consumer.seekToBeginning(assigned.get());
