@@ -247,7 +247,7 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
 	}
 
-	private static void setConfigProperty(Object clusterBuilder, Object key, Object value) {
+	private static void setConfigProperty(KafkaClusterTestKit.Builder clusterBuilder, Object key, Object value) {
 		try {
 			boolean isKafka39OrLater = isClassicConsumerPresent();
 			Class<?> builderClass = clusterBuilder.getClass();
@@ -258,9 +258,8 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 				setConfigMethod.invoke(clusterBuilder, (String) key, value);
 			}
 			else {
-				// For Kafka 3.8.0: setConfigProp(String, String)
-				Method setConfigMethod = builderClass.getMethod("setConfigProp", String.class, String.class);
-				setConfigMethod.invoke(clusterBuilder, (String) key, (String) value);
+				// For Kafka 3.8.0: direct call to setConfigProp(String, String)
+				clusterBuilder.setConfigProp((String) key, (String) value);
 			}
 		}
 		catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
