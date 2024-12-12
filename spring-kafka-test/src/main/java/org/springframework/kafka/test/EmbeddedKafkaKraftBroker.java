@@ -18,6 +18,8 @@ package org.springframework.kafka.test;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.time.Duration;
 import java.util.AbstractMap.SimpleEntry;
@@ -76,6 +78,8 @@ import org.springframework.util.Assert;
  * @since 3.1
  */
 public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
+
+	private static final String CLASS_EXISTS_ONLY_IN_390 = "org.apache.kafka.server.config.AbstractKafkaConfig";
 
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(EmbeddedKafkaKraftBroker.class));
 
@@ -217,7 +221,7 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 							.setNumBrokerNodes(this.count)
 							.setNumControllerNodes(this.count)
 							.build());
-			this.brokerProperties.forEach((k, v) -> clusterBuilder.setConfigProp((String) k, (String) v));
+			this.brokerProperties.forEach((k, v) -> setConfigProperty(clusterBuilder, k, v));
 			this.cluster = clusterBuilder.build();
 		}
 		catch (Exception ex) {
@@ -241,6 +245,37 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 			System.setProperty(this.brokerListProperty, getBrokersAsString());
 		}
 		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
+	}
+
+	private static void setConfigProperty(Object clusterBuilder, Object key, Object value) {
+		try {
+			boolean isKafka39OrLater = isClassicConsumerPresent();
+			Class<?> builderClass = clusterBuilder.getClass();
+
+			if (isKafka39OrLater) {
+				// For Kafka 3.9.0+: setConfigProp(String, Object)
+				Method setConfigMethod = builderClass.getMethod("setConfigProp", String.class, Object.class);
+				setConfigMethod.invoke(clusterBuilder, (String) key, value);
+			}
+			else {
+				// For Kafka 3.8.0: setConfigProp(String, String)
+				Method setConfigMethod = builderClass.getMethod("setConfigProp", String.class, String.class);
+				setConfigMethod.invoke(clusterBuilder, (String) key, (String) value);
+			}
+		}
+		catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+			throw new RuntimeException("Failed to set config property", e);
+		}
+	}
+
+	private static boolean isClassicConsumerPresent() {
+		try {
+			Class.forName(CLASS_EXISTS_ONLY_IN_390);
+			return true;  // Class exists - Kafka 3.9.0+
+		}
+		catch (ClassNotFoundException e) {
+			return false; // Class doesn't exist - Kafka 3.8.0
+		}
 	}
 
 	@Override
