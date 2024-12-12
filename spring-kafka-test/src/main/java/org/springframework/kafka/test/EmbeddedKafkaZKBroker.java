@@ -246,12 +246,7 @@ public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker {
 		this.zkPort = zkPort;
 	}
 
-	/**
-	 * Set the timeout in seconds for admin operations (e.g. topic creation, close).
-	 * @param adminTimeout the timeout.
-	 * @return the {@link EmbeddedKafkaBroker}
-	 * @since 2.8.5
-	 */
+	@Override
 	public EmbeddedKafkaBroker adminTimeout(int adminTimeout) {
 		this.adminTimeout = Duration.ofSeconds(adminTimeout);
 		return this;

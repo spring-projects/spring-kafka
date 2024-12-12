@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.test.context;
 
+import java.time.Duration;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -76,6 +78,8 @@ public class EmbeddedKafkaContextCustomizerTests {
 				.isEqualTo("127.0.0.1:" + annotationWithPorts.ports()[0]);
 		assertThat(KafkaTestUtils.getPropertyValue(embeddedKafkaBroker, "brokerListProperty"))
 				.isEqualTo("my.bss.prop");
+		assertThat(KafkaTestUtils.getPropertyValue(embeddedKafkaBroker, "adminTimeout"))
+				.isEqualTo(Duration.ofSeconds(33));
 	}
 
 	@Test
@@ -101,7 +105,7 @@ public class EmbeddedKafkaContextCustomizerTests {
 
 	}
 
-	@EmbeddedKafka(kraft = false, ports = 8085, bootstrapServersProperty = "my.bss.prop")
+	@EmbeddedKafka(kraft = false, ports = 8085, bootstrapServersProperty = "my.bss.prop", adminTimeout = 33)
 	private static final class TestWithEmbeddedKafkaPorts {
 
 	}
