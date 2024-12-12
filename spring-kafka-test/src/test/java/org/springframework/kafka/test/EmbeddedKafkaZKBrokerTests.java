@@ -16,12 +16,20 @@
 
 package org.springframework.kafka.test;
 
+import java.util.Map;
+
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.junit.jupiter.api.Test;
+
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Gary Russell
+ * @author Wouter Coekaerts
  * @since 2.3
  *
  */
@@ -40,6 +48,24 @@ public class EmbeddedKafkaZKBrokerTests {
 		assertThat(kafka.getZookeeperConnectionString()).isNull();
 		assertThat(System.getProperty("foo.bar")).isNull();
 		assertThat(System.getProperty(EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS)).isNull();
+	}
+
+	@Test
+	void testConsumeFromEmbeddedWithSeekToEnd() {
+		EmbeddedKafkaZKBroker kafka = new EmbeddedKafkaZKBroker(1);
+		kafka.afterPropertiesSet();
+		kafka.addTopics("seekTestTopic");
+		Map<String, Object> producerProps = KafkaTestUtils.producerProps(kafka);
+		KafkaProducer<Integer, String> producer = new KafkaProducer<>(producerProps);
+		producer.send(new ProducerRecord<>("seekTestTopic", 0, 1, "beforeSeekToEnd"));
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("seekTest", "false", kafka);
+		KafkaConsumer<Integer, String> consumer = new KafkaConsumer<>(consumerProps);
+		kafka.consumeFromAnEmbeddedTopic(consumer, true /* seekToEnd */, "seekTestTopic");
+		producer.send(new ProducerRecord<>("seekTestTopic", 0, 1, "afterSeekToEnd"));
+		producer.close();
+		assertThat(KafkaTestUtils.getSingleRecord(consumer, "seekTestTopic").value())
+				.isEqualTo("afterSeekToEnd");
+		consumer.close();
 	}
 
 }
