@@ -16,27 +16,17 @@
 
 package org.springframework.kafka.test.context;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringReader;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Properties;
-
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.DefaultSingletonBeanRegistry;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
-import org.springframework.core.io.Resource;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
-import org.springframework.kafka.test.EmbeddedKafkaZKBroker;
+import org.springframework.kafka.test.EmbeddedKafkaBrokerFactory;
 import org.springframework.test.context.ContextCustomizer;
 import org.springframework.test.context.MergedContextConfiguration;
 import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
 
 /**
  * The {@link ContextCustomizer} implementation for the {@link EmbeddedKafkaBroker} bean registration.
@@ -55,95 +45,22 @@ class EmbeddedKafkaContextCustomizer implements ContextCustomizer {
 
 	private final EmbeddedKafka embeddedKafka;
 
-	private final String TRANSACTION_STATE_LOG_REPLICATION_FACTOR = "transaction.state.log.replication.factor";
-
 	EmbeddedKafkaContextCustomizer(EmbeddedKafka embeddedKafka) {
 		this.embeddedKafka = embeddedKafka;
 	}
 
 	@Override
-	@SuppressWarnings("unchecked")
 	public void customizeContext(ConfigurableApplicationContext context, MergedContextConfiguration mergedConfig) {
 		ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
 		Assert.isInstanceOf(DefaultSingletonBeanRegistry.class, beanFactory);
 
 		ConfigurableEnvironment environment = context.getEnvironment();
 
-		String[] topics =
-				Arrays.stream(this.embeddedKafka.topics())
-						.map(environment::resolvePlaceholders)
-						.toArray(String[]::new);
-
-		int[] ports = setupPorts();
-		EmbeddedKafkaBroker embeddedKafkaBroker;
-		if (this.embeddedKafka.kraft()) {
-			embeddedKafkaBroker = new EmbeddedKafkaKraftBroker(this.embeddedKafka.count(),
-					this.embeddedKafka.partitions(),
-					topics)
-				.kafkaPorts(ports);
-		}
-		else {
-			embeddedKafkaBroker = new EmbeddedKafkaZKBroker(this.embeddedKafka.count(),
-						this.embeddedKafka.controlledShutdown(),
-						this.embeddedKafka.partitions(),
-						topics)
-					.kafkaPorts(ports)
-					.zkPort(this.embeddedKafka.zookeeperPort())
-					.zkConnectionTimeout(this.embeddedKafka.zkConnectionTimeout())
-					.zkSessionTimeout(this.embeddedKafka.zkSessionTimeout());
-		}
-
-		Properties properties = new Properties();
-
-		for (String pair : this.embeddedKafka.brokerProperties()) {
-			if (!StringUtils.hasText(pair)) {
-				continue;
-			}
-			try {
-				properties.load(new StringReader(environment.resolvePlaceholders(pair)));
-			}
-			catch (Exception ex) {
-				throw new IllegalStateException("Failed to load broker property from [" + pair + "]", ex);
-			}
-		}
-
-		if (StringUtils.hasText(this.embeddedKafka.brokerPropertiesLocation())) {
-			String propertiesLocation = environment.resolvePlaceholders(this.embeddedKafka.brokerPropertiesLocation());
-			Resource propertiesResource = context.getResource(propertiesLocation);
-			if (!propertiesResource.exists()) {
-				throw new IllegalStateException(
-						"Failed to load broker properties from [" + propertiesResource + "]: resource does not exist.");
-			}
-			try (InputStream in = propertiesResource.getInputStream()) {
-				Properties p = new Properties();
-				p.load(in);
-				p.forEach((key, value) -> properties.putIfAbsent(key, environment.resolvePlaceholders((String) value)));
-			}
-			catch (IOException ex) {
-				throw new IllegalStateException("Failed to load broker properties from [" + propertiesResource + "]", ex);
-			}
-		}
-
-		properties.putIfAbsent(TRANSACTION_STATE_LOG_REPLICATION_FACTOR, String.valueOf(Math.min(3, embeddedKafka.count())));
-
-		embeddedKafkaBroker.brokerProperties((Map<String, String>) (Map<?, ?>) properties);
-		if (StringUtils.hasText(this.embeddedKafka.bootstrapServersProperty())) {
-			embeddedKafkaBroker.brokerListProperty(this.embeddedKafka.bootstrapServersProperty());
-		}
-
-		// Safe to start an embedded broker eagerly before context refresh
-		embeddedKafkaBroker.afterPropertiesSet();
+		EmbeddedKafkaBroker embeddedKafkaBroker =
+				EmbeddedKafkaBrokerFactory.create(this.embeddedKafka, environment::resolvePlaceholders);
 
 		((BeanDefinitionRegistry) beanFactory).registerBeanDefinition(EmbeddedKafkaBroker.BEAN_NAME,
 				new RootBeanDefinition(EmbeddedKafkaBroker.class, () -> embeddedKafkaBroker));
-	}
-
-	private int[] setupPorts() {
-		int[] ports = this.embeddedKafka.ports();
-		if (this.embeddedKafka.count() > 1 && ports.length == 1 && ports[0] == 0) {
-			ports = new int[this.embeddedKafka.count()];
-		}
-		return ports;
 	}
 
 	@Override
