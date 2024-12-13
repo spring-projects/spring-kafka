@@ -80,8 +80,6 @@ import org.springframework.util.ReflectionUtils;
  */
 public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 
-	private static final String CLASS_EXISTS_ONLY_IN_390 = "org.apache.kafka.server.config.AbstractKafkaConfig";
-
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(EmbeddedKafkaKraftBroker.class));
 
 	/**
@@ -92,13 +90,12 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 
 	public static final int DEFAULT_ADMIN_TIMEOUT = 10;
 
-	private static final boolean IS_KAFKA_39_OR_LATER;
+	private static final boolean IS_KAFKA_39_OR_LATER = ClassUtils.isPresent(
+			"org.apache.kafka.server.config.AbstractKafkaConfig", EmbeddedKafkaKraftBroker.class.getClassLoader());
 
 	private static final Method SET_CONFIG_METHOD;
 
 	static {
-		IS_KAFKA_39_OR_LATER = ClassUtils.isPresent(CLASS_EXISTS_ONLY_IN_390, EmbeddedKafkaKraftBroker.class.getClassLoader());
-
 		if (IS_KAFKA_39_OR_LATER) {
 			SET_CONFIG_METHOD = ReflectionUtils.findMethod(
 					KafkaClusterTestKit.Builder.class,
@@ -240,7 +237,7 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 							.setNumBrokerNodes(this.count)
 							.setNumControllerNodes(this.count)
 							.build());
-			this.brokerProperties.forEach((k, v) -> setConfigProperty(clusterBuilder, k, v));
+			this.brokerProperties.forEach((k, v) -> setConfigProperty(clusterBuilder, (String) k, v));
 			this.cluster = clusterBuilder.build();
 		}
 		catch (Exception ex) {
@@ -266,14 +263,14 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
 	}
 
-	private static void setConfigProperty(KafkaClusterTestKit.Builder clusterBuilder, Object key, Object value) {
+	private static void setConfigProperty(KafkaClusterTestKit.Builder clusterBuilder, String key, Object value) {
 		if (IS_KAFKA_39_OR_LATER) {
 			// For Kafka 3.9.0+: use reflection
-			ReflectionUtils.invokeMethod(SET_CONFIG_METHOD, clusterBuilder, (String) key, value);
+			ReflectionUtils.invokeMethod(SET_CONFIG_METHOD, clusterBuilder, key, value);
 		}
 		else {
 			// For Kafka 3.8.0: direct call
-			clusterBuilder.setConfigProp((String) key, (String) value);
+			clusterBuilder.setConfigProp(key, (String) value);
 		}
 	}
 
