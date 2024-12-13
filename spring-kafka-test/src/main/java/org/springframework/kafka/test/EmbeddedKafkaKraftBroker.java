@@ -18,6 +18,7 @@ package org.springframework.kafka.test;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.time.Duration;
 import java.util.AbstractMap.SimpleEntry;
@@ -56,6 +57,8 @@ import org.apache.kafka.common.utils.Utils;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.util.Assert;
+import org.springframework.util.ClassUtils;
+import org.springframework.util.ReflectionUtils;
 
 /**
  * An embedded Kafka Broker(s) using KRaft.
@@ -86,6 +89,23 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 	public static final String BROKER_LIST_PROPERTY = "spring.embedded.kafka.brokers.property";
 
 	public static final int DEFAULT_ADMIN_TIMEOUT = 10;
+
+	private static final boolean IS_KAFKA_39_OR_LATER = ClassUtils.isPresent(
+			"org.apache.kafka.server.config.AbstractKafkaConfig", EmbeddedKafkaKraftBroker.class.getClassLoader());
+
+	private static final Method SET_CONFIG_METHOD;
+
+	static {
+		if (IS_KAFKA_39_OR_LATER) {
+			SET_CONFIG_METHOD = ReflectionUtils.findMethod(
+					KafkaClusterTestKit.Builder.class,
+					"setConfigProp",
+					String.class, Object.class);
+		}
+		else {
+			SET_CONFIG_METHOD = null;
+		}
+	}
 
 	private final int count;
 
@@ -212,7 +232,7 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 							.setNumBrokerNodes(this.count)
 							.setNumControllerNodes(this.count)
 							.build());
-			this.brokerProperties.forEach((k, v) -> clusterBuilder.setConfigProp((String) k, (String) v));
+			this.brokerProperties.forEach((k, v) -> setConfigProperty(clusterBuilder, (String) k, v));
 			this.cluster = clusterBuilder.build();
 		}
 		catch (Exception ex) {
@@ -236,6 +256,17 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 			System.setProperty(this.brokerListProperty, getBrokersAsString());
 		}
 		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
+	}
+
+	private static void setConfigProperty(KafkaClusterTestKit.Builder clusterBuilder, String key, Object value) {
+		if (IS_KAFKA_39_OR_LATER) {
+			// For Kafka 3.9.0+: use reflection
+			ReflectionUtils.invokeMethod(SET_CONFIG_METHOD, clusterBuilder, key, value);
+		}
+		else {
+			// For Kafka 3.8.0: direct call
+			clusterBuilder.setConfigProp(key, (String) value);
+		}
 	}
 
 	@Override
