@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
+import io.micrometer.observation.ObservationRegistry;
 import org.aopalliance.aop.Advice;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
@@ -280,6 +281,8 @@ public class ContainerProperties extends ConsumerProperties {
 	private boolean micrometerEnabled = true;
 
 	private boolean observationEnabled;
+
+	private ObservationRegistry observationRegistry = ObservationRegistry.NOOP;
 
 	private Duration consumerStartTimeout = DEFAULT_CONSUMER_START_TIMEOUT;
 
@@ -716,6 +719,20 @@ public class ContainerProperties extends ConsumerProperties {
 		this.observationEnabled = observationEnabled;
 	}
 
+	public ObservationRegistry getObservationRegistry() {
+		return this.observationRegistry;
+	}
+
+	/**
+	 * Configure the {@link ObservationRegistry} to use for recording observations.
+	 * @param observationRegistry the observation registry to use.
+	 * @since 3.3.1
+	 */
+	public void setObservationRegistry(ObservationRegistry observationRegistry) {
+		Assert.notNull(observationRegistry, "'observationRegistry' must not be null");
+		this.observationRegistry = observationRegistry;
+	}
+
 	/**
 	 * Set additional tags for the Micrometer listener timers.
 	 * @param tags the tags.
@@ -1117,6 +1134,9 @@ public class ContainerProperties extends ConsumerProperties {
 				+ "\n observationEnabled=" + this.observationEnabled
 				+ (this.observationConvention != null
 						? "\n observationConvention=" + this.observationConvention
+						: "")
+				+ (this.observationRegistry != null
+						? "\n observationRegistry=" + this.observationRegistry
 						: "")
 				+ "\n restartAfterAuthExceptions=" + this.restartAfterAuthExceptions
 				+ "\n]";
