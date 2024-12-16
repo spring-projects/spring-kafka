@@ -78,7 +78,6 @@ import org.apache.kafka.common.header.internals.RecordHeader;
 
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeanUtils;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.log.LogAccessor;
@@ -171,6 +170,7 @@ import org.springframework.util.StringUtils;
  * @author Borahm Lee
  * @author Lokesh Alamuri
  * @author Sanghyeok An
+ * @author Christian Fredriksson
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -372,14 +372,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 		GenericMessageListener<?> listener = (GenericMessageListener<?>) messageListener;
 		ListenerType listenerType = determineListenerType(listener);
-		ObservationRegistry observationRegistry = ObservationRegistry.NOOP;
-		ApplicationContext applicationContext = getApplicationContext();
-		if (applicationContext != null && containerProperties.isObservationEnabled()) {
-			ObjectProvider<ObservationRegistry> registry =
-					applicationContext.getBeanProvider(ObservationRegistry.class);
-			ObservationRegistry reg = registry.getIfUnique();
-			if (reg != null) {
-				observationRegistry = reg;
+		ObservationRegistry observationRegistry = containerProperties.getObservationRegistry();
+		if (observationRegistry.isNoop()) {
+			ApplicationContext applicationContext = getApplicationContext();
+			if (applicationContext != null && containerProperties.isObservationEnabled()) {
+				ObservationRegistry reg = applicationContext.getBeanProvider(ObservationRegistry.class)
+						.getIfUnique();
+				if (reg != null) {
+					observationRegistry = reg;
+				}
 			}
 		}
 		this.listenerConsumer = new ListenerConsumer(listener, listenerType, observationRegistry);
