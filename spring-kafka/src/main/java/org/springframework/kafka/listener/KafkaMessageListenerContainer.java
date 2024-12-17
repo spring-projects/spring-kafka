@@ -2750,7 +2750,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		 * @throws Error an error.
 		 */
 		@Nullable
-		@SuppressWarnings("try")
 		private RuntimeException doInvokeRecordListener(final ConsumerRecord<K, V> cRecord, // NOSONAR
 				Iterator<ConsumerRecord<K, V>> iterator) {
 
@@ -2763,7 +2762,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					this.observationRegistry);
 
 			observation.start();
-			try (Observation.Scope ignored = observation.openScope()) {
+			Observation.Scope observationScope = observation.openScope();
+			// We cannot use 'try-with-resource' because the resource is closed just before catch block
+			try {
 				invokeOnMessage(cRecord);
 				successTimer(sample, cRecord);
 				recordInterceptAfter(cRecord, null);
@@ -2802,6 +2803,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (!(this.listener instanceof RecordMessagingMessageListenerAdapter<K, V>)) {
 					observation.stop();
 				}
+				observationScope.close();
 			}
 			return null;
 		}
@@ -4020,6 +4022,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	}
 
-	private record FailedRecordTuple<K, V>(ConsumerRecord<K, V> record, RuntimeException ex) { };
+	private record FailedRecordTuple<K, V>(ConsumerRecord<K, V> record, RuntimeException ex) { }
 
 }

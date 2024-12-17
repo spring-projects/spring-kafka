@@ -32,6 +32,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.observation.DefaultMeterObservationHandler;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.core.tck.MeterRegistryAssert;
+import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationHandler;
 import io.micrometer.observation.ObservationRegistry;
 import io.micrometer.observation.tck.TestObservationRegistry;
@@ -45,6 +46,7 @@ import io.micrometer.tracing.propagation.Propagator;
 import io.micrometer.tracing.test.simple.SimpleSpan;
 import io.micrometer.tracing.test.simple.SimpleTracer;
 import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -74,6 +76,7 @@ import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.MessageListenerContainer;
+import org.springframework.kafka.listener.RecordInterceptor;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservation.DefaultKafkaListenerObservationConvention;
 import org.springframework.kafka.support.micrometer.KafkaTemplateObservation.DefaultKafkaTemplateObservationConvention;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -356,7 +359,7 @@ public class ObservationTests {
 	@Test
 	void observationRuntimeException(@Autowired ExceptionListener listener, @Autowired SimpleTracer tracer,
 			@Autowired @Qualifier("throwableTemplate") KafkaTemplate<Integer, String> runtimeExceptionTemplate,
-			@Autowired KafkaListenerEndpointRegistry endpointRegistry)
+			@Autowired KafkaListenerEndpointRegistry endpointRegistry, @Autowired Config config)
 					throws ExecutionException, InterruptedException, TimeoutException {
 
 		runtimeExceptionTemplate.send(OBSERVATION_RUNTIME_EXCEPTION, "testRuntimeException").get(10, TimeUnit.SECONDS);
@@ -372,6 +375,8 @@ public class ObservationTests {
 		assertThat(span.getError().getCause())
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessage("obs4 run time exception");
+
+		assertThat(config.scopeInFailureReference.get()).isNotNull();
 	}
 
 	@Test
@@ -445,6 +450,8 @@ public class ObservationTests {
 
 		KafkaAdmin mockAdmin = mock(KafkaAdmin.class);
 
+		AtomicReference<Observation.Scope> scopeInFailureReference = new AtomicReference<>();
+
 		@Bean
 		KafkaAdmin admin(EmbeddedKafkaBroker broker) {
 			String[] brokers = StringUtils.commaDelimitedListToStringArray(broker.getBrokersAsString());
@@ -512,7 +519,7 @@ public class ObservationTests {
 
 		@Bean
 		ConcurrentKafkaListenerContainerFactory<Integer, String> kafkaListenerContainerFactory(
-				ConsumerFactory<Integer, String> cf) {
+				ConsumerFactory<Integer, String> cf, ObservationRegistry observationRegistry) {
 
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
@@ -521,6 +528,24 @@ public class ObservationTests {
 			factory.setContainerCustomizer(container -> {
 				if (container.getListenerId().equals("obs3")) {
 					container.setKafkaAdmin(this.mockAdmin);
+				}
+				if (container.getListenerId().equals("obs4")) {
+					container.setRecordInterceptor(new RecordInterceptor<>() {
+
+						@Override
+						public ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record,
+								Consumer<Integer, String> consumer) {
+
+							return record;
+						}
+
+						@Override
+						public void failure(ConsumerRecord<Integer, String> record, Exception exception,
+								Consumer<Integer, String> consumer) {
+
+							Config.this.scopeInFailureReference.set(observationRegistry.getCurrentObservationScope());
+						}
+					});
 				}
 			});
 			return factory;
