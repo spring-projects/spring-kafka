@@ -966,8 +966,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.wasIdlePartition = new HashMap<>();
 			this.kafkaAdmin = obtainAdmin();
 
-			if (this.listener instanceof RecordMessagingMessageListenerAdapter<?, ?> rmmla) {
-				rmmla.setObservationRegistry(observationRegistry);
+			if (isListenerAdapterObservationAware()) {
+				((RecordMessagingMessageListenerAdapter<?, ?>) this.listener).setObservationRegistry(observationRegistry);
 			}
 		}
 
@@ -1226,6 +1226,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							.ofMillis((int) CONSUMER_CONFIG_DEFAULTS.get(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG));
 				}
 			}
+		}
+
+		private boolean isListenerAdapterObservationAware() {
+			return this.listener != null && RecordMessagingMessageListenerAdapter.class.equals(this.listener.getClass());
 		}
 
 		private void subscribeOrAssignTopics(final Consumer<? super K, ? super V> subscribingConsumer) {
@@ -2772,7 +2776,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			catch (RuntimeException e) {
 				failureTimer(sample, cRecord);
 				recordInterceptAfter(cRecord, e);
-				if (!(this.listener instanceof RecordMessagingMessageListenerAdapter<K, V>)) {
+				if (!isListenerAdapterObservationAware()) {
 					observation.error(e);
 				}
 				if (this.commonErrorHandler == null) {
@@ -2800,7 +2804,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			finally {
-				if (!(this.listener instanceof RecordMessagingMessageListenerAdapter<K, V>)) {
+				if (!isListenerAdapterObservationAware()) {
 					observation.stop();
 				}
 				observationScope.close();
