@@ -80,9 +80,9 @@ import org.springframework.util.StringUtils;
 import org.springframework.util.TypeUtils;
 
 /**
- * An abstract {@link org.springframework.kafka.listener.MessageListener} adapter
+ * An abstract {@link MessageListener} adapter
  * providing the necessary infrastructure to extract the payload of a
- * {@link org.springframework.messaging.Message}.
+ * {@link Message}.
  *
  * @param <K> the key type.
  * @param <V> the value type.
@@ -205,9 +205,9 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 	/**
 	 * Return the {@link MessagingMessageConverter} for this listener,
-	 * being able to convert {@link org.springframework.messaging.Message}.
+	 * being able to convert {@link Message}.
 	 * @return the {@link MessagingMessageConverter} for this listener,
-	 * being able to convert {@link org.springframework.messaging.Message}.
+	 * being able to convert {@link Message}.
 	 */
 	protected final RecordMessageConverter getMessageConverter() {
 		return this.messageConverter;
@@ -550,7 +550,9 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			try {
 				if (t == null) {
 					asyncSuccess(r, replyTopic, source, messageReturnType);
-					acknowledge(acknowledgment);
+					if (isAsyncReplies()) {
+						acknowledge(acknowledgment);
+					}
 				}
 				else {
 					Throwable cause = t instanceof CompletionException ? t.getCause() : t;
