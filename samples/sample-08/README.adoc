@@ -1,0 +1,19 @@
+== Sample 8
+
+This sample demonstrates the application with a Micrometer observation propagation from the producer to consumer over Apache Kafka broker.
+
+The configuration mostly rely on the Spring Boot auto-configuration for observability and Spring for Apache Kafka.
+In the `application.properties` we enable observation for the `KafkaTemplate` and `@KafkaListener` to have them both in the same trace id.
+The `KafkaTemplate` is configured for the `observation-topic` as a default topic.
+And the same property is used by `@KafkaListener` for its `topics` property.
+Then we configure consumer for required `group-id` and `offset-reset` as `earliest` to be able to consume the produced a bit earlier than the Kafka listener container start.
+
+In the `Sample08Application` we have a simple `@KafkaListener` POJO method to just log a `CosnumerRecord`.
+The `ProducerListener` is there for logging what was produced by the `KafkaTemplate`.
+And `ApplicationRunner` is to emit a data via `KafkaTemplate` when application is ready.
+
+When we run this application we can see in logs one message from producer and one from consumer and both those messages are correlated with the same trace id.
+
+The `Sample08ApplicationTests` starts an embedded Kafka broker and provides a `TestSpanHandler` bean for trace and span verifications.
+The single test in this class verifies that we have only two mentioned spans: one from the producer and one from the consumer.
+And that both those spans belong to the same trace id.
