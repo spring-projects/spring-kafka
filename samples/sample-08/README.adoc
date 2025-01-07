@@ -15,5 +15,5 @@ And `ApplicationRunner` is to emit a data via `KafkaTemplate` when application i
 When we run this application we can see in logs one message from producer and one from consumer and both those messages are correlated with the same trace id.
 
 The `Sample08ApplicationTests` starts an embedded Kafka broker and provides a `TestSpanHandler` bean for trace and span verifications.
-The single test in this class verify that we have only to mentioned spans: one from producer and one from consumer.
-And that both those spans belongs to the same trace id.
+The single test in this class verifies that we have only two mentioned spans: one from the producer and one from the consumer.
+And that both those spans belong to the same trace id.
