@@ -275,7 +275,7 @@ public class KafkaStreamsTests {
 
     @Configuration
     @EnableKafkaStreams
-    public static class KafkaStreamsConfiguration {
+    public static class TestKafkaStreamsConfiguration {
 
         @Value("${" + EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
         private String brokerAddresses;
