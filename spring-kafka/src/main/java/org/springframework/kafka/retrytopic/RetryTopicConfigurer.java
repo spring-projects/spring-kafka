@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 the original author or authors.
+ * Copyright 2018-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -118,7 +118,7 @@ import org.springframework.lang.Nullable;
  *                 .newInstance()
  *                 .fixedBackOff(3000)
  *                 .maxAttempts(5)
- *                 .includeTopics("my-topic", "my-other-topic")
+ *                 .includeTopics(List.of("my-topic", "my-other-topic"))
  *                 .create(template);
  *         }</code>
  * </pre>
@@ -129,7 +129,7 @@ import org.springframework.lang.Nullable;
  *                 .newInstance()
  *                 .exponentialBackoff(1000, 2, 5000)
  *                 .maxAttempts(4)
- *                 .excludeTopics("my-topic", "my-other-topic")
+ *                 .excludeTopics(List.of("my-topic", "my-other-topic"))
  *                 .retryOn(MyException.class)
  *                 .create(template);
  *         }</code>

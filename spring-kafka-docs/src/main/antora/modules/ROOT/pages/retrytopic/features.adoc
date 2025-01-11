@@ -97,7 +97,7 @@ You can also set it to traverse the causes to lookup nested exceptions.
 
 [source, java]
 ----
-@RetryableTopic(include = {MyRetryException.class, MyOtherRetryException.class}, traversingCauses = true)
+@RetryableTopic(include = {MyRetryException.class, MyOtherRetryException.class}, traversingCauses = "true")
 @KafkaListener(topics = "my-annotated-topic")
 public void processMessage(MyPojo message) {
     throw new RuntimeException(new MyRetryException()); // will retry
@@ -175,13 +175,13 @@ IMPORTANT: Note that if you're not using Spring Boot you'll have to provide a Ka
 
 [source, java]
 ----
-@RetryableTopic(numPartitions = 2, replicationFactor = 3)
+@RetryableTopic(numPartitions = "2", replicationFactor = "3")
 @KafkaListener(topics = "my-annotated-topic")
 public void processMessage(MyPojo message) {
     // ... message processing
 }
 
-@RetryableTopic(autoCreateTopics = false)
+@RetryableTopic(autoCreateTopics = "false")
 @KafkaListener(topics = "my-annotated-topic")
 public void processMessage(MyPojo message) {
     // ... message processing
@@ -245,7 +245,7 @@ Starting with version 2.9.5, if the `Headers` returned by the function contains 
 
 As can be seen in xref:retrytopic/features.adoc#retry-headers[Failure Header Management] it is possible to customize the default `DeadLetterPublishingRecoverer` instances created by the framework.
 However, for some use cases, it is necessary to subclass the `DeadLetterPublishingRecoverer`, for example to override `createProducerRecord()` to modify the contents sent to the retry (or dead-letter) topics.
-Starting with version 3.0.9, you can override the `RetryConfigurationSupport.configureDeadLetterPublishingContainerFactory()` method to provide a `DeadLetterPublisherCreator` instance, for example:
+Starting with version 3.0.9, you can override the `RetryTopicConfigurationSupport.configureDeadLetterPublishingContainerFactory()` method to provide a `DeadLetterPublisherCreator` instance, for example:
 
 [source, java]
 ----
