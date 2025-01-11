@@ -20,7 +20,7 @@ plugins {
 	id 'org.ajoberstar.grgit' version '5.2.2'
 	id 'io.spring.nohttp' version '0.0.11'
 	id 'io.spring.dependency-management' version '1.1.7' apply false
-	id 'com.github.spotbugs' version '6.0.27'
+	id 'com.github.spotbugs' version '6.0.28'
 	id 'io.freefair.aggregate-javadoc' version '8.6'
 }
 
