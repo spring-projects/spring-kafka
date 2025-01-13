@@ -10,7 +10,7 @@ Also, starting with that version, for more advanced configuration of the feature
 For more details refer to xref:retrytopic/retry-config.adoc#retry-topic-global-settings[Configuring Global Settings and Features].
 
 By default, the containers for the retry topics will have the same concurrency as the main container.
-Starting with version 3.0, you can set a different `concurrency` for the retry containers (either on the annotation, or in `RetryConfigurationBuilder`).
+Starting with version 3.0, you can set a different `concurrency` for the retry containers (either on the annotation, or in `RetryTopicConfigurationBuilder`).
 
 IMPORTANT: Only one of the above techniques can be used, and only one `@Configuration` class can extend `RetryTopicConfigurationSupport`.
 
@@ -100,7 +100,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
             .fixedBackOff(3000)
             .maxAttempts(5)
             .concurrency(1)
-            .includeTopics("my-topic", "my-other-topic")
+            .includeTopics(List.of("my-topic", "my-other-topic"))
             .create(template);
 }
 
@@ -110,7 +110,7 @@ public RetryTopicConfiguration myOtherRetryTopic(KafkaTemplate<String, MyOtherPo
             .newInstance()
             .exponentialBackoff(1000, 2, 5000)
             .maxAttempts(4)
-            .excludeTopics("my-topic", "my-other-topic")
+            .excludeTopics(List.of("my-topic", "my-other-topic"))
             .retryOn(MyException.class)
             .create(template);
 }
