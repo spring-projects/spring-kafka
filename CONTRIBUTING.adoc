@@ -23,13 +23,10 @@ https://github.com/spring-projects/spring-kafka/issues[GitHub issue tracker] to 
 If not, please create a new issue before submitting a pull request unless the change is truly trivial, e.g. typo fixes,
 removing compiler warnings, etc.
 
-== Sign the contributor license agreement
+== Developer Certificate of Origin
 
-If you have not previously done so, please fill out and
-submit the https://cla.pivotal.io/sign/spring[Contributor License Agreement (CLA)].
-
-Very important, before we can accept any *Spring Kafka contributions*, we will need you to sign the CLA.
-Signing the CLA does not grant anyone commit rights to the main repository, but it does mean that we can accept your contributions, and you will get an author credit if we do.
+All commits must include a __Signed-off-by__ trailer at the end of each commit message to indicate that the contributor agrees to the Developer Certificate of Origin.
+For additional details, please refer to the blog post https://spring.io/blog/2025/01/06/hello-dco-goodbye-cla-simplifying-contributions-to-spring[Hello DCO, Goodbye CLA: Simplifying Contributions to Spring].
 
 == Fork the Repository
 
