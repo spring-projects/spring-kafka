@@ -167,6 +167,7 @@ public class DelegatingInvocableHandler {
 	 * @throws Exception raised if no suitable argument resolver can be found,
 	 * or the method raised an exception.
 	 */
+	@Nullable
 	public Object invoke(Message<?> message, Object... providedArgs) throws Exception { //NOSONAR
 		Class<?> payloadClass = message.getPayload().getClass();
 		InvocableHandlerMethod handler = getHandlerForPayload(payloadClass);
@@ -186,8 +187,12 @@ public class DelegatingInvocableHandler {
 		else {
 			result = handler.invoke(message, providedArgs);
 		}
-		Expression replyTo = this.handlerSendTo.get(handler);
-		return new InvocationResult(result, replyTo, this.handlerReturnsMessage.get(handler));
+		if (result != null) {
+			Expression replyTo = this.handlerSendTo.get(handler);
+			return new InvocationResult(result, replyTo, this.handlerReturnsMessage.get(handler));
+		} else {
+			return null;
+		}
 	}
 
 	/**
