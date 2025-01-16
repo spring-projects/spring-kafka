@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2024 the original author or authors.
+ * Copyright 2016-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,6 +55,7 @@ import org.springframework.validation.Validator;
  *
  * @author Gary Russell
  * @author Wang Zhiyang
+ * @author Ivan Malutin
  *
  */
 public class DelegatingInvocableHandler {
@@ -190,7 +191,8 @@ public class DelegatingInvocableHandler {
 		if (result != null) {
 			Expression replyTo = this.handlerSendTo.get(handler);
 			return new InvocationResult(result, replyTo, this.handlerReturnsMessage.get(handler));
-		} else {
+		}
+		else {
 			return null;
 		}
 	}
