@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2025 the original author or authors.
+ * Copyright 2016-2024 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,7 +55,6 @@ import org.springframework.validation.Validator;
  *
  * @author Gary Russell
  * @author Wang Zhiyang
- * @author Ivan Malutin
  *
  */
 public class DelegatingInvocableHandler {
@@ -168,7 +167,6 @@ public class DelegatingInvocableHandler {
 	 * @throws Exception raised if no suitable argument resolver can be found,
 	 * or the method raised an exception.
 	 */
-	@Nullable
 	public Object invoke(Message<?> message, Object... providedArgs) throws Exception { //NOSONAR
 		Class<?> payloadClass = message.getPayload().getClass();
 		InvocableHandlerMethod handler = getHandlerForPayload(payloadClass);
@@ -188,13 +186,8 @@ public class DelegatingInvocableHandler {
 		else {
 			result = handler.invoke(message, providedArgs);
 		}
-		if (result != null) {
-			Expression replyTo = this.handlerSendTo.get(handler);
-			return new InvocationResult(result, replyTo, this.handlerReturnsMessage.get(handler));
-		}
-		else {
-			return null;
-		}
+		Expression replyTo = this.handlerSendTo.get(handler);
+		return new InvocationResult(result, replyTo, this.handlerReturnsMessage.get(handler));
 	}
 
 	/**
