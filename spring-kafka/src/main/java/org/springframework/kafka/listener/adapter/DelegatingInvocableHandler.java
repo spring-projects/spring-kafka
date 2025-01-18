@@ -56,6 +56,7 @@ import org.springframework.validation.Validator;
  *
  * @author Gary Russell
  * @author Wang Zhiyang
+ * @author Ivan Malutin
  *
  */
 public class DelegatingInvocableHandler {
@@ -188,8 +189,13 @@ public class DelegatingInvocableHandler {
 		else {
 			result = handler.invoke(message, providedArgs);
 		}
-		Expression replyTo = this.handlerSendTo.get(handler);
-		return new InvocationResult(result, replyTo, this.handlerReturnsMessage.get(handler));
+		if (result != null) {
+			Expression replyTo = this.handlerSendTo.get(handler);
+			return new InvocationResult(result, replyTo, this.handlerReturnsMessage.get(handler));
+		}
+		else {
+			return null;
+		}
 	}
 
 	/**
