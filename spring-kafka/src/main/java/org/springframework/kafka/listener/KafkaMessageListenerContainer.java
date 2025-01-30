@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2024 the original author or authors.
+ * Copyright 2016-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -171,6 +171,7 @@ import org.springframework.util.StringUtils;
  * @author Lokesh Alamuri
  * @author Sanghyeok An
  * @author Christian Fredriksson
+ * @author Timofey Barabanov
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -625,7 +626,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Map<TopicPartition, Long> offsets = new LinkedHashMap<>();
 
-		private final Collection<TopicPartition> assignedPartitions = new LinkedHashSet<>();
+		private final Collection<TopicPartition> assignedPartitions = Collections.synchronizedSet(new LinkedHashSet<>());
 
 		private final Map<TopicPartition, OffsetAndMetadata> lastCommits = new HashMap<>();
 
@@ -1247,7 +1248,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			else {
 				List<TopicPartitionOffset> topicPartitionsToAssign =
 						Arrays.asList(KafkaMessageListenerContainer.this.topicPartitions);
-				this.definedPartitions = new LinkedHashMap<>(topicPartitionsToAssign.size());
+				this.definedPartitions = Collections.synchronizedMap(
+						new LinkedHashMap<>(topicPartitionsToAssign.size()));
 				for (TopicPartitionOffset topicPartition : topicPartitionsToAssign) {
 					this.definedPartitions.put(topicPartition.getTopicPartition(),
 							new OffsetMetadata(topicPartition.getOffset(), topicPartition.isRelativeToCurrent(),
