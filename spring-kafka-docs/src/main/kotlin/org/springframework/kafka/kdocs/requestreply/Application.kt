@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2024 the original author or authors.
+ * Copyright 2021-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,19 +84,19 @@ class Application {
     fun runner(template: ReplyingKafkaTemplate<String?, String?, String?>): ApplicationRunner {
         return ApplicationRunner { _ ->
 // tag::sendReceive[]
-            val future1: RequestReplyTypedMessageFuture<String?, String?, Thing?>? =
+            val future1: RequestReplyTypedMessageFuture<String?, String?, Thing> =
                 template.sendAndReceive(MessageBuilder.withPayload("getAThing").build(),
-                    object : ParameterizedTypeReference<Thing?>() {})
-            log.info(future1?.sendFuture?.get(10, TimeUnit.SECONDS)?.recordMetadata?.toString())
-            val thing = future1?.get(10, TimeUnit.SECONDS)?.payload
+                    object : ParameterizedTypeReference<Thing>() {})
+            log.info(future1.sendFuture.get(10, TimeUnit.SECONDS).recordMetadata.toString())
+            val thing = future1.get(10, TimeUnit.SECONDS).payload
             log.info(thing.toString())
 
-            val future2: RequestReplyTypedMessageFuture<String?, String?, List<Thing?>?>? =
+            val future2: RequestReplyTypedMessageFuture<String?, String?, List<Thing>> =
                 template.sendAndReceive(MessageBuilder.withPayload("getThings").build(),
-                    object : ParameterizedTypeReference<List<Thing?>?>() {})
-            log.info(future2?.sendFuture?.get(10, TimeUnit.SECONDS)?.recordMetadata.toString())
-            val things = future2?.get(10, TimeUnit.SECONDS)?.payload
-            things?.forEach(Consumer { thing1: Thing? -> log.info(thing1.toString()) })
+                    object : ParameterizedTypeReference<List<Thing>>() {})
+            log.info(future2.sendFuture.get(10, TimeUnit.SECONDS).recordMetadata.toString())
+            val things = future2.get(10, TimeUnit.SECONDS).payload
+            things.forEach { thing1 -> log.info(thing1.toString()) }
 // end::sendReceive[]
         }
     }

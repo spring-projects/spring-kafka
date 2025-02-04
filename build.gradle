@@ -1,5 +1,5 @@
 buildscript {
-	ext.kotlinVersion = '1.9.25'
+	ext.kotlinVersion = '2.1.10'
 	ext.isCI = System.getenv('GITHUB_ACTION')
 	repositories {
 		gradlePluginPortal()
@@ -20,8 +20,8 @@ plugins {
 	id 'org.ajoberstar.grgit' version '5.3.0'
 	id 'io.spring.nohttp' version '0.0.11'
 	id 'io.spring.dependency-management' version '1.1.7' apply false
-	id 'com.github.spotbugs' version '6.0.28'
-	id 'io.freefair.aggregate-javadoc' version '8.10.2'
+	id 'com.github.spotbugs' version '6.1.2'
+	id 'io.freefair.aggregate-javadoc' version '8.11'
 }
 
 apply plugin: 'io.spring.nohttp'
@@ -38,6 +38,7 @@ ext {
 
 	javadocLinks = [
 		'https://docs.oracle.com/en/java/javase/17/docs/api/',
+		'https://jakarta.ee/specifications/platform/11/apidocs/',
 		'https://docs.spring.io/spring-framework/docs/current/javadoc-api/'
 	] as String[]
 
@@ -50,7 +51,7 @@ ext {
 					}
 	modifiedFiles.finalizeValueOnRead()
 
-	assertjVersion = '3.25.3'
+	assertjVersion = '3.27.3'
 	awaitilityVersion = '4.2.2'
 	hamcrestVersion = '3.0'
 	hibernateValidationVersion = '8.0.2.Final'
@@ -59,18 +60,18 @@ ext {
 	junit4Version = '4.13.2'
 	junitJupiterVersion = '5.11.4'
 	kafkaVersion = '3.8.1'
-	kotlinCoroutinesVersion = '1.8.1'
+	kotlinCoroutinesVersion = '1.10.1'
 	log4jVersion = '2.24.3'
 	micrometerDocsVersion = '1.0.4'
-	micrometerVersion = '1.14.3'
-	micrometerTracingVersion = '1.4.2'
-	mockitoVersion = '5.14.2'
+	micrometerVersion = '1.15.0-SNAPSHOT'
+	micrometerTracingVersion = '1.5.0-SNAPSHOT'
+	mockitoVersion = '5.15.2'
 	reactorVersion = '2024.0.2'
 	scalaVersion = '2.13'
 	springBootVersion = '3.3.8' // docs module
-	springDataVersion = '2024.1.2'
+	springDataVersion = '2025.1.0-SNAPSHOT'
 	springRetryVersion = '2.0.11'
-	springVersion = '6.2.2'
+	springVersion = '7.0.0-SNAPSHOT'
 	zookeeperVersion = '3.8.4'
 
 	idPrefix = 'kafka'
@@ -191,7 +192,7 @@ configure(javaProjects) { subproject ->
 
 	checkstyle {
 		configDirectory.set(rootProject.file('src/checkstyle'))
-		toolVersion = '10.18.2'
+		toolVersion = '10.21.1'
 	}
 
 	publishing {
