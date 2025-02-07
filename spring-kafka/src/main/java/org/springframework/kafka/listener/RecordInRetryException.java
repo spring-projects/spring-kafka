@@ -1,5 +1,5 @@
 /*
- * Copyright 2024-2024 the original author or authors.
+ * Copyright 2024-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 package org.springframework.kafka.listener;
 
-import javax.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.NestedRuntimeException;
 
@@ -24,7 +24,7 @@ import org.springframework.core.NestedRuntimeException;
  * Internal {@link NestedRuntimeException} that is used as an exception thrown
  * when the record is in retry and not yet recovered during error handling.
  * This is to prevent the record from being prematurely committed in the middle of a retry.
- *
+ * <p>
  * Intended only for framework use and thus the package-protected access.
  *
  * @author Soby Chacko
