@@ -113,10 +113,10 @@ From the command line you can check this using:
 log --graph --pretty=oneline
 ----
 
-As this may cause lots of typing, we recommend creating a global alias, e.g. `git log` for this:
+As this may cause lots of typing, we recommend creating a global alias, e.g. `git logg` for this:
 
 ----
-git config --global alias.log 'log --graph --pretty=oneline'
+git config --global alias.logg 'log --graph --pretty=oneline'
 ----
 
 This command, will provide the following output, which in this case shows a nice linear history:
