@@ -165,10 +165,8 @@ public class GlobalEmbeddedKafkaTestExecutionListener implements TestExecutionLi
 
 	@Override
 	public void testPlanExecutionFinished(TestPlan testPlan) {
-		if (this.embeddedKafkaBroker != null) {
-			this.embeddedKafkaBroker.destroy();
-			this.logger.info("Stopped global Embedded Kafka.");
-		}
+		this.embeddedKafkaBroker.destroy();
+		this.logger.info("Stopped global Embedded Kafka.");
 	}
 
 }

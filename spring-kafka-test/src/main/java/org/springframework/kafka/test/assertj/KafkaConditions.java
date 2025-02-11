@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2024 the original author or authors.
+ * Copyright 2016-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package org.springframework.kafka.test.assertj;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.record.TimestampType;
 import org.assertj.core.api.Condition;
+import org.jspecify.annotations.Nullable;
 
 /**
  * AssertJ custom {@link Condition}s.
@@ -92,7 +93,7 @@ public final class KafkaConditions {
 
 	public static class ConsumerRecordKeyCondition<K> extends Condition<ConsumerRecord<K, ?>> {
 
-		private final K key;
+		private final @Nullable K key;
 
 		public ConsumerRecordKeyCondition(K key) {
 			super("a ConsumerRecord with 'key' " + key);
@@ -100,7 +101,8 @@ public final class KafkaConditions {
 		}
 
 		@Override
-		public boolean matches(ConsumerRecord<K, ?> value) {
+		@SuppressWarnings("NullAway") // Dataflow analysis limitation
+		public boolean matches(@Nullable ConsumerRecord<@Nullable K, ?> value) {
 			if (value == null) {
 				return false;
 			}
@@ -113,7 +115,7 @@ public final class KafkaConditions {
 
 	public static class ConsumerRecordValueCondition<V> extends Condition<ConsumerRecord<?, V>> {
 
-		private final V payload;
+		private final @Nullable V payload;
 
 		public ConsumerRecordValueCondition(V payload) {
 			super("a ConsumerRecord with 'value' " + payload);
@@ -121,7 +123,8 @@ public final class KafkaConditions {
 		}
 
 		@Override
-		public boolean matches(ConsumerRecord<?, V> value) {
+		@SuppressWarnings("NullAway") // Dataflow analysis limitation
+		public boolean matches(@Nullable ConsumerRecord<?, @Nullable V> value) {
 			if (value == null) {
 				return false;
 			}
@@ -164,7 +167,7 @@ public final class KafkaConditions {
 		}
 
 		@Override
-		public boolean matches(ConsumerRecord<?, ?> value) {
+		public boolean matches(@Nullable ConsumerRecord<?, ?> value) {
 			return value != null &&
 					(value.timestampType() == this.type && value.timestamp() == this.ts);
 		}
@@ -181,7 +184,7 @@ public final class KafkaConditions {
 		}
 
 		@Override
-		public boolean matches(ConsumerRecord<?, ?> value) {
+		public boolean matches(@Nullable ConsumerRecord<?, ?> value) {
 			return value != null && value.partition() == this.partition;
 		}
 

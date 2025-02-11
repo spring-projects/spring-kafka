@@ -251,12 +251,7 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 		}
 
 		createKafkaTopics(this.topics);
-		if (this.brokerListProperty == null) {
-			this.brokerListProperty = System.getProperty(BROKER_LIST_PROPERTY);
-		}
-		if (this.brokerListProperty != null) {
-			System.setProperty(this.brokerListProperty, getBrokersAsString());
-		}
+		System.setProperty(this.brokerListProperty, getBrokersAsString());
 		System.setProperty(SPRING_EMBEDDED_KAFKA_BROKERS, getBrokersAsString());
 	}
 
@@ -275,7 +270,7 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 
 	@Override
 	public void destroy() {
-		AtomicReference<Throwable> shutdownFailure = new AtomicReference<>();
+		AtomicReference<@Nullable Throwable> shutdownFailure = new AtomicReference<>();
 		Utils.closeQuietly(cluster, "embedded Kafka cluster", shutdownFailure);
 		if (shutdownFailure.get() != null) {
 			throw new IllegalStateException("Failed to shut down embedded Kafka cluster", shutdownFailure.get());
@@ -564,11 +559,11 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 	public void consumeFromEmbeddedTopics(Consumer<?, ?> consumer, boolean seekToEnd, String... topicsToConsume) {
 		List<String> notEmbedded = Arrays.stream(topicsToConsume)
 				.filter(topic -> !this.topics.contains(topic))
-				.collect(Collectors.toList());
+				.toList();
 		if (!notEmbedded.isEmpty()) {
 			throw new IllegalStateException("topic(s):'" + notEmbedded + "' are not in embedded topic list");
 		}
-		final AtomicReference<Collection<TopicPartition>> assigned = new AtomicReference<>();
+		final AtomicReference<@Nullable Collection<TopicPartition>> assigned = new AtomicReference<>();
 		consumer.subscribe(Arrays.asList(topicsToConsume), new ConsumerRebalanceListener() {
 
 			@Override
@@ -586,18 +581,19 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 		while (assigned.get() == null && n++ < 600) { // NOSONAR magic #
 			consumer.poll(Duration.ofMillis(100)); // force assignment NOSONAR magic #
 		}
-		if (assigned.get() != null) {
+		Collection<TopicPartition> topicPartitions = assigned.get();
+		if (topicPartitions != null) {
 			LOGGER.debug(() -> "Partitions assigned "
-					+ assigned.get()
+					+ topicPartitions
 					+ "; re-seeking to "
 					+ (seekToEnd ? "end; " : "beginning"));
 			if (seekToEnd) {
-				consumer.seekToEnd(assigned.get());
+				consumer.seekToEnd(topicPartitions);
 				// seekToEnd is asynchronous. query the position to force the seek to happen now.
-				assigned.get().forEach(consumer::position);
+				topicPartitions.forEach(consumer::position);
 			}
 			else {
-				consumer.seekToBeginning(assigned.get());
+				consumer.seekToBeginning(topicPartitions);
 			}
 		}
 		else {

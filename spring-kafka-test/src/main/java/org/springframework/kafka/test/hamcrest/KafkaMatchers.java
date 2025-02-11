@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2019 the original author or authors.
+ * Copyright 2016-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import org.apache.kafka.common.record.TimestampType;
 import org.hamcrest.Description;
 import org.hamcrest.DiagnosingMatcher;
 import org.hamcrest.Matcher;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Hamcrest {@link Matcher}s utilities.
@@ -90,7 +91,7 @@ public final class KafkaMatchers {
 	public static class ConsumerRecordKeyMatcher<K>
 			extends DiagnosingMatcher<ConsumerRecord<K, ?>> {
 
-		private final K key;
+		private final @Nullable K key;
 
 		public ConsumerRecordKeyMatcher(K key) {
 			this.key = key;
@@ -99,13 +100,14 @@ public final class KafkaMatchers {
 		@Override
 		public void describeTo(Description description) {
 			description.appendText("a ConsumerRecord with key ")
-					.appendText(this.key.toString());
+					.appendText(this.key == null ? "null" : this.key.toString());
 		}
 
 		@Override
-		protected boolean matches(Object item, Description mismatchDescription) {
+		@SuppressWarnings("NullAway") // Dataflow analysis limitation
+		protected boolean matches(@Nullable Object item, Description mismatchDescription) {
 			@SuppressWarnings(UNCHECKED)
-			ConsumerRecord<K, Object> record = (ConsumerRecord<K, Object>) item;
+			ConsumerRecord<@Nullable K, Object> record = (ConsumerRecord<K, Object>) item;
 			boolean matches = record != null
 					&& ((record.key() == null && this.key == null)
 					|| record.key().equals(this.key));
@@ -132,7 +134,7 @@ public final class KafkaMatchers {
 		}
 
 		@Override
-		protected boolean matches(Object item, Description mismatchDescription) {
+		protected boolean matches(@Nullable Object item, Description mismatchDescription) {
 			@SuppressWarnings(UNCHECKED)
 			ConsumerRecord<Object, V> record = (ConsumerRecord<Object, V>) item;
 			boolean matches = record != null && record.value().equals(this.payload);
@@ -159,7 +161,7 @@ public final class KafkaMatchers {
 		}
 
 		@Override
-		protected boolean matches(Object item, Description mismatchDescription) {
+		protected boolean matches(@Nullable Object item, Description mismatchDescription) {
 			@SuppressWarnings(UNCHECKED)
 			ConsumerRecord<Object, Object> record = (ConsumerRecord<Object, Object>) item;
 			boolean matches = record != null && record.partition() == this.partition;
@@ -183,7 +185,7 @@ public final class KafkaMatchers {
 		}
 
 		@Override
-		protected boolean matches(Object item, Description mismatchDescription) {
+		protected boolean matches(@Nullable Object item, Description mismatchDescription) {
 			@SuppressWarnings(UNCHECKED)
 			ConsumerRecord<Object, Object> record = (ConsumerRecord<Object, Object>) item;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2024 the original author or authors.
+ * Copyright 2019-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import java.lang.reflect.AnnotatedElement;
 import java.util.Arrays;
 import java.util.Optional;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.ConditionEvaluationResult;
 import org.junit.jupiter.api.extension.ExecutionCondition;
@@ -54,7 +55,7 @@ public class EmbeddedKafkaCondition implements ExecutionCondition, AfterAllCallb
 
 	private static final String EMBEDDED_BROKER = "embedded-kafka";
 
-	private static final ThreadLocal<EmbeddedKafkaBroker> BROKERS = new ThreadLocal<>();
+	private static final ThreadLocal<@Nullable EmbeddedKafkaBroker> BROKERS = new ThreadLocal<>();
 
 	@Override
 	public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
@@ -117,9 +118,11 @@ public class EmbeddedKafkaCondition implements ExecutionCondition, AfterAllCallb
 		return EmbeddedKafkaBrokerFactory.create(embedded);
 	}
 
-	private EmbeddedKafkaBroker getBrokerFromStore(ExtensionContext context) {
-		EmbeddedKafkaBroker embeddedKafkaBrokerFromParentStore =
-				getParentStore(context)
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation.
+	private @Nullable EmbeddedKafkaBroker getBrokerFromStore(ExtensionContext context) {
+		Store parentStore = getParentStore(context);
+		EmbeddedKafkaBroker embeddedKafkaBrokerFromParentStore = parentStore == null ? null :
+				parentStore
 						.get(EMBEDDED_BROKER, EmbeddedKafkaBroker.class);
 		return embeddedKafkaBrokerFromParentStore == null
 				? getStore(context).get(EMBEDDED_BROKER, EmbeddedKafkaBroker.class)
@@ -130,12 +133,12 @@ public class EmbeddedKafkaCondition implements ExecutionCondition, AfterAllCallb
 		return context.getStore(Namespace.create(getClass(), context));
 	}
 
-	private Store getParentStore(ExtensionContext context) {
-		ExtensionContext parent = context.getParent().get();
-		return parent.getStore(Namespace.create(getClass(), parent));
+	private @Nullable Store getParentStore(ExtensionContext context) {
+		ExtensionContext parent = context.getParent().orElse(null);
+		return parent == null ? null : parent.getStore(Namespace.create(getClass(), parent));
 	}
 
-	public static EmbeddedKafkaBroker getBroker() {
+	public static @Nullable EmbeddedKafkaBroker getBroker() {
 		return BROKERS.get();
 	}
 

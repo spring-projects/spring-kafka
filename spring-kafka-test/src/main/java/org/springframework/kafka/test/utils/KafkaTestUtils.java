@@ -66,8 +66,11 @@ public final class KafkaTestUtils {
 
 	private static final LogAccessor logger = new LogAccessor(LogFactory.getLog(KafkaTestUtils.class)); // NOSONAR
 
-	@SuppressWarnings("NullAway.Init")
-	private static Properties defaults;
+	private static final Properties defaults = new Properties();
+
+	static {
+		defaults.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+	}
 
 	private KafkaTestUtils() {
 	}
@@ -195,7 +198,7 @@ public final class KafkaTestUtils {
 					reset.computeIfAbsent(new TopicPartition(rec.topic(), rec.partition()), tp -> rec.offset());
 				}
 			});
-			reset.forEach((tp, off) -> consumer.seek(tp, off));
+			reset.forEach(consumer::seek);
 			try {
 				Thread.sleep(50); // NOSONAR magic#
 			}
@@ -299,7 +302,7 @@ public final class KafkaTestUtils {
 	 * @see Consumer#endOffsets(Collection, Duration)
 	 */
 	public static Map<TopicPartition, Long> getEndOffsets(Consumer<?, ?> consumer, String topic,
-			Integer... partitions) {
+			Integer @Nullable ... partitions) {
 
 		Collection<TopicPartition> tps;
 		if (partitions == null || partitions.length == 0) {
@@ -440,11 +443,6 @@ public final class KafkaTestUtils {
 	 * @since 2.2.5
 	 */
 	public static Properties defaultPropertyOverrides() {
-		if (defaults == null) {
-			Properties props = new Properties();
-			props.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
-			defaults = props;
-		}
 		return defaults;
 	}
 }
