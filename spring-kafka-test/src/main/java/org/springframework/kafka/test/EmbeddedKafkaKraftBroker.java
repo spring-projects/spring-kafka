@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 the original author or authors.
+ * Copyright 2018-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
@@ -54,6 +55,7 @@ import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Exit;
 import org.apache.kafka.common.utils.Utils;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.util.Assert;
@@ -93,7 +95,7 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 	private static final boolean IS_KAFKA_39_OR_LATER = ClassUtils.isPresent(
 			"org.apache.kafka.server.config.AbstractKafkaConfig", EmbeddedKafkaKraftBroker.class.getClassLoader());
 
-	private static final Method SET_CONFIG_METHOD;
+	private static final @Nullable Method SET_CONFIG_METHOD;
 
 	static {
 		if (IS_KAFKA_39_OR_LATER) {
@@ -117,7 +119,7 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 
 	private final AtomicBoolean initialized = new AtomicBoolean();
 
-	private KafkaClusterTestKit cluster;
+	private @Nullable KafkaClusterTestKit cluster;
 
 	private int[] kafkaPorts;
 
@@ -131,7 +133,7 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 	 * @param partitions partitions per topic.
 	 * @param topics the topics to create.
 	 */
-	public EmbeddedKafkaKraftBroker(int count, int partitions, String... topics) {
+	public EmbeddedKafkaKraftBroker(int count, int partitions, String @Nullable ... topics) {
 		this.count = count;
 		this.kafkaPorts = new int[this.count]; // random ports by default.
 		if (topics != null) {
@@ -261,7 +263,9 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 	private static void setConfigProperty(KafkaClusterTestKit.Builder clusterBuilder, String key, Object value) {
 		if (IS_KAFKA_39_OR_LATER) {
 			// For Kafka 3.9.0+: use reflection
-			ReflectionUtils.invokeMethod(SET_CONFIG_METHOD, clusterBuilder, key, value);
+			if (SET_CONFIG_METHOD != null) {
+				ReflectionUtils.invokeMethod(SET_CONFIG_METHOD, clusterBuilder, key, value);
+			}
 		}
 		else {
 			// For Kafka 3.8.0: direct call
@@ -484,10 +488,12 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 
 	@Override
 	public String getBrokersAsString() {
-		return (String) this.cluster.clientProperties().get(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG);
+		Assert.notNull(this.cluster, "cluster cannot be null");
+		String brokersString = (String) this.cluster.clientProperties().get(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG);
+		return Objects.requireNonNull(brokersString);
 	}
 
-	public KafkaClusterTestKit getCluster() {
+	public @Nullable KafkaClusterTestKit getCluster() {
 		return this.cluster;
 	}
 

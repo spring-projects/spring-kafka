@@ -185,7 +185,9 @@
 		<module name="NoWhitespaceAfter">
 			<property name="tokens" value="BNOT, DEC, DOT, INC, LNOT, UNARY_MINUS, UNARY_PLUS, ARRAY_DECLARATOR"/>
 		</module>
-		<module name="NoWhitespaceBefore"/>
+		<module name="NoWhitespaceBefore">
+			<property name="tokens" value="COMMA, SEMI, POST_INC, POST_DEC, LABELED_STAT"/>
+		</module>
 		<module name="ParenPad"/>
 		<module name="TypecastParenPad"/>
 		<module name="WhitespaceAfter"/>
