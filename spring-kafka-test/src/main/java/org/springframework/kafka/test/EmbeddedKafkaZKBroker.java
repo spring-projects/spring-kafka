@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 the original author or authors.
+ * Copyright 2018-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,6 +66,7 @@ import org.apache.kafka.metadata.BrokerState;
 import org.apache.zookeeper.client.ZKClientConfig;
 import org.apache.zookeeper.server.NIOServerCnxnFactory;
 import org.apache.zookeeper.server.ZooKeeperServer;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.test.core.BrokerAddress;
@@ -117,9 +118,9 @@ public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker {
 
 	private final AtomicBoolean initialized = new AtomicBoolean();
 
-	private EmbeddedZookeeper zookeeper;
+	private @Nullable EmbeddedZookeeper zookeeper;
 
-	private String zkConnect;
+	private @Nullable String zkConnect;
 
 	private int zkPort;
 
@@ -133,7 +134,7 @@ public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker {
 
 	private String brokerListProperty = "spring.kafka.bootstrap-servers";
 
-	private volatile ZooKeeperClient zooKeeperClient;
+	private volatile @Nullable ZooKeeperClient zooKeeperClient;
 
 	public EmbeddedKafkaZKBroker(int count) {
 		this(count, false);
@@ -145,7 +146,7 @@ public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker {
 	 * @param controlledShutdown passed into TestUtils.createBrokerConfig.
 	 * @param topics the topics to create (2 partitions per).
 	 */
-	public EmbeddedKafkaZKBroker(int count, boolean controlledShutdown, String... topics) {
+	public EmbeddedKafkaZKBroker(int count, boolean controlledShutdown, String @Nullable ... topics) {
 		this(count, controlledShutdown, 2, topics);
 	}
 
@@ -156,7 +157,7 @@ public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker {
 	 * @param partitions partitions per topic.
 	 * @param topics the topics to create.
 	 */
-	public EmbeddedKafkaZKBroker(int count, boolean controlledShutdown, int partitions, String... topics) {
+	public EmbeddedKafkaZKBroker(int count, boolean controlledShutdown, int partitions, String @Nullable ... topics) {
 		this.count = count;
 		this.kafkaPorts = new int[this.count]; // random ports by default.
 		this.controlledShutdown = controlledShutdown;
@@ -557,8 +558,10 @@ public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker {
 			}
 		}
 		try {
-			this.zookeeper.shutdown();
-			this.zkConnect = null;
+			if (this.zookeeper != null) {
+				this.zookeeper.shutdown();
+				this.zkConnect = null;
+			}
 		}
 		catch (Exception e) {
 			// do nothing
@@ -582,7 +585,7 @@ public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker {
 		return this.kafkaServers.get(id);
 	}
 
-	public EmbeddedZookeeper getZookeeper() {
+	public @Nullable EmbeddedZookeeper getZookeeper() {
 		return this.zookeeper;
 	}
 
@@ -599,7 +602,7 @@ public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker {
 		return this.zooKeeperClient;
 	}
 
-	public String getZookeeperConnectionString() {
+	public @Nullable String getZookeeperConnectionString() {
 		return this.zkConnect;
 	}
 

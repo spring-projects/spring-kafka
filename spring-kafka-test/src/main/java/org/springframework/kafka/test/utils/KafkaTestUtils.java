@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2024 the original author or authors.
+ * Copyright 2016-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,11 +45,11 @@ import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.StreamsConfig;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
@@ -66,6 +66,7 @@ public final class KafkaTestUtils {
 
 	private static final LogAccessor logger = new LogAccessor(LogFactory.getLog(KafkaTestUtils.class)); // NOSONAR
 
+	@SuppressWarnings("NullAway.Init")
 	private static Properties defaults;
 
 	private KafkaTestUtils() {
@@ -261,7 +262,7 @@ public final class KafkaTestUtils {
 	 * @throws Exception if an exception occurs.
 	 * @since 2.3
 	 */
-	public static OffsetAndMetadata getCurrentOffset(String brokerAddresses, String group, String topic, int partition)
+	public static @Nullable OffsetAndMetadata getCurrentOffset(String brokerAddresses, String group, String topic, int partition)
 			throws Exception { // NOSONAR
 
 		try (AdminClient client = AdminClient
@@ -281,7 +282,7 @@ public final class KafkaTestUtils {
 	 * @throws Exception if an exception occurs.
 	 * @since 3.0
 	 */
-	public static OffsetAndMetadata getCurrentOffset(AdminClient adminClient, String group, String topic, int partition)
+	public static @Nullable OffsetAndMetadata getCurrentOffset(AdminClient adminClient, String group, String topic, int partition)
 			throws Exception { // NOSONAR
 
 		return adminClient.listConsumerGroupOffsets(group).partitionsToOffsetAndMetadata().get() // NOSONAR false positive
@@ -395,7 +396,7 @@ public final class KafkaTestUtils {
 	 * @param propertyPath The path.
 	 * @return The field.
 	 */
-	public static Object getPropertyValue(Object root, String propertyPath) {
+	public static @Nullable Object getPropertyValue(Object root, String propertyPath) {
 		Object value = null;
 		DirectFieldAccessor accessor = new DirectFieldAccessor(root);
 		String[] tokens = propertyPath.split("\\.");
@@ -424,7 +425,7 @@ public final class KafkaTestUtils {
 	 * @see #getPropertyValue(Object, String)
 	 */
 	@SuppressWarnings("unchecked")
-	public static <T> T getPropertyValue(Object root, String propertyPath, Class<T> type) {
+	public static <T> @Nullable T getPropertyValue(Object root, String propertyPath, Class<T> type) {
 		Object value = getPropertyValue(root, propertyPath);
 		if (value != null) {
 			Assert.isAssignable(type, value.getClass());

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 the original author or authors.
+ * Copyright 2022-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -90,8 +90,10 @@ public class GlobalEmbeddedKafkaTestExecutionListener implements TestExecutionLi
 	public static final String BROKER_PROPERTIES_LOCATION_PROPERTY_NAME =
 			"spring.kafka.embedded.broker.properties.location";
 
+	@SuppressWarnings("NullAway.Init")
 	private EmbeddedKafkaBroker embeddedKafkaBroker;
 
+	@SuppressWarnings("NullAway.Init")
 	private Log logger;
 
 	@Override
