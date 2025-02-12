@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 the original author or authors.
+ * Copyright 2020-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -186,7 +186,7 @@ public class CommitOnAssignmentTests {
 				catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
 				}
-				return new ConsumerRecords(records1);
+				return new ConsumerRecords(records1, Map.of());
 			}).given(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 			willAnswer(i -> {
 				this.commitLatch.countDown();

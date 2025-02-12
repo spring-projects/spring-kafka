@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2024 the original author or authors.
+ * Copyright 2022-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -140,7 +140,7 @@ public class DefaultErrorHandlerNoSeeksRecordAckTests {
 			.willReturn(consumer);
 		ConsumerRecords records = new ConsumerRecords(Map.of(new TopicPartition("foo", 0),
 				List.of(new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
-							new RecordHeaders(), Optional.empty()))));
+							new RecordHeaders(), Optional.empty()))), Map.of());
 		willAnswer(inv -> {
 			Thread.sleep(20);
 			return records;
@@ -235,7 +235,7 @@ public class DefaultErrorHandlerNoSeeksRecordAckTests {
 				this.pollLatch.countDown();
 				switch (which.getAndIncrement()) {
 					case 0:
-						return new ConsumerRecords(records1);
+						return new ConsumerRecords(records1, Map.of());
 					default:
 						try {
 							Thread.sleep(50);

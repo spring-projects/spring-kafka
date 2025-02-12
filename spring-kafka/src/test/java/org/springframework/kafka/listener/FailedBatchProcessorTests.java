@@ -1,5 +1,5 @@
 /*
- * Copyright 2023-2024 the original author or authors.
+ * Copyright 2023-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,7 +67,7 @@ public class FailedBatchProcessorTests {
 
 
 		ConsumerRecords records = new ConsumerRecords(Map.of(new TopicPartition("topic", 0),
-				List.of(mock(ConsumerRecord.class), mock(ConsumerRecord.class))));
+				List.of(mock(ConsumerRecord.class), mock(ConsumerRecord.class))), Map.of());
 		assertThatIllegalStateException().isThrownBy(() -> testFBP.handle(new BatchListenerFailedException("test", 3),
 					records, mock(Consumer.class), mock(MessageListenerContainer.class), mock(Runnable.class)))
 				.withMessage("fallback");
@@ -90,7 +90,8 @@ public class FailedBatchProcessorTests {
 
 		ConsumerRecord rec1 = new ConsumerRecord("topic", 0, 0L, null, null);
 		ConsumerRecord rec2 = new ConsumerRecord("topic", 0, 1L, null, null);
-		ConsumerRecords records = new ConsumerRecords(Map.of(new TopicPartition("topic", 0), List.of(rec1, rec2)));
+		ConsumerRecords records = new ConsumerRecords(Map.of(new TopicPartition("topic", 0), List.of(rec1, rec2)),
+				Map.of());
 		ConsumerRecord unknownRecord = new ConsumerRecord("topic", 42, 123L, null, null);
 		assertThatIllegalStateException().isThrownBy(() ->
 					testFBP.handle(new BatchListenerFailedException("topic", unknownRecord),
@@ -112,7 +113,8 @@ public class FailedBatchProcessorTests {
 		ConsumerRecord rec2 = new ConsumerRecord("topic", 0, 1L, null, null);
 		ConsumerRecord rec3 = new ConsumerRecord("topic", 0, 2L, null, null);
 
-		ConsumerRecords records = new ConsumerRecords(Map.of(new TopicPartition("topic", 0), List.of(rec1, rec2, rec3)));
+		ConsumerRecords records = new ConsumerRecords(Map.of(new TopicPartition("topic", 0), List.of(rec1, rec2, rec3)),
+				Map.of());
 		TestFBP testFBP = new TestFBP((rec, ex) -> { }, new FixedBackOff(2L, 2L), mockEH);
 		final Consumer consumer = mock(Consumer.class);
 		willThrow(new RebalanceInProgressException("rebalance in progress")).given(consumer).commitSync(anyMap(), any());

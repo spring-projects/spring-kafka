@@ -19,6 +19,7 @@ package org.springframework.kafka.listener;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -84,8 +85,7 @@ class ErrorHandlingUtilsTest {
 		return new ConsumerRecords<>(
 				Arrays.stream(records).collect(Collectors.groupingBy(
 						(cr) -> new TopicPartition(cr.topic(), cr.partition())
-				))
-		);
+				)), Map.of());
 	}
 
 	@BeforeEach

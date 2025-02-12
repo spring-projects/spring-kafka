@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2024 the original author or authors.
+ * Copyright 2017-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -187,8 +187,8 @@ public class TransactionalContainerTests {
 			return null;
 		}).given(consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
 		ConsumerRecords records = new ConsumerRecords(Collections.singletonMap(topicPartition,
-				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0, "key", "value"))));
-		ConsumerRecords empty = new ConsumerRecords(Collections.emptyMap());
+				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0, "key", "value"))), Map.of());
+		ConsumerRecords empty = new ConsumerRecords(Collections.emptyMap(), Map.of());
 		final AtomicBoolean done = new AtomicBoolean();
 		willAnswer(i -> {
 			if (done.compareAndSet(false, true)) {
@@ -300,7 +300,7 @@ public class TransactionalContainerTests {
 		Map<TopicPartition, List<ConsumerRecord<String, String>>> recordMap = new HashMap<>();
 		recordMap.put(topicPartition0, Collections.singletonList(new ConsumerRecord<>("foo", 0, 0, "key", "value")));
 		recordMap.put(topicPartition1, Collections.singletonList(new ConsumerRecord<>("foo", 1, 0, "key", "value")));
-		ConsumerRecords records = new ConsumerRecords(recordMap);
+		ConsumerRecords records = new ConsumerRecords(recordMap, Map.of());
 		final AtomicBoolean done = new AtomicBoolean();
 		willAnswer(i -> {
 			if (done.compareAndSet(false, true)) {
@@ -371,7 +371,7 @@ public class TransactionalContainerTests {
 		Map<TopicPartition, List<ConsumerRecord<String, String>>> recordMap = new HashMap<>();
 		recordMap.put(topicPartition0, Collections.singletonList(new ConsumerRecord<>("foo", 0, 0, "key", "value")));
 		recordMap.put(topicPartition1, Collections.singletonList(new ConsumerRecord<>("foo", 1, 0, "key", "value")));
-		ConsumerRecords records = new ConsumerRecords(recordMap);
+		ConsumerRecords records = new ConsumerRecords(recordMap, Map.of());
 		final AtomicBoolean done = new AtomicBoolean();
 		willAnswer(i -> {
 			if (done.compareAndSet(false, true)) {
@@ -436,7 +436,7 @@ public class TransactionalContainerTests {
 		Consumer consumer = mock(Consumer.class);
 		final TopicPartition topicPartition = new TopicPartition("foo", 0);
 		final ConsumerRecords records = new ConsumerRecords(Collections.singletonMap(topicPartition,
-				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0, "key", "value"))));
+				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0, "key", "value"))), Map.of());
 		final AtomicBoolean done = new AtomicBoolean();
 		willAnswer(i -> {
 			if (done.compareAndSet(false, true)) {
@@ -1026,7 +1026,7 @@ public class TransactionalContainerTests {
 		Map<TopicPartition, List<ConsumerRecord<String, String>>> recordMap = new HashMap<>();
 		recordMap.put(topicPartition0, Collections.singletonList(new ConsumerRecord<>("foo", 0, 0, "key", "value")));
 		recordMap.put(topicPartition1, Collections.singletonList(new ConsumerRecord<>("foo", 1, 0, "key", "value")));
-		ConsumerRecords records = new ConsumerRecords(recordMap);
+		ConsumerRecords records = new ConsumerRecords(recordMap, Map.of());
 		final AtomicBoolean done = new AtomicBoolean();
 		final CountDownLatch pollLatch = new CountDownLatch(2);
 		willAnswer(i -> {

@@ -41,8 +41,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import kafka.server.KafkaConfig;
-import kafka.testkit.KafkaClusterTestKit;
-import kafka.testkit.TestKitNodes;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -53,6 +51,8 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.test.KafkaClusterTestKit;
+import org.apache.kafka.common.test.TestKitNodes;
 import org.apache.kafka.common.utils.Exit;
 import org.apache.kafka.common.utils.Utils;
 import org.jspecify.annotations.Nullable;
