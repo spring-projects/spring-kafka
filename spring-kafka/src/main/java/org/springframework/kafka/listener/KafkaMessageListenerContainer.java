@@ -186,6 +186,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	private final AbstractMessageListenerContainer<K, V> thisOrParentContainer;
 
+	private AbstractMessageListenerContainer<K, V> thisOrParentContainerRef;
+
 	private final TopicPartitionOffset[] topicPartitions;
 
 	private String clientIdSuffix;
@@ -212,6 +214,20 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	/**
 	 * Construct an instance with the supplied configuration properties.
+	 * @param containerRef a delegating container referece (if this is a sub-container).
+	 * @param container a delegating container (if this is a sub-container).
+	 * @param consumerFactory the consumer factory.
+	 * @param containerProperties the container properties.
+	 */
+	KafkaMessageListenerContainer(AbstractMessageListenerContainer<K, V> containerRef,
+				AbstractMessageListenerContainer<K, V> container, ConsumerFactory<? super K, ? super V> consumerFactory,
+				ContainerProperties containerProperties) {
+		this(container, consumerFactory, containerProperties);
+		this.thisOrParentContainerRef = containerRef == null ? this.thisOrParentContainer : containerRef;
+	}
+
+	/**
+	 * Construct an instance with the supplied configuration properties.
 	 * @param container a delegating container (if this is a sub-container).
 	 * @param consumerFactory the consumer factory.
 	 * @param containerProperties the container properties.
@@ -221,6 +237,23 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			ContainerProperties containerProperties) {
 
 		this(container, consumerFactory, containerProperties, (TopicPartitionOffset[]) null);
+	}
+
+	/**
+	 * Construct an instance with the supplied configuration properties and specific
+	 * topics/partitions/initialOffsets.
+	 * @param containerRef a delegating container referece (if this is a sub-container).
+	 * @param container a delegating container (if this is a sub-container).
+	 * @param consumerFactory the consumer factory.
+	 * @param containerProperties the container properties.
+	 * @param topicPartitions the topics/partitions; duplicates are eliminated.
+	 */
+	KafkaMessageListenerContainer(@Nullable AbstractMessageListenerContainer<K, V> containerRef,
+		@Nullable AbstractMessageListenerContainer<K, V> container,
+		ConsumerFactory<? super K, ? super V> consumerFactory, ContainerProperties containerProperties,
+		@Nullable TopicPartitionOffset... topicPartitions) {
+		this(container, consumerFactory, containerProperties, topicPartitions);
+		this.thisOrParentContainerRef = containerRef == null ? this.thisOrParentContainer : containerRef;
 	}
 
 	/**
@@ -315,7 +348,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	@Override
 	public void enforceRebalance() {
-		this.thisOrParentContainer.enforceRebalanceRequested.set(true);
+		this.thisOrParentContainer.setEnforceRebalanceRequested(true);
 		consumerWakeIfNecessary();
 	}
 
@@ -1512,7 +1545,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							records.add(kvConsumerRecord);
 						}
 						this.commonErrorHandler.handleRemaining(cfe, records, this.consumer,
-								KafkaMessageListenerContainer.this.thisOrParentContainer);
+								KafkaMessageListenerContainer.this.thisOrParentContainerRef);
 					}
 				}
 			}
@@ -1774,7 +1807,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void enforceRebalanceIfNecessary() {
 			try {
-				if (KafkaMessageListenerContainer.this.thisOrParentContainer.enforceRebalanceRequested.get()) {
+				if (KafkaMessageListenerContainer.this.thisOrParentContainer.isEnforceRebalanceRequested()) {
 					String enforcedRebalanceReason = String.format("Enforced rebalance requested for container: %s",
 							KafkaMessageListenerContainer.this.getListenerId());
 					this.logger.info(enforcedRebalanceReason);
@@ -1782,7 +1815,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			finally {
-				KafkaMessageListenerContainer.this.thisOrParentContainer.enforceRebalanceRequested.set(false);
+				KafkaMessageListenerContainer.this.thisOrParentContainer.setEnforceRebalanceRequested(false);
 			}
 		}
 
@@ -1989,7 +2022,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			try {
 				if (this.commonErrorHandler != null) {
 						this.commonErrorHandler.handleOtherException(e, this.consumer,
-								KafkaMessageListenerContainer.this.thisOrParentContainer, this.isBatchListener);
+								KafkaMessageListenerContainer.this.thisOrParentContainerRef, this.isBatchListener);
 				}
 				else {
 					this.logger.error(e, "Consumer exception");
@@ -2478,12 +2511,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					|| rte instanceof CommitFailedException) {
 
 				this.commonErrorHandler.handleBatch(rte, records, this.consumer,
-						KafkaMessageListenerContainer.this.thisOrParentContainer,
+						KafkaMessageListenerContainer.this.thisOrParentContainerRef,
 						() -> invokeBatchOnMessageWithRecordsOrList(records, list));
 			}
 			else {
 				ConsumerRecords<K, V> afterHandling = this.commonErrorHandler.handleBatchAndReturnRemaining(rte,
-						records, this.consumer, KafkaMessageListenerContainer.this.thisOrParentContainer,
+						records, this.consumer, KafkaMessageListenerContainer.this.thisOrParentContainerRef,
 						() -> invokeBatchOnMessageWithRecordsOrList(records, list));
 				if (afterHandling != null && !afterHandling.isEmpty()) {
 					this.remainingRecords = afterHandling;
@@ -2956,13 +2989,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					records.add(iterator.next());
 				}
 				this.commonErrorHandler.handleRemaining(rte, records, this.consumer,
-						KafkaMessageListenerContainer.this.thisOrParentContainer);
+						KafkaMessageListenerContainer.this.thisOrParentContainerRef);
 			}
 			else {
 				boolean handled = false;
 				try {
 					handled = this.commonErrorHandler.handleOne(rte, cRecord, this.consumer,
-							KafkaMessageListenerContainer.this.thisOrParentContainer);
+							KafkaMessageListenerContainer.this.thisOrParentContainerRef);
 				}
 				catch (Exception ex) {
 					this.logger.error(ex, "ErrorHandler threw unexpected exception");
