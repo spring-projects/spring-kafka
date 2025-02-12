@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2024 the original author or authors.
+ * Copyright 2016-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -64,6 +64,8 @@ import org.apache.kafka.common.errors.TopicAuthorizationException;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.assertj.core.api.InstanceOfAssertFactories;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -109,8 +111,6 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.ContainerTestUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
-import org.springframework.lang.NonNull;
-import org.springframework.lang.Nullable;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.util.backoff.FixedBackOff;
 
@@ -3845,8 +3845,7 @@ public class KafkaMessageListenerContainerTests {
 		RecordInterceptor<Integer, String> recordInterceptor = spy(new RecordInterceptor<Integer, String>() {
 
 			@Override
-			@NonNull
-			public ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record,
+			public @NonNull ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record,
 					Consumer<Integer, String> consumer) {
 
 				return record;
@@ -3934,8 +3933,7 @@ public class KafkaMessageListenerContainerTests {
 		RecordInterceptor<Integer, String> recordInterceptor = spy(new RecordInterceptor<Integer, String>() {
 
 			@Override
-			@Nullable
-			public ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record,
+			public @Nullable ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record,
 					Consumer<Integer, String> consumer) {
 
 				return null;
@@ -4024,8 +4022,7 @@ public class KafkaMessageListenerContainerTests {
 		BatchInterceptor<Integer, String> interceptor = spy(new BatchInterceptor<Integer, String>() {
 
 			@Override
-			@Nullable
-			public ConsumerRecords<Integer, String> intercept(ConsumerRecords<Integer, String> records,
+			public @Nullable ConsumerRecords<Integer, String> intercept(ConsumerRecords<Integer, String> records,
 					Consumer<Integer, String> consumer) {
 
 				return null;
@@ -4090,8 +4087,7 @@ public class KafkaMessageListenerContainerTests {
 		RecordInterceptor<Integer, String> recordInterceptor = spy(new RecordInterceptor<Integer, String>() {
 
 			@Override
-			@NonNull
-			public ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record,
+			public @NonNull ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record,
 					Consumer<Integer, String> consumer) {
 
 				return record;

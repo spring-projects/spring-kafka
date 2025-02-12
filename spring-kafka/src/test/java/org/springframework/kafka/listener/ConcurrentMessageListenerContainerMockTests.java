@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2024 the original author or authors.
+ * Copyright 2019-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,6 +43,7 @@ import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.GroupAuthorizationException;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -58,7 +59,6 @@ import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOp
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
-import org.springframework.lang.Nullable;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
@@ -686,8 +686,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		container.setRecordInterceptor(new RecordInterceptor() {
 
 			@Override
-			@Nullable
-			public ConsumerRecord intercept(ConsumerRecord rec, Consumer consumer) {
+			public @Nullable ConsumerRecord intercept(ConsumerRecord rec, Consumer consumer) {
 				order.add("interceptor");
 				latch.countDown();
 				return rec;
@@ -709,8 +708,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		container.setBatchInterceptor(new BatchInterceptor() {
 
 			@Override
-			@Nullable
-			public ConsumerRecords intercept(ConsumerRecords recs, Consumer consumer) {
+			public @Nullable ConsumerRecords intercept(ConsumerRecords recs, Consumer consumer) {
 				order.add("interceptor");
 				latch.countDown();
 				return new ConsumerRecords(Collections.singletonMap(tp0, Collections.singletonList(record1)));

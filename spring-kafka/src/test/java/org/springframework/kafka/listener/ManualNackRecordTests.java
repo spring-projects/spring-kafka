@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2024 the original author or authors.
+ * Copyright 2017-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,7 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.record.TimestampType;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
@@ -53,7 +54,6 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
-import org.springframework.lang.Nullable;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
@@ -248,9 +248,8 @@ public class ManualNackRecordTests {
 			factory.setRecordInterceptor(new RecordInterceptor() {
 
 				@Override
-				@Nullable
 				@SuppressWarnings("rawtypes")
-				public ConsumerRecord intercept(ConsumerRecord record, Consumer consumer) {
+				public @Nullable ConsumerRecord intercept(ConsumerRecord record, Consumer consumer) {
 					return new ConsumerRecord(record.topic(), record.partition(), record.offset(), 0L,
 							TimestampType.NO_TIMESTAMP_TYPE, 0, 0, record.key(), record.value(), record.headers(),
 							Optional.empty());

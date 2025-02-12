@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2024 the original author or authors.
+ * Copyright 2016-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,6 +63,8 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.aop.framework.ProxyFactory;
@@ -134,8 +136,6 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
-import org.springframework.lang.NonNull;
-import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.converter.AbstractMessageConverter;
@@ -1877,8 +1877,7 @@ public class EnableKafkaIntegrationTests {
 				}
 
 				@Override
-				@Nullable
-				protected Object convertToInternal(Object payload, @Nullable MessageHeaders headers,
+				protected @Nullable Object convertToInternal(Object payload, @Nullable MessageHeaders headers,
 						@Nullable Object conversionHint) {
 
 					return payload instanceof Foo ? ((Foo) payload).getBar() : null;
