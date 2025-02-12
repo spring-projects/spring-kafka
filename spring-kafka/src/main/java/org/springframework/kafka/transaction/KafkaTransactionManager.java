@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2020 the original author or authors.
+ * Copyright 2017-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
 package org.springframework.kafka.transaction;
 
 import java.time.Duration;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.kafka.core.KafkaResourceHolder;
 import org.springframework.kafka.core.ProducerFactory;
@@ -63,6 +65,7 @@ import org.springframework.util.Assert;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Soby Chacko
  */
 @SuppressWarnings("serial")
 public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionManager
@@ -72,7 +75,7 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 
 	private final ProducerFactory<K, V> producerFactory;
 
-	private String transactionIdPrefix;
+	private @Nullable String transactionIdPrefix;
 
 	private Duration closeTimeout = ProducerFactoryUtils.DEFAULT_CLOSE_TIMEOUT;
 
@@ -149,10 +152,13 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 				logger.debug("Created Kafka transaction on producer [" + resourceHolder.getProducer() + "]");
 			}
 			txObject.setResourceHolder(resourceHolder);
-			txObject.getResourceHolder().setSynchronizedWithTransaction(true);
-			int timeout = determineTimeout(definition);
-			if (timeout != TransactionDefinition.TIMEOUT_DEFAULT) {
-				txObject.getResourceHolder().setTimeoutInSeconds(timeout);
+			KafkaResourceHolder<K, V> kafkaResourceHolder = txObject.getResourceHolder();
+			if (kafkaResourceHolder != null) {
+				kafkaResourceHolder.setSynchronizedWithTransaction(true);
+				int timeout = determineTimeout(definition);
+				if (timeout != TransactionDefinition.TIMEOUT_DEFAULT) {
+					kafkaResourceHolder.setTimeoutInSeconds(timeout);
+				}
 			}
 		}
 		catch (Exception ex) {
@@ -172,7 +178,7 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 	}
 
 	@Override
-	protected void doResume(Object transaction, Object suspendedResources) {
+	protected void doResume(@Nullable Object transaction, Object suspendedResources) {
 		@SuppressWarnings(UNCHECKED)
 		KafkaResourceHolder<K, V> producerHolder = (KafkaResourceHolder<K, V>) suspendedResources;
 		TransactionSynchronizationManager.bindResource(getProducerFactory(), producerHolder);
@@ -183,7 +189,9 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 		@SuppressWarnings(UNCHECKED)
 		KafkaTransactionObject<K, V> txObject = (KafkaTransactionObject<K, V>) status.getTransaction();
 		KafkaResourceHolder<K, V> resourceHolder = txObject.getResourceHolder();
-		resourceHolder.commit();
+		if (resourceHolder != null) {
+			resourceHolder.commit();
+		}
 	}
 
 	@Override
@@ -191,14 +199,18 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 		@SuppressWarnings(UNCHECKED)
 		KafkaTransactionObject<K, V> txObject = (KafkaTransactionObject<K, V>) status.getTransaction();
 		KafkaResourceHolder<K, V> resourceHolder = txObject.getResourceHolder();
-		resourceHolder.rollback();
+		if (resourceHolder != null) {
+			resourceHolder.rollback();
+		}
 	}
 
 	@Override
 	protected void doSetRollbackOnly(DefaultTransactionStatus status) {
 		@SuppressWarnings(UNCHECKED)
 		KafkaTransactionObject<K, V> txObject = (KafkaTransactionObject<K, V>) status.getTransaction();
-		txObject.getResourceHolder().setRollbackOnly();
+		if (txObject.getResourceHolder() != null) {
+			txObject.getResourceHolder().setRollbackOnly();
+		}
 	}
 
 	@Override
@@ -206,8 +218,10 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 		@SuppressWarnings(UNCHECKED)
 		KafkaTransactionObject<K, V> txObject = (KafkaTransactionObject<K, V>) transaction;
 		TransactionSynchronizationManager.unbindResource(getProducerFactory());
-		txObject.getResourceHolder().close();
-		txObject.getResourceHolder().clear();
+		if (txObject.getResourceHolder() != null) {
+			txObject.getResourceHolder().close();
+			txObject.getResourceHolder().clear();
+		}
 	}
 
 	/**
@@ -217,21 +231,22 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 	 */
 	private static class KafkaTransactionObject<K, V> implements SmartTransactionObject {
 
-		private KafkaResourceHolder<K, V> resourceHolder;
+		private @Nullable KafkaResourceHolder<K, V> resourceHolder;
 
 		KafkaTransactionObject() {
 		}
 
-		public void setResourceHolder(KafkaResourceHolder<K, V> resourceHolder) {
+		public void setResourceHolder(@Nullable KafkaResourceHolder<K, V> resourceHolder) {
 			this.resourceHolder = resourceHolder;
 		}
 
-		public KafkaResourceHolder<K, V> getResourceHolder() {
+		public @Nullable KafkaResourceHolder<K, V> getResourceHolder() {
 			return this.resourceHolder;
 		}
 
 		@Override
 		public boolean isRollbackOnly() {
+			Assert.state(this.resourceHolder != null, "resourceHolder is null");
 			return this.resourceHolder.isRollbackOnly();
 		}
 
