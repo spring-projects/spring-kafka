@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2022 the original author or authors.
+ * Copyright 2017-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.TopicPartition;
+import org.jspecify.annotations.Nullable;
 
 /**
  * An event that is emitted when a consumer is not responding to the poll; with early
@@ -40,9 +41,9 @@ public class NonResponsiveConsumerEvent extends KafkaEvent {
 
 	private final String listenerId;
 
-	private final List<TopicPartition> topicPartitions;
+	private final @Nullable List<TopicPartition> topicPartitions;
 
-	private transient Consumer<?, ?> consumer;
+	private transient final Consumer<?, ?> consumer;
 
 	/**
 	 * Construct an instance with the provided properties.
@@ -56,7 +57,7 @@ public class NonResponsiveConsumerEvent extends KafkaEvent {
 	 */
 	public NonResponsiveConsumerEvent(Object source, Object container,
 			long timeSinceLastPoll, String id,
-			Collection<TopicPartition> topicPartitions, Consumer<?, ?> consumer) {
+			@Nullable Collection<TopicPartition> topicPartitions, Consumer<?, ?> consumer) {
 
 		super(source, container);
 		this.timeSinceLastPoll = timeSinceLastPoll;
@@ -77,7 +78,7 @@ public class NonResponsiveConsumerEvent extends KafkaEvent {
 	 * The TopicPartitions the container is listening to.
 	 * @return the TopicPartition list.
 	 */
-	public Collection<TopicPartition> getTopicPartitions() {
+	public @Nullable Collection<TopicPartition> getTopicPartitions() {
 		return this.topicPartitions == null ? null : Collections.unmodifiableList(this.topicPartitions);
 	}
 

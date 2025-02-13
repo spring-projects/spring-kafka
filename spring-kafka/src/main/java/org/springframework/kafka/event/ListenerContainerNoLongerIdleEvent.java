@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2023 the original author or authors.
+ * Copyright 2020-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.TopicPartition;
+import org.jspecify.annotations.Nullable;
 
 /**
  * An event that is emitted when a container is no longer idle if configured to publish
@@ -39,9 +40,9 @@ public class ListenerContainerNoLongerIdleEvent extends KafkaEvent {
 
 	private final String listenerId;
 
-	private transient List<TopicPartition> topicPartitions;
+	private transient final @Nullable List<TopicPartition> topicPartitions;
 
-	private transient Consumer<?, ?> consumer;
+	private transient final @Nullable Consumer<?, ?> consumer;
 
 	/**
 	 * Construct an instance with the provided arguments.
@@ -53,7 +54,7 @@ public class ListenerContainerNoLongerIdleEvent extends KafkaEvent {
 	 * @param consumer the consumer.
 	 */
 	public ListenerContainerNoLongerIdleEvent(Object source, Object container, long idleTime, String id,
-			Collection<TopicPartition> topicPartitions, Consumer<?, ?> consumer) {
+			@Nullable Collection<TopicPartition> topicPartitions, Consumer<?, ?> consumer) {
 
 		super(source, container);
 		this.idleTime = idleTime;
@@ -66,7 +67,7 @@ public class ListenerContainerNoLongerIdleEvent extends KafkaEvent {
 	 * The TopicPartitions the container is listening to.
 	 * @return the TopicPartition list.
 	 */
-	public Collection<TopicPartition> getTopicPartitions() {
+	public @Nullable Collection<TopicPartition> getTopicPartitions() {
 		return this.topicPartitions == null ? null : Collections.unmodifiableList(this.topicPartitions);
 	}
 
@@ -91,7 +92,7 @@ public class ListenerContainerNoLongerIdleEvent extends KafkaEvent {
 	 * Allows the listener to resume a paused consumer.
 	 * @return the consumer.
 	 */
-	public Consumer<?, ?> getConsumer() {
+	public @Nullable Consumer<?, ?> getConsumer() {
 		return this.consumer;
 	}
 

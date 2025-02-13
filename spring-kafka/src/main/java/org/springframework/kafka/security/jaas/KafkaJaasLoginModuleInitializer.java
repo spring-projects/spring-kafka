@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2024 the original author or authors.
+ * Copyright 2017-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import javax.security.auth.login.AppConfigurationEntry;
 import javax.security.auth.login.Configuration;
 
 import org.apache.kafka.common.security.JaasUtils;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.SmartInitializingSingleton;
@@ -124,7 +125,7 @@ public class KafkaJaasLoginModuleInitializer implements SmartInitializingSinglet
 	public void afterSingletonsInstantiated() {
 		// only use programmatic support if a file is not set via system property
 		if (this.ignoreJavaLoginConfigParamSystemProperty) {
-			Map<String, AppConfigurationEntry[]> configurationEntries = new HashMap<>();
+			Map<String, @Nullable AppConfigurationEntry[]> configurationEntries = new HashMap<>();
 			AppConfigurationEntry kafkaClientConfigurationEntry = new AppConfigurationEntry(
 					this.loginModule,
 					this.controlFlag,
@@ -145,11 +146,11 @@ public class KafkaJaasLoginModuleInitializer implements SmartInitializingSinglet
 
 	private static class InternalConfiguration extends Configuration {
 
-		private final Map<String, AppConfigurationEntry[]> configurationEntries;
+		private final Map<String, @Nullable AppConfigurationEntry[]> configurationEntries;
 
 		private final Configuration delegate;
 
-		InternalConfiguration(Map<String, AppConfigurationEntry[]> configurationEntries, Configuration delegate) {
+		InternalConfiguration(Map<String, @Nullable AppConfigurationEntry[]> configurationEntries, Configuration delegate) {
 			Assert.notNull(configurationEntries, "'configurationEntries' cannot be null");
 			Assert.notEmpty(configurationEntries, "'configurationEntries' cannot be empty");
 			this.configurationEntries = configurationEntries;
@@ -157,8 +158,9 @@ public class KafkaJaasLoginModuleInitializer implements SmartInitializingSinglet
 		}
 
 		@Override
-		public AppConfigurationEntry[] getAppConfigurationEntry(String name) {
-			AppConfigurationEntry[] conf = this.delegate == null ? null : this.delegate.getAppConfigurationEntry(name);
+		@SuppressWarnings("NullAway") // Overridden method does not define nullness
+		public @Nullable AppConfigurationEntry[] getAppConfigurationEntry(String name) {
+			AppConfigurationEntry[] conf = this.delegate.getAppConfigurationEntry(name);
 			return conf != null ? conf : this.configurationEntries.get(name);
 		}
 

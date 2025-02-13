@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2023 the original author or authors.
+ * Copyright 2016-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.TopicPartition;
+import org.jspecify.annotations.Nullable;
 
 /**
  * An event that is emitted when a container is idle if the container
@@ -41,9 +42,9 @@ public class ListenerContainerIdleEvent extends KafkaEvent {
 
 	private final boolean paused;
 
-	private transient List<TopicPartition> topicPartitions;
+	private transient final @Nullable List<TopicPartition> topicPartitions;
 
-	private transient Consumer<?, ?> consumer;
+	private transient final Consumer<?, ?> consumer;
 
 	/**
 	 * Construct an instance with the provided arguments.
@@ -58,7 +59,7 @@ public class ListenerContainerIdleEvent extends KafkaEvent {
 	 */
 	public ListenerContainerIdleEvent(Object source, Object container,
 			long idleTime, String id,
-			Collection<TopicPartition> topicPartitions, Consumer<?, ?> consumer, boolean paused) {
+			@Nullable Collection<TopicPartition> topicPartitions, Consumer<?, ?> consumer, boolean paused) {
 
 		super(source, container);
 		this.idleTime = idleTime;
@@ -80,7 +81,7 @@ public class ListenerContainerIdleEvent extends KafkaEvent {
 	 * The TopicPartitions the container is listening to.
 	 * @return the TopicPartition list.
 	 */
-	public Collection<TopicPartition> getTopicPartitions() {
+	public @Nullable Collection<TopicPartition> getTopicPartitions() {
 		return this.topicPartitions == null ? null : Collections.unmodifiableList(this.topicPartitions);
 	}
 
