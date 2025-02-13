@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2024 the original author or authors.
+ * Copyright 2014-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,6 +44,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.aop.framework.Advised;
 import org.springframework.aop.support.AopUtils;
@@ -101,7 +102,6 @@ import org.springframework.kafka.retrytopic.RetryTopicConfigurer;
 import org.springframework.kafka.retrytopic.RetryTopicSchedulerWrapper;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.TopicPartitionOffset.SeekPosition;
-import org.springframework.lang.Nullable;
 import org.springframework.messaging.converter.GenericMessageConverter;
 import org.springframework.messaging.converter.SmartMessageConverter;
 import org.springframework.messaging.handler.annotation.support.DefaultMessageHandlerMethodFactory;
@@ -1034,7 +1034,6 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 	}
 
-	@Nullable
 	private TopicPartitionOffset.SeekPosition resloveTopicPartitionOffsetSeekPosition(@Nullable Object seekPosition) {
 		TopicPartitionOffset.SeekPosition resloveTpoSp = null;
 		if (seekPosition instanceof String seekPositionName) {

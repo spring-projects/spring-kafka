@@ -75,6 +75,7 @@ import org.apache.kafka.common.errors.RebalanceInProgressException;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeader;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeanUtils;
@@ -124,7 +125,6 @@ import org.springframework.kafka.support.micrometer.MicrometerHolder;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.SerializationUtils;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
-import org.springframework.lang.Nullable;
 import org.springframework.scheduling.SchedulingAwareRunnable;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;

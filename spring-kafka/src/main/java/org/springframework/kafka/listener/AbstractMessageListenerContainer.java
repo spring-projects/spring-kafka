@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2024 the original author or authors.
+ * Copyright 2016-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,6 +39,8 @@ import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.common.TopicPartition;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeansException;
@@ -53,8 +55,6 @@ import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.event.ContainerStoppedEvent;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.TopicPartitionOffset;
-import org.springframework.lang.NonNull;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -212,7 +212,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * Return the bean name.
 	 * @return the bean name.
 	 */
-	@Nullable
+	//	TODO: work on this @Nullable
 	public String getBeanName() {
 		return this.beanName;
 	}

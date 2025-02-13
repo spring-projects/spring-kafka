@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2024 the original author or authors.
+ * Copyright 2022-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@ import org.apache.kafka.common.protocol.Message;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.AppInfoParser.AppInfo;
 import org.apache.kafka.common.utils.ImplicitLinkedHashCollection;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.aot.hint.MemberCategory;
@@ -62,7 +63,6 @@ import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.kafka.support.serializer.ParseStringDeserializer;
 import org.springframework.kafka.support.serializer.StringOrBytesSerializer;
 import org.springframework.kafka.support.serializer.ToStringSerializer;
-import org.springframework.lang.Nullable;
 
 /**
  * {@link RuntimeHintsRegistrar} for Spring for Apache Kafka.

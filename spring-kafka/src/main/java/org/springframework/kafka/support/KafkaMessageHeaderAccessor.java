@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 the original author or authors.
+ * Copyright 2023-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,8 +18,9 @@ package org.springframework.kafka.support;
 
 import java.nio.ByteBuffer;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.kafka.retrytopic.RetryTopicHeaders;
-import org.springframework.lang.Nullable;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.util.Assert;

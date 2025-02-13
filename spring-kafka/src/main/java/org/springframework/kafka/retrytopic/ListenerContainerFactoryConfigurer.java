@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 the original author or authors.
+ * Copyright 2018-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
@@ -35,7 +37,6 @@ import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.adapter.KafkaBackoffAwareMessageListenerAdapter;
 import org.springframework.kafka.support.TopicPartitionOffset;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.backoff.BackOff;
 

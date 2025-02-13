@@ -23,6 +23,8 @@ import java.util.function.Consumer;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
@@ -40,8 +42,6 @@ import org.springframework.kafka.support.EndpointHandlerMethod;
 import org.springframework.kafka.support.EndpointHandlerMultiMethod;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.TopicForRetryable;
-import org.springframework.lang.NonNull;
-import org.springframework.lang.Nullable;
 
 /**
  *

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2021 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +19,9 @@ package org.springframework.kafka.support;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.log.LogAccessor;
-import org.springframework.lang.Nullable;
 import org.springframework.util.ObjectUtils;
 
 /**

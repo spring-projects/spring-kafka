@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2024 the original author or authors.
+ * Copyright 2016-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import java.util.regex.Pattern;
 import io.micrometer.observation.ObservationRegistry;
 import org.aopalliance.aop.Advice;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.aop.framework.Advised;
 import org.springframework.aop.framework.ProxyFactory;
@@ -37,7 +38,6 @@ import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservationConvention;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
-import org.springframework.lang.Nullable;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;

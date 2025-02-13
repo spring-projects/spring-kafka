@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2022 the original author or authors.
+ * Copyright 2016-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,12 +19,12 @@ package org.springframework.kafka.support.converter;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.Consumer;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.JavaUtils;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
-import org.springframework.lang.Nullable;
 
 /**
  * A top level interface for message converters.

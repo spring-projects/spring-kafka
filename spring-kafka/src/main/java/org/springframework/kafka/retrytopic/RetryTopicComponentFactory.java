@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2023 the original author or authors.
+ * Copyright 2022-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package org.springframework.kafka.retrytopic;
 
 import java.time.Clock;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
@@ -29,7 +31,6 @@ import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
 import org.springframework.kafka.listener.ListenerContainerRegistry;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.KafkaBackoffAwareMessageListenerAdapter;
-import org.springframework.lang.Nullable;
 
 /**
  * Provide the component instances that will be used with

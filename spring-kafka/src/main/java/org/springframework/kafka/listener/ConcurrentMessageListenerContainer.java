@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2024 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
@@ -38,7 +39,6 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.event.ConcurrentContainerStoppedEvent;
 import org.springframework.kafka.event.ConsumerStoppedEvent.Reason;
 import org.springframework.kafka.support.TopicPartitionOffset;
-import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 
 /**
