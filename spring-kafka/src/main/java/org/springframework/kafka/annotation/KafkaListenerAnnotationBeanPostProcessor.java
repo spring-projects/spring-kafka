@@ -190,25 +190,27 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private final AtomicBoolean enhancerIsBuilt = new AtomicBoolean();
 
+	@SuppressWarnings("NullAway.Init")
 	private KafkaListenerEndpointRegistry endpointRegistry;
 
 	private String defaultContainerFactoryBeanName = DEFAULT_KAFKA_LISTENER_CONTAINER_FACTORY_BEAN_NAME;
 
-	@Nullable
-	private ApplicationContext applicationContext;
+	private @Nullable ApplicationContext applicationContext;
 
+	@SuppressWarnings("NullAway.Init")
 	private BeanFactory beanFactory;
 
 	private BeanExpressionResolver resolver = new StandardBeanExpressionResolver();
 
+	@SuppressWarnings("NullAway.Init")
 	private BeanExpressionContext expressionContext;
 
 	private Charset charset = StandardCharsets.UTF_8;
 
+	@SuppressWarnings("NullAway.Init")
 	private AnnotationEnhancer enhancer;
 
-	@Nullable
-	private RetryTopicConfigurer retryTopicConfigurer;
+	private @Nullable RetryTopicConfigurer retryTopicConfigurer;
 
 	private final Lock globalLock = new ReentrantLock();
 
@@ -473,9 +475,6 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				Method checked = checkProxy(method, bean);
 				KafkaHandler annotation = AnnotationUtils.findAnnotation(method, KafkaHandler.class);
 				if (annotation != null && annotation.isDefault()) {
-					Method toAssert = defaultMethod;
-					Assert.state(toAssert == null, () -> "Only one @KafkaHandler can be marked 'isDefault', found: "
-							+ toAssert.toString() + " and " + method);
 					defaultMethod = checked;
 				}
 				checkedMethods.add(checked);
@@ -737,9 +736,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 	}
 
-	@Nullable
-	private KafkaListenerContainerFactory<?> resolveContainerFactory(KafkaListener kafkaListener,
-			Object factoryTarget, String beanName) {
+	private @Nullable KafkaListenerContainerFactory<?> resolveContainerFactory(KafkaListener kafkaListener,
+			@Nullable Object factoryTarget, String beanName) {
 
 		String containerFactory = kafkaListener.containerFactory();
 		if (!StringUtils.hasText(containerFactory)) {
@@ -786,7 +784,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		Assert.state(this.beanFactory != null, "BeanFactory must be set to obtain container factory by bean name");
 	}
 
-	protected String noBeanFoundMessage(Object target, String listenerBeanName, String requestedBeanName,
+	protected String noBeanFoundMessage(@Nullable Object target, String listenerBeanName, String requestedBeanName,
 			Class<?> expectedClass) {
 
 		return "Could not register Kafka listener endpoint on ["
@@ -833,7 +831,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 	}
 
-	private String getEndpointId(KafkaListener kafkaListener) {
+	private @Nullable String getEndpointId(KafkaListener kafkaListener) {
 		if (StringUtils.hasText(kafkaListener.id())) {
 			return resolveExpressionAsString(kafkaListener.id(), "id");
 		}
@@ -875,7 +873,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		return result.toArray(new String[0]);
 	}
 
-	private Pattern resolvePattern(KafkaListener kafkaListener) {
+	private @Nullable Pattern resolvePattern(KafkaListener kafkaListener) {
 		Pattern pattern = null;
 		String text = kafkaListener.topicPattern();
 		if (StringUtils.hasText(text)) {
@@ -896,6 +894,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private List<TopicPartitionOffset> resolveTopicPartitionsList(TopicPartition topicPartition) {
 		Object topic = resolveExpression(topicPartition.topic());
+		Assert.state(topic != null, "Topic must not be null");
 		Assert.state(topic instanceof String,
 				() -> "topic in @TopicPartition must resolve to a String, not " + topic.getClass());
 		Assert.state(StringUtils.hasText((String) topic), "topic in @TopicPartition must not be empty");
@@ -907,19 +906,22 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		for (String partition : partitions) {
 			resolvePartitionAsInteger((String) topic, resolveExpression(partition), result);
 		}
-		if (partitionOffsets.length == 1 && resolveExpression(partitionOffsets[0].partition()).equals("*")) {
-			result.forEach(tpo -> {
-				tpo.setOffset(resolveInitialOffset(tpo.getTopic(), partitionOffsets[0]));
-				tpo.setRelativeToCurrent(isRelative(tpo.getTopic(), partitionOffsets[0]));
-			});
-		}
-		else {
-			for (PartitionOffset partitionOffset : partitionOffsets) {
-				Assert.isTrue(!partitionOffset.partition().equals("*"), () ->
-						"Partition wildcard '*' is only allowed in a single @PartitionOffset in " + result);
-				resolvePartitionAsInteger((String) topic, resolveExpression(partitionOffset.partition()), result,
-						resolveInitialOffset(topic, partitionOffset), isRelative(topic, partitionOffset), true,
-						resolveExpression(partitionOffset.seekPosition()));
+		if (partitionOffsets.length > 0) {
+			Object resolvedExpression = resolveExpression(partitionOffsets[0].partition());
+			if (partitionOffsets.length == 1 && resolvedExpression != null && resolvedExpression.equals("*")) {
+				result.forEach(tpo -> {
+					tpo.setOffset(resolveInitialOffset(tpo.getTopic(), partitionOffsets[0]));
+					tpo.setRelativeToCurrent(isRelative(tpo.getTopic(), partitionOffsets[0]));
+				});
+			}
+			else {
+				for (PartitionOffset partitionOffset : partitionOffsets) {
+					Assert.isTrue(!partitionOffset.partition().equals("*"), () ->
+							"Partition wildcard '*' is only allowed in a single @PartitionOffset in " + result);
+					resolvePartitionAsInteger((String) topic, resolveExpression(partitionOffset.partition()), result,
+							resolveInitialOffset(topic, partitionOffset), isRelative(topic, partitionOffset), true,
+							resolveExpression(partitionOffset.seekPosition()));
+				}
 			}
 		}
 		Assert.isTrue(!result.isEmpty(), () -> "At least one partition required for " + topic);
@@ -938,9 +940,14 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			initialOffset = lng;
 		}
 		else {
-			throw new IllegalArgumentException(String.format(
-					"@PartitionOffset for topic '%s' can't resolve '%s' as a Long or String, resolved to '%s'",
-					topic, partitionOffset.initialOffset(), initialOffsetValue.getClass()));
+			if (initialOffsetValue != null) {
+				throw new IllegalArgumentException(String.format(
+						"@PartitionOffset for topic '%s' can't resolve '%s' as a Long or String, resolved to '%s'",
+						topic, partitionOffset.initialOffset(), initialOffsetValue.getClass()));
+			}
+			else {
+				throw new IllegalArgumentException("@PartitionOffset for topic '" + topic + "' cannot be empty. Initial offset is null");
+			}
 		}
 		return initialOffset;
 	}
@@ -955,15 +962,20 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			relativeToCurrent = bool;
 		}
 		else {
-			throw new IllegalArgumentException(String.format(
-					"@PartitionOffset for topic '%s' can't resolve '%s' as a Boolean or String, resolved to '%s'",
-					topic, partitionOffset.relativeToCurrent(), relativeToCurrentValue.getClass()));
+			if (relativeToCurrentValue != null) {
+				throw new IllegalArgumentException(String.format(
+						"@PartitionOffset for topic '%s' can't resolve '%s' as a Boolean or String, resolved to '%s'",
+						topic, partitionOffset.relativeToCurrent(), relativeToCurrentValue.getClass()));
+			}
+			else {
+				throw new IllegalArgumentException("@PartitionOffset for topic '" + topic + "' cannot be empty. Relative to current value is null");
+			}
 		}
 		return relativeToCurrent;
 	}
 
 	@SuppressWarnings(UNCHECKED)
-	private void resolveAsString(Object resolvedValue, List<String> result) {
+	private void resolveAsString(@Nullable Object resolvedValue, List<String> result) {
 		if (resolvedValue instanceof String[] strArr) {
 			for (Object object : strArr) {
 				resolveAsString(object, result);
@@ -983,12 +995,12 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 	}
 
-	private void resolvePartitionAsInteger(String topic, Object resolvedValue, List<TopicPartitionOffset> result) {
+	private void resolvePartitionAsInteger(String topic, @Nullable Object resolvedValue, List<TopicPartitionOffset> result) {
 		resolvePartitionAsInteger(topic, resolvedValue, result, null, false, false, null);
 	}
 
 	@SuppressWarnings(UNCHECKED)
-	private void resolvePartitionAsInteger(String topic, Object resolvedValue, List<TopicPartitionOffset> result,
+	private void resolvePartitionAsInteger(String topic, @Nullable Object resolvedValue, List<TopicPartitionOffset> result,
 			@Nullable Long offset, boolean isRelative, boolean checkDups, @Nullable Object seekPosition) {
 
 		if (resolvedValue instanceof String[] strArr) {
@@ -1034,6 +1046,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 	}
 
+	@SuppressWarnings("NullAway") // Overridden method does not define nullness
 	private TopicPartitionOffset.SeekPosition resloveTopicPartitionOffsetSeekPosition(@Nullable Object seekPosition) {
 		TopicPartitionOffset.SeekPosition resloveTpoSp = null;
 		if (seekPosition instanceof String seekPositionName) {
@@ -1062,7 +1075,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 	}
 
-	private String resolveExpressionAsString(String value, String attribute) {
+	private @Nullable String resolveExpressionAsString(String value, String attribute) {
 		Object resolved = resolveExpression(value);
 		if (resolved instanceof String str) {
 			return str;
@@ -1074,7 +1087,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		return null;
 	}
 
-	@Nullable
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	private byte[] resolveExpressionAsBytes(String value, String attribute) {
 		Object resolved = resolveExpression(value);
 		if (resolved instanceof String str) {
@@ -1092,7 +1105,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		return null;
 	}
 
-	private Integer resolveExpressionAsInteger(String value, String attribute) {
+	private @Nullable Integer resolveExpressionAsInteger(String value, String attribute) {
 		Object resolved = resolveExpression(value);
 		Integer result = null;
 		if (resolved instanceof String str) {
@@ -1109,7 +1122,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		return result;
 	}
 
-	private Boolean resolveExpressionAsBoolean(String value, String attribute) {
+	private @Nullable Boolean resolveExpressionAsBoolean(String value, String attribute) {
 		Object resolved = resolveExpression(value);
 		Boolean result = null;
 		if (resolved instanceof Boolean bool) {
@@ -1126,7 +1139,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		return result;
 	}
 
-	private Object resolveExpression(String value) {
+	private @Nullable Object resolveExpression(String value) {
 		return this.resolver.evaluate(resolve(value), this.expressionContext);
 	}
 
@@ -1136,7 +1149,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	 * @return the resolved value
 	 * @see ConfigurableBeanFactory#resolveEmbeddedValue
 	 */
-	private String resolve(String value) {
+	private @Nullable String resolve(String value) {
 		if (this.beanFactory instanceof ConfigurableBeanFactory cbf) {
 			return cbf.resolveEmbeddedValue(value);
 		}
@@ -1210,7 +1223,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		private final DefaultFormattingConversionService defaultFormattingConversionService =
 				new DefaultFormattingConversionService();
 
-		private MessageHandlerMethodFactory handlerMethodFactory;
+		private @Nullable MessageHandlerMethodFactory handlerMethodFactory;
 
 		public void setHandlerMethodFactory(MessageHandlerMethodFactory kafkaHandlerMethodFactory1) {
 			this.handlerMethodFactory = kafkaHandlerMethodFactory1;
@@ -1264,7 +1277,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	static class ListenerScope implements Scope {
 
-		private final Map<String, Object> listeners = new HashMap<>();
+		private final Map<String, @Nullable Object> listeners = new HashMap<>();
 
 		ListenerScope() {
 		}
@@ -1277,11 +1290,13 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			this.listeners.remove(key);
 		}
 
+		@SuppressWarnings("NullAway") // Overridden method does not define nullness
 		@Override
-		public Object get(String name, ObjectFactory<?> objectFactory) {
+		public @Nullable Object get(String name, ObjectFactory<?> objectFactory) {
 			return this.listeners.get(name);
 		}
 
+		@SuppressWarnings("NullAway") // Overridden method does not define nullness
 		@Override
 		public Object remove(String name) {
 			return null;
@@ -1292,12 +1307,12 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 
 		@Override
-		public Object resolveContextualObject(String key) {
+		public @Nullable Object resolveContextualObject(String key) {
 			return this.listeners.get(key);
 		}
 
 		@Override
-		public String getConversationId() {
+		public @Nullable String getConversationId() {
 			return null;
 		}
 
@@ -1319,7 +1334,6 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 
 		@Override
-		@Nullable
 		public Set<ConvertiblePair> getConvertibleTypes() {
 			HashSet<ConvertiblePair> pairs = new HashSet<>();
 			pairs.add(new ConvertiblePair(byte[].class, long.class));
@@ -1334,8 +1348,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 
 		@Override
-		@Nullable
-		public Object convert(@Nullable Object source, TypeDescriptor sourceType, TypeDescriptor targetType) {
+		public @Nullable Object convert(@Nullable Object source, TypeDescriptor sourceType, TypeDescriptor targetType) {
 			byte[] bytes = (byte[]) source;
 			if (bytes == null) {
 				return null;
