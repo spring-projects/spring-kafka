@@ -16,8 +16,11 @@
 
 package org.springframework.kafka.listener.adapter;
 
+import java.lang.reflect.Method;
+
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.core.KotlinDetector;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 
@@ -27,6 +30,7 @@ import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
  * underlying handler.
  *
  * @author Gary Russell
+ * @author Artem Bilan
  *
  */
 public class HandlerAdapter {
@@ -44,7 +48,10 @@ public class HandlerAdapter {
 	public HandlerAdapter(InvocableHandlerMethod invokerHandlerMethod) {
 		this.invokerHandlerMethod = invokerHandlerMethod;
 		this.delegatingHandler = null;
-		this.asyncReplies = AdapterUtils.isAsyncReply(invokerHandlerMethod.getMethod().getReturnType());
+		Method handlerMethod = invokerHandlerMethod.getMethod();
+		this.asyncReplies =
+				AdapterUtils.isAsyncReply(handlerMethod.getReturnType())
+						|| KotlinDetector.isSuspendingFunction(handlerMethod);
 	}
 
 	/**
