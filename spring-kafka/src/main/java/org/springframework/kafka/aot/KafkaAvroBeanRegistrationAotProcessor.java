@@ -56,8 +56,7 @@ public class KafkaAvroBeanRegistrationAotProcessor implements BeanRegistrationAo
 	private static final boolean AVRO_PRESENT = ClassUtils.isPresent(AVRO_GENERATED_CLASS_NAME, null);
 
 	@Override
-	@Nullable
-	public BeanRegistrationAotContribution processAheadOfTime(RegisteredBean registeredBean) {
+	public @Nullable BeanRegistrationAotContribution processAheadOfTime(RegisteredBean registeredBean) {
 		if (!AVRO_PRESENT) {
 			return null;
 		}
