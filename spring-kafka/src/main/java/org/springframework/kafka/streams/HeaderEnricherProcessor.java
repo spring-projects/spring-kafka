@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2023 the original author or authors.
+ * Copyright 2019-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,7 +60,12 @@ public class HeaderEnricherProcessor<K, V> extends ContextualProcessor<K, V, K, 
 				headerValue = ((String) headerValue).getBytes(StandardCharsets.UTF_8);
 			}
 			else if (!(headerValue instanceof byte[])) {
-				throw new IllegalStateException("Invalid header value type: " + headerValue.getClass());
+				if (headerValue != null) {
+					throw new IllegalStateException("Invalid header value type: " + headerValue.getClass());
+				}
+				else {
+					throw new IllegalStateException("headerValue is null");
+				}
 			}
 			headers.add(new RecordHeader(name, (byte[]) headerValue));
 		});

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2022 the original author or authors.
+ * Copyright 2019-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,7 +84,7 @@ public class MessagingProcessor<Kin, Vin, Kout, Vout> extends ContextualProcesso
 		message = this.function.exchange(message);
 		List<String> headerList = new ArrayList<>();
 		headers.forEach(header -> headerList.add(header.key()));
-		headerList.forEach(name -> headers.remove(name));
+		headerList.forEach(headers::remove);
 		ProducerRecord<?, ?> fromMessage = this.converter.fromMessage(message, "dummy");
 		fromMessage.headers().forEach(header -> {
 			if (!header.key().equals(KafkaHeaders.TOPIC)) {

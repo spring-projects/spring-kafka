@@ -54,7 +54,7 @@ public class KafkaStreamsInteractiveQueryService {
 	/**
 	 * Underlying {@link KafkaStreams} from {@link StreamsBuilderFactoryBean}.
 	 */
-	private volatile KafkaStreams kafkaStreams;
+	private volatile @Nullable KafkaStreams kafkaStreams;
 
 	/**
 	 * Construct an instance for querying state stores from the KafkaStreams in the {@link StreamsBuilderFactoryBean}.
@@ -87,6 +87,7 @@ public class KafkaStreamsInteractiveQueryService {
 
 		return this.retryTemplate.execute(context -> {
 			try {
+				Assert.state(this.kafkaStreams != null, "KafkaStreams cannot be null.");
 				return this.kafkaStreams.store(storeQueryParams);
 			}
 			catch (Exception e) {
@@ -143,6 +144,7 @@ public class KafkaStreamsInteractiveQueryService {
 		return this.retryTemplate.execute(context -> {
 			Throwable throwable = null;
 			try {
+				Assert.state(this.kafkaStreams != null, "KafkaStreams cannot be null.");
 				KeyQueryMetadata keyQueryMetadata = this.kafkaStreams.queryMetadataForKey(store, key, serializer);
 				if (keyQueryMetadata != null) {
 					return keyQueryMetadata.activeHost();
