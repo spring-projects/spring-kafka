@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 the original author or authors.
+ * Copyright 2021-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.kafka.support.SendResult;
 import org.springframework.messaging.Message;
 
@@ -37,7 +39,7 @@ import org.springframework.messaging.Message;
  */
 public class RequestReplyTypedMessageFuture<K, V, P> extends RequestReplyMessageFuture<K, V> {
 
-	RequestReplyTypedMessageFuture(CompletableFuture<SendResult<K, V>> sendFuture) {
+	RequestReplyTypedMessageFuture(@Nullable CompletableFuture<SendResult<K, V>> sendFuture) {
 		super(sendFuture);
 	}
 

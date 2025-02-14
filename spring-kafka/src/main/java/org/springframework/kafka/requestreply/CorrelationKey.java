@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package org.springframework.kafka.requestreply;
 
 import java.util.Arrays;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 
 /**
@@ -33,9 +35,9 @@ public final class CorrelationKey {
 
 	private final byte[] correlationId;
 
-	private String asString;
+	private @Nullable String asString;
 
-	private volatile Integer hashCode;
+	private volatile @Nullable Integer hashCode;
 
 	public CorrelationKey(byte[] correlationId) { // NOSONAR array reference
 		Assert.notNull(correlationId, "'correlationId' cannot be null");

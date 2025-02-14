@@ -68,12 +68,12 @@ class Application {
 // tag::beans[]
     @Bean
     fun template(
-        pf: ProducerFactory<String?, String>?,
-        factory: ConcurrentKafkaListenerContainerFactory<String?, String?>
-    ): ReplyingKafkaTemplate<String?, String, String?> {
+        pf: ProducerFactory<String, String>,
+        factory: ConcurrentKafkaListenerContainerFactory<String, String>
+    ): ReplyingKafkaTemplate<String, String, String> {
         val replyContainer = factory.createContainer("replies")
         replyContainer.containerProperties.groupId = "request.replies"
-        val template = ReplyingKafkaTemplate(pf, replyContainer)
+        val template = ReplyingKafkaTemplate<String, String, String>(pf, replyContainer)
         template.messageConverter = ByteArrayJsonMessageConverter()
         template.defaultTopic = "requests"
         return template
@@ -81,20 +81,20 @@ class Application {
 // end::beans[]
 
     @Bean
-    fun runner(template: ReplyingKafkaTemplate<String?, String?, String?>): ApplicationRunner {
+    fun runner(template: ReplyingKafkaTemplate<String, String, String>): ApplicationRunner {
         return ApplicationRunner { _ ->
 // tag::sendReceive[]
-            val future1: RequestReplyTypedMessageFuture<String?, String?, Thing> =
+            val future1: RequestReplyTypedMessageFuture<String, String, Thing> =
                 template.sendAndReceive(MessageBuilder.withPayload("getAThing").build(),
                     object : ParameterizedTypeReference<Thing>() {})
-            log.info(future1.sendFuture.get(10, TimeUnit.SECONDS).recordMetadata.toString())
+            log.info(future1.sendFuture?.get(10, TimeUnit.SECONDS)?.recordMetadata.toString())
             val thing = future1.get(10, TimeUnit.SECONDS).payload
             log.info(thing.toString())
 
-            val future2: RequestReplyTypedMessageFuture<String?, String?, List<Thing>> =
+            val future2: RequestReplyTypedMessageFuture<String, String, List<Thing>> =
                 template.sendAndReceive(MessageBuilder.withPayload("getThings").build(),
                     object : ParameterizedTypeReference<List<Thing>>() {})
-            log.info(future2.sendFuture.get(10, TimeUnit.SECONDS).recordMetadata.toString())
+            log.info(future2.sendFuture?.get(10, TimeUnit.SECONDS)?.recordMetadata.toString())
             val things = future2.get(10, TimeUnit.SECONDS).payload
             things.forEach { thing1 -> log.info(thing1.toString()) }
 // end::sendReceive[]

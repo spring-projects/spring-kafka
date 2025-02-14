@@ -96,7 +96,7 @@ public interface ReplyingKafkaOperations<K, V, R> {
 	 * @since 2.7
 	 */
 	default <P> RequestReplyTypedMessageFuture<K, V, P> sendAndReceive(Message<?> message, Duration replyTimeout,
-			ParameterizedTypeReference<P> returnType) {
+			@Nullable ParameterizedTypeReference<P> returnType) {
 
 		throw new UnsupportedOperationException();
 	}

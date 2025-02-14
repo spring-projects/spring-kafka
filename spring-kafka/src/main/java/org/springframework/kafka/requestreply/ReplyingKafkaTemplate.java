@@ -113,7 +113,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	private String replyPartitionHeaderName = KafkaHeaders.REPLY_PARTITION;
 
-	private Function<ConsumerRecord<?, ?>, Exception> replyErrorChecker = rec -> null;
+	private Function<ConsumerRecord<?, ?>, @Nullable Exception> replyErrorChecker = rec -> null;
 
 	private CountDownLatch assignLatch = new CountDownLatch(1);
 
@@ -127,6 +127,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		this(producerFactory, replyContainer, false);
 	}
 
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	public ReplyingKafkaTemplate(ProducerFactory<K, V> producerFactory,
 			GenericMessageListenerContainer<K, R> replyContainer, boolean autoFlush) {
 
@@ -290,7 +291,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	 * @param replyErrorChecker the error checker function.
 	 * @since 2.6.7
 	 */
-	public void setReplyErrorChecker(Function<ConsumerRecord<?, ?>, Exception> replyErrorChecker) {
+	public void setReplyErrorChecker(Function<ConsumerRecord<?, ?>, @Nullable Exception> replyErrorChecker) {
 		Assert.notNull(replyErrorChecker, "'replyErrorChecker' cannot be null");
 		this.replyErrorChecker = replyErrorChecker;
 	}
@@ -363,7 +364,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	}
 
 	@Override
-	public RequestReplyMessageFuture<K, V> sendAndReceive(Message<?> message, Duration replyTimeout) {
+	public RequestReplyMessageFuture<K, V> sendAndReceive(Message<?> message, @Nullable Duration replyTimeout) {
 		return sendAndReceive(message, replyTimeout, null);
 	}
 

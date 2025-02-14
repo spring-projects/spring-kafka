@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 the original author or authors.
+ * Copyright 2021-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package org.springframework.kafka.requestreply;
 
 import java.util.concurrent.CompletableFuture;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.kafka.support.SendResult;
 import org.springframework.messaging.Message;
 
@@ -33,9 +35,9 @@ import org.springframework.messaging.Message;
  */
 public class RequestReplyMessageFuture<K, V> extends CompletableFuture<Message<?>> {
 
-	private final CompletableFuture<SendResult<K, V>> sendFuture; // NOSONAR
+	private final @Nullable CompletableFuture<SendResult<K, V>> sendFuture; // NOSONAR
 
-	RequestReplyMessageFuture(CompletableFuture<SendResult<K, V>> sendFuture) {
+	RequestReplyMessageFuture(@Nullable CompletableFuture<SendResult<K, V>> sendFuture) {
 		this.sendFuture = sendFuture;
 	}
 
@@ -43,7 +45,7 @@ public class RequestReplyMessageFuture<K, V> extends CompletableFuture<Message<?
 	 * Return the send future.
 	 * @return the send future.
 	 */
-	public CompletableFuture<SendResult<K, V>> getSendFuture() {
+	public @Nullable CompletableFuture<SendResult<K, V>> getSendFuture() {
 		return this.sendFuture;
 	}
 
