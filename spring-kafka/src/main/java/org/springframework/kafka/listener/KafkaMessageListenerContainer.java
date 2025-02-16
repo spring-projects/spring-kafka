@@ -2357,13 +2357,18 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void failureTimer(@Nullable Object sample, @Nullable ConsumerRecord<?, ?> record) {
+		private void failureTimer(@Nullable Object sample, @Nullable ConsumerRecord<?, ?> record,
+				Throwable exception) {
 			if (sample != null) {
+				String exceptionName = exception.getCause() != null
+						? exception.getCause().getClass().getSimpleName()
+						: exception.getClass().getSimpleName();
+
 				if (this.micrometerTagsProvider == null || record == null) {
-					this.micrometerHolder.failure(sample, "ListenerExecutionFailedException");
+					this.micrometerHolder.failure(sample, exceptionName);
 				}
 				else {
-					this.micrometerHolder.failure(sample, "ListenerExecutionFailedException", record);
+					this.micrometerHolder.failure(sample, exceptionName, record);
 				}
 			}
 		}
@@ -2441,7 +2446,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			catch (RuntimeException e) {
 				this.batchFailed = true;
-				failureTimer(sample, null);
+				failureTimer(sample, null, e);
 				batchInterceptAfter(records, e);
 				throw e;
 			}
@@ -2776,7 +2781,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				recordInterceptAfter(cRecord, null);
 			}
 			catch (RuntimeException e) {
-				failureTimer(sample, cRecord);
+				failureTimer(sample, cRecord, e);
 				recordInterceptAfter(cRecord, e);
 				if (!isListenerAdapterObservationAware()) {
 					observation.error(e);
