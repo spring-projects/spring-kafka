@@ -133,7 +133,7 @@ public ConcurrentMessageListenerContainer(ConsumerFactory<K, V> consumerFactory,
 It also has a `concurrency` property.
 For example, `container.setConcurrency(3)` creates three `KafkaMessageListenerContainer` instances.
 
-For the first constructor, Kafka distributes the partitions across the consumers using its group management capabilities.
+If the container properties are configured for topics (or topic pattern),  Kafka distributes the partitions across the consumers using its group management capabilities.
 
 [IMPORTANT]
 ====
