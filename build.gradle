@@ -132,6 +132,9 @@ configure(javaProjects) { subproject ->
 	def scopeAttribute = Attribute.of('dependency.scope', String)
 
 	java {
+		toolchain {
+			languageVersion = JavaLanguageVersion.of(17)
+		}
 		withJavadocJar()
 		withSourcesJar()
 		registerFeature('optional') {
