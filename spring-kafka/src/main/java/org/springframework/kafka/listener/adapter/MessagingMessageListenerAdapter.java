@@ -425,7 +425,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 		catch (ListenerExecutionFailedException e) {
 			listenerError = e;
-			currentObservation.error(e);
+			currentObservation.error(e.getCause() != null ? e.getCause() : e);
 			handleException(records, acknowledgment, consumer, message, e);
 		}
 		catch (Error e) {
