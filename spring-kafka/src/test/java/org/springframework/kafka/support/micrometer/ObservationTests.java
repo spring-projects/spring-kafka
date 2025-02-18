@@ -359,8 +359,9 @@ public class ObservationTests {
 	@Test
 	void observationRuntimeException(@Autowired ExceptionListener listener, @Autowired SimpleTracer tracer,
 			@Autowired @Qualifier("throwableTemplate") KafkaTemplate<Integer, String> runtimeExceptionTemplate,
-			@Autowired KafkaListenerEndpointRegistry endpointRegistry, @Autowired Config config)
-					throws ExecutionException, InterruptedException, TimeoutException {
+			@Autowired KafkaListenerEndpointRegistry endpointRegistry,
+			@Autowired MeterRegistry meterRegistry, @Autowired Config config)
+			throws ExecutionException, InterruptedException, TimeoutException {
 
 		runtimeExceptionTemplate.send(OBSERVATION_RUNTIME_EXCEPTION, "testRuntimeException").get(10, TimeUnit.SECONDS);
 		assertThat(listener.latch4.await(10, TimeUnit.SECONDS)).isTrue();
@@ -372,9 +373,13 @@ public class ObservationTests {
 		assertThat(span.getTags().get("spring.kafka.template.name")).isEqualTo("throwableTemplate");
 		span = spans.poll();
 		assertThat(span.getTags().get("spring.kafka.listener.id")).isEqualTo("obs4-0");
-		assertThat(span.getError().getCause())
+		assertThat(span.getError())
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessage("obs4 run time exception");
+
+		assertThat(meterRegistry.get("spring.kafka.listener")
+				.tag("error", "IllegalStateException")
+				.timer().count()).isEqualTo(1);
 
 		assertThat(config.scopeInFailureReference.get()).isNotNull();
 	}
