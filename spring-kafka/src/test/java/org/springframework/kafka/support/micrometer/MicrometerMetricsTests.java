@@ -16,7 +16,6 @@
 
 package org.springframework.kafka.support.micrometer;
 
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -25,8 +24,6 @@ import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.observation.DefaultMeterObservationHandler;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.observation.ObservationRegistry;
-import io.micrometer.tracing.test.simple.SimpleTracer;
-import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
 
@@ -39,7 +36,6 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
-import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -52,7 +48,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Soby Chacko
- * @since 3.3.3
+ * @since 3.2.7
  */
 @SpringJUnitConfig
 @EmbeddedKafka(topics = { MicrometerMetricsTests.METRICS_TEST_TOPIC }, partitions = 1)
@@ -100,13 +96,6 @@ public class MicrometerMetricsTests {
 	@Configuration
 	@EnableKafka
 	static class Config {
-
-		@Bean
-		KafkaAdmin admin(EmbeddedKafkaBroker broker) {
-			return new KafkaAdmin(Map.of(
-					AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
-					broker.getBrokersAsString()));
-		}
 
 		@Bean
 		ProducerFactory<Integer, String> producerFactory(EmbeddedKafkaBroker broker) {
@@ -160,11 +149,6 @@ public class MicrometerMetricsTests {
 		@Bean
 		ObservationListener observationListener() {
 			return new ObservationListener();
-		}
-
-		@Bean
-		SimpleTracer simpleTracer() {
-			return new SimpleTracer();
 		}
 
 		@Bean
