@@ -203,7 +203,7 @@ class EnableKafkaKotlinCoroutinesTests {
 		fun kafkaListenerContainerFactory(): ConcurrentKafkaListenerContainerFactory<String, String> {
 			val factory: ConcurrentKafkaListenerContainerFactory<String, String>
 				= ConcurrentKafkaListenerContainerFactory()
-			factory.consumerFactory = kcf()
+			factory.setConsumerFactory(kcf())
 			factory.setReplyTemplate(kt())
 			return factory
 		}
@@ -212,8 +212,8 @@ class EnableKafkaKotlinCoroutinesTests {
 		fun kafkaBatchListenerContainerFactory(): ConcurrentKafkaListenerContainerFactory<String, String> {
 			val factory: ConcurrentKafkaListenerContainerFactory<String, String>
 					= ConcurrentKafkaListenerContainerFactory()
-			factory.isBatchListener = true
-			factory.consumerFactory = kcf()
+			factory.setBatchListener(true)
+			factory.setConsumerFactory(kcf())
 			return factory
 		}
 

@@ -89,7 +89,7 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 
 	private int phase = AbstractMessageListenerContainer.DEFAULT_PHASE;
 
-	private ConfigurableApplicationContext applicationContext;
+	private @Nullable ConfigurableApplicationContext applicationContext;
 
 	private boolean contextRefreshed;
 
@@ -224,8 +224,10 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 
 	private void refreshContextContainers() {
 		this.unregisteredContainers.clear();
-		this.applicationContext.getBeansOfType(MessageListenerContainer.class, true, false).values()
-				.forEach(container -> this.unregisteredContainers.put(container.getListenerId(), container));
+		if (this.applicationContext != null) {
+			this.applicationContext.getBeansOfType(MessageListenerContainer.class, true, false).values()
+					.forEach(container -> this.unregisteredContainers.put(container.getListenerId(), container));
+		}
 	}
 
 	/**

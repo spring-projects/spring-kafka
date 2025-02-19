@@ -66,6 +66,7 @@ public interface KafkaListenerEndpoint {
 	 * Return the topics for this endpoint.
 	 * @return the topics for this endpoint.
 	 */
+	@Nullable
 	Collection<String> getTopics();
 
 	/**
@@ -151,7 +152,7 @@ public interface KafkaListenerEndpoint {
 	 * @return the info.
 	 * @since 2.8.4
 	 */
-	@Nullable
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	default byte[] getListenerInfo() {
 		return null;
 	}

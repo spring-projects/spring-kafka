@@ -25,6 +25,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.kafka.listener.adapter.DelegatingInvocableHandler;
 import org.springframework.kafka.listener.adapter.HandlerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
+import org.springframework.messaging.handler.annotation.support.MessageHandlerMethodFactory;
 import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
 import org.springframework.validation.Validator;
 
@@ -45,9 +46,9 @@ public class MultiMethodKafkaListenerEndpoint<K, V> extends MethodKafkaListenerE
 
 	private List<Method> methods;
 
-	private Method defaultMethod;
+	private @Nullable Method defaultMethod;
 
-	private Validator validator;
+	private @Nullable Validator validator;
 
 	/**
 	 * Construct an instance for the provided methods, default method and bean.
@@ -85,7 +86,7 @@ public class MultiMethodKafkaListenerEndpoint<K, V> extends MethodKafkaListenerE
 	 * @return the default method.
 	 * @since 3.2
 	 */
-	public Method getDefaultMethod() {
+	public @Nullable Method getDefaultMethod() {
 		return this.defaultMethod;
 	}
 
@@ -112,11 +113,14 @@ public class MultiMethodKafkaListenerEndpoint<K, V> extends MethodKafkaListenerE
 		List<InvocableHandlerMethod> invocableHandlerMethods = new ArrayList<>();
 		InvocableHandlerMethod defaultHandler = null;
 		for (Method method : this.methods) {
-			InvocableHandlerMethod handler = getMessageHandlerMethodFactory()
-					.createInvocableHandlerMethod(getBean(), method);
-			invocableHandlerMethods.add(handler);
-			if (method.equals(this.defaultMethod)) {
-				defaultHandler = handler;
+			MessageHandlerMethodFactory messageHandlerMethodFactory = getMessageHandlerMethodFactory();
+			if (messageHandlerMethodFactory != null) {
+				InvocableHandlerMethod handler = messageHandlerMethodFactory
+						.createInvocableHandlerMethod(getBean(), method);
+				invocableHandlerMethods.add(handler);
+				if (method.equals(this.defaultMethod)) {
+					defaultHandler = handler;
+				}
 			}
 		}
 		DelegatingInvocableHandler delegatingHandler = new DelegatingInvocableHandler(invocableHandlerMethods,

@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2021 the original author or authors.
+ * Copyright 2014-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,9 +18,12 @@ package org.springframework.kafka.config;
 
 import java.util.Collection;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.support.TopicPartitionOffset;
+import org.springframework.util.Assert;
 
 /**
  * A {@link KafkaListenerContainerFactory} implementation to build a
@@ -46,7 +49,7 @@ import org.springframework.kafka.support.TopicPartitionOffset;
 public class ConcurrentKafkaListenerContainerFactory<K, V>
 		extends AbstractKafkaListenerContainerFactory<ConcurrentMessageListenerContainer<K, V>, K, V> {
 
-	private Integer concurrency;
+	private @Nullable Integer concurrency;
 
 	/**
 	 * Specify the container concurrency.
@@ -59,13 +62,14 @@ public class ConcurrentKafkaListenerContainerFactory<K, V>
 
 	@Override
 	protected ConcurrentMessageListenerContainer<K, V> createContainerInstance(KafkaListenerEndpoint endpoint) {
-		TopicPartitionOffset[] topicPartitions = endpoint.getTopicPartitionsToAssign();
+		@Nullable TopicPartitionOffset[] topicPartitions = endpoint.getTopicPartitionsToAssign();
 		if (topicPartitions != null && topicPartitions.length > 0) {
 			ContainerProperties properties = new ContainerProperties(topicPartitions);
 			return new ConcurrentMessageListenerContainer<>(getConsumerFactory(), properties);
 		}
 		else {
 			Collection<String> topics = endpoint.getTopics();
+			Assert.state(topics != null, "'topics' must not be null");
 			if (!topics.isEmpty()) { // NOSONAR
 				ContainerProperties properties = new ContainerProperties(topics.toArray(new String[0]));
 				return new ConcurrentMessageListenerContainer<>(getConsumerFactory(), properties);

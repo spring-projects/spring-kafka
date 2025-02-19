@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 the original author or authors.
+ * Copyright 2018-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 
 /**
@@ -36,7 +38,7 @@ public class KafkaStreamsConfiguration {
 
 	private final Map<String, Object> configs;
 
-	private Properties properties;
+	private @Nullable Properties properties;
 
 	public KafkaStreamsConfiguration(Map<String, Object> configs) {
 		Assert.notNull(configs, "Configuration map cannot be null");

@@ -56,9 +56,8 @@ class KafkaListenerEndpointAdapter implements KafkaListenerEndpoint {
 		return null;
 	}
 
-	@Nullable
 	@Override
-	public Collection<String> getTopics() {
+	public @Nullable Collection<String> getTopics() {
 		return Collections.emptyList();
 	}
 

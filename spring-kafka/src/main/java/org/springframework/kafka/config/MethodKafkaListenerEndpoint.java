@@ -62,15 +62,18 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 
 	private final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass()));
 
+	@SuppressWarnings("NullAway.Init")
 	private Object bean;
 
+	@SuppressWarnings("NullAway.Init")
 	private Method method;
 
+	@SuppressWarnings("NullAway.Init")
 	private MessageHandlerMethodFactory messageHandlerMethodFactory;
 
-	private KafkaListenerErrorHandler errorHandler;
+	private @Nullable KafkaListenerErrorHandler errorHandler;
 
-	private SmartMessageConverter messagingConverter;
+	private @Nullable SmartMessageConverter messagingConverter;
 
 	/**
 	 * Set the object instance that should manage this endpoint.
@@ -163,7 +166,7 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 	 * Return the {@link MessageHandlerMethodFactory}.
 	 * @return the messageHandlerMethodFactory
 	 */
-	protected MessageHandlerMethodFactory getMessageHandlerMethodFactory() {
+	protected @Nullable MessageHandlerMethodFactory getMessageHandlerMethodFactory() {
 		return this.messageHandlerMethodFactory;
 	}
 

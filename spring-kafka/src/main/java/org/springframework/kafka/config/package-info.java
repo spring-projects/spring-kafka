@@ -1,5 +1,5 @@
 /**
  * Package for kafka configuration
  */
-@org.springframework.lang.NonNullApi
+@org.jspecify.annotations.NullMarked
 package org.springframework.kafka.config;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2020 the original author or authors.
+ * Copyright 2019-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import java.util.Optional;
 
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.config.TopicConfig;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Builder for a {@link NewTopic}. Since 2.6 partitions and replicas default to
@@ -42,7 +43,7 @@ public final class TopicBuilder {
 
 	private Optional<Short> replicas = Optional.empty();
 
-	private Map<Integer, List<Integer>> replicasAssignments;
+	private @Nullable Map<Integer, List<Integer>> replicasAssignments;
 
 	private final Map<String, String> configs = new HashMap<>();
 

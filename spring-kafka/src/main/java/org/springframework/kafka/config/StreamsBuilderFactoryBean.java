@@ -30,6 +30,7 @@ import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.TopologyConfig;
+import org.apache.kafka.streams.TopologyDescription;
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.processor.internals.DefaultKafkaClientSupplier;
@@ -95,11 +96,12 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private KafkaStreamsCustomizer kafkaStreamsCustomizer = kafkaStreams -> { };
 
+	@SuppressWarnings("NullAway.Init")
 	private KafkaStreams.StateListener stateListener;
 
-	private StateRestoreListener stateRestoreListener;
+	private @Nullable  StateRestoreListener stateRestoreListener;
 
-	private StreamsUncaughtExceptionHandler streamsUncaughtExceptionHandler;
+	private @Nullable StreamsUncaughtExceptionHandler streamsUncaughtExceptionHandler;
 
 	private boolean autoStartup = true;
 
@@ -109,12 +111,13 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private boolean leaveGroupOnClose = false;
 
-	private KafkaStreams kafkaStreams;
+	private @Nullable KafkaStreams kafkaStreams;
 
 	private volatile boolean running;
 
-	private Topology topology;
+	private @Nullable Topology topology;
 
+	@SuppressWarnings("NullAway.Init")
 	private String beanName;
 
 	/**
@@ -124,6 +127,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 * {@link StreamsBuilderFactoryBean#setStreamsConfiguration(Properties)}.
 	 * @since 2.1.3.
 	 */
+	@SuppressWarnings("NullAway.Init")
 	public StreamsBuilderFactoryBean() {
 		this.cleanupConfig = new CleanupConfig();
 	}
@@ -439,7 +443,11 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		try {
 			this.topology = getObject().build(this.properties);
 			this.infrastructureCustomizer.configureTopology(this.topology);
-			LOGGER.debug(() -> this.topology.describe().toString());
+			if (this.topology != null) {
+				TopologyDescription description = this.topology.describe();
+				LOGGER.debug(description::toString);
+			}
+
 		}
 		catch (Exception e) {
 			throw new RuntimeException(e);

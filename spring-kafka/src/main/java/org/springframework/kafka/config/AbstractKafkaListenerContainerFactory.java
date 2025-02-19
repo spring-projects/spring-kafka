@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-2024 the original author or authors.
+ * Copyright 2014-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.BeansException;
@@ -70,49 +71,50 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	private final ContainerProperties containerProperties = new ContainerProperties((Pattern) null); // NOSONAR
 
-	private CommonErrorHandler commonErrorHandler;
+	private @Nullable CommonErrorHandler commonErrorHandler;
 
-	private ConsumerFactory<? super K, ? super V> consumerFactory;
+	private @Nullable ConsumerFactory<? super K, ? super V> consumerFactory;
 
-	private Boolean autoStartup;
+	private @Nullable Boolean autoStartup;
 
-	private Integer phase;
+	private @Nullable Integer phase;
 
-	private RecordMessageConverter recordMessageConverter;
+	private @Nullable RecordMessageConverter recordMessageConverter;
 
-	private BatchMessageConverter batchMessageConverter;
+	private @Nullable BatchMessageConverter batchMessageConverter;
 
-	private RecordFilterStrategy<? super K, ? super V> recordFilterStrategy;
+	private @Nullable RecordFilterStrategy<? super K, ? super V> recordFilterStrategy;
 
-	private Boolean ackDiscarded;
+	private @Nullable Boolean ackDiscarded;
 
-	private Boolean batchListener;
+	private @Nullable Boolean batchListener;
 
-	private ApplicationEventPublisher applicationEventPublisher;
+	private @Nullable ApplicationEventPublisher applicationEventPublisher;
 
-	private KafkaTemplate<?, ?> replyTemplate;
+	private @Nullable KafkaTemplate<?, ?> replyTemplate;
 
-	private AfterRollbackProcessor<? super K, ? super V> afterRollbackProcessor;
+	private @Nullable AfterRollbackProcessor<? super K, ? super V> afterRollbackProcessor;
 
-	private ReplyHeadersConfigurer replyHeadersConfigurer;
+	private @Nullable ReplyHeadersConfigurer replyHeadersConfigurer;
 
-	private Boolean missingTopicsFatal;
+	private @Nullable Boolean missingTopicsFatal;
 
-	private RecordInterceptor<K, V> recordInterceptor;
+	private @Nullable RecordInterceptor<K, V> recordInterceptor;
 
-	private BatchInterceptor<K, V> batchInterceptor;
+	private @Nullable BatchInterceptor<K, V> batchInterceptor;
 
-	private BatchToRecordAdapter<K, V> batchToRecordAdapter;
+	private @Nullable BatchToRecordAdapter<K, V> batchToRecordAdapter;
 
+	@SuppressWarnings("NullAway.Init")
 	private ApplicationContext applicationContext;
 
-	private ContainerCustomizer<K, V, C> containerCustomizer;
+	private @Nullable ContainerCustomizer<K, V, C> containerCustomizer;
 
-	private String correlationHeaderName;
+	private @Nullable String correlationHeaderName;
 
-	private Boolean changeConsumerThreadName;
+	private @Nullable Boolean changeConsumerThreadName;
 
-	private Function<MessageListenerContainer, String> threadNameSupplier;
+	private @Nullable Function<MessageListenerContainer, String> threadNameSupplier;
 
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
@@ -127,7 +129,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		this.consumerFactory = consumerFactory;
 	}
 
-	public ConsumerFactory<? super K, ? super V> getConsumerFactory() {
+	public @Nullable ConsumerFactory<? super K, ? super V> getConsumerFactory() {
 		return this.consumerFactory;
 	}
 
@@ -190,7 +192,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * @return true for a batch listener.
 	 * @since 1.1
 	 */
-	public Boolean isBatchListener() {
+	public @Nullable Boolean isBatchListener() {
 		return this.batchListener;
 	}
 
