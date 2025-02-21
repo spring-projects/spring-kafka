@@ -45,6 +45,7 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 /**
  * @author Soby Chacko
@@ -66,14 +67,16 @@ public class MicrometerMetricsTests {
 		template.send(METRICS_TEST_TOPIC, "test").get(10, TimeUnit.SECONDS);
 		assertThat(listener.latch.await(10, TimeUnit.SECONDS)).isTrue();
 
-		Timer timer = meterRegistry.find("spring.kafka.listener")
-				.tags("name", "metricsTest-0")
-				.tag("result", "failure")
-				.timer();
+		await().untilAsserted(() -> {
+			Timer timer = meterRegistry.find("spring.kafka.listener")
+					.tags("name", "metricsTest-0")
+					.tag("result", "failure")
+					.timer();
 
-		assertThat(timer).isNotNull();
-		assertThat(timer.getId().getTag("exception"))
-				.isEqualTo("IllegalStateException");
+			assertThat(timer).isNotNull();
+			assertThat(timer.getId().getTag("exception"))
+					.isEqualTo("IllegalStateException");
+		});
 	}
 
 	@Test
@@ -85,12 +88,14 @@ public class MicrometerMetricsTests {
 		template.send(METRICS_TEST_TOPIC, "test").get(10, TimeUnit.SECONDS);
 		assertThat(observationListener.latch.await(10, TimeUnit.SECONDS)).isTrue();
 
-		Timer timer = meterRegistry.find("spring.kafka.listener")
-				.tag("spring.kafka.listener.id", "observationTest-0")
-				.tag("error", "IllegalStateException")
-				.timer();
+		await().untilAsserted(() -> {
+			Timer timer = meterRegistry.find("spring.kafka.listener")
+					.tag("spring.kafka.listener.id", "observationTest-0")
+					.tag("error", "IllegalStateException")
+					.timer();
 
-		assertThat(timer).isNotNull();
+			assertThat(timer).isNotNull();
+		});
 	}
 
 	@Configuration
