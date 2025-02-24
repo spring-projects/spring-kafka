@@ -16,7 +16,6 @@
 
 package org.springframework.kafka.listener;
 
-import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.AbstractMap.SimpleEntry;
@@ -2239,15 +2238,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private List<ConsumerRecord<K, V>> createRecordList(final ConsumerRecords<K, V> records) {
-			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
-			@SuppressWarnings("unchecked") ConsumerRecord<K, V>[] recordsArray =
-					(ConsumerRecord<K, V>[]) Array.newInstance(ConsumerRecord.class, records.count());
-			int index = 0;
-			while (iterator.hasNext()) {
-				recordsArray[index] = iterator.next();
-				index += 1;
-			}
-			return Arrays.asList(recordsArray);
+			List<ConsumerRecord<K, V>> recordList = new ArrayList<>(records.count());
+			records.forEach(recordList::add);
+			return recordList;
 		}
 
 		/**
