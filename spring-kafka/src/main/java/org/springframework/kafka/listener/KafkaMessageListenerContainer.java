@@ -172,6 +172,7 @@ import org.springframework.util.StringUtils;
  * @author Sanghyeok An
  * @author Christian Fredriksson
  * @author Timofey Barabanov
+ * @author Janek Lasocki-Biczysko
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -2237,12 +2238,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private List<ConsumerRecord<K, V>> createRecordList(final ConsumerRecords<K, V> records) {
-			Iterator<ConsumerRecord<K, V>> iterator = records.iterator();
-			List<ConsumerRecord<K, V>> list = new LinkedList<>();
-			while (iterator.hasNext()) {
-				list.add(iterator.next());
-			}
-			return list;
+			List<ConsumerRecord<K, V>> recordList = new ArrayList<>(records.count());
+			records.forEach(recordList::add);
+			return recordList;
 		}
 
 		/**
