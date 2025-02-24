@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener.adapter;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -50,8 +51,10 @@ public interface RecordFilterStrategy<K, V> {
 	 * @return the filtered records.
 	 * @since 2.8
 	 */
+	@SuppressWarnings("unchecked")
 	default List<ConsumerRecord<K, V>> filterBatch(List<ConsumerRecord<K, V>> records) {
-		return records.stream().filter(record -> !this.filter(record)).toList();
+		var recordsArray = records.stream().filter(record -> !this.filter(record)).toArray(ConsumerRecord[]::new);
+		return Arrays.asList(recordsArray);
 	}
 
 	/**
