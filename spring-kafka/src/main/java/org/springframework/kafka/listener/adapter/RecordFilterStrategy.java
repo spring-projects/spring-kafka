@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2024 the original author or authors.
+ * Copyright 2016-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ import org.springframework.kafka.listener.BatchMessageListener;
  *
  * @author Gary Russell
  * @author Sanghyeok An
+ * @author Janek Lasocki-Biczysko
  */
 public interface RecordFilterStrategy<K, V> {
 
@@ -50,8 +51,7 @@ public interface RecordFilterStrategy<K, V> {
 	 * @since 2.8
 	 */
 	default List<ConsumerRecord<K, V>> filterBatch(List<ConsumerRecord<K, V>> records) {
-		records.removeIf(this::filter);
-		return records;
+		return records.stream().filter(record -> !this.filter(record)).toList();
 	}
 
 	/**
