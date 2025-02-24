@@ -79,7 +79,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
 	private boolean generateTimestamp = false;
 
-	private KafkaHeaderMapper headerMapper;
+	private @Nullable KafkaHeaderMapper headerMapper;
 
 	private boolean rawRecordHeader;
 
@@ -232,7 +232,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 		}
 	}
 
-	private Object obtainPayload(Type type, ConsumerRecord<?, ?> record, List<ConversionException> conversionFailures) {
+	private @Nullable Object obtainPayload(Type type, ConsumerRecord<?, ?> record, List<ConversionException> conversionFailures) {
 		return this.recordConverter == null || !containerType(type)
 				? extractAndConvertValue(record, type)
 				: convert(record, type, conversionFailures);
@@ -240,7 +240,9 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
 	private Map<String, Object> convertHeaders(Headers headers, List<Map<String, Object>> convertedHeaders) {
 		Map<String, Object> converted = new HashMap<>();
-		this.headerMapper.toHeaders(headers, converted);
+		if (this.headerMapper != null) {
+			this.headerMapper.toHeaders(headers, converted);
+		}
 		convertedHeaders.add(converted);
 		return converted;
 	}
@@ -269,12 +271,17 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 	 * @param conversionFailures Conversion failures.
 	 * @return the converted payload.
 	 */
-	protected Object convert(ConsumerRecord<?, ?> record, Type type, List<ConversionException> conversionFailures) {
+	protected @Nullable Object convert(ConsumerRecord<?, ?> record, Type type, List<ConversionException> conversionFailures) {
 		try {
-			Object payload = this.recordConverter
-					.toMessage(record, null, null, ((ParameterizedType) type).getActualTypeArguments()[0]).getPayload();
-			conversionFailures.add(null);
-			return payload;
+			if (this.recordConverter != null) {
+				Object payload = this.recordConverter
+						.toMessage(record, null, null, ((ParameterizedType) type).getActualTypeArguments()[0]).getPayload();
+				conversionFailures.add(null);
+				return payload;
+			}
+			else {
+				return null;
+			}
 		}
 		catch (ConversionException ex) {
 			byte[] original = null;

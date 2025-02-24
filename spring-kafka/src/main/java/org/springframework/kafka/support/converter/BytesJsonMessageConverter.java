@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 the original author or authors.
+ * Copyright 2018-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package org.springframework.kafka.support.converter;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.common.utils.Bytes;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.Message;
@@ -45,7 +46,7 @@ public class BytesJsonMessageConverter extends JsonMessageConverter {
 	}
 
 	@Override
-	protected Object convertPayload(Message<?> message) {
+	protected @Nullable Object convertPayload(Message<?> message) {
 		try {
 			return message.getPayload() instanceof KafkaNull
 					? null

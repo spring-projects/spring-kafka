@@ -56,7 +56,7 @@ public interface MessageConverter {
 	 * @param timestampType the timestamp type.
 	 * @param timestamp the timestamp.
 	 */
-	default void commonHeaders(Acknowledgment acknowledgment, Consumer<?, ?> consumer, Map<String, Object> rawHeaders,
+	default void commonHeaders(@Nullable Acknowledgment acknowledgment, @Nullable Consumer<?, ?> consumer, Map<String, Object> rawHeaders,
 			@Nullable Object theKey, Object topic, Object partition, Object offset,
 			@Nullable Object timestampType, Object timestamp) {
 

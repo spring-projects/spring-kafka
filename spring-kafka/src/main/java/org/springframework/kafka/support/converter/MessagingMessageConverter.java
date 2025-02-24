@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2024 the original author or authors.
+ * Copyright 2016-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.support.AbstractKafkaHeaderMapper;
@@ -62,7 +63,7 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); // NOSONAR
 
-	private final Function<Message<?>, Integer> partitionProvider;
+	private final Function<Message<?>, @Nullable Integer> partitionProvider;
 
 	private boolean generateMessageId = false;
 
@@ -72,7 +73,7 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 
 	private boolean rawRecordHeader;
 
-	private SmartMessageConverter messagingConverter;
+	private @Nullable SmartMessageConverter messagingConverter;
 
 	/**
 	 * Construct an instance that uses the {@link KafkaHeaders#PARTITION} to determine the
@@ -88,7 +89,7 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	 * @param partitionProvider the provider.
 	 * @since 3.0.8
 	 */
-	public MessagingMessageConverter(Function<Message<?>, Integer> partitionProvider) {
+	public MessagingMessageConverter(Function<Message<?>, @Nullable Integer> partitionProvider) {
 		Assert.notNull(partitionProvider, "'partitionProvider' cannot be null");
 		if (JacksonPresent.isJackson2Present()) {
 			this.headerMapper = new DefaultKafkaHeaderMapper();
@@ -136,6 +137,7 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 		this.rawRecordHeader = rawRecordHeader;
 	}
 
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	protected org.springframework.messaging.converter.MessageConverter getMessagingConverter() {
 		return this.messagingConverter;
 	}
@@ -165,7 +167,7 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	 * @param messagingConverter the converter.
 	 * @since 2.7.1
 	 */
-	public void setMessagingConverter(SmartMessageConverter messagingConverter) {
+	public void setMessagingConverter(@Nullable SmartMessageConverter messagingConverter) {
 		this.messagingConverter = messagingConverter;
 		if (messagingConverter != null && this.headerMapper instanceof AbstractKafkaHeaderMapper) {
 			((AbstractKafkaHeaderMapper) this.headerMapper).addRawMappedHeader(MessageHeaders.CONTENT_TYPE, true);
@@ -173,8 +175,8 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	}
 
 	@Override
-	public Message<?> toMessage(ConsumerRecord<?, ?> record, Acknowledgment acknowledgment, Consumer<?, ?> consumer,
-			Type type) {
+	public Message<?> toMessage(ConsumerRecord<?, ?> record, @Nullable Acknowledgment acknowledgment, @Nullable Consumer<?, ?> consumer,
+			@Nullable Type type) {
 
 		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(this.generateMessageId,
 				this.generateTimestamp);
@@ -272,7 +274,7 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	 * @param message the message.
 	 * @return the payload.
 	 */
-	protected Object convertPayload(Message<?> message) {
+	protected @Nullable Object convertPayload(Message<?> message) {
 		Object payload = message.getPayload();
 		if (payload instanceof KafkaNull) {
 			return null;
@@ -289,7 +291,7 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	 * @param type the required type.
 	 * @return the value.
 	 */
-	protected Object extractAndConvertValue(ConsumerRecord<?, ?> record, Type type) {
+	protected Object extractAndConvertValue(ConsumerRecord<?, ?> record, @Nullable Type type) {
 		return record.value() == null ? KafkaNull.INSTANCE : record.value();
 	}
 

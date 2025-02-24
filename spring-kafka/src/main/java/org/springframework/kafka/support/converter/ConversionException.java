@@ -35,18 +35,18 @@ import org.springframework.messaging.Message;
 @SuppressWarnings("serial")
 public class ConversionException extends KafkaException {
 
-	private transient ConsumerRecord<?, ?> record;
+	private transient @Nullable ConsumerRecord<?, ?> record;
 
-	private transient List<ConsumerRecord<?, ?>> records = new ArrayList<>();
+	private transient @Nullable List<ConsumerRecord<?, ?>> records = new ArrayList<>();
 
-	private transient Message<?> message;
+	private transient @Nullable Message<?> message;
 
 	/**
 	 * Construct an instance with the provided properties.
 	 * @param message A text message describing the reason.
 	 * @param cause the cause.
 	 */
-	public ConversionException(String message, Throwable cause) {
+	public ConversionException(String message, @Nullable Throwable cause) {
 		super(message, cause);
 		this.record = null;
 		this.message = null;
@@ -75,7 +75,9 @@ public class ConversionException extends KafkaException {
 	public ConversionException(String message, List<ConsumerRecord<?, ?>> records, Throwable cause) {
 		super(message, cause);
 		this.record = null;
-		this.records.addAll(records);
+		if (this.records != null) {
+			this.records.addAll(records);
+		}
 		this.message = null;
 	}
 

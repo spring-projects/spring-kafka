@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 the original author or authors.
+ * Copyright 2018-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.utils.Bytes;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.ResolvableType;
 import org.springframework.data.projection.MethodInterceptorFactory;
@@ -99,12 +100,12 @@ public class ProjectingMessageConverter extends MessagingMessageConverter {
 	}
 
 	@Override
-	protected Object convertPayload(Message<?> message) {
+	protected @Nullable Object convertPayload(Message<?> message) {
 		return this.delegate.convertPayload(message);
 	}
 
 	@Override
-	protected Object extractAndConvertValue(ConsumerRecord<?, ?> record, Type type) {
+	protected Object extractAndConvertValue(ConsumerRecord<?, ?> record, @Nullable Type type) {
 		Object value = record.value();
 
 		if (value == null) {

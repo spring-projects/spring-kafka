@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2024 the original author or authors.
+ * Copyright 2019-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.utils.Bytes;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.kafka.support.JacksonUtils;
 import org.springframework.kafka.support.KafkaNull;
@@ -91,13 +92,13 @@ public class JsonMessageConverter extends MessagingMessageConverter {
 	}
 
 	@Override
-	protected Object convertPayload(Message<?> message) {
+	protected @Nullable Object convertPayload(Message<?> message) {
 		throw new UnsupportedOperationException("Select a subclass that creates a ProducerRecord value "
 				+ "corresponding to the configured Kafka Serializer");
 	}
 
 	@Override
-	protected Object extractAndConvertValue(ConsumerRecord<?, ?> record, Type type) {
+	protected Object extractAndConvertValue(ConsumerRecord<?, ?> record, @Nullable Type type) {
 		Object value = record.value();
 		if (record.value() == null) {
 			return KafkaNull.INSTANCE;
@@ -128,7 +129,7 @@ public class JsonMessageConverter extends MessagingMessageConverter {
 		}
 	}
 
-	private JavaType determineJavaType(ConsumerRecord<?, ?> record, Type type) {
+	private JavaType determineJavaType(ConsumerRecord<?, ?> record, @Nullable Type type) {
 		JavaType javaType = this.typeMapper.getTypePrecedence().equals(TypePrecedence.INFERRED) && type != null
 				? TypeFactory.defaultInstance().constructType(type)
 				: this.typeMapper.toJavaType(record.headers());
