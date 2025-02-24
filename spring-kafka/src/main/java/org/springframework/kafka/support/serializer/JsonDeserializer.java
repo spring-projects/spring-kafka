@@ -129,11 +129,11 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 
 	protected final ObjectMapper objectMapper; // NOSONAR
 
-	protected JavaType targetType; // NOSONAR
+	protected @Nullable JavaType targetType; // NOSONAR
 
 	protected Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper(); // NOSONAR
 
-	private ObjectReader reader;
+	private @Nullable ObjectReader reader;
 
 	private boolean typeMapperExplicitlySet = false;
 
@@ -141,7 +141,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 
 	private boolean useTypeHeaders = true;
 
-	private JsonTypeResolver typeResolver;
+	private @Nullable JsonTypeResolver typeResolver;
 
 	private boolean setterCalled;
 
@@ -211,7 +211,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * type if not.
 	 * @since 2.3
 	 */
-	public JsonDeserializer(TypeReference<? super T> targetType, boolean useHeadersIfPresent) {
+	public JsonDeserializer(@Nullable TypeReference<? super T> targetType, boolean useHeadersIfPresent) {
 		this(targetType, JacksonUtils.enhancedObjectMapper(), useHeadersIfPresent);
 	}
 
@@ -223,7 +223,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * type if not.
 	 * @since 2.3
 	 */
-	public JsonDeserializer(JavaType targetType, boolean useHeadersIfPresent) {
+	public JsonDeserializer(@Nullable JavaType targetType, boolean useHeadersIfPresent) {
 		this(targetType, JacksonUtils.enhancedObjectMapper(), useHeadersIfPresent);
 	}
 
@@ -250,7 +250,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @param targetType the target java type to use if no type info headers are present.
 	 * @param objectMapper the mapper. type if not.
 	 */
-	public JsonDeserializer(JavaType targetType, ObjectMapper objectMapper) {
+	public JsonDeserializer(@Nullable JavaType targetType, ObjectMapper objectMapper) {
 		this(targetType, objectMapper, true);
 	}
 
@@ -291,7 +291,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * type if not.
 	 * @since 2.3
 	 */
-	public JsonDeserializer(TypeReference<? super T> targetType, ObjectMapper objectMapper,
+	public JsonDeserializer(@Nullable TypeReference<? super T> targetType, ObjectMapper objectMapper,
 			boolean useHeadersIfPresent) {
 
 		this(targetType != null ? TypeFactory.defaultInstance().constructType(targetType) : null,
@@ -442,6 +442,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		return false;
 	}
 
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	private Map<String, Class<?>> createMappings(Map<String, ?> configs) {
 		Map<String, Class<?>> mappings =
 				JsonSerializer.createMappings(configs.get(JsonSerializer.TYPE_MAPPINGS).toString());
@@ -562,7 +563,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		}
 	}
 
-	private String getTargetPackageName() {
+	private @Nullable String getTargetPackageName() {
 		if (this.targetType != null) {
 			return ClassUtils.getPackageName(this.targetType.getRawClass()).replaceFirst("\\[L", "");
 		}
@@ -574,7 +575,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	}
 
 	@Override
-	public T deserialize(String topic, Headers headers, byte[] data) {
+	public @Nullable T deserialize(String topic, Headers headers, byte[] data) {
 		if (data == null) {
 			return null;
 		}
@@ -605,7 +606,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	}
 
 	@Override
-	public T deserialize(String topic, @Nullable byte[] data) {
+	public @Nullable T deserialize(String topic, byte[] data) {
 		if (data == null) {
 			return null;
 		}

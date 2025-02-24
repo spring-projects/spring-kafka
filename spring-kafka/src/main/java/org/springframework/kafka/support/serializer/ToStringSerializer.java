@@ -86,7 +86,7 @@ public class ToStringSerializer<T> implements Serializer<T> {
 	}
 
 	@Override
-	@Nullable
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	public byte[] serialize(String topic, @Nullable Headers headers, @Nullable T data) {
 		if (data == null) {
 			return null;

@@ -187,6 +187,7 @@ public class DelegatingSerializer implements Serializer<Object> {
 		throw new UnsupportedOperationException();
 	}
 
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	@Override
 	public byte[] serialize(String topic, Headers headers, Object data) {
 		if (data == null) {
@@ -229,7 +230,7 @@ public class DelegatingSerializer implements Serializer<Object> {
 	/*
 	 * Package for testing.
 	 */
-	@Nullable
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	byte[] trySerdes(Object data) {
 		try {
 			Serde<? extends Object> serdeFrom = Serdes.serdeFrom(data.getClass());

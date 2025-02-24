@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2023 the original author or authors.
+ * Copyright 2018-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import java.util.function.Function;
 
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Deserializer;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
@@ -66,13 +67,13 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 	 */
 	public static final String VALIDATOR_CLASS = "spring.deserializer.validator.class";
 
-	private Deserializer<T> delegate;
+	private @Nullable Deserializer<T> delegate;
 
 	private boolean isForKey;
 
-	private Function<FailedDeserializationInfo, T> failedDeserializationFunction;
+	private @Nullable Function<FailedDeserializationInfo, T> failedDeserializationFunction;
 
-	private Validator validator;
+	private @Nullable Validator validator;
 
 	public ErrorHandlingDeserializer() {
 	}
@@ -194,9 +195,9 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 	}
 
 	@Override
-	public T deserialize(String topic, byte[] data) {
+	public @Nullable T deserialize(String topic, byte[] data) {
 		try {
-			return validate(this.delegate.deserialize(topic, data));
+			return this.delegate == null ? null : validate(this.delegate.deserialize(topic, data));
 		}
 		catch (Exception e) {
 			return recoverFromSupplier(topic, null, data, e);
@@ -204,7 +205,7 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 	}
 
 	@Override
-	public T deserialize(String topic, Headers headers, byte[] data) {
+	public @Nullable T deserialize(String topic, Headers headers, byte[] data) {
 		try {
 			if (this.isForKey) {
 				headers.remove(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER);
@@ -212,7 +213,7 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 			else {
 				headers.remove(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER);
 			}
-			return validate(this.delegate.deserialize(topic, headers, data));
+			return this.delegate == null ? null : validate(this.delegate.deserialize(topic, headers, data));
 		}
 		catch (Exception e) {
 			SerializationUtils.deserializationException(headers, data, e, this.isForKey);
@@ -228,7 +229,7 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 		return deserialized;
 	}
 
-	private T recoverFromSupplier(String topic, Headers headers, byte[] data, Exception exception) {
+	private @Nullable T recoverFromSupplier(String topic, @Nullable Headers headers, byte[] data, Exception exception) {
 		if (this.failedDeserializationFunction != null) {
 			FailedDeserializationInfo failedDeserializationInfo =
 					new FailedDeserializationInfo(topic, headers, data, this.isForKey, exception);

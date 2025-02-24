@@ -101,7 +101,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 		this(targetType == null ? null : objectMapper.constructType(targetType.getType()), objectMapper);
 	}
 
-	public JsonSerializer(JavaType targetType, ObjectMapper objectMapper) {
+	public JsonSerializer(@Nullable JavaType targetType, ObjectMapper objectMapper) {
 		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
 		this.objectMapper = objectMapper;
 		this.writer = objectMapper.writerFor(targetType);
@@ -201,8 +201,8 @@ public class JsonSerializer<T> implements Serializer<T> {
 		return mappingsMap;
 	}
 
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	@Override
-	@Nullable
 	public byte[] serialize(String topic, Headers headers, @Nullable T data) {
 		if (data == null) {
 			return null;
@@ -213,8 +213,8 @@ public class JsonSerializer<T> implements Serializer<T> {
 		return serialize(topic, data);
 	}
 
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	@Override
-	@Nullable
 	public byte[] serialize(String topic, @Nullable T data) {
 		if (data == null) {
 			return null;

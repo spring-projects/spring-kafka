@@ -84,7 +84,7 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 
 	private final Set<String> patterns = ConcurrentHashMap.newKeySet();
 
-	private T defaultDelegate;
+	private @Nullable T defaultDelegate;
 
 	private boolean forKeys;
 
@@ -93,7 +93,7 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 	public DelegatingByTopicSerialization() {
 	}
 
-	public DelegatingByTopicSerialization(Map<Pattern, T> delegates, T defaultDelegate) {
+	public DelegatingByTopicSerialization(Map<Pattern, T> delegates, @Nullable T defaultDelegate) {
 		Assert.notNull(delegates, "'delegates' cannot be null");
 		Assert.notNull(defaultDelegate, "'defaultDelegate' cannot be null");
 		this.delegates.putAll(delegates);
@@ -260,7 +260,7 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 		}
 	}
 
-	protected T instantiateAndConfigure(Map<String, ?> configs, boolean isKey, Map<Pattern, T> delegates2,
+	protected @Nullable T instantiateAndConfigure(Map<String, ?> configs, boolean isKey, Map<Pattern, T> delegates2,
 			@Nullable Pattern pattern, Class<?> clazz) {
 
 		if (pattern != null && !this.patterns.add(pattern.pattern())) {

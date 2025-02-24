@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 the original author or authors.
+ * Copyright 2019-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package org.springframework.kafka.support.serializer;
 import java.util.Arrays;
 
 import org.apache.kafka.common.header.Headers;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Class containing all the contextual information around a deserialization error.
@@ -32,7 +33,7 @@ public class FailedDeserializationInfo {
 
 	private final String topic;
 
-	private final Headers headers;
+	private final @Nullable Headers headers;
 
 	private final byte[] data;
 
@@ -48,7 +49,7 @@ public class FailedDeserializationInfo {
 	 * @param isForKey true for a key deserializer, false otherwise.
 	 * @param exception exception causing the deserialization error.
 	 */
-	public FailedDeserializationInfo(String topic, Headers headers, byte[] data, boolean isForKey,
+	public FailedDeserializationInfo(String topic, @Nullable Headers headers, byte[] data, boolean isForKey,
 			Exception exception) {
 
 		this.topic = topic;
@@ -62,7 +63,7 @@ public class FailedDeserializationInfo {
 		return this.topic;
 	}
 
-	public Headers getHeaders() {
+	public @Nullable Headers getHeaders() {
 		return this.headers;
 	}
 

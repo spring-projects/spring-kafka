@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2024 the original author or authors.
+ * Copyright 2017-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.kafka.support.mapping;
 
 import com.fasterxml.jackson.databind.JavaType;
 import org.apache.kafka.common.header.Headers;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Strategy for setting metadata on messages such that one can create the class that needs
@@ -52,6 +53,7 @@ public interface Jackson2JavaTypeMapper extends ClassMapper {
 
 	void fromJavaType(JavaType javaType, Headers headers);
 
+	@Nullable
 	JavaType toJavaType(Headers headers);
 
 	TypePrecedence getTypePrecedence();

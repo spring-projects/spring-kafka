@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 the original author or authors.
+ * Copyright 2020-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.kafka.support.serializer;
 
 import com.fasterxml.jackson.databind.JavaType;
 import org.apache.kafka.common.header.Headers;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Determine the {@link JavaType} from the topic/data/headers.
@@ -36,6 +37,6 @@ public interface JsonTypeResolver {
 	 * @param headers the headers.
 	 * @return the type.
 	 */
-	JavaType resolveType(String topic, byte[] data, Headers headers);
+	JavaType resolveType(String topic, byte[] data, @Nullable Headers headers);
 
 }

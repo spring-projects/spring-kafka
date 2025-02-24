@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2024 the original author or authors.
+ * Copyright 2021-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -81,6 +81,7 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 		this.delegates.values().forEach(del -> del.configure(configs, isKey));
 	}
 
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	@Override
 	public byte[] serialize(String topic, Object data) {
 		if (data == null) {
@@ -90,6 +91,7 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 		return delegate.serialize(topic, data);
 	}
 
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	@Override
 	public byte[] serialize(String topic, Headers headers, Object data) {
 		if (data == null) {

@@ -178,7 +178,7 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 		return deserializer == null ? data : deserializer.deserialize(topic, headers, data);
 	}
 
-	private Deserializer<?> getDeserializerByHeaders(Headers headers) {
+	private @Nullable Deserializer<?> getDeserializerByHeaders(Headers headers) {
 		byte[] value = null;
 		String selectorKey = selectorKey();
 		Header header = headers.lastHeader(selectorKey);
