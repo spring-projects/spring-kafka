@@ -1,5 +1,5 @@
 /**
  * Reactive component for consumer and producer.
  */
-@org.springframework.lang.NonNullApi
+@org.jspecify.annotations.NullMarked
 package org.springframework.kafka.core.reactive;
