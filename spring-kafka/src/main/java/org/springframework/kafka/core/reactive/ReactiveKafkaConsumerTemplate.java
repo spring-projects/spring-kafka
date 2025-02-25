@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2024 the original author or authors.
+ * Copyright 2019-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -131,6 +131,7 @@ public class ReactiveKafkaConsumerTemplate<K, V> {
 		return subscriptions.flatMapIterable(Function.identity());
 	}
 
+	@SuppressWarnings("NullAway") // Lambda
 	public Mono<Void> seek(TopicPartition partition, long offset) {
 		return doOnConsumer(consumer -> {
 			consumer.seek(partition, offset);
@@ -138,6 +139,7 @@ public class ReactiveKafkaConsumerTemplate<K, V> {
 		});
 	}
 
+	@SuppressWarnings("NullAway") // Lambda
 	public Mono<Void> seekToBeginning(TopicPartition... partitions) {
 		return doOnConsumer(consumer -> {
 			consumer.seekToBeginning(Arrays.asList(partitions));
@@ -145,6 +147,7 @@ public class ReactiveKafkaConsumerTemplate<K, V> {
 		});
 	}
 
+	@SuppressWarnings("NullAway") // Lambda
 	public Mono<Void> seekToEnd(TopicPartition... partitions) {
 		return doOnConsumer(consumer -> {
 			consumer.seekToEnd(Arrays.asList(partitions));
@@ -170,6 +173,7 @@ public class ReactiveKafkaConsumerTemplate<K, V> {
 		return paused.flatMapIterable(Function.identity());
 	}
 
+	@SuppressWarnings("NullAway") // Lambda
 	public Mono<Void> pause(TopicPartition... partitions) {
 		return doOnConsumer(c -> {
 			c.pause(Arrays.asList(partitions));
@@ -177,6 +181,7 @@ public class ReactiveKafkaConsumerTemplate<K, V> {
 		});
 	}
 
+	@SuppressWarnings("NullAway") // Lambda
 	public Mono<Void> resume(TopicPartition... partitions) {
 		return doOnConsumer(c -> {
 			c.resume(Arrays.asList(partitions));
