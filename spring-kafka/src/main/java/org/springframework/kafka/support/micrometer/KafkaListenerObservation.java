@@ -259,7 +259,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 			return context.getSource() + " receive";
 		}
 
-		private static String getConsumerId(KafkaRecordReceiverContext context, @Nullable String clientId) {
+		private static @Nullable String getConsumerId(KafkaRecordReceiverContext context, @Nullable String clientId) {
 			if (StringUtils.hasText(clientId)) {
 				return context.getGroupId() + " - " + clientId;
 			}

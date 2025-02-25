@@ -56,6 +56,7 @@ public interface MessageConverter {
 	 * @param timestampType the timestamp type.
 	 * @param timestamp the timestamp.
 	 */
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	default void commonHeaders(@Nullable Acknowledgment acknowledgment, @Nullable Consumer<?, ?> consumer, Map<String, Object> rawHeaders,
 			@Nullable Object theKey, Object topic, Object partition, Object offset,
 			@Nullable Object timestampType, Object timestamp) {

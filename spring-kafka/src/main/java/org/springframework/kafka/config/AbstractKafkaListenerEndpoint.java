@@ -525,7 +525,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	protected abstract MessagingMessageListenerAdapter<K, V> createMessageListener(MessageListenerContainer container,
 			@Nullable MessageConverter messageConverter);
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "NullAway"})
 	private void setupMessageListener(MessageListenerContainer container,
 			@Nullable MessageConverter messageConverter) {
 

@@ -53,7 +53,8 @@ public class KafkaMessageHeaderAccessor extends MessageHeaderAccessor {
 		Assert.state(getHeader(KafkaHeaders.DELIVERY_ATTEMPT) != null,
 				"Blocking delivery attempt header not present, "
 				+ "see ContainerProperties.setDeliveryAttemptHeader() to enable");
-		return getHeader(KafkaHeaders.DELIVERY_ATTEMPT, Integer.class);
+		Integer deliveryAttempts = getHeader(KafkaHeaders.DELIVERY_ATTEMPT, Integer.class);
+		return deliveryAttempts == null ? 0 : deliveryAttempts;
 	}
 
 	/**

@@ -251,6 +251,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 		return valueToAdd;
 	}
 
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	@Nullable
 	private byte[] mapRawOut(String header, Object value) {
 		if (this.mapAllStringsOut || this.rawMappedHeaders.containsKey(header)) {
@@ -269,7 +270,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	 * @param header the header.
 	 * @return the value to add.
 	 */
-	protected Object headerValueToAddIn(Header header) {
+	protected @Nullable Object headerValueToAddIn(@Nullable Header header) {
 		if (header == null || header.value() == null) {
 			return null;
 		}

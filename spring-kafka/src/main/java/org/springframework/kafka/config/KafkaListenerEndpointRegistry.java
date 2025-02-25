@@ -318,9 +318,9 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	 * @param factory the {@link KafkaListenerContainerFactory} to use.
 	 * @return the {@link MessageListenerContainer}.
 	 */
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	protected MessageListenerContainer createListenerContainer(KafkaListenerEndpoint endpoint,
 			KafkaListenerContainerFactory<?> factory) {
-
 		if (endpoint instanceof MultiMethodKafkaListenerEndpoint<?, ?> mmkle) {
 			Object bean = mmkle.getBean();
 			if (bean instanceof EndpointHandlerMultiMethod ehmm) {

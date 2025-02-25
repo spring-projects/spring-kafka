@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import java.util.function.Consumer;
 
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Predicate;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Provides a method-chaining way to build {@link org.apache.kafka.streams.kstream.KStream#branch branches} in
@@ -54,7 +55,7 @@ public final class KafkaStreamBrancher<K, V> {
 
 	private final List<Consumer<? super KStream<K, V>>> consumerList = new ArrayList<>();
 
-	private Consumer<? super KStream<K, V>> defaultConsumer;
+	private @Nullable Consumer<? super KStream<K, V>> defaultConsumer;
 
 	/**
 	 * Defines a new branch.

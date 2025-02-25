@@ -72,13 +72,13 @@ public class TopicPartitionOffset {
 
 	private final TopicPartition topicPartition;
 
-	private final SeekPosition position;
+	private final @Nullable SeekPosition position;
 
-	private Long offset;
+	private @Nullable Long offset;
 
 	private boolean relativeToCurrent;
 
-	private Function<Long, Long> offsetComputeFunction;
+	private @Nullable Function<Long, Long> offsetComputeFunction;
 
 	/**
 	 * Construct an instance with no initial offset management.
@@ -124,7 +124,7 @@ public class TopicPartitionOffset {
 	 * be absolute and a negative offset relative to the current end of the
 	 * partition.
 	 */
-	public TopicPartitionOffset(String topic, int partition, Long offset, boolean relativeToCurrent) {
+	public TopicPartitionOffset(String topic, int partition, @Nullable Long offset, boolean relativeToCurrent) {
 		this.topicPartition = new TopicPartition(topic, partition);
 		this.offset = offset;
 		this.relativeToCurrent = relativeToCurrent;
@@ -153,7 +153,7 @@ public class TopicPartitionOffset {
 	 * @param position {@link SeekPosition}.
 	 * @since 2.3
 	 */
-	public TopicPartitionOffset(String topic, int partition, Long offset, @Nullable SeekPosition position) {
+	public TopicPartitionOffset(String topic, int partition, @Nullable Long offset, @Nullable SeekPosition position) {
 		this(new TopicPartition(topic, partition), offset, position);
 	}
 
@@ -165,7 +165,7 @@ public class TopicPartitionOffset {
 	 * @param position {@link SeekPosition}.
 	 * @since 2.3
 	 */
-	public TopicPartitionOffset(TopicPartition topicPartition, Long offset, @Nullable SeekPosition position) {
+	public TopicPartitionOffset(TopicPartition topicPartition, @Nullable Long offset, @Nullable SeekPosition position) {
 		this.topicPartition = topicPartition;
 		this.offset = offset;
 		this.relativeToCurrent = false;
@@ -184,7 +184,7 @@ public class TopicPartitionOffset {
 		return this.topicPartition.topic();
 	}
 
-	public Long getOffset() {
+	public @Nullable Long getOffset() {
 		return this.offset;
 	}
 
@@ -210,11 +210,11 @@ public class TopicPartitionOffset {
 		this.relativeToCurrent = relativeToCurrent;
 	}
 
-	public SeekPosition getPosition() {
+	public @Nullable SeekPosition getPosition() {
 		return this.position;
 	}
 
-	public Function<Long, Long> getOffsetComputeFunction() {
+	public @Nullable Function<Long, Long> getOffsetComputeFunction() {
 		return this.offsetComputeFunction;
 	}
 

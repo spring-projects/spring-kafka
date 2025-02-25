@@ -1,5 +1,5 @@
 /**
- * Provides classes related to type mapping.
+ * Provides classes related to Kafka serialization.
  */
 @org.jspecify.annotations.NullMarked
 package org.springframework.kafka.support.serializer;

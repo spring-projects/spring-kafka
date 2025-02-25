@@ -350,7 +350,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		this.threadNameSupplier = threadNameSupplier;
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "NullAway"})
 	@Override
 	public C createListenerContainer(KafkaListenerEndpoint endpoint) {
 		C instance = createContainerInstance(endpoint);
@@ -372,6 +372,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		return instance;
 	}
 
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	private void configureEndpoint(AbstractKafkaListenerEndpoint<K, V> aklEndpoint) {
 		if (aklEndpoint.getRecordFilterStrategy() == null) {
 			JavaUtils.INSTANCE
@@ -403,7 +404,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * @param instance the container instance to configure.
 	 * @param endpoint the endpoint.
 	 */
-	@SuppressWarnings("deprecation")
+	@SuppressWarnings({"deprecation", "NullAway"})
 	protected void initializeContainer(C instance, KafkaListenerEndpoint endpoint) {
 		ContainerProperties properties = instance.getContainerProperties();
 		BeanUtils.copyProperties(this.containerProperties, properties, "topics", "topicPartitions", "topicPattern",

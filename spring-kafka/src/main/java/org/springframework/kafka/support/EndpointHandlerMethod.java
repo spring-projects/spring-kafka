@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2024 the original author or authors.
+ * Copyright 2021-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@ package org.springframework.kafka.support;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.factory.BeanCurrentlyInCreationException;
 import org.springframework.beans.factory.BeanFactory;
@@ -41,11 +43,11 @@ public class EndpointHandlerMethod {
 
 	private final Object beanOrClass;
 
-	private String methodName;
+	private @Nullable String methodName;
 
-	private Object bean;
+	private @Nullable Object bean;
 
-	private Method method;
+	private @Nullable Method method;
 
 	public EndpointHandlerMethod(Object beanOrClass, String methodName) {
 		Assert.notNull(beanOrClass, () -> "No destination bean or class provided!");

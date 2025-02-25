@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 the original author or authors.
+ * Copyright 2018-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ import java.util.function.Function;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
@@ -101,7 +102,7 @@ public final class KafkaUtils {
 	 * @param groupId the group id.
 	 * @since 2.3
 	 */
-	public static void setConsumerGroupId(String groupId) {
+	public static void setConsumerGroupId(@Nullable String groupId) {
 		if (groupId != null) {
 			KafkaUtils.GROUP_IDS.put(Thread.currentThread(), groupId);
 		}
@@ -112,7 +113,7 @@ public final class KafkaUtils {
 	 * @return the group id.
 	 * @since 2.3
 	 */
-	public static String getConsumerGroupId() {
+	public static @Nullable String getConsumerGroupId() {
 		return KafkaUtils.GROUP_IDS.get(Thread.currentThread());
 	}
 
@@ -150,9 +151,10 @@ public final class KafkaUtils {
 			catch (@SuppressWarnings("unused") NumberFormatException ex) {
 			}
 		}
+		Integer deliveryTimeoutInMs = (Integer) ProducerConfig.configDef().defaultValues()
+				.get(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG);
 		return Duration.ofMillis(Math.max(
-				((Integer) ProducerConfig.configDef().defaultValues()
-						.get(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG)).longValue() + buffer,
+				deliveryTimeoutInMs == null ? 0 : deliveryTimeoutInMs.longValue() + buffer,
 				min));
 	}
 

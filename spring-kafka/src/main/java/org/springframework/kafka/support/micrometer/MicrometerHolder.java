@@ -43,7 +43,7 @@ public final class MicrometerHolder {
 
 	private final Map<String, Timer> meters = new ConcurrentHashMap<>();
 
-	private final MeterRegistry registry;
+	private final @Nullable MeterRegistry registry;
 
 	private final String timerName;
 
@@ -51,7 +51,7 @@ public final class MicrometerHolder {
 
 	private final String name;
 
-	private final Function<Object, Map<String, String>> tagsProvider;
+	private final Function<@Nullable Object, Map<String, String>> tagsProvider;
 
 	/**
 	 * Create an instance with the provided properties.
@@ -63,7 +63,7 @@ public final class MicrometerHolder {
 	 * @since 2.9.7
 	 */
 	public MicrometerHolder(@Nullable ApplicationContext context, String name,
-			String timerName, String timerDesc, Function<Object, Map<String, String>> tagsProvider) {
+			String timerName, String timerDesc, Function<@Nullable Object, Map<String, String>> tagsProvider) {
 
 		Assert.notNull(tagsProvider, "'tagsProvider' cannot be null");
 		if (context == null) {
@@ -168,7 +168,9 @@ public final class MicrometerHolder {
 	 * Remove the timers.
 	 */
 	public void destroy() {
-		this.meters.values().forEach(this.registry::remove);
+		if (this.registry != null) {
+			this.meters.values().forEach(this.registry::remove);
+		}
 		this.meters.clear();
 	}
 

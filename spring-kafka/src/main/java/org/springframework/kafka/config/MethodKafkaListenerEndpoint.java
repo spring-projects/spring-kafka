@@ -131,8 +131,7 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 		this.messagingConverter = messagingConverter;
 	}
 
-	@Nullable
-	private String getReplyTopic() {
+	private @Nullable String getReplyTopic() {
 		Method replyingMethod = getMethod();
 		if (replyingMethod != null) {
 			SendTo ann = AnnotatedElementUtils.findMergedAnnotation(replyingMethod, SendTo.class);
@@ -171,6 +170,7 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 	}
 
 	@Override
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	protected MessagingMessageListenerAdapter<K, V> createMessageListener(MessageListenerContainer container,
 			@Nullable MessageConverter messageConverter) {
 

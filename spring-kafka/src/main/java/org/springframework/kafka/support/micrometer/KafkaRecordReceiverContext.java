@@ -38,9 +38,9 @@ public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?
 
 	private final String listenerId;
 
-	private final String clientId;
+	private final @Nullable String clientId;
 
-	private final String groupId;
+	private final @Nullable String groupId;
 
 	private final ConsumerRecord<?, ?> record;
 
@@ -63,8 +63,8 @@ public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?
 	 * @param clusterId		the kafka cluster id.
 	 * @since 3.2
 	 */
-	public KafkaRecordReceiverContext(ConsumerRecord<?, ?> record, String listenerId, String clientId, String groupId,
-			Supplier<String> clusterId) {
+	public KafkaRecordReceiverContext(ConsumerRecord<?, ?> record, String listenerId, @Nullable String clientId,
+			@Nullable String groupId, Supplier<String> clusterId) {
 		super((carrier, key) -> {
 			Header header = carrier.headers().lastHeader(key);
 			if (header == null || header.value() == null) {
@@ -94,7 +94,7 @@ public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?
 	 * @return the consumer group id.
 	 * @since 3.2
 	 */
-	public String getGroupId() {
+	public @Nullable String getGroupId() {
 		return this.groupId;
 	}
 

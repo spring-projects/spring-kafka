@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2019 the original author or authors.
+ * Copyright 2017-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.support;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.ClassUtils;
 
 /**
@@ -28,7 +30,7 @@ import org.springframework.util.ClassUtils;
  */
 public final class JacksonPresent {
 
-	private static final ClassLoader classLoader = ClassUtils.getDefaultClassLoader();  // NOSONAR
+	private static final @Nullable ClassLoader classLoader = ClassUtils.getDefaultClassLoader();  // NOSONAR
 
 	private static final boolean jackson2Present = // NOSONAR
 			ClassUtils.isPresent("com.fasterxml.jackson.databind.ObjectMapper", classLoader) &&

@@ -68,7 +68,7 @@ public final class JavaUtils {
 	 * @param <T> the value type.
 	 * @return this.
 	 */
-	public <T> JavaUtils acceptIfNotNull(@Nullable T value, Consumer<T> consumer) {
+	public <T> JavaUtils acceptIfNotNull(@Nullable T value, Consumer<@Nullable T> consumer) {
 		if (value != null) {
 			consumer.accept(value);
 		}
@@ -162,7 +162,7 @@ public final class JavaUtils {
 	 * @param <T2> the second argument type.
 	 * @return this.
 	 */
-	public <T1, T2> JavaUtils acceptIfNotNull(T1 t1, T2 t2, BiConsumer<T1, T2> consumer) {
+	public <T1, T2> JavaUtils acceptIfNotNull(T1 t1, @Nullable T2 t2, BiConsumer<T1, @Nullable T2> consumer) {
 		if (t2 != null) {
 			consumer.accept(t1, t2);
 		}
