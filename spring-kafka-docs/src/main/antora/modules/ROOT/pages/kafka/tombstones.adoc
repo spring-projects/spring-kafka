@@ -1,7 +1,7 @@
 [[tombstones]]
 = Null Payloads and Log Compaction of 'Tombstone' Records
 
-When you use https://kafka.apache.org/documentation/#compaction[Log Compaction], you can send and receive messages with `null` payloads to identify the deletion of a key.
+When you use {kafka-url}/documentation/#compaction[Log Compaction], you can send and receive messages with `null` payloads to identify the deletion of a key.
 
 You can also receive `null` values for other reasons, such as a `Deserializer` that might return `null` when it cannot deserialize a value.
 

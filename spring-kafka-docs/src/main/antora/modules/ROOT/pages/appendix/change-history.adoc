@@ -891,7 +891,7 @@ See xref:streams.adoc#streams-header-enricher[Header Enricher] for more informat
 
 The `MessagingTransformer` has been provided.
 This allows a Kafka streams topology to interact with a spring-messaging component, such as a Spring Integration flow.
-See xref:streams.adoc#streams-messaging[`MessagingProcessor`] and See https://docs.spring.io/spring-integration/docs/current/reference/html/kafka.html#streams-integration[[Calling a Spring Integration Flow from a `KStream`]] for more information.
+See xref:streams.adoc#streams-messaging[`MessagingProcessor`] and See {spring-integration-url}/kafka.html#streams-integration[Calling a Spring Integration Flow from a `KStream`] for more information.
 
 [[cb-2-2-and-2-3-json-component-changes]]
 === JSON Component Changes

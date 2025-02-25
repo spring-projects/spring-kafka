@@ -93,7 +93,7 @@ Starting with version 2.3, all the JSON-aware components are configured by defau
 Also such an instance is supplied with well-known modules for custom data types, such a Java time and Kotlin support.
 See `JacksonUtils.enhancedObjectMapper()` JavaDocs for more information.
 This method also registers a `org.springframework.kafka.support.JacksonMimeTypeModule` for `org.springframework.util.MimeType` objects serialization into the plain string for inter-platform compatibility over the network.
-A `JacksonMimeTypeModule` can be registered as a bean in the application context and it will be auto-configured into the https://docs.spring.io/spring-boot/docs/current/reference/html/howto.html#howto.spring-mvc.customize-jackson-objectmapper[Spring Boot `ObjectMapper` instance].
+A `JacksonMimeTypeModule` can be registered as a bean in the application context and it will be auto-configured into the {spring-boot-url}/how-to/spring-mvc.html#howto.spring-mvc.customize-jackson-objectmapper[Spring Boot `ObjectMapper` instance].
 
 Also starting with version 2.3, the `JsonDeserializer` provides `TypeReference`-based constructors for better handling of target generic container types.
 
@@ -146,7 +146,7 @@ consumerProps.put(JsonDeserializer.TYPE_MAPPINGS, "cat:com.yourcat.Cat, hat:com.
 
 IMPORTANT: The corresponding objects must be compatible.
 
-If you use https://docs.spring.io/spring-boot/docs/current/reference/html/messaging.html#messaging.kafka[Spring Boot], you can provide these properties in the `application.properties` (or yaml) file.
+If you use {spring-boot-url}/reference/messaging/kafka.html[Spring Boot], you can provide these properties in the `application.properties` (or yaml) file.
 The following example shows how to do so:
 
 [source]
@@ -408,7 +408,7 @@ Refer to the https://github.com/spring-projects/spring-retry[spring-retry] proje
 [[messaging-message-conversion]]
 == Spring Messaging Message Conversion
 
-Although the `Serializer` and `Deserializer` API is quite simple and flexible from the low-level Kafka `Consumer` and `Producer` perspective, you might need more flexibility at the Spring Messaging level, when using either `@KafkaListener` or https://docs.spring.io/spring-integration/docs/current/reference/html/kafka.html#kafka[Spring Integration's Apache Kafka Support].
+Although the `Serializer` and `Deserializer` API is quite simple and flexible from the low-level Kafka `Consumer` and `Producer` perspective, you might need more flexibility at the Spring Messaging level, when using either `@KafkaListener` or {spring-integration-url}/kafka.html[Spring Integration's Apache Kafka Support].
 To let you easily convert to and from `org.springframework.messaging.Message`, Spring for Apache Kafka provides a `MessageConverter` abstraction with the `MessagingMessageConverter` implementation and its `JsonMessageConverter` (and subclasses) customization.
 You can inject the `MessageConverter` into a `KafkaTemplate` instance directly and by using `AbstractKafkaListenerContainerFactory` bean definition for the `@KafkaListener.containerFactory()` property.
 The following example shows how to do so:
@@ -532,7 +532,7 @@ Alternatively, you can configure the `ErrorHandlingDeserializer` to create a cus
 This function is invoked to create an instance of `T`, which is passed to the listener in the usual fashion.
 An object of type `FailedDeserializationInfo`, which contains all the contextual information is provided to the function.
 You can find the `DeserializationException` (as a serialized Java object) in headers.
-See the https://docs.spring.io/spring-kafka/api/org/springframework/kafka/support/serializer/ErrorHandlingDeserializer.html[Javadoc] for the `ErrorHandlingDeserializer` for more information.
+See the javadoc:org.springframework.kafka.support.serializer.ErrorHandlingDeserializer[Javadoc] for the `ErrorHandlingDeserializer` for more information.
 
 You can use the `DefaultKafkaConsumerFactory` constructor that takes key and value `Deserializer` objects and wire in appropriate `ErrorHandlingDeserializer` instances that you have configured with the proper delegates.
 Alternatively, you can use consumer configuration properties (which are used by the `ErrorHandlingDeserializer`) to instantiate the delegates.

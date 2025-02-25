@@ -8,21 +8,16 @@ antora {
 			stacktrace: true
 	]
 	dependencies = [
-			'@antora/atlas-extension'         : '1.0.0-alpha.1',
-			'@antora/collector-extension'     : '1.0.0-alpha.3',
-			'@asciidoctor/tabs'               : '1.0.0-beta.3',
-			'@springio/antora-extensions'     : '1.4.2',
-			'@springio/asciidoctor-extensions': '1.0.0-alpha.8',
+			'@antora/atlas-extension'         : '1.0.0-alpha.2',
+			'@antora/collector-extension'     : '1.0.1',
+			'@asciidoctor/tabs'               : '1.0.0-beta.6',
+			'@springio/antora-extensions'     : '1.14.4',
+			'@springio/asciidoctor-extensions': '1.0.0-alpha.16',
 	]
 }
 
 tasks.named('generateAntoraYml') {
-	asciidocAttributes = project.provider({
-		return ['project-version': project.version,
-				'revnumber'      : project.version,
-				'spring-version' : project.version,
-		]
-	})
+	asciidocAttributes = project.provider( { generateAttributes() } )
 	baseAntoraYmlFile = file('src/main/antora/antora.yml')
 }
 
@@ -34,4 +29,33 @@ tasks.register('createAntoraPartials', Sync) {
 tasks.register('generateAntoraResources') {
 	dependsOn 'createAntoraPartials'
 	dependsOn 'generateAntoraYml'
+}
+
+def generateAttributes() {
+	def springDoc = "https://docs.spring.io"
+	def springFrameworkReferenceUrl = "$springDoc/spring-framework/reference/${generateVersionWithoutPatch(springVersion)}"
+	def springBootUrl = "$springDoc/spring-boot/${generateVersionWithoutPatch(springBootVersion)}"
+	def springIntegrationUrl = "$springDoc/spring-integration/reference"
+	def kafkaPage = "https://kafka.apache.org"
+	def kafkaUrl = "$kafkaPage/${kafkaVersion.split('\\.')[0,1].join('')}"
+	def micrometerTracingReferenceUrl = "https://docs.micrometer.io/tracing/reference/${generateVersionWithoutPatch(micrometerTracingVersion)}"
+
+	return [
+		'project-version': project.version,
+		'revnumber'      : project.version,
+		'spring-version' : project.version,
+		'spring-framework-reference-url' : springFrameworkReferenceUrl.toString(),
+		'spring-boot-url' : springBootUrl.toString(),
+		'spring-integration-url' : springIntegrationUrl.toString(),
+		'kafka-page' : kafkaPage,
+		'kafka-url' : kafkaUrl.toString(),
+		'micrometer-tracing-reference-url': micrometerTracingReferenceUrl.toString(),
+		'javadoc-location-org-springframework-kafka': "$springDoc/spring-kafka/docs/$project.version/api".toString(),
+		'javadoc-location-org-apache-kafka': "$kafkaUrl/javadoc".toString()
+	]
+}
+
+static String generateVersionWithoutPatch(String version) {
+
+	return version.split('\\.')[0,1].join('.') + (version.endsWith('-SNAPSHOT') ? '-SNAPSHOT' : '')
 }

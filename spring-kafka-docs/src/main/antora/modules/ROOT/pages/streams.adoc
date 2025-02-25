@@ -1,7 +1,7 @@
 [[streams-kafka-streams]]
 = Apache Kafka Streams Support
 
-Starting with version 1.1.4, Spring for Apache Kafka provides first-class support for https://kafka.apache.org/documentation/streams[Kafka Streams].
+Starting with version 1.1.4, Spring for Apache Kafka provides first-class support for {kafka-url}/documentation/streams[Kafka Streams].
 To use it from a Spring application, the `kafka-streams` jar must be present on classpath.
 It is an optional dependency of the Spring for Apache Kafka project and is not downloaded transitively.
 
@@ -76,7 +76,7 @@ public KStream<?, ?> kStream(StreamsBuilder kStreamBuilder) {
 }
 ----
 
-If you would like to control the lifecycle manually (for example, stopping and starting by some condition), you can reference the `StreamsBuilderFactoryBean` bean directly by using the factory bean (`&`) https://docs.spring.io/spring-framework/reference/core/beans/factory-extension.html#beans-factory-extension-factorybean[prefix].
+If you would like to control the lifecycle manually (for example, stopping and starting by some condition), you can reference the `StreamsBuilderFactoryBean` bean directly by using the factory bean (`&`) {spring-framework-reference-url}/core/beans/factory-extension.html#beans-factory-extension-factorybean[prefix].
 Since `StreamsBuilderFactoryBean` uses its internal `KafkaStreams` instance, it is safe to stop and restart it again.
 A new `KafkaStreams` is created on each `start()`.
 You might also consider using different `StreamsBuilderFactoryBean` instances, if you would like to control the lifecycles for `KStream` instances separately.
@@ -209,7 +209,7 @@ new KafkaStreamBrancher<String, String>()
 == Configuration
 
 To configure the Kafka Streams environment, the `StreamsBuilderFactoryBean` requires a `KafkaStreamsConfiguration` instance.
-See the Apache Kafka https://kafka.apache.org/0102/documentation/#streamsconfigs[documentation] for all possible options.
+See the Apache Kafka {kafka-url}/documentation/#streamsconfigs[documentation] for all possible options.
 
 IMPORTANT: Starting with version 2.2, the stream configuration is now provided as a `KafkaStreamsConfiguration` object, rather than as a `StreamsConfig`.
 
@@ -295,7 +295,7 @@ public interface MessagingFunction {
 
 Spring Integration automatically provides an implementation using its `GatewayProxyFactoryBean`.
 It also requires a `MessagingMessageConverter` to convert the key, value and metadata (including headers) to/from a Spring Messaging `Message<?>`.
-See https://docs.spring.io/spring-integration/docs/current/reference/html/kafka.html#streams-integration[[Calling a Spring Integration Flow from a `KStream`]] for more information.
+See {spring-integration-url}/kafka.html#streams-integration[Calling a Spring Integration Flow from a `KStream`] for more information.
 
 [[streams-deser-recovery]]
 == Recovery from Deserialization Exceptions
@@ -336,7 +336,7 @@ Of course, the `recoverer()` bean can be your own implementation of `ConsumerRec
 Starting with version 3.2, Spring for Apache Kafka provides basic facilities required for interactive queries in Kafka Streams.
 Interactive queries are useful in stateful Kafka Streams applications since they provide a way to constantly query the stateful stores in the application.
 Thus, if an application wants to materialize the current view of the system under consideration, interactive queries provide a way to do that.
-To learn more about interactive queries, see this https://kafka.apache.org/36/documentation/streams/developer-guide/interactive-queries.html[article].
+To learn more about interactive queries, see this {kafka-url}/documentation/streams/developer-guide/interactive-queries.html[article].
 The support in Spring for Apache Kafka is centered around an API called `KafkaStreamsInteractiveQueryService` which is a facade around interactive queries APIs in Kafka Streams library.
 An application can create an instance of this service as a bean and then later on use it to retrieve the state store by its name.
 
@@ -434,7 +434,7 @@ public <K> HostInfo getKafkaStreamsApplicationHostInfo(String store, K key, Seri
 ----
 
 When using multiple instances of the Kafka Streams processors of the same `application.id` in a distributed way like this, the application is supposed to provide an RPC layer where the state stores can be queried over an RPC endpoint such as a REST one.
-See this https://kafka.apache.org/36/documentation/streams/developer-guide/interactive-queries.html#querying-remote-state-stores-for-the-entire-app[article] for more details on this.
+See this {kafka-url}/documentation/streams/developer-guide/interactive-queries.html#querying-remote-state-stores-for-the-entire-app[article] for more details on this.
 When using Spring for Apache Kafka, it is very easy to add a Spring based REST endpoint by using the spring-web technologies.
 Once there is a REST endpoint, then that can be used to query the state stores from any Kafka Streams instance, given the `HostInfo` where the key is hosted is known to the instance.
 

@@ -102,7 +102,7 @@ Set `observationEnabled` to `true` on the `KafkaTemplate` and `ContainerProperti
 
 IMPORTANT: Micrometer Observation does not support batch listener; this will enable Micrometer Timers
 
-Refer to https://micrometer.io/docs/tracing[Micrometer Tracing] for more information.
+Refer to {micrometer-tracing-reference-url}[Micrometer Tracing] for more information.
 
 To add tags to timers/traces, configure a custom `KafkaTemplateObservationConvention` or `KafkaListenerObservationConvention` to the template or listener container, respectively.
 
