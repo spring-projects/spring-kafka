@@ -1,5 +1,5 @@
 /**
  * Package for kafka core components
  */
-@org.springframework.lang.NonNullApi
+@org.jspecify.annotations.NullMarked
 package org.springframework.kafka.core;

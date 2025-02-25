@@ -63,7 +63,9 @@ class Application {
     }
 
     @Bean
-    fun kafkaTemplate(pf: ProducerFactory<*, *>?) = KafkaTemplate(pf)
+    fun <K : Any, V : Any> kafkaTemplate(pf: ProducerFactory<K, V>?): KafkaTemplate<K, V> {
+        return KafkaTemplate<K, V>(pf!!)
+    }
 
 // tag::beans[]
     @Bean
@@ -75,7 +77,7 @@ class Application {
         replyContainer.containerProperties.groupId = "request.replies"
         val template = ReplyingKafkaTemplate<String, String, String>(pf, replyContainer)
         template.messageConverter = ByteArrayJsonMessageConverter()
-        template.defaultTopic = "requests"
+        template.setDefaultTopic("requests")
         return template
     }
 // end::beans[]

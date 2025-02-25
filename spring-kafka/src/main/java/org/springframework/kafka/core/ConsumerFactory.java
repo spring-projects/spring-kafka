@@ -242,7 +242,7 @@ public interface ConsumerFactory<K, V> {
 		 * period).
 		 * @param consumer the consumer.
 		 */
-		default void consumerRemoved(String id, Consumer<K, V> consumer) {
+		default void consumerRemoved(@Nullable String id, Consumer<K, V> consumer) {
 		}
 
 	}

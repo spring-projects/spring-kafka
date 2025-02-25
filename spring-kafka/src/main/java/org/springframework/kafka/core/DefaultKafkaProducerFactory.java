@@ -142,17 +142,17 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	private TransactionIdSuffixStrategy transactionIdSuffixStrategy = new DefaultTransactionIdSuffixStrategy(0);
 
-	private Supplier<Serializer<K>> keySerializerSupplier;
+	private @Nullable Supplier<Serializer<K>> keySerializerSupplier;
 
-	private Supplier<Serializer<V>> valueSerializerSupplier;
+	private @Nullable Supplier<Serializer<V>> valueSerializerSupplier;
 
-	private Supplier<Serializer<K>> rawKeySerializerSupplier;
+	private @Nullable Supplier<Serializer<K>> rawKeySerializerSupplier;
 
-	private Supplier<Serializer<V>> rawValueSerializerSupplier;
+	private @Nullable Supplier<Serializer<V>> rawValueSerializerSupplier;
 
 	private Duration physicalCloseTimeout = DEFAULT_PHYSICAL_CLOSE_TIMEOUT;
 
-	private ApplicationContext applicationContext;
+	private @Nullable ApplicationContext applicationContext;
 
 	private String beanName = "not.managed.by.Spring";
 
@@ -162,11 +162,11 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	private boolean configureSerializers = true;
 
-	private volatile String transactionIdPrefix;
+	private volatile @Nullable String transactionIdPrefix;
 
-	private volatile String clientIdPrefix;
+	private volatile @Nullable String clientIdPrefix;
 
-	private volatile CloseSafeProducer<K, V> producer;
+	private volatile @Nullable CloseSafeProducer<K, V> producer;
 
 	/**
 	 * Construct a factory with the provided configuration.
@@ -267,7 +267,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		}
 	}
 
-	private Supplier<Serializer<K>> keySerializerSupplier(@Nullable Supplier<Serializer<K>> keySerializerSupplier) {
+	private @Nullable Supplier<Serializer<K>> keySerializerSupplier(@Nullable Supplier<Serializer<K>> keySerializerSupplier) {
 		this.rawKeySerializerSupplier = keySerializerSupplier;
 		if (!this.configureSerializers) {
 			return keySerializerSupplier;
@@ -283,7 +283,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		};
 	}
 
-	private Supplier<Serializer<V>> valueSerializerSupplier(@Nullable Supplier<Serializer<V>> valueSerializerSupplier) {
+	private @Nullable Supplier<Serializer<V>> valueSerializerSupplier(@Nullable Supplier<Serializer<V>> valueSerializerSupplier) {
 		this.rawValueSerializerSupplier = valueSerializerSupplier;
 		if (!this.configureSerializers) {
 			return valueSerializerSupplier;
@@ -456,21 +456,23 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	@Override
 	@Nullable
 	public Serializer<K> getKeySerializer() {
-		return this.keySerializerSupplier.get();
+		return this.keySerializerSupplier == null ? null : this.keySerializerSupplier.get();
 	}
 
 	@Override
 	@Nullable
 	public Serializer<V> getValueSerializer() {
-		return this.valueSerializerSupplier.get();
+		return this.valueSerializerSupplier == null ? null : this.valueSerializerSupplier.get();
 	}
 
 	@Override
+	@Nullable
 	public Supplier<Serializer<K>> getKeySerializerSupplier() {
 		return this.rawKeySerializerSupplier;
 	}
 
 	@Override
+	@Nullable
 	public Supplier<Serializer<V>> getValueSerializerSupplier() {
 		return this.rawValueSerializerSupplier;
 	}
@@ -546,9 +548,11 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 *  properties applied
 	 */
 	@Override
-	public ProducerFactory<K, V> copyWithConfigurationOverride(Map<String, Object> overrideProperties) {
+	public ProducerFactory<K, V> copyWithConfigurationOverride(@Nullable Map<String, Object> overrideProperties) {
 		Map<String, Object> producerProperties = new HashMap<>(getConfigurationProperties());
-		producerProperties.putAll(overrideProperties);
+		if (overrideProperties != null) {
+			producerProperties.putAll(overrideProperties);
+		}
 		producerProperties = ensureExistingTransactionIdPrefixInProperties(producerProperties);
 		DefaultKafkaProducerFactory<K, V> newFactory = new DefaultKafkaProducerFactory<>(producerProperties,
 				getKeySerializerSupplier(),
@@ -850,7 +854,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		return createTransactionalProducer(this.transactionIdPrefix);
 	}
 
-	protected Producer<K, V> createTransactionalProducer(String txIdPrefix) {
+	protected Producer<K, V> createTransactionalProducer(@Nullable String txIdPrefix) {
 		BlockingQueue<CloseSafeProducer<K, V>> queue = getCache(txIdPrefix);
 		Assert.notNull(queue, () -> "No cache found for " + txIdPrefix);
 		CloseSafeProducer<K, V> cachedProducer = queue.poll();
@@ -912,7 +916,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		listeners.forEach(listener -> listener.producerRemoved(producer.clientId, producer));
 	}
 
-	private CloseSafeProducer<K, V> doCreateTxProducer(String prefix, String suffix,
+	private CloseSafeProducer<K, V> doCreateTxProducer(@Nullable String prefix, String suffix,
 			BiPredicate<CloseSafeProducer<K, V>, Duration> remover) {
 		Producer<K, V> newProducer = createRawProducer(getTxProducerConfigs(prefix + suffix));
 		try {
@@ -941,7 +945,8 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 	protected Producer<K, V> createRawProducer(Map<String, Object> rawConfigs) {
 		Producer<K, V> kafkaProducer =
-				new KafkaProducer<>(rawConfigs, this.keySerializerSupplier.get(), this.valueSerializerSupplier.get());
+				new KafkaProducer<>(rawConfigs, this.keySerializerSupplier == null ? null : this.keySerializerSupplier.get(),
+						this.valueSerializerSupplier == null ? null : this.valueSerializerSupplier.get());
 		for (ProducerPostProcessor<K, V> pp : this.postProcessors) {
 			kafkaProducer = pp.apply(kafkaProducer);
 		}
@@ -1033,9 +1038,9 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 		private final BiPredicate<CloseSafeProducer<K, V>, Duration> removeProducer;
 
-		final String txIdPrefix; // NOSONAR
+		final @Nullable String txIdPrefix; // NOSONAR
 
-		final String txIdSuffix;  // NOSONAR
+		final @Nullable String txIdSuffix;  // NOSONAR
 
 		final long created; // NOSONAR
 
@@ -1045,7 +1050,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 		final int epoch; // NOSONAR
 
-		private volatile Exception producerFailed;
+		private volatile @Nullable Exception producerFailed;
 
 		volatile boolean closed; // NOSONAR
 
@@ -1186,8 +1191,11 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		public void abortTransaction() throws ProducerFencedException {
 			LOGGER.debug(() -> toString() + " abortTransaction()");
 			if (this.producerFailed != null) {
-				LOGGER.debug(() -> "abortTransaction ignored - previous txFailed: " + this.producerFailed.getMessage()
-						+ ": " + this);
+				LOGGER.debug(() -> {
+					String message = this.producerFailed == null ? "" : this.producerFailed.getMessage();
+					return "abortTransaction ignored - previous txFailed: " + message
+							+ ": " + this;
+				});
 			}
 			else {
 				try {

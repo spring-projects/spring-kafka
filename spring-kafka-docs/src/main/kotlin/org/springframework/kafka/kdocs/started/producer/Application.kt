@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,9 +38,9 @@ class Application {
     fun topic() = NewTopic("topic1", 10, 1)
 
     @Bean
-    fun runner(template: KafkaTemplate<String?, String?>) =
+    fun runner(template: KafkaTemplate<String, String>) =
         ApplicationRunner { template.send("topic1", "test") }
-
+    
     companion object {
         @JvmStatic
         fun main(args: Array<String>) = runApplication<Application>(*args)

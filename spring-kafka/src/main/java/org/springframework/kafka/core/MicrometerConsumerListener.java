@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 the original author or authors.
+ * Copyright 2020-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.scheduling.TaskScheduler;
 
@@ -84,7 +85,7 @@ public class MicrometerConsumerListener<K, V> extends KafkaMetricsSupport<Consum
 	}
 
 	@Override
-	public synchronized void consumerRemoved(String id, Consumer<K, V> consumer) {
+	public synchronized void consumerRemoved(@Nullable String id, Consumer<K, V> consumer) {
 		unbindClient(id, consumer);
 	}
 

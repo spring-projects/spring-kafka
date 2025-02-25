@@ -168,7 +168,7 @@ public abstract class KafkaMetricsSupport<C> {
 	 * @param id the unique identifier for the client to manage in store.
 	 * @param client the Kafka client instance to unbind.
 	 */
-	protected final void unbindClient(String id, C client) {
+	protected final void unbindClient(@Nullable String id, C client) {
 		AutoCloseable removed = (AutoCloseable) this.metrics.remove(id);
 		if (removed != null) {
 			try {

@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
@@ -87,15 +88,15 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 
 	private final List<ConsumerPostProcessor<K, V>> postProcessors = new ArrayList<>();
 
-	private Supplier<Deserializer<K>> keyDeserializerSupplier;
+	private @Nullable Supplier<Deserializer<K>> keyDeserializerSupplier;
 
-	private Supplier<Deserializer<V>> valueDeserializerSupplier;
+	private @Nullable Supplier<Deserializer<V>> valueDeserializerSupplier;
 
 	private String beanName = "not.managed.by.Spring";
 
 	private boolean configureDeserializers = true;
 
-	private ApplicationContext applicationContext;
+	private @Nullable ApplicationContext applicationContext;
 
 	/**
 	 * Construct a factory with the provided configuration.
@@ -245,12 +246,12 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 
 	@Override
 	public Deserializer<K> getKeyDeserializer() {
-		return this.keyDeserializerSupplier.get();
+		return Objects.requireNonNull(this.keyDeserializerSupplier).get();
 	}
 
 	@Override
 	public Deserializer<V> getValueDeserializer() {
-		return this.valueDeserializerSupplier.get();
+		return Objects.requireNonNull(this.valueDeserializerSupplier).get();
 	}
 
 	/**
@@ -492,7 +493,7 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 
 	protected class ExtendedKafkaConsumer extends KafkaConsumer<K, V> {
 
-		private String idForListeners;
+		private @Nullable String idForListeners;
 
 		protected ExtendedKafkaConsumer(Map<String, Object> configProps) {
 			super(configProps, keyDeserializer(configProps), valueDeserializer(configProps));

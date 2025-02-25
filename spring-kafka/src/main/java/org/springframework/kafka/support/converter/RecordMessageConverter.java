@@ -53,6 +53,6 @@ public interface RecordMessageConverter extends MessageConverter {
 	 * @param defaultTopic the default topic to use if no header found.
 	 * @return the producer record.
 	 */
-	ProducerRecord<?, ?> fromMessage(Message<?> message, String defaultTopic);
+	ProducerRecord<?, ?> fromMessage(Message<?> message, @Nullable String defaultTopic);
 
 }

@@ -223,7 +223,7 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
-	public ProducerRecord<?, ?> fromMessage(Message<?> messageArg, String defaultTopic) {
+	public ProducerRecord<?, ?> fromMessage(Message<?> messageArg, @Nullable String defaultTopic) {
 		Message<?> message = messageArg;
 		if (this.messagingConverter != null) {
 			Message<?> converted = this.messagingConverter.toMessage(message.getPayload(), message.getHeaders());

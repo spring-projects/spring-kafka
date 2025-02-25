@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-2024 the original author or authors.
+ * Copyright 2016-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.core;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * The strategy for managing transactional producer suffixes.
  *
@@ -30,13 +32,13 @@ public interface TransactionIdSuffixStrategy {
 	 * @param txIdPrefix the transaction id prefix.
 	 * @return the suffix.
 	 */
-	String acquireSuffix(String txIdPrefix);
+	String acquireSuffix(@Nullable String txIdPrefix);
 
 	/**
 	 * Release the suffix for the transactional producer.
 	 * @param txIdPrefix the transaction id prefix.
 	 * @param suffix the suffix.
 	 */
-	void releaseSuffix(String txIdPrefix, String suffix);
+	void releaseSuffix(@Nullable String txIdPrefix, @Nullable String suffix);
 
 }

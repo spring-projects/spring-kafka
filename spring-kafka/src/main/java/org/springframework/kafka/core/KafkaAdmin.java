@@ -102,7 +102,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 
 	private final Map<String, Object> configs;
 
-	private ApplicationContext applicationContext;
+	private @Nullable ApplicationContext applicationContext;
 
 	private Predicate<NewTopic> createOrModifyTopic = nt -> true;
 
@@ -118,7 +118,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 
 	private boolean modifyTopicConfigs;
 
-	private String clusterId;
+	private @Nullable String clusterId;
 
 	/**
 	 * Create an instance with an {@link Admin} based on the supplied
@@ -227,7 +227,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 	 * @return the cluster id.
 	 * @since 3.1.8
 	 */
-	public String getClusterId() {
+	public @Nullable String getClusterId() {
 		return this.clusterId;
 	}
 
@@ -321,6 +321,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 	 * @see #setCreateOrModifyTopic(Predicate)
 	 */
 	protected Collection<NewTopic> newTopics() {
+		Assert.state(this.applicationContext != null, "'applicationContext' cannot be null");
 		Map<String, NewTopic> newTopicsMap = new HashMap<>(
 				this.applicationContext.getBeansOfType(NewTopic.class, false, false));
 		Map<String, NewTopics> wrappers = this.applicationContext.getBeansOfType(NewTopics.class, false, false);
@@ -550,18 +551,20 @@ public class KafkaAdmin extends KafkaResourceFactory
 		topicInfo.topicNameValues().forEach((n, f) -> {
 			NewTopic topic = topicNameToTopic.get(n);
 			try {
-				TopicDescription topicDescription = f.get(this.operationTimeout, TimeUnit.SECONDS);
-				if (topic.numPartitions() >= 0 && topic.numPartitions() < topicDescription.partitions().size()) {
-					LOGGER.info(() -> String.format(
-						"Topic '%s' exists but has a different partition count: %d not %d", n,
-						topicDescription.partitions().size(), topic.numPartitions()));
-				}
-				else if (topic.numPartitions() > topicDescription.partitions().size()) {
-					LOGGER.info(() -> String.format(
-						"Topic '%s' exists but has a different partition count: %d not %d, increasing "
-						+ "if the broker supports it", n,
-						topicDescription.partitions().size(), topic.numPartitions()));
-					topicsToModify.put(n, NewPartitions.increaseTo(topic.numPartitions()));
+				if (topic != null) {
+					TopicDescription topicDescription = f.get(this.operationTimeout, TimeUnit.SECONDS);
+					if (topic.numPartitions() >= 0 && topic.numPartitions() < topicDescription.partitions().size()) {
+						LOGGER.info(() -> String.format(
+								"Topic '%s' exists but has a different partition count: %d not %d", n,
+								topicDescription.partitions().size(), topic.numPartitions()));
+					}
+					else if (topic.numPartitions() > topicDescription.partitions().size()) {
+						LOGGER.info(() -> String.format(
+								"Topic '%s' exists but has a different partition count: %d not %d, increasing "
+										+ "if the broker supports it", n,
+								topicDescription.partitions().size(), topic.numPartitions()));
+						topicsToModify.put(n, NewPartitions.increaseTo(topic.numPartitions()));
+					}
 				}
 			}
 			catch (@SuppressWarnings("unused") InterruptedException e) {
@@ -594,7 +597,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 				LOGGER.debug(e.getCause(), "Failed to create topics");
 			}
 			else {
-				LOGGER.error(e.getCause(), "Failed to create topics");
+				LOGGER.error(e.getCause() != null ? e.getCause() : e, "Failed to create topics");
 				throw new KafkaException("Failed to create topics", e.getCause()); // NOSONAR
 			}
 		}
@@ -617,7 +620,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 				LOGGER.debug(e.getCause(), "Failed to create partitions");
 			}
 			else {
-				LOGGER.error(e.getCause(), "Failed to create partitions");
+				LOGGER.error(e.getCause() != null ? e.getCause() : e, "Failed to create partitions");
 				if (!(e.getCause() instanceof UnsupportedVersionException)) {
 					throw new KafkaException("Failed to create partitions", e.getCause()); // NOSONAR
 				}

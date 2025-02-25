@@ -31,7 +31,7 @@ import org.jspecify.annotations.Nullable;
  */
 public abstract class KafkaResourceFactory {
 
-	private Supplier<String> bootstrapServersSupplier;
+	private @Nullable Supplier<String> bootstrapServersSupplier;
 
 	@Nullable
 	protected String getBootstrapServers() {
