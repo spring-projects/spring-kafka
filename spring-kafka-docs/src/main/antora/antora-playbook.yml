@@ -33,6 +33,7 @@ asciidoc:
   extensions:
     - '@asciidoctor/tabs'
     - '@springio/asciidoctor-extensions'
+    - '@springio/asciidoctor-extensions/javadoc-extension'
   sourcemap: true
 urls:
   latest_version_segment: ''

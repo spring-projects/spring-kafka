@@ -27,7 +27,7 @@ You can set the listener container's `interceptBeforeTx` property to `false` to 
 Starting with version 2.9, this will apply to any transaction manager, not just `KafkaAwareTransactionManager`+++s+++.
 This allows, for example, the interceptor to participate in a JDBC transaction started by the container.
 
-Starting with versions 2.3.8, 2.4.6, the `ConcurrentMessageListenerContainer` now supports https://kafka.apache.org/documentation/#static_membership[Static Membership] when the concurrency is greater than one.
+Starting with versions 2.3.8, 2.4.6, the `ConcurrentMessageListenerContainer` now supports {kafka-url}/documentation/#static_membership[Static Membership] when the concurrency is greater than one.
 The `group.instance.id` is suffixed with `-n` with `n` starting at `1`.
 This, together with an increased `session.timeout.ms`, can be used to reduce rebalance events, for example, when application instances are restarted.
 
@@ -94,7 +94,7 @@ KafkaMessageListenerContainer<Integer, String> container =
 return container;
 ----
 
-Refer to the https://docs.spring.io/spring-kafka/api/org/springframework/kafka/listener/ContainerProperties.html[Javadoc] for `ContainerProperties` for more information about the various properties that you can set.
+Refer to the javadoc:org.springframework.kafka.listener.ContainerProperties[Javadoc] for `ContainerProperties` for more information about the various properties that you can set.
 
 Since version 2.1.1, a new property called `logContainerConfig` is available.
 When `true` and `INFO` logging is enabled each listener container writes a log message summarizing its configuration properties.

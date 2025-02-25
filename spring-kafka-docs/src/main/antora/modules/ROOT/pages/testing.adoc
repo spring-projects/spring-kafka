@@ -17,7 +17,7 @@ There are several techniques to configure the broker as discussed in the followi
 == KafkaTestUtils
 
 `org.springframework.kafka.test.utils.KafkaTestUtils` provides a number of static helper methods to consume records, retrieve various record offsets, and others.
-Refer to its https://docs.spring.io/spring-kafka/docs/current/api/org/springframework/kafka/test/utils/KafkaTestUtils.html[Javadocs] for complete details.
+Refer to its javadoc:org.springframework.kafka.test.utils.KafkaTestUtils[Javadocs] for complete details.
 
 [[junit]]
 == JUnit
@@ -137,7 +137,7 @@ So, before running tests with an embedded Kafka on random ports, we can set `spr
 This is now the default value for this property (starting with version 3.0.10).
 
 With the `EmbeddedKafkaBroker.brokerProperties(Map<String, String>)`, you can provide additional properties for the Kafka servers.
-See https://kafka.apache.org/documentation/#brokerconfigs[Kafka Config] for more information about possible broker properties.
+See {kafka-url}/documentation/#brokerconfigs[Kafka Config] for more information about possible broker properties.
 
 [[configuring-topics]]
 == Configuring Topics

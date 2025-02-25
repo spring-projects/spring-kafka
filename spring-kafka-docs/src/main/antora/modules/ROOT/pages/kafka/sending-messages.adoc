@@ -60,7 +60,7 @@ interface OperationsCallback<K, V, T> {
 }
 ----
 
-See the https://docs.spring.io/spring-kafka/api/org/springframework/kafka/core/KafkaTemplate.html[Javadoc] for more detail.
+See the javadoc:org.springframework.kafka.core.KafkaTemplate[Javadoc] for more detail.
 
 The `sendDefault` API requires that a default topic has been provided to the template.
 
@@ -69,13 +69,13 @@ How the user-provided timestamp is stored depends on the timestamp type configur
 If the topic is configured to use `CREATE_TIME`, the user-specified timestamp is recorded (or generated if not specified).
 If the topic is configured to use `LOG_APPEND_TIME`, the user-specified timestamp ignored and the broker adds in the local broker time.
 
-The `metrics` and `partitionsFor` methods delegate to the same methods on the underlying https://kafka.apache.org/20/javadoc/org/apache/kafka/clients/producer/Producer.html[`Producer`].
-The `execute` method provides direct access to the underlying https://kafka.apache.org/20/javadoc/org/apache/kafka/clients/producer/Producer.html[`Producer`].
+The `metrics` and `partitionsFor` methods delegate to the same methods on the underlying javadoc:org.apache.kafka.clients.producer.Producer[].
+The `execute` method provides direct access to the underlying javadoc:org.apache.kafka.clients.producer.Producer[].
 
 To use the template, you can configure a producer factory and provide it in the template's constructor.
 The following example shows how to do so:
 
-[source, java]
+[source, java, subs="attributes"]
 ----
 @Bean
 public ProducerFactory<Integer, String> producerFactory() {
@@ -88,7 +88,7 @@ public Map<String, Object> producerConfigs() {
     props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
     props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
     props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-    // See https://kafka.apache.org/documentation/#producerconfigs for more properties
+    // See {kafka-url}/documentation/#producerconfigs for more properties
     return props;
 }
 

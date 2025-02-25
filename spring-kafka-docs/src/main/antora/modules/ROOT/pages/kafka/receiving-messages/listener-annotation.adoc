@@ -5,7 +5,7 @@ The `@KafkaListener` annotation is used to designate a bean method as a listener
 The bean is wrapped in a `MessagingMessageListenerAdapter` configured with various features, such as converters to convert the data, if necessary, to match the method parameters.
 
 You can configure most attributes on the annotation with SpEL by using `#{...}` or property placeholders (`${...}`).
-See the https://docs.spring.io/spring-kafka/api/org/springframework/kafka/annotation/KafkaListener.html[Javadoc] for more information.
+See the javadoc:org.springframework.kafka.annotation.KafkaListener[Javadoc] for more information.
 
 [[record-listener]]
 == Record Listeners
