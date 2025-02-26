@@ -46,7 +46,7 @@ public interface BatchMessageConverter extends MessageConverter {
 	 */
 	@NonNull
 	Message<?> toMessage(List<ConsumerRecord<?, ?>> records, @Nullable Acknowledgment acknowledgment,
-			Consumer<?, ?> consumer, Type payloadType);
+			@Nullable Consumer<?, ?> consumer, Type payloadType);
 
 	/**
 	 * Convert a message to a producer record.

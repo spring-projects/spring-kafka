@@ -219,7 +219,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	 * Return the topics/partitions assigned to the replying listener container.
 	 * @return the topics/partitions.
 	 */
-	public Collection<TopicPartition> getAssignedReplyTopicPartitions() {
+	public @Nullable Collection<TopicPartition> getAssignedReplyTopicPartitions() {
 		return this.replyContainer.getAssignedPartitions();
 	}
 

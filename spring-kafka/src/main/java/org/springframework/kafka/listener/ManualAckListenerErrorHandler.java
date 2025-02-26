@@ -38,7 +38,7 @@ public interface ManualAckListenerErrorHandler extends KafkaListenerErrorHandler
 	}
 
 	@Override
-	Object handleError(Message<?> message, ListenerExecutionFailedException exception, Consumer<?, ?> consumer,
+	Object handleError(Message<?> message, ListenerExecutionFailedException exception, @Nullable Consumer<?, ?> consumer,
 			@Nullable Acknowledgment ack);
 
 }

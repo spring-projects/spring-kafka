@@ -70,7 +70,7 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 	 */
 	@Override
 	public void onMessage(ConsumerRecord<K, V> record, @Nullable Acknowledgment acknowledgment,
-			Consumer<?, ?> consumer) {
+			@Nullable Consumer<?, ?> consumer) {
 
 		Message<?> message;
 		if (isConversionNeeded()) {

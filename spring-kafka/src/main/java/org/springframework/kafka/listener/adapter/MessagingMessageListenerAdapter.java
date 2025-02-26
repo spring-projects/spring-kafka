@@ -392,7 +392,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	}
 
 	@Override
-	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+	public void onPartitionsRevoked(@Nullable Collection<TopicPartition> partitions) {
 		if (this.bean instanceof ConsumerSeekAware csa) {
 			csa.onPartitionsRevoked(partitions);
 		}
@@ -406,12 +406,12 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	}
 
 	protected Message<?> toMessagingMessage(ConsumerRecord<K, V> cRecord, @Nullable Acknowledgment acknowledgment,
-			Consumer<?, ?> consumer) {
+			@Nullable Consumer<?, ?> consumer) {
 
 		return getMessageConverter().toMessage(cRecord, acknowledgment, consumer, getType());
 	}
 
-	protected void invoke(Object records, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer,
+	protected void invoke(Object records, @Nullable Acknowledgment acknowledgment, @Nullable Consumer<?, ?> consumer,
 			final Message<?> message) {
 
 		Throwable listenerError = null;
@@ -455,7 +455,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 */
 	@Nullable
 	protected final Object invokeHandler(Object data, @Nullable Acknowledgment acknowledgment, Message<?> message,
-			Consumer<?, ?> consumer) {
+			@Nullable Consumer<?, ?> consumer) {
 
 		Acknowledgment ack = acknowledgment;
 		if (ack == null && this.noOpAck) {
@@ -511,7 +511,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * {@code o.s.messaging.Message<?>}; may be null
 	 */
 	protected void handleResult(Object resultArg, Object request, @Nullable Acknowledgment acknowledgment,
-			Consumer<?, ?> consumer, @Nullable Message<?> source) {
+			@Nullable Consumer<?, ?> consumer, @Nullable Message<?> source) {
 		final Observation observation = getCurrentObservation();
 		this.logger.debug(() -> "Listener method returned result [" + resultArg
 				+ "] - generating response message for it");
@@ -724,7 +724,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	}
 
 	@SuppressWarnings("NullAway") // Dataflow analysis limitation
-	protected void asyncFailure(Object request, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer,
+	protected void asyncFailure(Object request, @Nullable Acknowledgment acknowledgment, @Nullable Consumer<?, ?> consumer,
 			@Nullable Throwable t, @Nullable Message<?> source) {
 
 		try {
@@ -749,7 +749,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		return request instanceof ConsumerRecord && exception instanceof RuntimeException;
 	}
 
-	protected void handleException(Object records, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer,
+	protected void handleException(Object records, @Nullable Acknowledgment acknowledgment, @Nullable Consumer<?, ?> consumer,
 			@Nullable Message<?> message, ListenerExecutionFailedException e) {
 
 		if (this.errorHandler != null) {

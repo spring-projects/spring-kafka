@@ -203,12 +203,12 @@ class EnableKafkaKotlinTests {
 				ConcurrentMessageListenerContainer<String, String> {
 
 			val container = kafkaListenerContainerFactory.createContainer("kotlinTestTopic2")
-			container.containerProperties.groupId = "checkedEx"
-			container.containerProperties.messageListener = MessageListener<String, String> {
+			container.containerProperties.setGroupId("checkedEx")
+			container.containerProperties.setMessageListener(MessageListener<String, String> {
 				if (it.value() == "fail") {
 					throw Exception("checked")
 				}
-			}
+			})
 			return container;
 		}
 
@@ -218,12 +218,12 @@ class EnableKafkaKotlinTests {
 				ConcurrentMessageListenerContainer<String, String> {
 
 			val container = kafkaBatchListenerContainerFactory.createContainer("kotlinBatchTestTopic2")
-			container.containerProperties.groupId = "batchCheckedEx"
-			container.containerProperties.messageListener = BatchMessageListener<String, String> {
+			container.containerProperties.setGroupId("batchCheckedEx")
+			container.containerProperties.setMessageListener(BatchMessageListener<String, String> {
 				if (it.first().value() == "fail") {
 					throw Exception("checked")
 				}
-			}
+			})
 			return container;
 		}
 

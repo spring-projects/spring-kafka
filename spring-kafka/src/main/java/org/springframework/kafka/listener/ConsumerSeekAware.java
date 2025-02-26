@@ -60,7 +60,7 @@ public interface ConsumerSeekAware {
 	 * @param partitions the partitions that have been revoked.
 	 * @since 2.3
 	 */
-	default void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+	default void onPartitionsRevoked(@Nullable Collection<TopicPartition> partitions) {
 	}
 
 	/**

@@ -1,5 +1,5 @@
 /*
- * Copyright 2015-2019 the original author or authors.
+ * Copyright 2015-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package org.springframework.kafka.listener;
 import java.util.List;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.kafka.support.Acknowledgment;
 
@@ -49,6 +50,6 @@ public interface BatchAcknowledgingMessageListener<K, V> extends BatchMessageLis
 	}
 
 	@Override
-	void onMessage(List<ConsumerRecord<K, V>> data, Acknowledgment acknowledgment);
+	void onMessage(List<ConsumerRecord<K, V>> data, @Nullable Acknowledgment acknowledgment);
 
 }

@@ -36,7 +36,7 @@ public class BatchListenerFailedException extends KafkaException {
 
 	private final int index;
 
-	private transient ConsumerRecord<?, ?> record;
+	private transient @Nullable ConsumerRecord<?, ?> record;
 
 	/**
 	 * Construct an instance with the provided properties.

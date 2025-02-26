@@ -20,6 +20,7 @@ import java.util.Collection;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.TopicPartition;
+import org.jspecify.annotations.Nullable;
 
 /**
  * An event published when a consumer is stopped. While it is best practice to use
@@ -37,7 +38,7 @@ public class ConsumerStoppingEvent extends KafkaEvent {
 
 	private transient final Consumer<?, ?> consumer;
 
-	private transient final Collection<TopicPartition> partitions;
+	private transient final @Nullable Collection<TopicPartition> partitions;
 
 	/**
 	 * Construct an instance with the provided source, consumer and partitions.
@@ -48,7 +49,7 @@ public class ConsumerStoppingEvent extends KafkaEvent {
 	 * @since 2.2.1
 	 */
 	public ConsumerStoppingEvent(Object source, Object container,
-			Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+			Consumer<?, ?> consumer, @Nullable Collection<TopicPartition> partitions) {
 		super(source, container);
 		this.consumer = consumer;
 		this.partitions = partitions;
@@ -58,7 +59,7 @@ public class ConsumerStoppingEvent extends KafkaEvent {
 		return this.consumer;
 	}
 
-	public Collection<TopicPartition> getPartitions() {
+	public @Nullable Collection<TopicPartition> getPartitions() {
 		return this.partitions;
 	}
 

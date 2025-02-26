@@ -77,7 +77,7 @@ public final class SeekUtils {
 	 * @param logger a {@link LogAccessor} for seek errors.
 	 * @return true if the failed record was skipped.
 	 */
-	public static boolean doSeeks(List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer, Exception exception,
+	public static boolean doSeeks(List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer, @Nullable Exception exception,
 			boolean recoverable, BiPredicate<ConsumerRecord<?, ?>, Exception> skipper, LogAccessor logger) {
 
 		return doSeeks(records, consumer, exception, recoverable, (rec, ex, cont, cons) -> skipper.test(rec, ex), null,
@@ -95,7 +95,7 @@ public final class SeekUtils {
 	 * @param logger a {@link LogAccessor} for seek errors.
 	 * @return true if the failed record was skipped.
 	 */
-	public static boolean doSeeks(List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer, Exception exception,
+	public static boolean doSeeks(List<ConsumerRecord<?, ?>> records, Consumer<?, ?> consumer, @Nullable Exception exception,
 			boolean recoverable, RecoveryStrategy recovery, @Nullable MessageListenerContainer container,
 			LogAccessor logger) {
 

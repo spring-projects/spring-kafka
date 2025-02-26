@@ -321,6 +321,7 @@ public interface KafkaOperations<K, V> {
 	 */
 	interface OperationsCallback<K, V, T> {
 
+		@Nullable
 		T doInOperations(KafkaOperations<K, V> operations);
 
 	}

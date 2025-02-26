@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,8 +19,10 @@ package org.springframework.kafka.listener;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.Objects;
 
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
@@ -56,13 +58,13 @@ public class ContainerGroupSequencer implements ApplicationContextAware,
 
 	private final TaskExecutor executor = new SimpleAsyncTaskExecutor("container-group-sequencer-");
 
-	private ApplicationContext applicationContext;
+	private @Nullable ApplicationContext applicationContext;
 
 	private boolean stopLastGroupWhenIdle;
 
-	private Iterator<ContainerGroup> iterator;
+	private @Nullable Iterator<ContainerGroup> iterator;
 
-	private ContainerGroup currentGroup;
+	private @Nullable ContainerGroup currentGroup;
 
 	private boolean autoStartup = true;
 
@@ -136,7 +138,7 @@ public class ContainerGroupSequencer implements ApplicationContextAware,
 		MessageListenerContainer parent = event.getContainer(MessageListenerContainer.class);
 		MessageListenerContainer container = (MessageListenerContainer) event.getSource();
 		boolean inCurrentGroup = this.currentGroup != null && this.currentGroup.contains(parent);
-		if (this.running && inCurrentGroup && (this.iterator.hasNext() || this.stopLastGroupWhenIdle)) {
+		if (this.running && inCurrentGroup && (Objects.requireNonNull(this.iterator).hasNext() || this.stopLastGroupWhenIdle)) {
 			this.executor.execute(() -> {
 				LOGGER.debug(() -> "Stopping: " + container);
 				container.stop(() -> {
@@ -157,9 +159,16 @@ public class ContainerGroupSequencer implements ApplicationContextAware,
 			LOGGER.debug(() -> "Stopping: " + parent);
 			parent.stop(() -> {
 				if (this.currentGroup != null) {
-					LOGGER.debug(() -> "Checking group: " + this.currentGroup.toString());
+					LOGGER.debug(() -> {
+						if (this.currentGroup != null) {
+							return "Checking group: " + this.currentGroup.toString();
+						}
+						else {
+							return "Current group is null";
+						}
+					});
 					if (this.currentGroup.allStopped()) {
-						if (this.iterator.hasNext()) {
+						if (Objects.requireNonNull(this.iterator).hasNext()) {
 							this.currentGroup = this.iterator.next();
 							LOGGER.debug(() -> "Starting next group: " + this.currentGroup);
 							this.currentGroup.start();
@@ -185,7 +194,7 @@ public class ContainerGroupSequencer implements ApplicationContextAware,
 	public void initialize() {
 		this.groups.clear();
 		for (String group : this.groupNames) {
-			this.groups.add(this.applicationContext.getBean(group + ".group", ContainerGroup.class));
+			this.groups.add(Objects.requireNonNull(this.applicationContext).getBean(group + ".group", ContainerGroup.class));
 		}
 		if (!this.groups.isEmpty()) {
 			this.iterator = this.groups.iterator();
@@ -194,7 +203,7 @@ public class ContainerGroupSequencer implements ApplicationContextAware,
 				Collection<String> ids = grp.getListenerIds();
 				ids.stream().forEach(id -> {
 					MessageListenerContainer container = this.registry.getListenerContainer(id);
-					if (container.getContainerProperties().getIdleEventInterval() == null) {
+					if (Objects.requireNonNull(container).getContainerProperties().getIdleEventInterval() == null) {
 						container.getContainerProperties().setIdleEventInterval(this.defaultIdleEventInterval);
 						container.setAutoStartup(false);
 					}

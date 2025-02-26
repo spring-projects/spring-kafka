@@ -74,7 +74,7 @@ class Application {
         factory: ConcurrentKafkaListenerContainerFactory<String, String>
     ): ReplyingKafkaTemplate<String, String, String> {
         val replyContainer = factory.createContainer("replies")
-        replyContainer.containerProperties.groupId = "request.replies"
+        replyContainer.containerProperties.setGroupId("request.replies")
         val template = ReplyingKafkaTemplate<String, String, String>(pf, replyContainer)
         template.messageConverter = ByteArrayJsonMessageConverter()
         template.setDefaultTopic("requests")

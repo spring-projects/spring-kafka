@@ -239,12 +239,12 @@ public class ContainerProperties extends ConsumerProperties {
 	 * The message listener; must be a {@link org.springframework.kafka.listener.MessageListener}
 	 * or {@link org.springframework.kafka.listener.AcknowledgingMessageListener}.
 	 */
-	private Object messageListener;
+	private @Nullable Object messageListener;
 
 	/**
 	 * The executor for threads that poll the consumer.
 	 */
-	private AsyncTaskExecutor listenerTaskExecutor;
+	private @Nullable AsyncTaskExecutor listenerTaskExecutor;
 
 	/**
 	 * The timeout for shutting down the container. This is the maximum amount of
@@ -253,22 +253,22 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	private long shutdownTimeout = DEFAULT_SHUTDOWN_TIMEOUT;
 
-	private Long idleEventInterval;
+	private @Nullable Long idleEventInterval;
 
-	private Long idlePartitionEventInterval;
+	private @Nullable Long idlePartitionEventInterval;
 
 	private double idleBeforeDataMultiplier = DEFAULT_IDLE_BEFORE_DATA_MULTIPLIER;
 
 	@Deprecated(since = "3.2")
-	private PlatformTransactionManager transactionManager;
+	private @Nullable PlatformTransactionManager transactionManager;
 
-	private KafkaAwareTransactionManager<?, ?> kafkaAwareTransactionManager;
+	private @Nullable KafkaAwareTransactionManager<?, ?> kafkaAwareTransactionManager;
 
 	private boolean batchRecoverAfterRollback = false;
 
 	private int monitorInterval = DEFAULT_MONITOR_INTERVAL;
 
-	private TaskScheduler scheduler;
+	private @Nullable TaskScheduler scheduler;
 
 	private float noPollThreshold = DEFAULT_NO_POLL_THRESHOLD;
 
@@ -286,7 +286,7 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private Duration consumerStartTimeout = DEFAULT_CONSUMER_START_TIMEOUT;
 
-	private Boolean subBatchPerPartition;
+	private @Nullable Boolean subBatchPerPartition;
 
 	private AssignmentCommitOption assignmentCommitOption = AssignmentCommitOption.LATEST_ONLY_NO_TX;
 
@@ -294,7 +294,7 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private EOSMode eosMode = EOSMode.V2;
 
-	private TransactionDefinition transactionDefinition;
+	private @Nullable TransactionDefinition transactionDefinition;
 
 	private boolean stopContainerWhenFenced;
 
@@ -304,7 +304,7 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private boolean pauseImmediate;
 
-	private KafkaListenerObservationConvention observationConvention;
+	private @Nullable KafkaListenerObservationConvention observationConvention;
 
 	private Duration pollTimeoutWhilePaused = DEFAULT_PAUSED_POLL_TIMEOUT;
 
@@ -327,7 +327,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * @param topicPattern the pattern.
 	 * @see org.apache.kafka.clients.CommonClientConfigs#METADATA_MAX_AGE_CONFIG
 	 */
-	public ContainerProperties(Pattern topicPattern) {
+	public ContainerProperties(@Nullable Pattern topicPattern) {
 		super(topicPattern);
 	}
 
@@ -486,7 +486,7 @@ public class ContainerProperties extends ConsumerProperties {
 		return this.ackTime;
 	}
 
-	public Object getMessageListener() {
+	public @Nullable Object getMessageListener() {
 		return this.messageListener;
 	}
 
@@ -1028,14 +1028,16 @@ public class ContainerProperties extends ConsumerProperties {
 				this.adviceChain.forEach(advised::addAdvice);
 			}
 			else {
-				ProxyFactory pf = new ProxyFactory(this.messageListener);
-				this.adviceChain.forEach(pf::addAdvice);
-				this.messageListener = pf.getProxy();
+				if (this.messageListener != null) {
+					ProxyFactory pf = new ProxyFactory(this.messageListener);
+					this.adviceChain.forEach(pf::addAdvice);
+					this.messageListener = pf.getProxy();
+				}
 			}
 		}
 	}
 
-	public KafkaListenerObservationConvention getObservationConvention() {
+	public @Nullable KafkaListenerObservationConvention getObservationConvention() {
 		return this.observationConvention;
 	}
 

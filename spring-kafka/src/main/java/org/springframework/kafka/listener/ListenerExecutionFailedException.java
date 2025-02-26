@@ -28,7 +28,7 @@ import org.springframework.kafka.KafkaException;
 @SuppressWarnings("serial")
 public class ListenerExecutionFailedException extends KafkaException {
 
-	private final String groupId;
+	private final @Nullable String groupId;
 
 	/**
 	 * Construct an instance with the provided properties.

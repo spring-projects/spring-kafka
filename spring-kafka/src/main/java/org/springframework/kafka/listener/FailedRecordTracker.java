@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
@@ -57,7 +58,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 
 	private final BackOff backOff;
 
-	private BiFunction<ConsumerRecord<?, ?>, Exception, BackOff> backOffFunction;
+	private @Nullable BiFunction<ConsumerRecord<?, ?>, @Nullable Exception, BackOff> backOffFunction;
 
 	private final BackOffHandler backOffHandler;
 
@@ -71,6 +72,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 		this(recoverer, backOff, null, logger);
 	}
 
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
 			@Nullable BackOffHandler backOffHandler, LogAccessor logger) {
 
@@ -111,7 +113,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 	 * @param backOffFunction the function.
 	 * @since 2.6
 	 */
-	public void setBackOffFunction(@Nullable BiFunction<ConsumerRecord<?, ?>, Exception, BackOff> backOffFunction) {
+	public void setBackOffFunction(@Nullable BiFunction<ConsumerRecord<?, ?>, @Nullable Exception, BackOff> backOffFunction) {
 		this.backOffFunction = backOffFunction;
 	}
 
@@ -165,7 +167,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 	}
 
 	@Override
-	public boolean recovered(ConsumerRecord<?, ?> record, Exception exception,
+	public boolean recovered(ConsumerRecord<?, ?> record, @Nullable Exception exception,
 			@Nullable MessageListenerContainer container,
 			@Nullable Consumer<?, ?> consumer) throws InterruptedException {
 
@@ -194,14 +196,14 @@ class FailedRecordTracker implements RecoveryStrategy {
 		}
 	}
 
-	private FailedRecord getFailedRecordInstance(ConsumerRecord<?, ?> record, Exception exception,
+	private FailedRecord getFailedRecordInstance(ConsumerRecord<?, ?> record, @Nullable Exception exception,
 			Map<TopicPartition, FailedRecord> map, TopicPartition topicPartition) {
 
 		Exception realException = ErrorHandlingUtils.findRootCause(exception);
 		FailedRecord failedRecord = map.get(topicPartition);
 		if (failedRecord == null || failedRecord.getOffset() != record.offset()
 				|| (this.resetStateOnExceptionChange
-						&& !realException.getClass().isInstance(failedRecord.getLastException()))) {
+						&& !Objects.requireNonNull(realException).getClass().isInstance(failedRecord.getLastException()))) {
 
 			failedRecord = new FailedRecord(record.offset(), determineBackOff(record, realException).start());
 			map.put(topicPartition, failedRecord);
@@ -213,7 +215,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 		return failedRecord;
 	}
 
-	private BackOff determineBackOff(ConsumerRecord<?, ?> record, Exception exception) {
+	private BackOff determineBackOff(ConsumerRecord<?, ?> record, @Nullable Exception exception) {
 		if (this.backOffFunction == null) {
 			return this.backOff;
 		}
@@ -221,8 +223,8 @@ class FailedRecordTracker implements RecoveryStrategy {
 		return backOffToUse != null ? backOffToUse : this.backOff;
 	}
 
-	private void attemptRecovery(ConsumerRecord<?, ?> record, Exception exception, @Nullable TopicPartition tp,
-			Consumer<?, ?> consumer) {
+	private void attemptRecovery(ConsumerRecord<?, ?> record, @Nullable Exception exception, @Nullable TopicPartition tp,
+			@Nullable Consumer<?, ?> consumer) {
 
 		try {
 			this.recoverer.accept(record, consumer, exception);
@@ -231,7 +233,10 @@ class FailedRecordTracker implements RecoveryStrategy {
 		catch (RuntimeException e) {
 			this.retryListeners.forEach(rl -> rl.recoveryFailed(record, exception, e));
 			if (tp != null && this.resetStateOnRecoveryFailure) {
-				this.failures.get(Thread.currentThread()).remove(tp);
+				Map<TopicPartition, FailedRecord> topicPartitionFailedRecordMap = this.failures.get(Thread.currentThread());
+				if (topicPartitionFailedRecordMap != null) {
+					topicPartitionFailedRecordMap.remove(tp);
+				}
 			}
 			throw e;
 		}
@@ -257,7 +262,11 @@ class FailedRecordTracker implements RecoveryStrategy {
 			return 1;
 		}
 		FailedRecord failedRecord = map.get(topicPartitionOffset.getTopicPartition());
-		if (failedRecord == null || failedRecord.getOffset() != topicPartitionOffset.getOffset()) {
+		if (failedRecord == null) {
+			return 1;
+		}
+		Long offsetValue = topicPartitionOffset.getOffset();
+		if (offsetValue != null && failedRecord.getOffset() != offsetValue) {
 			return 1;
 		}
 		return failedRecord.getDeliveryAttempts().get() + 1;
@@ -271,7 +280,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 
 		private final AtomicInteger deliveryAttempts = new AtomicInteger(1);
 
-		private Exception lastException;
+		private @Nullable Exception lastException;
 
 		FailedRecord(long offset, BackOffExecution backOffExecution) {
 			this.offset = offset;
@@ -290,11 +299,12 @@ class FailedRecordTracker implements RecoveryStrategy {
 			return this.deliveryAttempts;
 		}
 
+		@Nullable
 		Exception getLastException() {
 			return this.lastException;
 		}
 
-		void setLastException(Exception lastException) {
+		void setLastException(@Nullable Exception lastException) {
 			this.lastException = lastException;
 		}
 

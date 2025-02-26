@@ -47,6 +47,6 @@ public interface AcknowledgingConsumerAwareMessageListener<K, V> extends Message
 	}
 
 	@Override
-	void onMessage(ConsumerRecord<K, V> data, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer);
+	void onMessage(ConsumerRecord<K, V> data, @Nullable Acknowledgment acknowledgment, @Nullable Consumer<?, ?> consumer);
 
 }

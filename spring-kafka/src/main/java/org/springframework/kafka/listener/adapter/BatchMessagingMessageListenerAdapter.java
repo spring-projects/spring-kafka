@@ -139,7 +139,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	 */
 	@Override
 	public void onMessage(List<ConsumerRecord<K, V>> records, @Nullable Acknowledgment acknowledgment,
-			Consumer<?, ?> consumer) {
+			@Nullable Consumer<?, ?> consumer) {
 
 		Message<?> message;
 		if (!isConsumerRecordList()) {
@@ -170,7 +170,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	protected Message<?> toMessagingMessage(List records, @Nullable Acknowledgment acknowledgment,
-			Consumer<?, ?> consumer) {
+			@Nullable Consumer<?, ?> consumer) {
 
 		return getBatchMessageConverter().toMessage(records, acknowledgment, consumer, getType());
 	}

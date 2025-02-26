@@ -65,21 +65,23 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 	}
 
 	@Override
-	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-		partitions.forEach(tp -> {
-			List<ConsumerSeekCallback> removedCallbacks = this.topicToCallbacks.remove(tp);
-			if (removedCallbacks != null && !removedCallbacks.isEmpty()) {
-				removedCallbacks.forEach(cb -> {
-					List<TopicPartition> topics = this.callbackToTopics.get(cb);
-					if (topics != null) {
-						topics.remove(tp);
-						if (topics.isEmpty()) {
-							this.callbackToTopics.remove(cb);
+	public void onPartitionsRevoked(@Nullable Collection<TopicPartition> partitions) {
+		if (partitions != null) {
+			partitions.forEach(tp -> {
+				List<ConsumerSeekCallback> removedCallbacks = this.topicToCallbacks.remove(tp);
+				if (removedCallbacks != null && !removedCallbacks.isEmpty()) {
+					removedCallbacks.forEach(cb -> {
+						List<TopicPartition> topics = this.callbackToTopics.get(cb);
+						if (topics != null) {
+							topics.remove(tp);
+							if (topics.isEmpty()) {
+								this.callbackToTopics.remove(cb);
+							}
 						}
-					}
-				});
-			}
-		});
+					});
+				}
+			});
+		}
 	}
 
 	@Override

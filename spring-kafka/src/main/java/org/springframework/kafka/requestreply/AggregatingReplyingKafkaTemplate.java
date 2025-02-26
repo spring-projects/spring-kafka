@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2023 the original author or authors.
+ * Copyright 2019-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.Header;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.BatchConsumerAwareMessageListener;
@@ -125,7 +126,7 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 	}
 
 	@Override
-	public void onMessage(List<ConsumerRecord<K, Collection<ConsumerRecord<K, R>>>> data, Consumer<?, ?> consumer) {
+	public void onMessage(List<ConsumerRecord<K, Collection<ConsumerRecord<K, R>>>> data, @Nullable Consumer<?, ?> consumer) {
 		List<ConsumerRecord<K, Collection<ConsumerRecord<K, R>>>> completed = new ArrayList<>();
 		String correlationHeaderName = getCorrelationHeaderName();
 		data.forEach(record -> {
@@ -191,11 +192,11 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 		}
 	}
 
-	private void checkOffsetsAndCommitIfNecessary(List<ConsumerRecord<K, R>> list, Consumer<?, ?> consumer) {
+	private void checkOffsetsAndCommitIfNecessary(List<ConsumerRecord<K, R>> list, @Nullable Consumer<?, ?> consumer) {
 		list.forEach(record -> this.offsets.compute(
 				new TopicPartition(record.topic(), record.partition()),
 				(k, v) -> v == null ? record.offset() + 1 : Math.max(v, record.offset() + 1)));
-		if (this.pending.isEmpty() && !this.offsets.isEmpty()) {
+		if (this.pending.isEmpty() && !this.offsets.isEmpty() && consumer != null) {
 			consumer.commitSync(this.offsets.entrySet().stream()
 							.collect(Collectors.toMap(Map.Entry::getKey,
 									entry -> new OffsetAndMetadata(entry.getValue()))),

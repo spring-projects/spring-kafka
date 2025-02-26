@@ -51,6 +51,6 @@ public interface BatchAcknowledgingConsumerAwareMessageListener<K, V> extends Ba
 	}
 
 	@Override
-	void onMessage(List<ConsumerRecord<K, V>> data, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer);
+	void onMessage(List<ConsumerRecord<K, V>> data, @Nullable Acknowledgment acknowledgment, @Nullable Consumer<?, ?> consumer);
 
 }

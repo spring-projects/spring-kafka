@@ -39,7 +39,7 @@ public interface RecoveryStrategy {
 	 * @return true to skip.
 	 * @throws InterruptedException if the thread is interrupted.
 	 */
-	boolean recovered(ConsumerRecord<?, ?> record, Exception ex, @Nullable MessageListenerContainer container,
+	boolean recovered(ConsumerRecord<?, ?> record, @Nullable Exception ex, @Nullable MessageListenerContainer container,
 			@Nullable Consumer<?, ?> consumer) throws InterruptedException;
 
 }
