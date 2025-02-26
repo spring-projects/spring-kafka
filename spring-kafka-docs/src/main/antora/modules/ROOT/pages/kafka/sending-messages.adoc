@@ -193,8 +193,10 @@ public void sendToKafka(final MyOutputData data) {
     });
 }
 ----
+====
 
 .Blocking (Sync)
+====
 [source, java]
 ----
 public void sendToKafka(final MyOutputData data) {
