@@ -62,7 +62,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 
 	private BatchMessageConverter batchMessageConverter = new BatchMessagingMessageConverter();
 
-	private BatchToRecordAdapter<K, V> batchToRecordAdapter;
+	private @Nullable BatchToRecordAdapter<K, V> batchToRecordAdapter;
 
 	/**
 	 * Create an instance with the provided parameters.

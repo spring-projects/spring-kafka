@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2021 the original author or authors.
+ * Copyright 2018-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.kafka.listener;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.common.TopicPartition;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Interface for backing off a {@link MessageListenerContainer}
@@ -32,7 +33,7 @@ public interface KafkaConsumerBackoffManager {
 	void backOffIfNecessary(Context context);
 
 	default Context createContext(long dueTimestamp, String listenerId, TopicPartition topicPartition,
-								Consumer<?, ?> messageConsumer) {
+								@Nullable Consumer<?, ?> messageConsumer) {
 		return new Context(dueTimestamp, topicPartition, listenerId, messageConsumer);
 	}
 
@@ -64,7 +65,7 @@ public interface KafkaConsumerBackoffManager {
 		private final Consumer<?, ?> consumerForTimingAdjustment;
 
 		Context(long dueTimestamp, TopicPartition topicPartition, String listenerId,
-				Consumer<?, ?> consumerForTimingAdjustment) {
+				@Nullable Consumer<?, ?> consumerForTimingAdjustment) {
 
 			this.dueTimestamp = dueTimestamp;
 			this.listenerId = listenerId;
@@ -84,7 +85,7 @@ public interface KafkaConsumerBackoffManager {
 			return this.topicPartition;
 		}
 
-		public Consumer<?, ?> getConsumerForTimingAdjustment() {
+		public @Nullable Consumer<?, ?> getConsumerForTimingAdjustment() {
 			return this.consumerForTimingAdjustment;
 		}
 

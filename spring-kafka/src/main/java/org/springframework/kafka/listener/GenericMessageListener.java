@@ -56,7 +56,7 @@ public interface GenericMessageListener<T> {
 	 * @param consumer the consumer.
 	 * @since 2.0
 	 */
-	default void onMessage(T data, Consumer<?, ?> consumer) {
+	default void onMessage(T data, @Nullable Consumer<?, ?> consumer) {
 		throw new UnsupportedOperationException("Container should never call this");
 	}
 
@@ -68,7 +68,7 @@ public interface GenericMessageListener<T> {
 	 * @param consumer the consumer.
 	 * @since 2.0
 	 */
-	default void onMessage(T data, @Nullable Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
+	default void onMessage(T data, @Nullable Acknowledgment acknowledgment, @Nullable Consumer<?, ?> consumer) {
 		throw new UnsupportedOperationException("Container should never call this");
 	}
 

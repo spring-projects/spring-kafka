@@ -17,6 +17,7 @@
 package org.springframework.kafka.listener.adapter;
 
 import java.lang.reflect.Method;
+import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -35,9 +36,9 @@ import org.springframework.messaging.handler.invocation.InvocableHandlerMethod;
  */
 public class HandlerAdapter {
 
-	private final InvocableHandlerMethod invokerHandlerMethod;
+	private final @Nullable InvocableHandlerMethod invokerHandlerMethod;
 
-	private final DelegatingInvocableHandler delegatingHandler;
+	private final @Nullable DelegatingInvocableHandler delegatingHandler;
 
 	private final boolean asyncReplies;
 
@@ -74,11 +75,11 @@ public class HandlerAdapter {
 	}
 
 	@Nullable
-	public Object invoke(Message<?> message, Object... providedArgs) throws Exception { //NOSONAR
+	public Object invoke(Message<?> message, @Nullable Object... providedArgs) throws Exception { //NOSONAR
 		if (this.invokerHandlerMethod != null) {
 			return this.invokerHandlerMethod.invoke(message, providedArgs); // NOSONAR
 		}
-		else if (this.delegatingHandler.hasDefaultHandler()) {
+		else if (Objects.requireNonNull(this.delegatingHandler).hasDefaultHandler()) {
 			// Needed to avoid returning raw Message which matches Object
 			Object[] args = new Object[providedArgs.length + 1];
 			args[0] = message.getPayload();
@@ -95,7 +96,7 @@ public class HandlerAdapter {
 			return this.invokerHandlerMethod.getMethod().toGenericString();
 		}
 		else {
-			return this.delegatingHandler.getMethodNameFor(payload);
+			return Objects.requireNonNull(this.delegatingHandler).getMethodNameFor(payload);
 		}
 	}
 
@@ -104,7 +105,7 @@ public class HandlerAdapter {
 			return this.invokerHandlerMethod.getBean();
 		}
 		else {
-			return this.delegatingHandler.getBean();
+			return Objects.requireNonNull(this.delegatingHandler).getBean();
 		}
 	}
 

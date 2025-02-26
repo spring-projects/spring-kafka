@@ -66,7 +66,7 @@ public class FilteringMessageListenerAdapter<K, V>
 
 	@Override
 	public void onMessage(ConsumerRecord<K, V> consumerRecord, @Nullable Acknowledgment acknowledgment,
-			Consumer<?, ?> consumer) {
+			@Nullable Consumer<?, ?> consumer) {
 
 		if (!filter(consumerRecord)) {
 			switch (this.delegateType) {
@@ -104,12 +104,12 @@ public class FilteringMessageListenerAdapter<K, V>
 	}
 
 	@Override
-	public void onMessage(ConsumerRecord<K, V> data, Acknowledgment acknowledgment) {
+	public void onMessage(ConsumerRecord<K, V> data, @Nullable Acknowledgment acknowledgment) {
 		onMessage(data, acknowledgment, null); // NOSONAR
 	}
 
 	@Override
-	public void onMessage(ConsumerRecord<K, V> data, Consumer<?, ?> consumer) {
+	public void onMessage(ConsumerRecord<K, V> data, @Nullable Consumer<?, ?> consumer) {
 		onMessage(data, null, consumer);
 	}
 

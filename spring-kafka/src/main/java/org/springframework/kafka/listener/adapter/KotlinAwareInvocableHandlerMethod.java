@@ -1,5 +1,5 @@
 /*
- * Copyright 2023-2024 the original author or authors.
+ * Copyright 2023-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
 package org.springframework.kafka.listener.adapter;
 
 import java.lang.reflect.Method;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.CoroutinesUtils;
 import org.springframework.core.KotlinDetector;
@@ -36,7 +38,8 @@ public class KotlinAwareInvocableHandlerMethod extends InvocableHandlerMethod {
 	}
 
 	@Override
-	protected Object doInvoke(Object... args) throws Exception {
+	@Nullable
+	protected Object doInvoke(@Nullable Object... args) throws Exception {
 		Method method = getBridgedMethod();
 		if (KotlinDetector.isSuspendingFunction(method)) {
 			return CoroutinesUtils.invokeSuspendingFunction(method, getBean(), args);

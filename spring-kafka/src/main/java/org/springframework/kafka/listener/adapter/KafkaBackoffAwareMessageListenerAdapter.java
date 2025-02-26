@@ -101,7 +101,7 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 		}
 	}
 
-	private void invokeDelegateOnMessage(ConsumerRecord<K, V> consumerRecord, Acknowledgment acknowledgment, Consumer<?, ?> consumer) {
+	private void invokeDelegateOnMessage(ConsumerRecord<K, V> consumerRecord, @Nullable Acknowledgment acknowledgment, @Nullable Consumer<?, ?> consumer) {
 		switch (this.delegateType) {
 			case ACKNOWLEDGING_CONSUMER_AWARE -> this.delegate.onMessage(consumerRecord, acknowledgment, consumer);
 			case ACKNOWLEDGING -> this.delegate.onMessage(consumerRecord, acknowledgment);
@@ -111,7 +111,7 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 	}
 
 	private KafkaConsumerBackoffManager.Context createContext(ConsumerRecord<K, V> data, long nextExecutionTimestamp,
-			Consumer<?, ?> consumer) {
+			@Nullable Consumer<?, ?> consumer) {
 
 		return this.kafkaConsumerBackoffManager.createContext(nextExecutionTimestamp, this.listenerId,
 				new TopicPartition(data.topic(), data.partition()), consumer);
@@ -135,12 +135,12 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 	}
 
 	@Override
-	public void onMessage(ConsumerRecord<K, V> data, Acknowledgment acknowledgment) {
+	public void onMessage(ConsumerRecord<K, V> data, @Nullable Acknowledgment acknowledgment) {
 		onMessage(data, acknowledgment, null); // NOSONAR
 	}
 
 	@Override
-	public void onMessage(ConsumerRecord<K, V> data, Consumer<?, ?> consumer) {
+	public void onMessage(ConsumerRecord<K, V> data, @Nullable Consumer<?, ?> consumer) {
 		onMessage(data, null, consumer);
 	}
 }

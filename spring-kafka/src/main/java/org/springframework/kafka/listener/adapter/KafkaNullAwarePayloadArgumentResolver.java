@@ -40,12 +40,12 @@ import org.springframework.validation.Validator;
  */
 public class KafkaNullAwarePayloadArgumentResolver extends PayloadMethodArgumentResolver {
 
-	KafkaNullAwarePayloadArgumentResolver(MessageConverter messageConverter, Validator validator) {
+	KafkaNullAwarePayloadArgumentResolver(MessageConverter messageConverter, @Nullable Validator validator) {
 		super(messageConverter, validator);
 	}
 
 	@Override
-	public Object resolveArgument(MethodParameter parameter, Message<?> message) throws Exception { // NOSONAR
+	public @Nullable Object resolveArgument(MethodParameter parameter, Message<?> message) throws Exception { // NOSONAR
 		Object resolved = super.resolveArgument(parameter, message);
 		/*
 		 * Replace KafkaNull list elements with null.

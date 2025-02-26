@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 the original author or authors.
+ * Copyright 2020-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import java.util.List;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.Message;
@@ -47,7 +48,7 @@ public interface BatchToRecordAdapter<K, V> {
 	 * @param consumer the consumer.
 	 * @param callback the callback.
 	 */
-	void adapt(List<Message<?>> messages, List<ConsumerRecord<K, V>> records, Acknowledgment ack,
+	void adapt(List<Message<?>> messages, List<ConsumerRecord<K, V>> records, @Nullable Acknowledgment ack,
 			Consumer<?, ?> consumer, Callback<K, V> callback);
 
 	/**
@@ -66,7 +67,7 @@ public interface BatchToRecordAdapter<K, V> {
 		 * @param consumer the consumer.
 		 * @param message the message.
 		 */
-		void invoke(ConsumerRecord<K, V> record, Acknowledgment ack, Consumer<?, ?> consumer,
+		void invoke(ConsumerRecord<K, V> record, @Nullable Acknowledgment ack, Consumer<?, ?> consumer,
 				Message<?> message);
 
 	}

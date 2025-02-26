@@ -37,7 +37,7 @@ public abstract class AbstractRetryingMessageListenerAdapter<K, V, T>
 
 	private final RetryTemplate retryTemplate;
 
-	private final RecoveryCallback<? extends Object> recoveryCallback;
+	private final @Nullable RecoveryCallback<? extends Object> recoveryCallback;
 
 	/**
 	 * Construct an instance with the supplied retry template. The exception will be
@@ -69,7 +69,7 @@ public abstract class AbstractRetryingMessageListenerAdapter<K, V, T>
 		return this.retryTemplate;
 	}
 
-	public RecoveryCallback<? extends Object> getRecoveryCallback() {
+	public @Nullable RecoveryCallback<? extends Object> getRecoveryCallback() {
 		return this.recoveryCallback;
 	}
 

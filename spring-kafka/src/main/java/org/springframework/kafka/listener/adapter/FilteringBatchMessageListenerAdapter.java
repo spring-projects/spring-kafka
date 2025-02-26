@@ -78,7 +78,7 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 
 	@Override
 	public void onMessage(List<ConsumerRecord<K, V>> records, @Nullable Acknowledgment acknowledgment,
-			Consumer<?, ?> consumer) {
+			@Nullable Consumer<?, ?> consumer) {
 
 		final RecordFilterStrategy<K, V> recordFilterStrategy = getRecordFilterStrategy();
 		final List<ConsumerRecord<K, V>> consumerRecords = recordFilterStrategy.filterBatch(records);
@@ -100,8 +100,8 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 		}
 	}
 
-	private void invokeDelegate(List<ConsumerRecord<K, V>> consumerRecords, Acknowledgment acknowledgment,
-			Consumer<?, ?> consumer) {
+	private void invokeDelegate(List<ConsumerRecord<K, V>> consumerRecords, @Nullable Acknowledgment acknowledgment,
+			@Nullable Consumer<?, ?> consumer) {
 
 		switch (this.delegateType) {
 			case ACKNOWLEDGING_CONSUMER_AWARE:
@@ -129,12 +129,12 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 	}
 
 	@Override
-	public void onMessage(List<ConsumerRecord<K, V>> data, Acknowledgment acknowledgment) {
+	public void onMessage(List<ConsumerRecord<K, V>> data, @Nullable Acknowledgment acknowledgment) {
 		onMessage(data, acknowledgment, null); // NOSONAR
 	}
 
 	@Override
-	public void onMessage(List<ConsumerRecord<K, V>> data, Consumer<?, ?> consumer) {
+	public void onMessage(List<ConsumerRecord<K, V>> data, @Nullable Consumer<?, ?> consumer) {
 		onMessage(data, null, consumer);
 	}
 
