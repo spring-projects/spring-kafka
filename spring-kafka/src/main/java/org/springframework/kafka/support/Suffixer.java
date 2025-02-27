@@ -26,6 +26,7 @@ import org.springframework.util.StringUtils;
  * Utility class that suffixes strings.
  *
  * @author Tomaz Fernandes
+ * @author Ngoc Nhan
  * @since 2.7
  *
  */
