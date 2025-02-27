@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 the original author or authors.
+ * Copyright 2018-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@ import org.springframework.util.StringUtils;
  * Utility class that suffixes strings.
  *
  * @author Tomaz Fernandes
+ * @author Ngoc Nhan
  * @since 2.7
  *
  */
@@ -42,7 +43,7 @@ public class Suffixer {
 		if (!StringUtils.hasText(this.suffix)) {
 			return source;
 		}
-		return source != null && StringUtils.hasText(source) // Only suffix if there's text
+		return StringUtils.hasText(source) // Only suffix if there's text
 				? source.concat(this.suffix)
 				: source;
 	}
