@@ -43,7 +43,7 @@ public class ContainerPausingBackOffHandler implements BackOffHandler {
 	}
 
 	@Override
-	public void onNextBackOff(@Nullable MessageListenerContainer container, Exception exception, long nextBackOff) {
+	public void onNextBackOff(@Nullable MessageListenerContainer container, @Nullable Exception exception, long nextBackOff) {
 		if (container == null) {
 			this.defaultBackOffHandler.onNextBackOff(container, exception, nextBackOff); // NOSONAR
 		}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,10 @@
  */
 
 package org.springframework.kafka.listener;
+
+import java.util.Objects;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -32,9 +36,9 @@ import org.springframework.util.Assert;
 public abstract class AbstractKafkaBackOffManagerFactory
 		implements KafkaBackOffManagerFactory, ApplicationContextAware {
 
-	private ApplicationContext applicationContext;
+	private @Nullable ApplicationContext applicationContext;
 
-	private ListenerContainerRegistry listenerContainerRegistry;
+	private @Nullable ListenerContainerRegistry listenerContainerRegistry;
 
 	/**
 	 * Creates an instance that will retrieve the {@link ListenerContainerRegistry} from
@@ -83,7 +87,7 @@ public abstract class AbstractKafkaBackOffManagerFactory
 	}
 
 	protected <T> T getBean(String beanName, Class<T> beanClass) {
-		return this.applicationContext.getBean(beanName, beanClass);
+		return Objects.requireNonNull(this.applicationContext).getBean(beanName, beanClass);
 	}
 
 	@Override

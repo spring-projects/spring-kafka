@@ -660,7 +660,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	}
 
 	@Override
-	public <T> T executeInTransaction(OperationsCallback<K, V, T> callback) {
+	public <T> @Nullable T executeInTransaction(OperationsCallback<K, V, T> callback) {
 		Assert.notNull(callback, "'callback' cannot be null");
 		Assert.state(this.transactional, "Producer factory does not support transactions");
 		Thread currentThread = Thread.currentThread();

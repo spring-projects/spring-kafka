@@ -80,7 +80,7 @@ public abstract class AbstractDelegatingMessageListenerAdapter<T>
 	}
 
 	@Override
-	public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+	public void onPartitionsRevoked(@Nullable Collection<TopicPartition> partitions) {
 		if (this.seekAware != null) {
 			this.seekAware.onPartitionsRevoked(partitions);
 		}

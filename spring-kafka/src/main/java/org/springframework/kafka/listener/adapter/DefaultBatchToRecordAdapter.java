@@ -64,7 +64,7 @@ public class DefaultBatchToRecordAdapter<K, V> implements BatchToRecordAdapter<K
 
 	@Override
 	public void adapt(List<Message<?>> messages, List<ConsumerRecord<K, V>> records, @Nullable Acknowledgment ack,
-			Consumer<?, ?> consumer, Callback<K, V> callback) {
+			@Nullable Consumer<?, ?> consumer, Callback<K, V> callback) {
 
 		for (int i = 0; i < messages.size(); i++) {
 			Message<?> message = messages.get(i);

@@ -35,7 +35,7 @@ public interface BackOffHandler {
 	 * @param exception the exception.
 	 * @param nextBackOff the next back off.
 	 */
-	default void onNextBackOff(@Nullable MessageListenerContainer container, Exception exception, long nextBackOff) {
+	default void onNextBackOff(@Nullable MessageListenerContainer container, @Nullable Exception exception, long nextBackOff) {
 		throw new UnsupportedOperationException();
 	}
 

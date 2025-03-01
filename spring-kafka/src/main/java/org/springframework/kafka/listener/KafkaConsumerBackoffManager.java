@@ -62,7 +62,7 @@ public interface KafkaConsumerBackoffManager {
 		/**
 		 * The consumer of the message, if present.
 		 */
-		private final Consumer<?, ?> consumerForTimingAdjustment;
+		private final @Nullable Consumer<?, ?> consumerForTimingAdjustment;
 
 		Context(long dueTimestamp, TopicPartition topicPartition, String listenerId,
 				@Nullable Consumer<?, ?> consumerForTimingAdjustment) {

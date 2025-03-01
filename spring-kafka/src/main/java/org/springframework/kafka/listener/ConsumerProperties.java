@@ -51,17 +51,17 @@ public class ConsumerProperties {
 	/**
 	 * Topic names.
 	 */
-	private final String[] topics;
+	private final @Nullable String @Nullable [] topics;
 
 	/**
 	 * Topic pattern.
 	 */
-	private final Pattern topicPattern;
+	private final @Nullable Pattern topicPattern;
 
 	/**
 	 * Topics/partitions/initial offsets.
 	 */
-	private final TopicPartitionOffset[] topicPartitions;
+	private final @Nullable TopicPartitionOffset @Nullable [] topicPartitions;
 
 	/**
 	 * The max time to block in the consumer waiting for records.
@@ -71,7 +71,7 @@ public class ConsumerProperties {
 	/**
 	 * Override the group id.
 	 */
-	private String groupId;
+	private @Nullable String groupId;
 
 	/**
 	 * Override the client id.
@@ -81,21 +81,21 @@ public class ConsumerProperties {
 	/**
 	 * A user defined {@link ConsumerRebalanceListener} implementation.
 	 */
-	private ConsumerRebalanceListener consumerRebalanceListener;
+	private @Nullable ConsumerRebalanceListener consumerRebalanceListener;
 
-	private Duration syncCommitTimeout;
+	private @Nullable Duration syncCommitTimeout;
 
 	/**
 	 * The commit callback; by default a simple logging callback is used to log
 	 * success at DEBUG level and failures at ERROR level.
 	 */
-	private OffsetCommitCallback commitCallback;
+	private @Nullable OffsetCommitCallback commitCallback;
 
 	/**
 	 * A provider for {@link OffsetAndMetadata}; by default, the provider creates an offset and metadata with
 	 * empty metadata. The provider gives a way to customize the metadata.
 	 */
-	private OffsetAndMetadataProvider offsetAndMetadataProvider;
+	private @Nullable OffsetAndMetadataProvider offsetAndMetadataProvider;
 
 	/**
 	 * Whether or not to call consumer.commitSync() or commitAsync() when the
@@ -107,7 +107,7 @@ public class ConsumerProperties {
 
 	private Properties kafkaConsumerProperties = new Properties();
 
-	private Duration authExceptionRetryInterval;
+	private @Nullable Duration authExceptionRetryInterval;
 
 	private int commitRetries = DEFAULT_COMMIT_RETRIES;
 
@@ -137,7 +137,7 @@ public class ConsumerProperties {
 	 * @param topicPattern the pattern.
 	 * @see org.apache.kafka.clients.CommonClientConfigs#METADATA_MAX_AGE_CONFIG
 	 */
-	public ConsumerProperties(Pattern topicPattern) {
+	public ConsumerProperties(@Nullable Pattern topicPattern) {
 		this.topics = null;
 		this.topicPattern = topicPattern;
 		this.topicPartitions = null;
@@ -160,7 +160,7 @@ public class ConsumerProperties {
 	 * @return the topics.
 	 */
 	@Nullable
-	public String[] getTopics() {
+	public String @Nullable [] getTopics() {
 		return this.topics != null
 				? Arrays.copyOf(this.topics, this.topics.length)
 				: null;
@@ -181,7 +181,7 @@ public class ConsumerProperties {
 	 * @since 2.5
 	 */
 	@Nullable
-	public TopicPartitionOffset[] getTopicPartitions() {
+	public TopicPartitionOffset @Nullable [] getTopicPartitions() {
 		return this.topicPartitions != null
 				? Arrays.copyOf(this.topicPartitions, this.topicPartitions.length)
 				: null;

@@ -107,7 +107,7 @@ public class ConvertingMessageListener<V> implements DelegatingMessageListener<M
 
 	@Override
 	@SuppressWarnings("unchecked")
-	public void onMessage(ConsumerRecord receivedRecord, @Nullable Acknowledgment acknowledgment, Consumer consumer) {
+	public void onMessage(ConsumerRecord receivedRecord, @Nullable Acknowledgment acknowledgment, @Nullable Consumer consumer) {
 		ConsumerRecord convertedConsumerRecord = convertConsumerRecord(receivedRecord);
 		if (this.delegate instanceof AcknowledgingConsumerAwareMessageListener) {
 			this.delegate.onMessage(convertedConsumerRecord, acknowledgment, consumer);

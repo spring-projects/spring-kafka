@@ -20,6 +20,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
@@ -65,7 +66,7 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 
 	private final BackOff backOff;
 
-	private final KafkaOperations<?, ?> kafkaTemplate;
+	private final @Nullable KafkaOperations<?, ?> kafkaTemplate;
 
 	private final BiConsumer<ConsumerRecords<?, ?>, Exception> recoverer;
 
@@ -169,7 +170,7 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 
 		if (SeekUtils.doSeeks((List) records, consumer, exception, recoverable,
 				getFailureTracker(), container, this.logger)
-					&& isCommitRecovered() && this.kafkaTemplate.isTransactional()) {
+					&& isCommitRecovered() && Objects.requireNonNull(this.kafkaTemplate).isTransactional()) {
 			ConsumerRecord<K, V> skipped = records.get(0);
 			this.kafkaTemplate.sendOffsetsToTransaction(
 					Collections.singletonMap(new TopicPartition(skipped.topic(), skipped.partition()),

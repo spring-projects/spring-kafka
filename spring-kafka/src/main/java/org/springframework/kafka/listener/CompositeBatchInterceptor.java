@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2021 the original author or authors.
+ * Copyright 2019-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ import java.util.Collection;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
 
@@ -53,7 +54,7 @@ public class CompositeBatchInterceptor<K, V> implements BatchInterceptor<K, V> {
 	}
 
 	@Override
-	public ConsumerRecords<K, V> intercept(ConsumerRecords<K, V> records, Consumer<K, V> consumer) {
+	public @Nullable ConsumerRecords<K, V> intercept(ConsumerRecords<K, V> records, Consumer<K, V> consumer) {
 		ConsumerRecords<K, V> recordsToIntercept = records;
 		for (BatchInterceptor<K, V> delegate : this.delegates) {
 			recordsToIntercept = delegate.intercept(recordsToIntercept, consumer);

@@ -49,7 +49,7 @@ public interface BatchToRecordAdapter<K, V> {
 	 * @param callback the callback.
 	 */
 	void adapt(List<Message<?>> messages, List<ConsumerRecord<K, V>> records, @Nullable Acknowledgment ack,
-			Consumer<?, ?> consumer, Callback<K, V> callback);
+			@Nullable Consumer<?, ?> consumer, Callback<K, V> callback);
 
 	/**
 	 * A callback for each message.
@@ -67,7 +67,7 @@ public interface BatchToRecordAdapter<K, V> {
 		 * @param consumer the consumer.
 		 * @param message the message.
 		 */
-		void invoke(ConsumerRecord<K, V> record, @Nullable Acknowledgment ack, Consumer<?, ?> consumer,
+		void invoke(ConsumerRecord<K, V> record, @Nullable Acknowledgment ack, @Nullable Consumer<?, ?> consumer,
 				Message<?> message);
 
 	}

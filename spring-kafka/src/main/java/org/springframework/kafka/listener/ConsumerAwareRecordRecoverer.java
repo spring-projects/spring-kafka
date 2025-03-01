@@ -43,6 +43,6 @@ public interface ConsumerAwareRecordRecoverer extends ConsumerRecordRecoverer {
 	 * @param exception the exception.
 	 * @since 2.7
 	 */
-	void accept(ConsumerRecord<?, ?> record, @Nullable Consumer<?, ?> consumer, Exception exception);
+	void accept(ConsumerRecord<?, ?> record, @Nullable Consumer<?, ?> consumer, @Nullable Exception exception);
 
 }

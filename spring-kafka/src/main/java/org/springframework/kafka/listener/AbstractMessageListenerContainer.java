@@ -101,9 +101,9 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	@NonNull
 	private String beanName = "noBeanNameSet";
 
-	private ApplicationEventPublisher applicationEventPublisher;
+	private @Nullable ApplicationEventPublisher applicationEventPublisher;
 
-	private CommonErrorHandler commonErrorHandler;
+	private @Nullable CommonErrorHandler commonErrorHandler;
 
 	private boolean autoStartup = true;
 
@@ -114,15 +114,16 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private int topicCheckTimeout = DEFAULT_TOPIC_CHECK_TIMEOUT;
 
-	private RecordInterceptor<K, V> recordInterceptor;
+	private @Nullable RecordInterceptor<K, V> recordInterceptor;
 
-	private BatchInterceptor<K, V> batchInterceptor;
+	private @Nullable BatchInterceptor<K, V> batchInterceptor;
 
 	private boolean interceptBeforeTx = true;
 
+	@SuppressWarnings("NullAway.Init")
 	private byte[] listenerInfo;
 
-	private ApplicationContext applicationContext;
+	private @Nullable ApplicationContext applicationContext;
 
 	private volatile boolean running = false;
 
@@ -149,13 +150,13 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @param containerProperties the properties.
 	 */
 	@SuppressWarnings("unchecked")
-	protected AbstractMessageListenerContainer(ConsumerFactory<? super K, ? super V> consumerFactory,
+	protected AbstractMessageListenerContainer(@Nullable ConsumerFactory<? super K, ? super V> consumerFactory,
 			ContainerProperties containerProperties) {
 
 		Assert.notNull(containerProperties, "'containerProperties' cannot be null");
 		Assert.notNull(consumerFactory, "'consumerFactory' cannot be null");
 		this.consumerFactory = (ConsumerFactory<K, V>) consumerFactory;
-		String[] topics = containerProperties.getTopics();
+		@Nullable String @Nullable [] topics = containerProperties.getTopics();
 		if (topics != null) {
 			this.containerProperties = new ContainerProperties(topics);
 		}
@@ -165,7 +166,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 				this.containerProperties = new ContainerProperties(topicPattern);
 			}
 			else {
-				TopicPartitionOffset[] topicPartitions = containerProperties.getTopicPartitions();
+				@Nullable TopicPartitionOffset @Nullable [] topicPartitions = containerProperties.getTopicPartitions();
 				if (topicPartitions != null) {
 					this.containerProperties = new ContainerProperties(topicPartitions);
 				}
@@ -370,8 +371,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		return this.mainListenerId;
 	}
 
-	@Nullable
 	@Override
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	public byte[] getListenerInfo() {
 		return this.listenerInfo != null ? Arrays.copyOf(this.listenerInfo, this.listenerInfo.length) : null;
 	}
@@ -382,6 +383,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @param listenerInfo the info.
 	 * @since 2.8.4
 	 */
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	public void setListenerInfo(@Nullable byte[] listenerInfo) {
 		this.listenerInfo = listenerInfo != null ? Arrays.copyOf(listenerInfo, listenerInfo.length) : null;
 	}
@@ -458,7 +460,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		this.kafkaAdmin = kafkaAdmin;
 	}
 
-	protected RecordInterceptor<K, V> getRecordInterceptor() {
+	protected @Nullable RecordInterceptor<K, V> getRecordInterceptor() {
 		return this.recordInterceptor;
 	}
 
@@ -469,11 +471,11 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @since 2.2.7
 	 * @see #setInterceptBeforeTx(boolean)
 	 */
-	public void setRecordInterceptor(RecordInterceptor<K, V> recordInterceptor) {
+	public void setRecordInterceptor(@Nullable RecordInterceptor<K, V> recordInterceptor) {
 		this.recordInterceptor = recordInterceptor;
 	}
 
-	protected BatchInterceptor<K, V> getBatchInterceptor() {
+	protected @Nullable BatchInterceptor<K, V> getBatchInterceptor() {
 		return this.batchInterceptor;
 	}
 
@@ -483,7 +485,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @since 2.6.6
 	 * @see #setInterceptBeforeTx(boolean)
 	 */
-	public void setBatchInterceptor(BatchInterceptor<K, V> batchInterceptor) {
+	public void setBatchInterceptor(@Nullable BatchInterceptor<K, V> batchInterceptor) {
 		this.batchInterceptor = batchInterceptor;
 	}
 
@@ -541,7 +543,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 			List<String> missing = null;
 			try (AdminClient client = AdminClient.create(configs)) { // NOSONAR - false positive null check
 				if (client != null) {
-					String[] topics = this.containerProperties.getTopics();
+					@Nullable String @Nullable[] topics = this.containerProperties.getTopics();
 					if (topics == null) {
 						topics = Arrays.stream(this.containerProperties.getTopicPartitions())
 								.map(TopicPartitionOffset::getTopic)

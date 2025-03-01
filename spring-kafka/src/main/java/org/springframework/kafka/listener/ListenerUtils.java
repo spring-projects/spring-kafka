@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2024 the original author or authors.
+ * Copyright 2017-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,11 @@
 package org.springframework.kafka.listener;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Supplier;
 
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
 import org.springframework.util.backoff.BackOff;
@@ -124,7 +126,7 @@ public final class ListenerUtils {
 	 * @since 3.1
 	 */
 	public static void unrecoverableBackOff(BackOff backOff, Map<Thread, BackOffExecution> executions,
-			Map<Thread, Long> lastIntervals, MessageListenerContainer container) throws InterruptedException {
+			Map<Thread, Long> lastIntervals, @Nullable MessageListenerContainer container) throws InterruptedException {
 
 		Thread currentThread = Thread.currentThread();
 		Long interval = nextBackOff(backOff, executions);
@@ -158,8 +160,8 @@ public final class ListenerUtils {
 	 * @throws InterruptedException if the thread is interrupted.
 	 * @since 2.7
 	 */
-	public static void stoppableSleep(MessageListenerContainer container, long interval) throws InterruptedException {
-		conditionalSleep(container::isRunning, interval);
+	public static void stoppableSleep(@Nullable MessageListenerContainer container, long interval) throws InterruptedException {
+		conditionalSleep(Objects.requireNonNull(container)::isRunning, interval);
 	}
 
 	/**
@@ -188,8 +190,9 @@ public final class ListenerUtils {
 	 * @return an offset and metadata.
 	 * @since 2.8.6
 	 */
-	public static OffsetAndMetadata createOffsetAndMetadata(MessageListenerContainer container,
+	public static OffsetAndMetadata createOffsetAndMetadata(@Nullable MessageListenerContainer container,
 															long offset) {
+		Assert.state(container != null, "Container cannot be null");
 		final OffsetAndMetadataProvider metadataProvider = container.getContainerProperties()
 				.getOffsetAndMetadataProvider();
 		if (metadataProvider != null) {

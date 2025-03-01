@@ -41,7 +41,7 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 
 	private static final BackOff NO_RETRIES_OR_DELAY_BACKOFF = new FixedBackOff(0L, 0L);
 
-	private final BiFunction<ConsumerRecord<?, ?>, Exception, BackOff> noRetriesForClassified =
+	private final BiFunction<ConsumerRecord<?, ?>, @Nullable Exception, BackOff> noRetriesForClassified =
 			(rec, ex) -> {
 				Exception theEx = ErrorHandlingUtils.unwrapIfNeeded(ex);
 				if (!getClassifier().classify(theEx) || theEx instanceof KafkaBackoffException) {
