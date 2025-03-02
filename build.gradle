@@ -187,7 +187,7 @@ configure(javaProjects) { subproject ->
 		testImplementation "org.hamcrest:hamcrest-core:$hamcrestVersion"
 		optionalApi "org.assertj:assertj-core:$assertjVersion"
 
-		errorprone 'com.uber.nullaway:nullaway:0.12.3'
+		errorprone 'com.uber.nullaway:nullaway:0.12.4'
 		errorprone 'com.google.errorprone:error_prone_core:2.36.0'
 	}
 
