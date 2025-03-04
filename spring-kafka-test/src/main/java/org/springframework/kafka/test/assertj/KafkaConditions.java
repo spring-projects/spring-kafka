@@ -148,7 +148,8 @@ public final class KafkaConditions {
 		}
 
 		@Override
-		public boolean matches(ConsumerRecord<K, V> value) {
+		@SuppressWarnings("NullAway") // Overridden method does not define nullness
+		public boolean matches(@Nullable ConsumerRecord<K, @Nullable V> value) {
 			return this.keyCondition.matches(value) && this.valueCondition.matches(value);
 		}
 
