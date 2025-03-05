@@ -805,8 +805,8 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 				this.observationConvention, DefaultKafkaTemplateObservationConvention.INSTANCE,
 				() -> new KafkaRecordSenderContext(producerRecord, this.beanName, this::clusterId),
 				this.observationRegistry);
+		observation.start();
 		try {
-			observation.start();
 			try (Observation.Scope ignored = observation.openScope()) {
 				return doSend(producerRecord, observation);
 			}
