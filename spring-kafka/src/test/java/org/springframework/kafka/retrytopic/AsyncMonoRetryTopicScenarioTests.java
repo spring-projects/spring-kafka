@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 the original author or authors.
+ * Copyright 2024-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -598,9 +598,9 @@ public class AsyncMonoRetryTopicScenarioTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		private final List<String> receivedMsgs = new ArrayList<>();
+		private final List<String> receivedMsgs = Collections.synchronizedList(new ArrayList<>());
 
-		private final List<String> receivedTopics = new ArrayList<>();
+		private final List<String> receivedTopics = Collections.synchronizedList(new ArrayList<>());
 
 		@KafkaHandler
 		public Mono<Void> listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
@@ -630,9 +630,9 @@ public class AsyncMonoRetryTopicScenarioTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		private final List<String> receivedMsgs = new ArrayList<>();
+		private final List<String> receivedMsgs = Collections.synchronizedList(new ArrayList<>());
 
-		private final List<String> receivedTopics = new ArrayList<>();
+		private final List<String> receivedTopics = Collections.synchronizedList(new ArrayList<>());
 
 		private CountDownLatch firstRetryFailMsgLatch = new CountDownLatch(1);
 
@@ -687,9 +687,9 @@ public class AsyncMonoRetryTopicScenarioTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		protected final List<String> receivedMsgs = new ArrayList<>();
+		protected final List<String> receivedMsgs = Collections.synchronizedList(new ArrayList<>());
 
-		private final List<String> receivedTopics = new ArrayList<>();
+		private final List<String> receivedTopics = Collections.synchronizedList(new ArrayList<>());
 
 		private CountDownLatch firstRetryFailMsgLatch = new CountDownLatch(1);
 
@@ -746,9 +746,9 @@ public class AsyncMonoRetryTopicScenarioTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		protected final List<String> receivedMsgs = new ArrayList<>();
+		protected final List<String> receivedMsgs = Collections.synchronizedList(new ArrayList<>());
 
-		private final List<String> receivedTopics = new ArrayList<>();
+		private final List<String> receivedTopics = Collections.synchronizedList(new ArrayList<>());
 
 		public static final String FAIL_PREFIX = "fail";
 
@@ -811,9 +811,9 @@ public class AsyncMonoRetryTopicScenarioTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		protected final List<String> receivedMsgs = new ArrayList<>();
+		protected final List<String> receivedMsgs = Collections.synchronizedList(new ArrayList<>());
 
-		private final List<String> receivedTopics = new ArrayList<>();
+		private final List<String> receivedTopics = Collections.synchronizedList(new ArrayList<>());
 
 		public static final String LONG_SUCCESS_MSG = "success";
 
@@ -877,9 +877,9 @@ public class AsyncMonoRetryTopicScenarioTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		protected final List<String> receivedMsgs = new ArrayList<>();
+		protected final List<String> receivedMsgs = Collections.synchronizedList(new ArrayList<>());
 
-		private final List<String> receivedTopics = new ArrayList<>();
+		private final List<String> receivedTopics = Collections.synchronizedList(new ArrayList<>());
 
 		public static final String LONG_SUCCESS_MSG = "success";
 
@@ -943,9 +943,9 @@ public class AsyncMonoRetryTopicScenarioTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		protected final List<String> receivedMsgs = new ArrayList<>();
+		protected final List<String> receivedMsgs = Collections.synchronizedList(new ArrayList<>());
 
-		private final List<String> receivedTopics = new ArrayList<>();
+		private final List<String> receivedTopics = Collections.synchronizedList(new ArrayList<>());
 
 		public static final String SUCCESS_PREFIX = "success";
 
@@ -1076,7 +1076,7 @@ public class AsyncMonoRetryTopicScenarioTests {
 
 	static class MyCustomDltProcessor {
 
-		final List<String> receivedMsg = new ArrayList<>();
+		final List<String> receivedMsg = Collections.synchronizedList(new ArrayList<>());
 
 		MyCustomDltProcessor(KafkaTemplate<String, String> kafkaTemplate, CountDownLatch latch) {
 			this.kafkaTemplate = kafkaTemplate;
