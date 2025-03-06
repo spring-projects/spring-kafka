@@ -32,6 +32,7 @@ import org.springframework.util.StringUtils;
  * @author Gary Russell
  * @author Christian Mergenthaler
  * @author Wang Zhiyang
+ * @author Christian Fredriksson
  *
  * @since 3.0
  *
@@ -224,31 +225,43 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 				new DefaultKafkaListenerObservationConvention();
 
 		@Override
+		@NonNull
 		public KeyValues getLowCardinalityKeyValues(KafkaRecordReceiverContext context) {
-
-			return KeyValues.of(
+			String groupId = context.getGroupId();
+			KeyValues keyValues = KeyValues.of(
 					ListenerLowCardinalityTags.LISTENER_ID.withValue(context.getListenerId()),
 					ListenerLowCardinalityTags.MESSAGING_SYSTEM.withValue("kafka"),
 					ListenerLowCardinalityTags.MESSAGING_OPERATION.withValue("receive"),
 					ListenerLowCardinalityTags.MESSAGING_SOURCE_NAME.withValue(context.getSource()),
-					ListenerLowCardinalityTags.MESSAGING_SOURCE_KIND.withValue("topic"),
-					ListenerLowCardinalityTags.MESSAGING_CONSUMER_GROUP.withValue(context.getGroupId())
+					ListenerLowCardinalityTags.MESSAGING_SOURCE_KIND.withValue("topic")
 			);
+
+			if (StringUtils.hasText(groupId)) {
+				keyValues = keyValues
+						.and(ListenerLowCardinalityTags.MESSAGING_CONSUMER_GROUP.withValue(groupId));
+			}
+
+			return keyValues;
 		}
 
 		@Override
 		@NonNull
 		public KeyValues getHighCardinalityKeyValues(KafkaRecordReceiverContext context) {
 			String clientId = context.getClientId();
+			String consumerId = getConsumerId(context.getGroupId(), clientId);
 			KeyValues keyValues = KeyValues.of(
 					ListenerHighCardinalityTags.MESSAGING_PARTITION.withValue(context.getPartition()),
-					ListenerHighCardinalityTags.MESSAGING_OFFSET.withValue(context.getOffset()),
-					ListenerHighCardinalityTags.MESSAGING_CONSUMER_ID.withValue(getConsumerId(context, clientId))
+					ListenerHighCardinalityTags.MESSAGING_OFFSET.withValue(context.getOffset())
 			);
 
 			if (StringUtils.hasText(clientId)) {
 				keyValues = keyValues
 						.and(ListenerHighCardinalityTags.MESSAGING_CLIENT_ID.withValue(clientId));
+			}
+
+			if (StringUtils.hasText(consumerId)) {
+				keyValues = keyValues
+						.and(ListenerHighCardinalityTags.MESSAGING_CONSUMER_ID.withValue(consumerId));
 			}
 
 			return keyValues;
@@ -259,11 +272,14 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 			return context.getSource() + " receive";
 		}
 
-		private static @Nullable String getConsumerId(KafkaRecordReceiverContext context, @Nullable String clientId) {
-			if (StringUtils.hasText(clientId)) {
-				return context.getGroupId() + " - " + clientId;
+		private static @Nullable String getConsumerId(@Nullable String groupId, @Nullable String clientId) {
+			if (StringUtils.hasText(groupId)) {
+				if (StringUtils.hasText(clientId)) {
+					return groupId + " - " + clientId;
+				}
+				return groupId;
 			}
-			return context.getGroupId();
+			return clientId;
 		}
 
 	}
