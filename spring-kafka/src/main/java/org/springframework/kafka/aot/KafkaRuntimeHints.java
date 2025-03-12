@@ -144,8 +144,7 @@ public class KafkaRuntimeHints implements RuntimeHintsRegistrar {
 				"sun.security.provider.ConfigFile",
 				"org.apache.kafka.streams.processor.internals.assignment.StickyTaskAssignor",
 				"org.apache.kafka.streams.processor.internals.assignment.FallbackPriorTaskAssignor",
-				"org.apache.kafka.streams.state.BuiltInDslStoreSuppliers$RocksDBDslStoreSuppliers",
-				"org.apache.kafka.streams.state.BuiltInDslStoreSuppliers$InMemoryDslStoreSuppliers")
+				"org.apache.kafka.streams.errors.LogAndFailProcessingExceptionHandler")
 			.forEach(type -> reflectionHints.registerTypeIfPresent(classLoader, type, builder ->
 					builder.withMembers(MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS)));
 	}
