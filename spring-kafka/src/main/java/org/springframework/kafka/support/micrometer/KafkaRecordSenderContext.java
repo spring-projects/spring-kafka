@@ -21,6 +21,7 @@ import java.util.function.Supplier;
 
 import io.micrometer.observation.transport.SenderContext;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 
 /**
@@ -43,8 +44,8 @@ public class KafkaRecordSenderContext extends SenderContext<ProducerRecord<?, ?>
 	public KafkaRecordSenderContext(ProducerRecord<?, ?> record, String beanName, Supplier<String> clusterId) {
 		super((carrier, key, value) -> {
 			Headers headers = record.headers();
-			// For traceparent context headers, ensure there's only one
-			if ("traceparent".equals(key)) {
+			Iterable<Header> existingHeaders = headers.headers(key);
+			if (existingHeaders.iterator().hasNext()) {
 				headers.remove(key);
 			}
 			headers.add(key, value == null ? null : value.getBytes(StandardCharsets.UTF_8));

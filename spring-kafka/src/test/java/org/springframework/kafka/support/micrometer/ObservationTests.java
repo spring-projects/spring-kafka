@@ -27,7 +27,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import io.micrometer.common.KeyValues;
@@ -456,8 +455,6 @@ public class ObservationTests {
 		assertThat(template.getKafkaAdmin()).isSameAs(kafkaAdmin);
 	}
 
-	// https://github.com/spring-cloud/spring-cloud-stream/issues/3095#issuecomment-2707075861
-	// https://github.com/spring-projects/spring-kafka/issues/3786
 	@Test
 	void verifyKafkaRecordSenderContextTraceParentHandling() {
 		String initialTraceParent = "traceparent-from-previous";
@@ -474,16 +471,15 @@ public class ObservationTests {
 		context.getSetter().set(record, "traceparent", updatedTraceParent);
 
 		Iterable<Header> traceparentHeaders = record.headers().headers("traceparent");
+
 		List<String> headerValues = StreamSupport.stream(traceparentHeaders.spliterator(), false)
 				.map(header -> new String(header.value(), StandardCharsets.UTF_8))
-				.collect(Collectors.toList());
+				.toList();
 
 		// Verify there's only one traceparent header and it contains the updated value
 		assertThat(headerValues).containsExactly(updatedTraceParent);
 	}
 
-	// https://github.com/spring-cloud/spring-cloud-stream/issues/3095#issuecomment-2707075861
-	// https://github.com/spring-projects/spring-kafka/issues/3786
 	@Test
 	void verifyTraceParentHeader(@Autowired KafkaTemplate<Integer, String> template,
 			@Autowired SimpleTracer tracer) throws Exception {
