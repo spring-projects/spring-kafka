@@ -104,6 +104,8 @@ public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker {
 
 	public static final int DEFAULT_ZK_CONNECTION_TIMEOUT = DEFAULT_ZK_SESSION_TIMEOUT;
 
+	private static final String NUM_PARTITIONS = "num.partitions";
+
 	private final int count;
 
 	private final boolean controlledShutdown;
@@ -310,8 +312,8 @@ public class EmbeddedKafkaZKBroker implements EmbeddedKafkaBroker {
 				brokerConfigProperties.setProperty("replica.high.watermark.checkpoint.interval.ms",
 						String.valueOf(Long.MAX_VALUE));
 				this.brokerProperties.forEach(brokerConfigProperties::put);
-				if (!this.brokerProperties.containsKey("num.partitions")) {
-					brokerConfigProperties.setProperty("num.partitions", "" + this.partitionsPerTopic);
+				if (!this.brokerProperties.containsKey(NUM_PARTITIONS)) {
+					brokerConfigProperties.setProperty(NUM_PARTITIONS, "" + this.partitionsPerTopic);
 				}
 				if (!userLogDir) {
 					logDir(brokerConfigProperties);
