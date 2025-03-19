@@ -368,14 +368,14 @@ public final class KafkaTestUtils {
 		do {
 			long t1 = System.currentTimeMillis();
 			ConsumerRecords<K, V> received = consumer.poll(Duration.ofMillis(remaining));
+			if (received == null) {
+				throw new IllegalStateException("null received from consumer.poll()");
+			}
 			logger.debug(() -> "Received: " + received.count() + ", "
 					+ received.partitions().stream()
 					.flatMap(p -> received.records(p).stream())
 					// map to same format as send metadata toString()
 					.map(r -> r.topic() + "-" + r.partition() + "@" + r.offset()).toList());
-			if (received == null) {
-				throw new IllegalStateException("null received from consumer.poll()");
-			}
 			if (minRecords < 0) {
 				return received;
 			}
