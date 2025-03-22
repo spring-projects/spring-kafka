@@ -176,7 +176,7 @@ public class DefaultErrorHandlerNoSeeksRecordAckNoResumeContainerPausedTests {
 				this.pollLatch.countDown();
 				switch (which.getAndIncrement()) {
 					case 0:
-						return new ConsumerRecords(records1);
+						return new ConsumerRecords(records1, Map.of());
 					default:
 						try {
 							Thread.sleep(50);
@@ -184,7 +184,7 @@ public class DefaultErrorHandlerNoSeeksRecordAckNoResumeContainerPausedTests {
 						catch (InterruptedException e) {
 							Thread.currentThread().interrupt();
 						}
-						return new ConsumerRecords(Collections.emptyMap());
+						return new ConsumerRecords(Collections.emptyMap(), Map.of());
 				}
 			}).given(consumer).poll(any());
 			List<TopicPartition> paused = new ArrayList<>();

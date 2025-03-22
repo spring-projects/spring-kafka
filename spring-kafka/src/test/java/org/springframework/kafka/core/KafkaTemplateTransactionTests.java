@@ -337,7 +337,7 @@ public class KafkaTemplateTransactionTests {
 	@Test
 	public void testTransactionSynchronization() {
 		StringSerializer ss = new StringSerializer();
-		MockProducer<String, String> producer = spy(new MockProducer<>(false, ss, ss));
+		MockProducer<String, String> producer = spy(new MockProducer<>(false, null, ss, ss));
 		producer.initTransactions();
 
 		ProducerFactory<String, String> pf = new MockProducerFactory<>((tx, id) -> producer, null);
@@ -369,7 +369,7 @@ public class KafkaTemplateTransactionTests {
 	@Test
 	public void testTransactionSynchronizationExceptionOnCommit() {
 		StringSerializer ss = new StringSerializer();
-		MockProducer<String, String> producer = new MockProducer<>(false, ss, ss);
+		MockProducer<String, String> producer = new MockProducer<>(false, null, ss, ss);
 		producer.initTransactions();
 
 		ProducerFactory<String, String> pf = new MockProducerFactory<>((tx, id) -> producer, null);
@@ -667,7 +667,7 @@ public class KafkaTemplateTransactionTests {
 	void syncCommitFails() {
 		DummyTM tm = new DummyTM();
 		MockProducer<String, String> producer =
-				new MockProducer<>(true, new StringSerializer(), new StringSerializer());
+				new MockProducer<>(true, null, new StringSerializer(), new StringSerializer());
 		producer.initTransactions();
 		producer.commitTransactionException = new IllegalStateException();
 
@@ -751,7 +751,7 @@ public class KafkaTemplateTransactionTests {
 		@SuppressWarnings({ "rawtypes", "unchecked" })
 		@Bean
 		public Producer producer1() {
-			MockProducer mockProducer = new MockProducer<>(true, new StringSerializer(), new StringSerializer());
+			MockProducer mockProducer = new MockProducer<>(true, null, new StringSerializer(), new StringSerializer());
 			mockProducer.initTransactions();
 			return mockProducer;
 		}
@@ -759,7 +759,7 @@ public class KafkaTemplateTransactionTests {
 		@SuppressWarnings({ "rawtypes", "unchecked" })
 		@Bean
 		public Producer producer2() {
-			MockProducer mockProducer = new MockProducer<>(true, new StringSerializer(), new StringSerializer());
+			MockProducer mockProducer = new MockProducer<>(true, null, new StringSerializer(), new StringSerializer());
 			mockProducer.initTransactions();
 			return mockProducer;
 		}

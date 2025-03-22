@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2024 the original author or authors.
+ * Copyright 2019-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -126,7 +126,7 @@ public class DefaultAfterRollbackProcessorTests {
 		Map<TopicPartition, List<ConsumerRecord<String, String>>> map = new HashMap<>();
 		records.forEach(rec -> map.computeIfAbsent(new TopicPartition(rec.topic(), rec.partition()),
 				tp -> new ArrayList<>()).add(rec));
-		ConsumerRecords<String, String> consumerRecords = new ConsumerRecords<>(map);
+		ConsumerRecords<String, String> consumerRecords = new ConsumerRecords<>(map, Map.of());
 		IllegalStateException illegalState = new IllegalStateException();
 		@SuppressWarnings("unchecked")
 		Consumer<String, String> consumer = mock(Consumer.class);

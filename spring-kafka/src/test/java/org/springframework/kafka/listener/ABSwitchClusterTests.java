@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 the original author or authors.
+ * Copyright 2020-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,7 +78,7 @@ public class ABSwitchClusterTests {
 	@EnableKafka
 	public static class Config {
 
-		private static final ConsumerRecords<Object, Object> EMPTY = new ConsumerRecords<>(Collections.emptyMap());
+		private static final ConsumerRecords<Object, Object> EMPTY = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 
 		volatile CountDownLatch latch = new CountDownLatch(1);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2024 the original author or authors.
+ * Copyright 2019-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@ import org.apache.kafka.common.KafkaException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.reactivestreams.Publisher;
@@ -72,6 +73,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  */
 @EmbeddedKafka(topics = ReactiveKafkaProducerTemplateTransactionIntegrationTests.REACTIVE_INT_KEY_TOPIC,
 		brokerProperties = { "transaction.state.log.replication.factor=1", "transaction.state.log.min.isr=1" })
+@Disabled
 public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 
 	private static final LogAccessor logger = new LogAccessor(

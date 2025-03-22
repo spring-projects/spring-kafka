@@ -117,9 +117,6 @@ public class KafkaRuntimeHints implements RuntimeHintsRegistrar {
 
 		Stream.of(
 					AppInfo.class,
-					// standard partitioners
-					org.apache.kafka.clients.producer.internals.DefaultPartitioner.class,
-					org.apache.kafka.clients.producer.UniformStickyPartitioner.class,
 					// standard serialization
 					// Spring serialization
 					DelegatingByTopicDeserializer.class,

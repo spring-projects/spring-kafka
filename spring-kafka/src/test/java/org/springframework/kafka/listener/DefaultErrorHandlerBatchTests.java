@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 the original author or authors.
+ * Copyright 2020-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -135,7 +135,7 @@ public class DefaultErrorHandlerBatchTests {
 		ConsumerRecords<?, ?> records = new ConsumerRecords(Collections.singletonMap(tp,
 				Collections.singletonList(
 						new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
-								new RecordHeaders(), Optional.empty()))));
+								new RecordHeaders(), Optional.empty()))), Map.of());
 		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
 			beh.handleBatch(new ListenerExecutionFailedException("",
 					new BatchListenerFailedException("", 2)), records, mockConsumer,
@@ -168,7 +168,7 @@ public class DefaultErrorHandlerBatchTests {
 						new RecordHeaders(), Optional.empty()),
 				new ConsumerRecord("foo", 0, 2L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "baz",
 						new RecordHeaders(), Optional.empty()))
-		));
+		), Map.of());
 		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
 			beh.handleBatch(new ListenerExecutionFailedException("", new MessagingException("",
 					new BatchListenerFailedException("", 1))), records, mockConsumer, container, () -> { })
@@ -196,7 +196,7 @@ public class DefaultErrorHandlerBatchTests {
 		ConsumerRecords<?, ?> records = new ConsumerRecords(Collections.singletonMap(tp,
 				Collections.singletonList(
 						new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
-								new RecordHeaders(), Optional.empty()))));
+								new RecordHeaders(), Optional.empty()))), Map.of());
 		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
 			beh.handleBatch(new ListenerExecutionFailedException("",
 						new BatchListenerFailedException("",
@@ -220,7 +220,7 @@ public class DefaultErrorHandlerBatchTests {
 				List.of(new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
 								new RecordHeaders(), Optional.empty()),
 						new ConsumerRecord("foo", 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
-								new RecordHeaders(), Optional.empty()))));
+								new RecordHeaders(), Optional.empty()))), Map.of());
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		given(container.isRunning()).willReturn(true);
 		beh.handleBatch(new ListenerExecutionFailedException("test"),
@@ -248,7 +248,7 @@ public class DefaultErrorHandlerBatchTests {
 				List.of(new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
 								new RecordHeaders(), Optional.empty()),
 						new ConsumerRecord("foo", 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
-								new RecordHeaders(), Optional.empty()))));
+								new RecordHeaders(), Optional.empty()))), Map.of());
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		given(container.isRunning()).willReturn(true);
 		beh.handleBatch(new ListenerExecutionFailedException("test", new IllegalStateException()),
@@ -335,11 +335,11 @@ public class DefaultErrorHandlerBatchTests {
 			willAnswer(i -> {
 				switch (which.getAndIncrement()) {
 					case 0:
-						return new ConsumerRecords(crs1);
+						return new ConsumerRecords(crs1, Map.of());
 					case 1:
-						return new ConsumerRecords(crs2);
+						return new ConsumerRecords(crs2, Map.of());
 					case 2:
-						return new ConsumerRecords(crs3);
+						return new ConsumerRecords(crs3, Map.of());
 					default:
 						try {
 							Thread.sleep(100);
@@ -347,7 +347,7 @@ public class DefaultErrorHandlerBatchTests {
 						catch (InterruptedException e) {
 							Thread.currentThread().interrupt();
 						}
-						return new ConsumerRecords(Collections.emptyMap());
+						return new ConsumerRecords(Collections.emptyMap(), Map.of());
 				}
 			}).given(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 			willAnswer(i -> {

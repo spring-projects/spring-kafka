@@ -1,5 +1,5 @@
 /*
- * Copyright 2020-2024 the original author or authors.
+ * Copyright 2020-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -72,7 +72,7 @@ public class FallbackBatchErrorHandlerTests {
 				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0L, "foo", "bar")));
 		map.put(new TopicPartition("foo", 1),
 				Collections.singletonList(new ConsumerRecord<>("foo", 1, 0L, "foo", "bar")));
-		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map);
+		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map, Map.of());
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		given(container.isRunning()).willReturn(true);
@@ -101,7 +101,7 @@ public class FallbackBatchErrorHandlerTests {
 				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0L, "foo", "bar")));
 		map.put(new TopicPartition("foo", 1),
 				Collections.singletonList(new ConsumerRecord<>("foo", 1, 0L, "foo", "bar")));
-		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map);
+		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map, Map.of());
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		given(container.isRunning()).willReturn(true);
@@ -128,7 +128,7 @@ public class FallbackBatchErrorHandlerTests {
 				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0L, "foo", "bar")));
 		map.put(new TopicPartition("foo", 1),
 				Collections.singletonList(new ConsumerRecord<>("foo", 1, 0L, "foo", "bar")));
-		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map);
+		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map, Map.of());
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		given(container.isRunning()).willReturn(true);
@@ -159,7 +159,7 @@ public class FallbackBatchErrorHandlerTests {
 				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0L, "foo", "bar")));
 		map.put(new TopicPartition("foo", 1),
 				Collections.singletonList(new ConsumerRecord<>("foo", 1, 0L, "foo", "bar")));
-		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map);
+		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map, Map.of());
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		AtomicBoolean stopped = new AtomicBoolean(true);
@@ -186,7 +186,7 @@ public class FallbackBatchErrorHandlerTests {
 				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0L, "foo", "bar")));
 		map.put(new TopicPartition("foo", 1),
 				Collections.singletonList(new ConsumerRecord<>("foo", 1, 0L, "foo", "bar")));
-		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map);
+		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map, Map.of());
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		given(consumer.assignment()).willReturn(map.keySet());
 		AtomicBoolean pubPauseCalled = new AtomicBoolean();
@@ -233,7 +233,7 @@ public class FallbackBatchErrorHandlerTests {
 		Map<TopicPartition, List<ConsumerRecord<Object, Object>>> map = new HashMap<>();
 		map.put(new TopicPartition("foo", 0),
 				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0L, "foo", "bar")));
-		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map);
+		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map, Map.of());
 
 		assertThatThrownBy(() -> eh.handleBatch(new RuntimeException(), records, consumer, container, () -> { }))
 				.isSameAs(exception);
@@ -252,7 +252,8 @@ public class FallbackBatchErrorHandlerTests {
 		}, new FixedBackOff(0L, Long.MAX_VALUE));
 		eh.addNotRetryableExceptions(IllegalArgumentException.class);
 		ConsumerRecords records = new ConsumerRecords(
-				Map.of(new TopicPartition("foo", 0), List.of(new ConsumerRecord("foo", 0, 0L, null, "bar"))));
+				Map.of(new TopicPartition("foo", 0),
+						List.of(new ConsumerRecord("foo", 0, 0L, null, "bar"))), Map.of());
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		given(container.isRunning()).willReturn(true);
 		eh.handleBatch(new IllegalStateException(), records, mock(Consumer.class), container,
@@ -272,7 +273,8 @@ public class FallbackBatchErrorHandlerTests {
 			thrown.set(ex);
 		}, new FixedBackOff(0L, 3));
 		ConsumerRecords records = new ConsumerRecords(
-				Map.of(new TopicPartition("foo", 0), List.of(new ConsumerRecord("foo", 0, 0L, null, "bar"))));
+				Map.of(new TopicPartition("foo", 0),
+						List.of(new ConsumerRecord("foo", 0, 0L, null, "bar"))), Map.of());
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		given(container.isRunning()).willReturn(true);
 		AtomicInteger retries = new AtomicInteger();

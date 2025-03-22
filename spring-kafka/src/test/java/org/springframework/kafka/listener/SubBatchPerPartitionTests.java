@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2024 the original author or authors.
+ * Copyright 2017-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -240,7 +240,7 @@ public class SubBatchPerPartitionTests {
 				}
 				switch (which.get().getAndIncrement()) {
 					case 0:
-						return new ConsumerRecords(records1);
+						return new ConsumerRecords(records1, Map.of());
 					default:
 						try {
 							Thread.sleep(100);
@@ -248,7 +248,7 @@ public class SubBatchPerPartitionTests {
 						catch (@SuppressWarnings("unused") InterruptedException e) {
 							Thread.currentThread().interrupt();
 						}
-						return new ConsumerRecords(Collections.emptyMap());
+						return new ConsumerRecords(Collections.emptyMap(), Map.of());
 				}
 			}).given(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 			willAnswer(i -> {

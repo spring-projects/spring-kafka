@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 the original author or authors.
+ * Copyright 2024-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,12 +63,8 @@ public final class EmbeddedKafkaBrokerFactory {
 						.toArray(String[]::new);
 
 		EmbeddedKafkaBroker embeddedKafkaBroker;
-		if (embeddedKafka.kraft()) {
-			embeddedKafkaBroker = kraftBroker(embeddedKafka, topics);
-		}
-		else {
-			embeddedKafkaBroker = zkBroker(embeddedKafka, topics);
-		}
+		embeddedKafkaBroker = kraftBroker(embeddedKafka, topics);
+
 		int[] ports = setupPorts(embeddedKafka);
 
 		embeddedKafkaBroker.kafkaPorts(ports)
@@ -131,13 +127,6 @@ public final class EmbeddedKafkaBrokerFactory {
 
 	private static EmbeddedKafkaBroker kraftBroker(EmbeddedKafka embedded, String[] topics) {
 		return new EmbeddedKafkaKraftBroker(embedded.count(), embedded.partitions(), topics);
-	}
-
-	private static EmbeddedKafkaBroker zkBroker(EmbeddedKafka embedded, String[] topics) {
-		return new EmbeddedKafkaZKBroker(embedded.count(), embedded.controlledShutdown(), embedded.partitions(), topics)
-				.zkPort(embedded.zookeeperPort())
-				.zkConnectionTimeout(embedded.zkConnectionTimeout())
-				.zkSessionTimeout(embedded.zkSessionTimeout());
 	}
 
 	private EmbeddedKafkaBrokerFactory() {

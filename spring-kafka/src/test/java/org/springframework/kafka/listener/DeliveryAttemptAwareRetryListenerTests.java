@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2024 the original author or authors.
+ * Copyright 2019-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,7 +60,7 @@ class DeliveryAttemptAwareRetryListenerTests {
 		map.put(tpForTopicA, topicARecords);
 		map.put(tpForTopicB, topicBRecords);
 
-		ConsumerRecords<String, String> consumerRecords = new ConsumerRecords<>(map);
+		ConsumerRecords<String, String> consumerRecords = new ConsumerRecords<>(map, Map.of());
 		final DeliveryAttemptAwareRetryListener listener = new DeliveryAttemptAwareRetryListener();
 		Exception ex = new RuntimeException("Dummy Exception");
 
@@ -108,7 +108,7 @@ class DeliveryAttemptAwareRetryListenerTests {
 		map.put(tpForTopicA, topicARecords);
 		map.put(tpForTopicB, topicBRecords);
 
-		ConsumerRecords<String, String> consumerRecords = new ConsumerRecords<>(map);
+		ConsumerRecords<String, String> consumerRecords = new ConsumerRecords<>(map, Map.of());
 		final DeliveryAttemptAwareRetryListener listener = new DeliveryAttemptAwareRetryListener();
 		Exception ex = new RuntimeException("Dummy Exception");
 

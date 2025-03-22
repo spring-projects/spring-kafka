@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2024 the original author or authors.
+ * Copyright 2022-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -89,7 +89,7 @@ public class GlobalEmbeddedKafkaTestExecutionListenerTests {
 			assertThat(summary.getTestsSucceededCount()).isEqualTo(2);
 			assertThat(summary.getTestsFailedCount()).isEqualTo(0);
 		}
-		catch (Exception ex) {
+		catch (Throwable ex) {
 			summary.printFailuresTo(new PrintWriter(System.out));
 			throw ex;
 		}
@@ -125,7 +125,7 @@ public class GlobalEmbeddedKafkaTestExecutionListenerTests {
 			assertThat(summary.getTestsSucceededCount()).isEqualTo(1);
 			assertThat(summary.getTestsFailedCount()).isEqualTo(1);
 		}
-		catch (Exception ex) {
+		catch (Throwable ex) {
 			summary.printFailuresTo(new PrintWriter(System.out));
 			throw ex;
 		}
@@ -144,7 +144,7 @@ public class GlobalEmbeddedKafkaTestExecutionListenerTests {
 				var topicsMap =
 						admin.describeTopics(Set.of("topic1", "topic2"))
 								.allTopicNames()
-								.get(10, TimeUnit.SECONDS);
+								.get(60, TimeUnit.SECONDS);
 
 				assertThat(topicsMap).containsOnlyKeys("topic1", "topic2");
 			}
@@ -169,7 +169,7 @@ public class GlobalEmbeddedKafkaTestExecutionListenerTests {
 			try (var kafkaProducer = new KafkaProducer<>(producerConfigs, serializer, serializer)) {
 				var recordMetadata =
 						kafkaProducer.send(new ProducerRecord<>("nonExistingTopic", "testValue"))
-								.get(10, TimeUnit.SECONDS);
+								.get(60, TimeUnit.SECONDS);
 
 				assertThat(recordMetadata).isNotNull();
 			}

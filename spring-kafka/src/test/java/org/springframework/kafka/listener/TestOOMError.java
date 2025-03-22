@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 the original author or authors.
+ * Copyright 2018-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,7 +59,7 @@ public class TestOOMError {
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
 				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			return consumerRecords;
@@ -100,7 +100,7 @@ public class TestOOMError {
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
 				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			return consumerRecords;
