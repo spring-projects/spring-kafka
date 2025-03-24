@@ -1,70 +1,66 @@
 = What's new?
 
-[[what-s-new-in-3-3-since-3-2]]
-== What's New in 3.3 Since 3.2
+[[whats-new-in-4-0-since-3-3]]
+== What's New in 4.0 Since 3.3
 :page-section-summary-toc: 1
 
-This section covers the changes made from version 3.2 to version 3.3.
-For changes in earlier version, see xref:appendix/change-history.adoc[Change History].
+This section covers the changes made from version 3.3 to version 4.0.
+For changes in earlier versions, see xref:appendix/change-history.adoc[Change History].
 
-[[x33-dlt-topic-naming]]
-=== DLT Topic Naming Convention
+[[x40-apache-kafka-4-0-upgrade]]
+=== Apache Kafka 4.0 Client Upgrade
 
-The naming convention for DLT topics has been standardized to use the "-dlt" suffix consistently. This change ensures compatibility and avoids conflicts when transitioning between different retry solutions. Users who wish to retain the ".DLT" suffix behavior need to opt-in explicitly by setting the appropriate DLT name property.
+Spring for Apache Kafka has been upgraded to use Apache Kafka client version `4.0.0`.
+This upgrade brings several important changes:
 
-[[x33-seek-with-group-id]]
-=== Enhanced Seek Operations for Consumer Groups
+* All ZooKeeper-based functionality has been removed as Kafka 4.0 fully transitions to KRaft mode
+* The ZooKeeper dependency has been removed from the project
+* The embedded Kafka test framework now exclusively uses KRaft mode
+* The `EmbeddedKafkaZKBroker` class has been removed, and all functionality is now handled by `EmbeddedKafkaKraftBroker`
 
-A new method, `getGroupId()`, has been added to the `ConsumerSeekCallback` interface.
-This method allows for more selective seek operations by targeting only the desired consumer group.
-The `AbstractConsumerSeekAware` can also now register, retrieve, and remove all callbacks for each topic partition in a multi-group listener scenario without missing any.
-See the new APIs (`getSeekCallbacksFor(TopicPartition topicPartition)`, `getTopicsAndCallbacks()`) for more details.
-For more details, see xref:kafka/seek.adoc#seek[Seek API Docs].
+[[x40-embedded-kafka-test-changes]]
+=== Embedded Kafka Test Framework Changes
 
-[[x33-new-option-ignore-empty-batch]]
-=== Configurable Handling of Empty Batches in Kafka Listener with RecordFilterStrategy
+The test infrastructure has been significantly updated:
 
-`RecordFilterStrategy` now supports ignoring empty batches that result from filtering.
-This can be configured through overriding default method `ignoreEmptyBatch()`, which defaults to false, ensuring `KafkaListener` is invoked even if all `ConsumerRecords` are filtered out.
-For more details, see xref:kafka/receiving-messages/filtering.adoc[Message receive filtering Docs].
+* The `EmbeddedKafkaRule` JUnit 4 rule has been removed
+* The `@EmbeddedKafka` annotation has been simplified with the removal of ZooKeeper-related properties:
+* The `kraft` property has been removed as KRaft mode is now the only option
+* ZooKeeper-specific properties like `zookeeperPort`, `zkConnectionTimeout`, and `zkSessionTimeout` have been removed
+* KafkaClusterTestKit imports now use new packages for KRaft mode
+* Some tests have been updated to address limitations with static port assignments in KRaft mode
+* Adjustments have been made to replication factors in tests to accommodate KRaft requirements
 
+[[x40-consumer-records-constructor-changes]]
+=== ConsumerRecords Constructor Changes
 
-[[x33-concurrent-container-stopped-event]]
-=== ConcurrentContainerStoppedEvent
+The `ConsumerRecords` constructor now requires an additional `Map` parameter, which has been addressed throughout the framework.
+Applications that directly use this constructor will need to update their code.
 
-The `ConcurentContainerMessageListenerContainer` emits now a `ConcurrentContainerStoppedEvent` when all of its child containers are stopped.
-For more details, see xref:kafka/events.adoc[Application Events] and `ConcurrentContainerStoppedEvent` Javadocs.
+[[x40-producer-interface-updates]]
+=== Producer Interface Updates
 
-[[x33-original-record-key-in-reply]]
-=== Original Record Key in Reply
+New methods from the Kafka Producer interface have been implemented:
 
-When using `ReplyingKafkaTemplate`, if the original record from the request contains a key, then that same key will be part of the reply as well.
-For more details, see xref:kafka/sending-messages.adoc[Sending Messages] section of the reference docs.
+* `registerMetricForSubscription`
+* `unregisterMetricFromSubscription`
 
-[[x33-customize-logging-in-DeadLetterPublishingRecovererFactory]]
-=== Customizing Logging in DeadLetterPublishingRecovererFactory
+[[x40-removed-deprecated-functionality]]
+=== Removed Deprecated Functionality
 
-When using `DeadLetterPublishingRecovererFactory`, the user applications can override the `maybeLogListenerException` method to customize the logging behavior.
+Several deprecated items have been removed:
 
-[[x33-customize-admin-client-in-KafkaAdmin]]
-=== Customize Admin client in KafkaAdmin
+* The deprecated `partitioner` classes have been removed from runtime hints
+* The deprecated `sendOffsetsToTransaction` method that used `String consumerGroupId` has been removed
 
-When extending `KafkaAdmin`, user applications may override the `createAdmin` method to customize Admin client creation.
+[[x40-kafka-streams-updates]]
+=== Kafka Streams API Changes
 
-[[x33-customize-kafka-streams-implementation]]
-=== Customizing The Implementation of Kafka Streams
+* `KafkaStreamBrancher` has been updated to use the new `split()` and `branch()` methods instead of the deprecated `branch()` method
+* The `DeserializationExceptionHandler` has been updated to use the new `ErrorHandlerContext`
 
-When using `KafkaStreamsCustomizer` it is now possible to return a custom implementation of the `KafkaStreams` object by overriding the `initKafkaStreams` method.
+[[x40-internal-api-updates]]
+=== Internal API Updates related to Apache Kafka 4.0.0
 
-[[x33-kafka-headers-for-batch-listeners]]
-=== KafkaHeaders.DELIVERY_ATTEMPT for batch listeners
-
-When using a `BatchListener`, the `ConsumerRecord` can have the `KafkaHeaders.DELIVERY_ATTMPT` header in its headers fields.
-If the `DeliveryAttemptAwareRetryListener` is set to error handler as retry listener, each `ConsumerRecord` has delivery attempt header.
-For more details, see xref:kafka/annotation-error-handling.adoc#delivery-attempts-header-for-batch-listener[Kafka Headers for Batch Listener].
-
-[[x33-task-scheduler-for-kafka-metrics]]
-=== Kafka Metrics Listeners and `TaskScheduler`
-
-The `MicrometerProducerListener`, `MicrometerConsumerListener` and `KafkaStreamsMicrometerListener` can now be configured with a `TaskScheduler`.
-See `KafkaMetricsSupport` JavaDocs and xref:kafka/micrometer.adoc[Micrometer Support] for more information.
+* The `BrokerAddress` class now uses `org.apache.kafka.server.network.BrokerEndPoint` instead of the deprecated `kafka.cluster.BrokerEndPoint`
+* The `GlobalEmbeddedKafkaTestExecutionListener` has been updated to work solely with KRaft mode
