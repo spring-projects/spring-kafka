@@ -95,7 +95,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 			consumerThreads.add(Thread.currentThread().getName());
 			latch.countDown();
 			Thread.sleep(50);
-			return new ConsumerRecords<>(Collections.emptyMap());
+			return new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		}).given(consumer).poll(any());
 		given(consumerFactory.createConsumer(anyString(), anyString(), anyString(),
 				eq(KafkaTestUtils.defaultPropertyOverrides())))
@@ -142,7 +142,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 				throw new RuntimeException("planned");
 			}
 			Thread.sleep(100);
-			return new ConsumerRecords<>(Collections.emptyMap());
+			return new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		}).given(consumer).poll(any());
 		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
 			.willReturn(consumer);
@@ -185,10 +185,10 @@ public class ConcurrentMessageListenerContainerMockTests {
 		Map<TopicPartition, List<ConsumerRecord<String, String>>> recordMap = new HashMap<>();
 		recordMap.put(new TopicPartition("foo", 0),
 				Collections.singletonList(new ConsumerRecord("foo", 0, 0, null, "bar")));
-		ConsumerRecords records = new ConsumerRecords<>(recordMap);
+		ConsumerRecords records = new ConsumerRecords<>(recordMap, Map.of());
 		willAnswer(invocation -> {
 			Thread.sleep(50);
-			return firstEvent.getAndSet(false) ? records : new ConsumerRecords<>(Collections.emptyMap());
+			return firstEvent.getAndSet(false) ? records : new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		}).given(consumer).poll(any());
 		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
 			.willReturn(consumer);
@@ -253,7 +253,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 		final Consumer consumer = mock(Consumer.class);
 		TestMessageListener1 listener = new TestMessageListener1();
-		ConsumerRecords empty = new ConsumerRecords<>(Collections.emptyMap());
+		ConsumerRecords empty = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		willAnswer(invocation -> {
 			Thread.sleep(10);
 			return empty;
@@ -297,7 +297,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 		final Consumer consumer = mock(Consumer.class);
 		TestMessageListener3 listener = new TestMessageListener3();
-		ConsumerRecords empty = new ConsumerRecords<>(Collections.emptyMap());
+		ConsumerRecords empty = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		willAnswer(invocation -> {
 			Thread.sleep(10);
 			return empty;
@@ -353,7 +353,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		recordMap.put(tp1, Collections.singletonList(new ConsumerRecord("test-topic", 1, 0, null, "test-data")));
 		recordMap.put(tp2, Collections.singletonList(new ConsumerRecord("test-topic", 2, 0, null, "test-data")));
 		recordMap.put(tp3, Collections.singletonList(new ConsumerRecord("test-topic", 3, 0, null, "test-data")));
-		ConsumerRecords records = new ConsumerRecords<>(recordMap);
+		ConsumerRecords records = new ConsumerRecords<>(recordMap, Map.of());
 		willAnswer(invocation -> {
 			Thread.sleep(10);
 			if (listener.latch.getCount() <= 0) {
@@ -409,7 +409,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		recordMap.put(tp1, Collections.singletonList(new ConsumerRecord("foo", 1, 0, null, "bar")));
 		recordMap.put(tp2, Collections.singletonList(new ConsumerRecord("foo", 2, 0, null, "bar")));
 		recordMap.put(tp3, Collections.singletonList(new ConsumerRecord("foo", 3, 0, null, "bar")));
-		ConsumerRecords records = new ConsumerRecords<>(recordMap);
+		ConsumerRecords records = new ConsumerRecords<>(recordMap, Map.of());
 		willAnswer(invocation -> {
 			Thread.sleep(10);
 			if (listener.latch.getCount() <= 0) {
@@ -453,7 +453,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
 		final Consumer consumer = mock(Consumer.class);
 		TestMessageListener2 listener = new TestMessageListener2();
-		ConsumerRecords empty = new ConsumerRecords<>(Collections.emptyMap());
+		ConsumerRecords empty = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		willAnswer(invocation -> {
 			Thread.sleep(10);
 			return empty;
@@ -515,7 +515,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		recordMap.put(tp1, Collections.singletonList(new ConsumerRecord("foo", 1, 0, null, "bar")));
 		recordMap.put(tp2, Collections.singletonList(new ConsumerRecord("foo", 2, 0, null, "bar")));
 		recordMap.put(tp3, Collections.singletonList(new ConsumerRecord("foo", 3, 0, null, "bar")));
-		ConsumerRecords records = new ConsumerRecords<>(recordMap);
+		ConsumerRecords records = new ConsumerRecords<>(recordMap, Map.of());
 		willAnswer(invocation -> {
 			Thread.sleep(10);
 			if (listener.latch.getCount() <= 0) {
@@ -616,9 +616,9 @@ public class ConcurrentMessageListenerContainerMockTests {
 		ConsumerRecord record1 = new ConsumerRecord("foo", 0, 0L, "bar", "baz");
 		ConsumerRecord record2 = new ConsumerRecord("foo", 0, 1L, null, null);
 		ConsumerRecords records = batch
-				? new ConsumerRecords(Collections.singletonMap(tp0, List.of(record1, record2)))
-				: new ConsumerRecords(Collections.singletonMap(tp0, Collections.singletonList(record1)));
-		ConsumerRecords empty = new ConsumerRecords<>(Collections.emptyMap());
+				? new ConsumerRecords(Collections.singletonMap(tp0, List.of(record1, record2)), Map.of())
+				: new ConsumerRecords(Collections.singletonMap(tp0, Collections.singletonList(record1)), Map.of());
+		ConsumerRecords empty = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		AtomicInteger firstOrSecondPoll = new AtomicInteger();
 		willAnswer(invocation -> {
 			Thread.sleep(10);
@@ -711,7 +711,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 			public @Nullable ConsumerRecords intercept(ConsumerRecords recs, Consumer consumer) {
 				order.add("interceptor");
 				latch.countDown();
-				return new ConsumerRecords(Collections.singletonMap(tp0, Collections.singletonList(record1)));
+				return new ConsumerRecords(Collections.singletonMap(tp0, Collections.singletonList(record1)), Map.of());
 			}
 
 			@Override
@@ -764,7 +764,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 	@Test
 	void testNoCommitOnAssignmentWithEarliest() throws InterruptedException {
 		Consumer consumer = mock(Consumer.class);
-		ConsumerRecords records = new ConsumerRecords<>(Collections.emptyMap());
+		ConsumerRecords records = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		CountDownLatch latch = new CountDownLatch(1);
 		willAnswer(inv -> {
 			latch.countDown();
@@ -807,7 +807,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void testInitialCommitIBasedOnCommitted(boolean committed) throws InterruptedException {
 		Consumer consumer = mock(Consumer.class);
-		ConsumerRecords records = new ConsumerRecords<>(Collections.emptyMap());
+		ConsumerRecords records = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		CountDownLatch latch = new CountDownLatch(1);
 		willAnswer(inv -> {
 			latch.countDown();
@@ -918,12 +918,12 @@ public class ConcurrentMessageListenerContainerMockTests {
 		allRecordMap.put(tp1, Collections.singletonList(new ConsumerRecord("foo", 1, 0, null, "bar")));
 		allRecordMap.put(tp2, Collections.singletonList(new ConsumerRecord("foo", 2, 0, null, "bar")));
 		allRecordMap.put(tp3, Collections.singletonList(new ConsumerRecord("foo", 3, 0, null, "bar")));
-		ConsumerRecords allRecords = new ConsumerRecords<>(allRecordMap);
+		ConsumerRecords allRecords = new ConsumerRecords<>(allRecordMap, Map.of());
 		List<TopicPartition> afterRevokeAssignments = List.of(tp1, tp3);
 		Map<TopicPartition, List<ConsumerRecord<String, String>>> afterRevokeRecordMap = new HashMap<>();
 		afterRevokeRecordMap.put(tp1, Collections.singletonList(new ConsumerRecord("foo", 1, 0, null, "bar")));
 		afterRevokeRecordMap.put(tp3, Collections.singletonList(new ConsumerRecord("foo", 3, 0, null, "bar")));
-		ConsumerRecords afterRevokeRecords = new ConsumerRecords<>(afterRevokeRecordMap);
+		ConsumerRecords afterRevokeRecords = new ConsumerRecords<>(afterRevokeRecordMap, Map.of());
 		AtomicInteger pollPhase = new AtomicInteger();
 
 		Consumer consumer = mock(Consumer.class);
@@ -1035,7 +1035,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		allRecordMap.put(tp1, Collections.singletonList(record1));
 		allRecordMap.put(tp2, Collections.singletonList(new ConsumerRecord("foo", 2, 0, null, "bar")));
 		allRecordMap.put(tp3, Collections.singletonList(new ConsumerRecord("foo", 3, 0, null, "bar")));
-		ConsumerRecords allRecords = new ConsumerRecords<>(allRecordMap);
+		ConsumerRecords allRecords = new ConsumerRecords<>(allRecordMap, Map.of());
 		List<TopicPartition> revokedAssignments = List.of(tp0, tp2);
 		AtomicInteger pollPhase = new AtomicInteger();
 
@@ -1139,7 +1139,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 				List.of(new ConsumerRecord("foo", 0, 0, null, "bar"), new ConsumerRecord("foo", 0, 1, null, "bar")));
 		allRecordMap.put(tp1,
 				List.of(new ConsumerRecord("foo", 1, 0, null, "bar"), new ConsumerRecord("foo", 1, 1, null, "bar")));
-		ConsumerRecords allRecords = new ConsumerRecords<>(allRecordMap);
+		ConsumerRecords allRecords = new ConsumerRecords<>(allRecordMap, Map.of());
 		List<TopicPartition> afterRevokeAssignments = List.of(tp1);
 		AtomicInteger pollPhase = new AtomicInteger();
 
@@ -1218,7 +1218,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 				List.of(new ConsumerRecord("foo", 0, 0, null, "bar"), new ConsumerRecord("foo", 0, 1, null, "bar")));
 		allRecordMap.put(tp1,
 				List.of(new ConsumerRecord("foo", 1, 0, null, "bar"), new ConsumerRecord("foo", 1, 1, null, "bar")));
-		ConsumerRecords allRecords = new ConsumerRecords<>(allRecordMap);
+		ConsumerRecords allRecords = new ConsumerRecords<>(allRecordMap, Map.of());
 		AtomicInteger pollPhase = new AtomicInteger();
 
 		Consumer consumer = mock(Consumer.class);

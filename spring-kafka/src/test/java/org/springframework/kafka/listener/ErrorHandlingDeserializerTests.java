@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 the original author or authors.
+ * Copyright 2018-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,7 +51,7 @@ import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.SerializationUtils;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.EmbeddedKafkaZKBroker;
+import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -204,7 +204,7 @@ public class ErrorHandlingDeserializerTests {
 
 		@Bean
 		public EmbeddedKafkaBroker embeddedKafka() {
-			return new EmbeddedKafkaZKBroker(1, true, 1, TOPIC);
+			return new EmbeddedKafkaKraftBroker(1,  1, TOPIC);
 		}
 
 		@Bean

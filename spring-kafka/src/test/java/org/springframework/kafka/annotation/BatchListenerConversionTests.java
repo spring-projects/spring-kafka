@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2024 the original author or authors.
+ * Copyright 2017-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@ import org.springframework.kafka.support.converter.BytesJsonMessageConverter;
 import org.springframework.kafka.support.converter.ConversionException;
 import org.springframework.kafka.support.serializer.DelegatingByTypeSerializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.EmbeddedKafkaZKBroker;
+import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
@@ -84,7 +84,7 @@ import static org.mockito.Mockito.verify;
  */
 @SpringJUnitConfig
 @DirtiesContext
-@EmbeddedKafka(kraft = false, partitions = 1, topics = { "blc1", "blc2", "blc3", "blc4", "blc5", "blc6", "blc6-dlt" })
+@EmbeddedKafka(partitions = 1, topics = { "blc1", "blc2", "blc3", "blc4", "blc5", "blc6", "blc6-dlt" })
 public class BatchListenerConversionTests {
 
 	private static final String DEFAULT_TEST_GROUP_ID = "blc";
@@ -106,7 +106,7 @@ public class BatchListenerConversionTests {
 
 	@Test
 	public void testBatchOfPojos(@Autowired KafkaListenerEndpointRegistry registry) throws Exception {
-		assertThat(this.embeddedKafka).isInstanceOf(EmbeddedKafkaZKBroker.class);
+		assertThat(this.embeddedKafka).isInstanceOf(EmbeddedKafkaKraftBroker.class);
 		assertThat(registry.getListenerContainerIds()).contains("blc1.id", "blc2.id");
 		doTest(this.listener1, "blc1");
 		doTest(this.listener2, "blc2");

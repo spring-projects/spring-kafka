@@ -51,6 +51,7 @@ import org.apache.kafka.common.Uuid;
 import org.apache.kafka.common.errors.OutOfOrderSequenceException;
 import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.errors.TimeoutException;
+import org.apache.kafka.common.metrics.KafkaMetric;
 import org.apache.kafka.common.serialization.Serializer;
 import org.jspecify.annotations.Nullable;
 
@@ -1157,15 +1158,6 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 			}
 		}
 
-		@SuppressWarnings("deprecation")
-		@Override
-		public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, String consumerGroupId)
-				throws ProducerFencedException {
-
-			LOGGER.trace(() -> toString() + " sendOffsetsToTransaction(" + offsets + ", " + consumerGroupId + ")");
-			this.delegate.sendOffsetsToTransaction(offsets, consumerGroupId);
-		}
-
 		@Override
 		public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets,
 				ConsumerGroupMetadata groupMetadata) throws ProducerFencedException {
@@ -1207,6 +1199,18 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 					throw e;
 				}
 			}
+		}
+
+		@Override
+		public void registerMetricForSubscription(KafkaMetric kafkaMetric) {
+			//TODO - INVESTIGATE IF WE ARE MISSING SOMETHING
+			this.delegate.registerMetricForSubscription(kafkaMetric);
+		}
+
+		@Override
+		public void unregisterMetricFromSubscription(KafkaMetric kafkaMetric) {
+			//TODO - INVESTIGATE IF WE ARE MISSING SOMETHING
+			this.delegate.unregisterMetricFromSubscription(kafkaMetric);
 		}
 
 		@Override

@@ -595,7 +595,7 @@ public class KafkaMessageListenerContainerTests {
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
 				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			return consumerRecords;
@@ -669,7 +669,7 @@ public class KafkaMessageListenerContainerTests {
 				new ConsumerRecord<>("foo", 0, 1L, 1, "bar"),
 				new ConsumerRecord<>("foo", 0, 2L, 1, "baz"),
 				new ConsumerRecord<>("foo", 0, 3L, 1, "qux")));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			return consumerRecords;
@@ -745,12 +745,12 @@ public class KafkaMessageListenerContainerTests {
 				new ConsumerRecord<>("foo", 0, 1L, 1, "bar"),
 				new ConsumerRecord<>("foo", 0, 2L, 1, "baz"),
 				new ConsumerRecord<>("foo", 0, 3L, 1, "qux")));
-		ConsumerRecords<Integer, String> consumerRecords1 = new ConsumerRecords<>(records1);
+		ConsumerRecords<Integer, String> consumerRecords1 = new ConsumerRecords<>(records1, Map.of());
 		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records2 = new HashMap<>();
 		records2.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 4L, 1, "fiz")));
-		ConsumerRecords<Integer, String> consumerRecords2 = new ConsumerRecords<>(records2);
-		ConsumerRecords<Integer, String> empty = new ConsumerRecords<>(Collections.emptyMap());
+		ConsumerRecords<Integer, String> consumerRecords2 = new ConsumerRecords<>(records2, Map.of());
+		ConsumerRecords<Integer, String> empty = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		AtomicBoolean paused = new AtomicBoolean();
 		AtomicBoolean polledWhilePaused = new AtomicBoolean();
 		AtomicReference<Collection<TopicPartition>> pausedParts = new AtomicReference<>(Collections.emptySet());
@@ -872,7 +872,7 @@ public class KafkaMessageListenerContainerTests {
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
 				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			return consumerRecords;
@@ -936,7 +936,7 @@ public class KafkaMessageListenerContainerTests {
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), List.of(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo")));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			return consumerRecords;
@@ -1000,7 +1000,7 @@ public class KafkaMessageListenerContainerTests {
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
 				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		long sleepFor = ackMode.equals(AckMode.MANUAL_IMMEDIATE) ? 20_000 : 50;
 		AtomicBoolean first = new AtomicBoolean(true);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
@@ -1116,7 +1116,7 @@ public class KafkaMessageListenerContainerTests {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(isNull(), eq(""), isNull(), any())).willReturn(consumer);
-		ConsumerRecords records = new ConsumerRecords(Collections.emptyMap());
+		ConsumerRecords records = new ConsumerRecords(Collections.emptyMap(), Map.of());
 		CountDownLatch latch = new CountDownLatch(20);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(100);
@@ -1431,7 +1431,7 @@ public class KafkaMessageListenerContainerTests {
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
 				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			return consumerRecords;
@@ -2534,8 +2534,8 @@ public class KafkaMessageListenerContainerTests {
 		records.put(new TopicPartition("foo", 1), Arrays.asList(
 				new ConsumerRecord<>("foo", 1, 0L, 1, "foo"),
 				new ConsumerRecord<>("foo", 1, 1L, 1, "bar")));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
-		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		AtomicBoolean first = new AtomicBoolean(true);
 		AtomicBoolean rebalance = new AtomicBoolean(true);
 		AtomicReference<ConsumerRebalanceListener> rebal = new AtomicReference<>();
@@ -2686,7 +2686,7 @@ public class KafkaMessageListenerContainerTests {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
-		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		AtomicBoolean first = new AtomicBoolean(true);
 		given(consumer.assignment()).willReturn(Set.of(new TopicPartition("foo", 0), new TopicPartition("foo", 1)));
 		final CountDownLatch pauseLatch1 = new CountDownLatch(1);
@@ -2904,7 +2904,7 @@ public class KafkaMessageListenerContainerTests {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
-		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		final CountDownLatch latch = new CountDownLatch(1);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			latch.countDown();
@@ -2970,7 +2970,7 @@ public class KafkaMessageListenerContainerTests {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
-		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		final CountDownLatch latch = new CountDownLatch(1);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			latch.countDown();
@@ -3087,10 +3087,10 @@ public class KafkaMessageListenerContainerTests {
 				new ConsumerRecord<>("foo", 0, 4L, 1, "fiz"),
 				new ConsumerRecord<>("foo", 0, 5L, 1, "buz"), // commit (3 = 3)
 				new ConsumerRecord<>("foo", 0, 6L, 1, "bif"))); // commit (1 when next poll returns no records)
-		ConsumerRecords<Integer, String> consumerRecords1 = new ConsumerRecords<>(records1);
-		ConsumerRecords<Integer, String> consumerRecords2 = new ConsumerRecords<>(records2);
-		ConsumerRecords<Integer, String> consumerRecords3 = new ConsumerRecords<>(records3);
-		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		ConsumerRecords<Integer, String> consumerRecords1 = new ConsumerRecords<>(records1, Map.of());
+		ConsumerRecords<Integer, String> consumerRecords2 = new ConsumerRecords<>(records2, Map.of());
+		ConsumerRecords<Integer, String> consumerRecords3 = new ConsumerRecords<>(records3, Map.of());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		AtomicInteger which = new AtomicInteger();
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
@@ -3151,8 +3151,8 @@ public class KafkaMessageListenerContainerTests {
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
 				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
-		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		AtomicBoolean first = new AtomicBoolean(true);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
@@ -3369,7 +3369,7 @@ public class KafkaMessageListenerContainerTests {
 				throw new TopicAuthorizationException("test");
 			}
 			else {
-				return new ConsumerRecords<>(Collections.emptyMap());
+				return new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 			}
 		}).given(consumer).poll(any());
 
@@ -3443,7 +3443,7 @@ public class KafkaMessageListenerContainerTests {
 		TopicPartition topicPartition0 = new TopicPartition("foo", 0);
 		topics.add(topicPartition0);
 		topics.add(new TopicPartition("foo", 1));
-		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		AtomicBoolean rebalance = new AtomicBoolean(true);
 		AtomicReference<ConsumerRebalanceListener> rebal = new AtomicReference<>();
 		CountDownLatch latch = new CountDownLatch(1);
@@ -3530,9 +3530,9 @@ public class KafkaMessageListenerContainerTests {
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> additionalRecords = Collections.singletonMap(
 			new TopicPartition("foo", 1),
 				Collections.singletonList(new ConsumerRecord<>("foo", 1, 2L, 1, "foo")));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
-		ConsumerRecords<Integer, String> additionalConsumerRecords = new ConsumerRecords<>(additionalRecords);
-		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> additionalConsumerRecords = new ConsumerRecords<>(additionalRecords, Map.of());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		AtomicInteger pollIteration = new AtomicInteger();
 		AtomicReference<ConsumerRebalanceListener> rebal = new AtomicReference<>();
 		CountDownLatch latch = new CountDownLatch(3);
@@ -3604,8 +3604,8 @@ public class KafkaMessageListenerContainerTests {
 		records.put(new TopicPartition("foo", 1), Arrays.asList(
 				new ConsumerRecord<>("foo", 1, 0L, 1, "foo"),
 				new ConsumerRecord<>("foo", 1, 1L, 1, "bar")));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
-		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		AtomicBoolean first = new AtomicBoolean(true);
 		AtomicInteger rebalance = new AtomicInteger();
 		AtomicReference<ConsumerRebalanceListener> rebal = new AtomicReference<>();
@@ -3680,8 +3680,8 @@ public class KafkaMessageListenerContainerTests {
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
 				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
-		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		AtomicBoolean first = new AtomicBoolean(true);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
@@ -3722,8 +3722,8 @@ public class KafkaMessageListenerContainerTests {
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), List.of(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo")));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
-		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		AtomicBoolean first = new AtomicBoolean(true);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
@@ -3767,8 +3767,8 @@ public class KafkaMessageListenerContainerTests {
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records =
 				Map.of(new TopicPartition("foo", 0), Arrays.asList(new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
 						new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
-		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap());
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
 		AtomicBoolean first = new AtomicBoolean(true);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
@@ -3812,7 +3812,7 @@ public class KafkaMessageListenerContainerTests {
 		ConsumerRecord<Integer, String> secondRecord = new ConsumerRecord<>("foo", 0, 1L, 1, "bar");
 		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), List.of(firstRecord, secondRecord));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			return consumerRecords;
@@ -3899,7 +3899,7 @@ public class KafkaMessageListenerContainerTests {
 		ConsumerRecord<Integer, String> secondRecord = new ConsumerRecord<>("foo", 0, 1L, 1, "bar");
 		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), List.of(firstRecord, secondRecord));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		AtomicBoolean first = new AtomicBoolean(true);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
@@ -3994,7 +3994,7 @@ public class KafkaMessageListenerContainerTests {
 		ConsumerRecord<Integer, String> secondRecord = new ConsumerRecord<>("foo", 0, 1L, 1, "bar");
 		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), List.of(firstRecord, secondRecord));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		AtomicBoolean first = new AtomicBoolean(true);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
@@ -4055,7 +4055,7 @@ public class KafkaMessageListenerContainerTests {
 		ConsumerRecord<Integer, String> record = new ConsumerRecord<>("foo", 0, 0L, 1, "foo");
 		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), List.of(record));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			return consumerRecords;
@@ -4128,7 +4128,7 @@ public class KafkaMessageListenerContainerTests {
 		ConsumerRecord<Integer, String> secondRecord = new ConsumerRecord<>("foo", 0, 1L, 1, "bar");
 		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), List.of(firstRecord, secondRecord));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			return consumerRecords;
@@ -4199,7 +4199,7 @@ public class KafkaMessageListenerContainerTests {
 		ConsumerRecord<Integer, String> secondRecord = new ConsumerRecord<>("foo", 0, 1L, 1, "bar");
 		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), List.of(firstRecord, secondRecord));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			return consumerRecords;
@@ -4270,7 +4270,7 @@ public class KafkaMessageListenerContainerTests {
 		ConsumerRecord<Integer, String> secondRecord = new ConsumerRecord<>("test-topic", 0, 1L, 1, "data-2");
 		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("test-topic", 0), List.of(firstRecord, secondRecord));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		AtomicInteger invocation = new AtomicInteger(0);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			if (invocation.getAndIncrement() == 0) {
@@ -4278,7 +4278,7 @@ public class KafkaMessageListenerContainerTests {
 			}
 			else {
 				// Subsequent polls after the first one returns empty records.
-				return new ConsumerRecords<Integer, String>(Map.of());
+				return new ConsumerRecords<Integer, String>(Map.of(), Map.of());
 			}
 		});
 		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
@@ -4355,7 +4355,7 @@ public class KafkaMessageListenerContainerTests {
 				Map.of(
 						new TopicPartition("foo", 0),
 						Collections.singletonList(new ConsumerRecord<>("foo", 0, 0L, 1, "foo"))
-				)
+				), Map.of()
 		));
 		final ArgumentCaptor<Map<TopicPartition, OffsetAndMetadata>> offsetsCaptor = ArgumentCaptor.forClass(Map.class);
 		final CountDownLatch latch = new CountDownLatch(1);

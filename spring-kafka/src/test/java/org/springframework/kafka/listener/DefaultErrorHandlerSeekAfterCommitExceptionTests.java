@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2024 the original author or authors.
+ * Copyright 2022-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -181,7 +181,7 @@ public class DefaultErrorHandlerSeekAfterCommitExceptionTests {
 				this.pollLatch.countDown();
 				switch (which.getAndIncrement()) {
 					case 0:
-						return new ConsumerRecords(records1);
+						return new ConsumerRecords(records1, Map.of());
 					default:
 						try {
 							Thread.sleep(50);
@@ -189,7 +189,7 @@ public class DefaultErrorHandlerSeekAfterCommitExceptionTests {
 						catch (InterruptedException e) {
 							Thread.currentThread().interrupt();
 						}
-						return new ConsumerRecords(Collections.emptyMap());
+						return new ConsumerRecords(Collections.emptyMap(), Map.of());
 				}
 			}).given(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
 			List<TopicPartition> paused = new ArrayList<>();
