@@ -90,7 +90,6 @@ public final class KafkaStreamBrancher<K, V> {
 	 * Terminating method that builds branches on top of given {@code KStream}.
 	 * Applies each predicate-consumer pair sequentially to create branches.
 	 * If a default consumer exists, it will handle all records that don't match any predicates.
-	 *
 	 * @param stream {@code KStream} to split
 	 * @return the processed stream
 	 * @throws NullPointerException if stream is null
