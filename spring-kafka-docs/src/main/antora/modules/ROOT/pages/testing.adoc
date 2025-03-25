@@ -56,7 +56,8 @@ If this is not possible for some reason, note that the `consumeFromEmbeddedTopic
 Since it does not have access to the consumer properties, you must use the overloaded method that takes a `seekToEnd` boolean parameter to seek to the end instead of the beginning.
 ====
 
-NOTE: The `EmbeddedKafkaRule` JUnit 4 rule has been removed in version 4.0. For JUnit 4, you should use the `EmbeddedKafkaKraftBroker` directly or migrate to JUnit 5 with the `@EmbeddedKafka` annotation.
+NOTE: The `EmbeddedKafkaRule` JUnit 4 rule has been removed in version 4.0.
+For JUnit 4, you should use the `EmbeddedKafkaKraftBroker` directly or migrate to JUnit 5 with the `@EmbeddedKafka` annotation.
 
 The `EmbeddedKafkaBroker` class has a utility method that lets you consume for all the topics it created.
 The following example shows how to use it:
@@ -523,12 +524,15 @@ The following example brings together most of the topics covered in this chapter
 
 [source, java]
 ----
+@EmbeddedKafka(topics = KafkaTemplateTests.TEMPLATE_TOPIC)
 public class KafkaTemplateTests {
 
-    private static final String TEMPLATE_TOPIC = "templateTopic";
+    public static final String TEMPLATE_TOPIC = "templateTopic";
 
-    @ClassRule
-    public static EmbeddedKafkaBroker embeddedKafka = new EmbeddedKafkaKraftBroker(1, 1, TEMPLATE_TOPIC);
+    @BeforeAll
+	public static void setUp() {
+		embeddedKafka = EmbeddedKafkaCondition.getBroker();
+	}
 
     @Test
     public void testTemplate() throws Exception {
