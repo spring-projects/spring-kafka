@@ -1,6 +1,75 @@
 [[history]]
 = Change History
 
+[[what-s-new-in-3-3-since-3-2]]
+== What's New in 3.3 Since 3.2
+:page-section-summary-toc: 1
+
+This section covers the changes made from version 3.2 to version 3.3.
+For changes in earlier version, see xref:appendix/change-history.adoc[Change History].
+
+[[x33-dlt-topic-naming]]
+=== DLT Topic Naming Convention
+
+The naming convention for DLT topics has been standardized to use the "-dlt" suffix consistently. This change ensures compatibility and avoids conflicts when transitioning between different retry solutions. Users who wish to retain the ".DLT" suffix behavior need to opt-in explicitly by setting the appropriate DLT name property.
+
+[[x33-seek-with-group-id]]
+=== Enhanced Seek Operations for Consumer Groups
+
+A new method, `getGroupId()`, has been added to the `ConsumerSeekCallback` interface.
+This method allows for more selective seek operations by targeting only the desired consumer group.
+The `AbstractConsumerSeekAware` can also now register, retrieve, and remove all callbacks for each topic partition in a multi-group listener scenario without missing any.
+See the new APIs (`getSeekCallbacksFor(TopicPartition topicPartition)`, `getTopicsAndCallbacks()`) for more details.
+For more details, see xref:kafka/seek.adoc#seek[Seek API Docs].
+
+[[x33-new-option-ignore-empty-batch]]
+=== Configurable Handling of Empty Batches in Kafka Listener with RecordFilterStrategy
+
+`RecordFilterStrategy` now supports ignoring empty batches that result from filtering.
+This can be configured through overriding default method `ignoreEmptyBatch()`, which defaults to false, ensuring `KafkaListener` is invoked even if all `ConsumerRecords` are filtered out.
+For more details, see xref:kafka/receiving-messages/filtering.adoc[Message receive filtering Docs].
+
+
+[[x33-concurrent-container-stopped-event]]
+=== ConcurrentContainerStoppedEvent
+
+The `ConcurentContainerMessageListenerContainer` emits now a `ConcurrentContainerStoppedEvent` when all of its child containers are stopped.
+For more details, see xref:kafka/events.adoc[Application Events] and `ConcurrentContainerStoppedEvent` Javadocs.
+
+[[x33-original-record-key-in-reply]]
+=== Original Record Key in Reply
+
+When using `ReplyingKafkaTemplate`, if the original record from the request contains a key, then that same key will be part of the reply as well.
+For more details, see xref:kafka/sending-messages.adoc[Sending Messages] section of the reference docs.
+
+[[x33-customize-logging-in-DeadLetterPublishingRecovererFactory]]
+=== Customizing Logging in DeadLetterPublishingRecovererFactory
+
+When using `DeadLetterPublishingRecovererFactory`, the user applications can override the `maybeLogListenerException` method to customize the logging behavior.
+
+[[x33-customize-admin-client-in-KafkaAdmin]]
+=== Customize Admin client in KafkaAdmin
+
+When extending `KafkaAdmin`, user applications may override the `createAdmin` method to customize Admin client creation.
+
+[[x33-customize-kafka-streams-implementation]]
+=== Customizing The Implementation of Kafka Streams
+
+When using `KafkaStreamsCustomizer` it is now possible to return a custom implementation of the `KafkaStreams` object by overriding the `initKafkaStreams` method.
+
+[[x33-kafka-headers-for-batch-listeners]]
+=== KafkaHeaders.DELIVERY_ATTEMPT for batch listeners
+
+When using a `BatchListener`, the `ConsumerRecord` can have the `KafkaHeaders.DELIVERY_ATTMPT` header in its headers fields.
+If the `DeliveryAttemptAwareRetryListener` is set to error handler as retry listener, each `ConsumerRecord` has delivery attempt header.
+For more details, see xref:kafka/annotation-error-handling.adoc#delivery-attempts-header-for-batch-listener[Kafka Headers for Batch Listener].
+
+[[x33-task-scheduler-for-kafka-metrics]]
+=== Kafka Metrics Listeners and `TaskScheduler`
+
+The `MicrometerProducerListener`, `MicrometerConsumerListener` and `KafkaStreamsMicrometerListener` can now be configured with a `TaskScheduler`.
+See `KafkaMetricsSupport` JavaDocs and xref:kafka/micrometer.adoc[Micrometer Support] for more information.
+
 [[what-s-new-in-3-2-since-3-1]]
 == What's New in 3.2 Since 3.1
 :page-section-summary-toc: 1
