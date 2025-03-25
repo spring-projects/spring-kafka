@@ -466,6 +466,15 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	}
 
 	/**
+	 * Return the {@link ObservationRegistry} used by the template.
+	 * @return the observation registry
+	 * @since 3.3.5
+	 */
+	public ObservationRegistry getObservationRegistry() {
+		return this.observationRegistry;
+	}
+
+	/**
 	 * Return the {@link KafkaAdmin}, used to find the cluster id for observation, if
 	 * present.
 	 * @return the kafkaAdmin
@@ -533,8 +542,13 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		return removeLeadingAndTrailingBrackets(adminServers == null ? "" : adminServers);
 	}
 
+	/**
+	 * Return the cluster id, if available.
+	 * @return the cluster id.
+	 * @since 3.3.5
+	 */
 	@Nullable
-	private String clusterId() {
+	protected String clusterId() {
 		if (this.kafkaAdmin != null && this.clusterId == null) {
 			this.clusterIdLock.lock();
 			try {
