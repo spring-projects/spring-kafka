@@ -60,7 +60,6 @@ import org.apache.kafka.common.errors.InvalidTopicException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
-import org.awaitility.Awaitility;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
@@ -111,10 +110,10 @@ import static org.mockito.Mockito.mock;
  * @since 3.0
  */
 @SpringJUnitConfig
-@EmbeddedKafka(topics = { ObservationTests.OBSERVATION_TEST_1, ObservationTests.OBSERVATION_TEST_2,
+@EmbeddedKafka(topics = {ObservationTests.OBSERVATION_TEST_1, ObservationTests.OBSERVATION_TEST_2,
 		ObservationTests.OBSERVATION_TEST_3, ObservationTests.OBSERVATION_TEST_4, ObservationTests.OBSERVATION_REPLY,
 		ObservationTests.OBSERVATION_RUNTIME_EXCEPTION, ObservationTests.OBSERVATION_ERROR,
-		ObservationTests.OBSERVATION_TRACEPARENT_DUPLICATE }, partitions = 1)
+		ObservationTests.OBSERVATION_TRACEPARENT_DUPLICATE}, partitions = 1)
 @DirtiesContext
 public class ObservationTests {
 
@@ -145,11 +144,12 @@ public class ObservationTests {
 			@Autowired KafkaListenerEndpointRegistry endpointRegistry, @Autowired KafkaAdmin admin,
 			@Autowired @Qualifier("customTemplate") KafkaTemplate<Integer, String> customTemplate,
 			@Autowired Config config)
-					throws InterruptedException, ExecutionException, TimeoutException {
+			throws InterruptedException, ExecutionException, TimeoutException {
 
 		AtomicReference<SimpleSpan> spanFromCallback = new AtomicReference<>();
 
 		template.setProducerInterceptor(new ProducerInterceptor<>() {
+
 			@Override
 			public ProducerRecord<Integer, String> onSend(ProducerRecord<Integer, String> record) {
 				tracer.currentSpanCustomizer().tag("key", "value");
@@ -337,10 +337,10 @@ public class ObservationTests {
 
 		meterRegistryAssert.hasTimerWithNameAndTags("spring.kafka.template",
 				KeyValues.of("spring.kafka.template.name", "template",
-						"messaging.operation", "publish",
-						"messaging.system", "kafka",
-						"messaging.destination.kind", "topic",
-						"messaging.destination.name", destName)
+								"messaging.operation", "publish",
+								"messaging.system", "kafka",
+								"messaging.destination.kind", "topic",
+								"messaging.destination.name", destName)
 						.and(keyValues));
 	}
 
@@ -349,12 +349,12 @@ public class ObservationTests {
 
 		meterRegistryAssert.hasTimerWithNameAndTags("spring.kafka.listener",
 				KeyValues.of(
-						"messaging.kafka.consumer.group", consumerGroup,
-						"messaging.operation", "receive",
-						"messaging.source.kind", "topic",
-						"messaging.source.name", destName,
-						"messaging.system", "kafka",
-						"spring.kafka.listener.id", listenerId)
+								"messaging.kafka.consumer.group", consumerGroup,
+								"messaging.operation", "receive",
+								"messaging.source.kind", "topic",
+								"messaging.source.name", destName,
+								"messaging.system", "kafka",
+								"spring.kafka.listener.id", listenerId)
 						.and(keyValues));
 	}
 
@@ -404,7 +404,7 @@ public class ObservationTests {
 	void observationErrorException(@Autowired ExceptionListener listener, @Autowired SimpleTracer tracer,
 			@Autowired @Qualifier("throwableTemplate") KafkaTemplate<Integer, String> errorTemplate,
 			@Autowired KafkaListenerEndpointRegistry endpointRegistry)
-					throws ExecutionException, InterruptedException, TimeoutException {
+			throws ExecutionException, InterruptedException, TimeoutException {
 
 		errorTemplate.send(OBSERVATION_ERROR, "testError").get(10, TimeUnit.SECONDS);
 		assertThat(listener.latch5.await(10, TimeUnit.SECONDS)).isTrue();
@@ -495,6 +495,7 @@ public class ObservationTests {
 			@Autowired SimpleTracer tracer) throws Exception {
 		CompletableFuture<ProducerRecord<Integer, String>> producerRecordFuture = new CompletableFuture<>();
 		template.setProducerListener(new ProducerListener<>() {
+
 			@Override
 			public void onSuccess(ProducerRecord<Integer, String> producerRecord, RecordMetadata recordMetadata) {
 				producerRecordFuture.complete(producerRecord);
@@ -525,14 +526,12 @@ public class ObservationTests {
 	void testReplyingKafkaTemplateObservation(
 			@Autowired ReplyingKafkaTemplate<Integer, String, String> template,
 			@Autowired ObservationRegistry observationRegistry) {
-		AtomicReference<KafkaRecordReceiverContext> replyObservationContext = new AtomicReference<>();
-		template.sendAndReceive(new ProducerRecord<>(OBSERVATION_TEST_4, "test")).thenAccept(replyRecord -> {
-			Observation.Context observationContext = observationRegistry.getCurrentObservation().getContext();
-			assertThat(observationContext).isInstanceOf(KafkaRecordReceiverContext.class);
-			replyObservationContext.set((KafkaRecordReceiverContext) observationContext);
-		});
-		Awaitility.await().atMost(Duration.ofSeconds(60)).until(() ->
-				replyObservationContext.get() != null && "spring.kafka.listener".equals(replyObservationContext.get().getName()));
+		assertThat(template.sendAndReceive(new ProducerRecord<>(OBSERVATION_TEST_4, "test"))
+				// the current observation must be retrieved from the consumer thread of the reply
+				.thenApply(replyRecord -> observationRegistry.getCurrentObservation().getContext()))
+				.isCompletedWithValueMatchingWithin(observationContext ->
+						observationContext instanceof KafkaRecordReceiverContext
+								&& "spring.kafka.listener".equals(observationContext.getName()), Duration.ofSeconds(30));
 	}
 
 	@Configuration
@@ -759,6 +758,7 @@ public class ObservationTests {
 		public String replyListener(ConsumerRecord<Integer, String> in) {
 			return in.value().toUpperCase();
 		}
+
 	}
 
 	public static class ExceptionListener {
