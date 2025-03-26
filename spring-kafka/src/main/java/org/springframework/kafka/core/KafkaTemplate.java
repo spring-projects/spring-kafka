@@ -103,6 +103,7 @@ import org.springframework.util.StringUtils;
  * @author Soby Chacko
  * @author Gurps Bassi
  * @author Valentina Armenise
+ * @author Francois Rosiere
  */
 public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationContextAware, BeanNameAware,
 		ApplicationListener<ContextStoppedEvent>, DisposableBean, SmartInitializingSingleton {
@@ -457,6 +458,15 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	}
 
 	/**
+	 * Return the {@link ObservationRegistry} used by the template.
+	 * @return the observation registry
+	 * @since 3.2.9
+	 */
+	protected ObservationRegistry getObservationRegistry() {
+		return this.observationRegistry;
+	}
+
+	/**
 	 * Return the {@link KafkaAdmin}, used to find the cluster id for observation, if
 	 * present.
 	 * @return the kafkaAdmin
@@ -520,8 +530,13 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		return removeLeadingAndTrailingBrackets(adminServers);
 	}
 
+	/**
+	 * Return the cluster id, if available.
+	 * @return the cluster id.
+	 * @since 3.2.9
+	 */
 	@Nullable
-	private String clusterId() {
+	protected String clusterId() {
 		if (this.kafkaAdmin != null && this.clusterId == null) {
 			this.clusterIdLock.lock();
 			try {
