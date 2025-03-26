@@ -106,6 +106,7 @@ import static org.mockito.Mockito.mock;
  * @author Wang Zhiyang
  * @author Christian Mergenthaler
  * @author Soby Chacko
+ * @author Francois Rosiere
  *
  * @since 3.0
  */
