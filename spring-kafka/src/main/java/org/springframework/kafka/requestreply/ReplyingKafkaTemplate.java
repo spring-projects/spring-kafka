@@ -29,6 +29,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
+import io.micrometer.observation.Observation;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
@@ -51,6 +52,8 @@ import org.springframework.kafka.listener.GenericMessageListenerContainer;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.TopicPartitionOffset;
+import org.springframework.kafka.support.micrometer.KafkaListenerObservation;
+import org.springframework.kafka.support.micrometer.KafkaRecordReceiverContext;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.SerializationUtils;
 import org.springframework.lang.Nullable;
@@ -69,6 +72,7 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Borahm Lee
+ * @author Francois Rosiere
  *
  * @since 2.1.3
  *
@@ -501,39 +505,50 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	@Override
 	public void onMessage(List<ConsumerRecord<K, R>> data) {
 		data.forEach(record -> {
-			Header correlationHeader = record.headers().lastHeader(this.correlationHeaderName);
-			Object correlationId = null;
-			if (correlationHeader != null) {
-				correlationId = this.binaryCorrelation
-						? new CorrelationKey(correlationHeader.value())
-						: new String(correlationHeader.value(), StandardCharsets.UTF_8);
-			}
-			if (correlationId == null) {
-				this.logger.error(() -> "No correlationId found in reply: " + KafkaUtils.format(record)
-						+ " - to use request/reply semantics, the responding server must return the correlation id "
-						+ " in the '" + this.correlationHeaderName + "' header");
+			ContainerProperties containerProperties = this.replyContainer.getContainerProperties();
+			Observation observation = KafkaListenerObservation.LISTENER_OBSERVATION.observation(
+					containerProperties.getObservationConvention(),
+					KafkaListenerObservation.DefaultKafkaListenerObservationConvention.INSTANCE,
+					() -> new KafkaRecordReceiverContext(record, this.replyContainer.getListenerId(), containerProperties.getClientId(), this.replyContainer.getGroupId(),
+							this::clusterId),
+					getObservationRegistry());
+			observation.observe(() -> handleReply(record));
+		});
+	}
+
+	private void handleReply(ConsumerRecord<K, R> record) {
+		Header correlationHeader = record.headers().lastHeader(this.correlationHeaderName);
+		Object correlationId = null;
+		if (correlationHeader != null) {
+			correlationId = this.binaryCorrelation
+					? new CorrelationKey(correlationHeader.value())
+					: new String(correlationHeader.value(), StandardCharsets.UTF_8);
+		}
+		if (correlationId == null) {
+			this.logger.error(() -> "No correlationId found in reply: " + KafkaUtils.format(record)
+					+ " - to use request/reply semantics, the responding server must return the correlation id "
+					+ " in the '" + this.correlationHeaderName + "' header");
+		}
+		else {
+			RequestReplyFuture<K, V, R> future = this.futures.remove(correlationId);
+			Object correlationKey = correlationId;
+			if (future == null) {
+				logLateArrival(record, correlationId);
 			}
 			else {
-				RequestReplyFuture<K, V, R> future = this.futures.remove(correlationId);
-				Object correlationKey = correlationId;
-				if (future == null) {
-					logLateArrival(record, correlationId);
+				boolean ok = true;
+				Exception exception = checkForErrors(record);
+				if (exception != null) {
+					ok = false;
+					future.completeExceptionally(exception);
 				}
-				else {
-					boolean ok = true;
-					Exception exception = checkForErrors(record);
-					if (exception != null) {
-						ok = false;
-						future.completeExceptionally(exception);
-					}
-					if (ok) {
-						this.logger.debug(() -> "Received: " + KafkaUtils.format(record)
-								+ WITH_CORRELATION_ID + correlationKey);
-						future.complete(record);
-					}
+				if (ok) {
+					this.logger.debug(() -> "Received: " + KafkaUtils.format(record)
+							+ WITH_CORRELATION_ID + correlationKey);
+					future.complete(record);
 				}
 			}
-		});
+		}
 	}
 
 	/**

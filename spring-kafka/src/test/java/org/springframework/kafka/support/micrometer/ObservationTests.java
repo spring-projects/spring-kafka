@@ -17,6 +17,7 @@
 package org.springframework.kafka.support.micrometer;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
@@ -80,13 +81,14 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.RecordInterceptor;
+import org.springframework.kafka.requestreply.ReplyingKafkaTemplate;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservation.DefaultKafkaListenerObservationConvention;
 import org.springframework.kafka.support.micrometer.KafkaTemplateObservation.DefaultKafkaTemplateObservationConvention;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
-import org.springframework.lang.Nullable;
+import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.util.StringUtils;
@@ -102,13 +104,15 @@ import static org.mockito.Mockito.mock;
  * @author Wang Zhiyang
  * @author Christian Mergenthaler
  * @author Soby Chacko
+ * @author Francois Rosiere
  *
  * @since 3.0
  */
 @SpringJUnitConfig
 @EmbeddedKafka(topics = {ObservationTests.OBSERVATION_TEST_1, ObservationTests.OBSERVATION_TEST_2,
-		ObservationTests.OBSERVATION_TEST_3, ObservationTests.OBSERVATION_RUNTIME_EXCEPTION,
-		ObservationTests.OBSERVATION_ERROR, ObservationTests.OBSERVATION_TRACEPARENT_DUPLICATE}, partitions = 1)
+		ObservationTests.OBSERVATION_TEST_3, ObservationTests.OBSERVATION_TEST_4, ObservationTests.OBSERVATION_REPLY,
+		ObservationTests.OBSERVATION_RUNTIME_EXCEPTION, ObservationTests.OBSERVATION_ERROR,
+		ObservationTests.OBSERVATION_TRACEPARENT_DUPLICATE}, partitions = 1)
 @DirtiesContext
 public class ObservationTests {
 
@@ -117,6 +121,10 @@ public class ObservationTests {
 	public final static String OBSERVATION_TEST_2 = "observation.testT2";
 
 	public final static String OBSERVATION_TEST_3 = "observation.testT3";
+
+	public final static String OBSERVATION_TEST_4 = "observation.testT4";
+
+	public final static String OBSERVATION_REPLY = "observation.reply";
 
 	public final static String OBSERVATION_RUNTIME_EXCEPTION = "observation.runtime-exception";
 
@@ -513,6 +521,19 @@ public class ObservationTests {
 		tracer.getSpans().clear();
 	}
 
+	@Test
+	void testReplyingKafkaTemplateObservation(
+			@Autowired ReplyingKafkaTemplate<Integer, String, String> template,
+			@Autowired ObservationRegistry observationRegistry) {
+		assertThat(template.sendAndReceive(new ProducerRecord<>(OBSERVATION_TEST_4, "test"))
+				// the current observation must be retrieved from the consumer thread of the reply
+				.thenApply(replyRecord -> observationRegistry.getCurrentObservation().getContext()))
+				.succeedsWithin(Duration.ofSeconds(30))
+				.isInstanceOf(KafkaRecordReceiverContext.class)
+				.extracting("name")
+				.isEqualTo("spring.kafka.listener");
+	}
+
 	@Configuration
 	@EnableKafka
 	public static class Config {
@@ -587,12 +608,21 @@ public class ObservationTests {
 		}
 
 		@Bean
+		ReplyingKafkaTemplate<Integer, String, String> replyingKafkaTemplate(ProducerFactory<Integer, String> pf, ConcurrentKafkaListenerContainerFactory<Integer, String> containerFactory) {
+			ReplyingKafkaTemplate<Integer, String, String> kafkaTemplate = new ReplyingKafkaTemplate<>(pf, containerFactory.createContainer(OBSERVATION_REPLY));
+			kafkaTemplate.setObservationEnabled(true);
+			return kafkaTemplate;
+		}
+
+		@Bean
 		ConcurrentKafkaListenerContainerFactory<Integer, String> kafkaListenerContainerFactory(
-				ConsumerFactory<Integer, String> cf, ObservationRegistry observationRegistry) {
+				ConsumerFactory<Integer, String> cf, ObservationRegistry observationRegistry,
+				KafkaTemplate<Integer, String> kafkaTemplate) {
 
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(cf);
+			factory.setReplyTemplate(kafkaTemplate);
 			factory.getContainerProperties().setObservationEnabled(true);
 			factory.setContainerCustomizer(container -> {
 				if (container.getListenerId().equals("obs3")) {
@@ -659,7 +689,7 @@ public class ObservationTests {
 				// This is called on the producer side when the message is being sent
 				// Normally we would pass information from tracing context - for tests we don't need to
 				@Override
-				public <C> void inject(TraceContext context, @Nullable C carrier, Setter<C> setter) {
+				public <C> void inject(TraceContext context, C carrier, Setter<C> setter) {
 					setter.set(carrier, "foo", "some foo value");
 					setter.set(carrier, "bar", "some bar value");
 
@@ -721,6 +751,12 @@ public class ObservationTests {
 
 		@KafkaListener(id = "obs3", topics = OBSERVATION_TEST_3)
 		void listen3(ConsumerRecord<Integer, String> in) {
+		}
+
+		@KafkaListener(id = "obsReply", topics = OBSERVATION_TEST_4)
+		@SendTo  // default REPLY_TOPIC header
+		public String replyListener(ConsumerRecord<Integer, String> in) {
+			return in.value().toUpperCase();
 		}
 
 	}
