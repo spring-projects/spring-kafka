@@ -266,6 +266,7 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 
 	private final ListenerContainerFactoryConfigurer listenerContainerFactoryConfigurer;
 
+	@SuppressWarnings("NullAway.Init")
 	private BeanFactory beanFactory;
 
 	private final RetryTopicNamesProviderFactory retryTopicNamesProviderFactory;
@@ -323,7 +324,7 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 
 	private void configureEndpoints(MethodKafkaListenerEndpoint<?, ?> mainEndpoint,
 									EndpointProcessor endpointProcessor,
-									KafkaListenerContainerFactory<?> factory,
+									@Nullable KafkaListenerContainerFactory<?> factory,
 									KafkaListenerEndpointRegistrar registrar,
 									RetryTopicConfiguration configuration,
 									DestinationTopicProcessor.Context context,
@@ -343,7 +344,7 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 	}
 
 	private void processAndRegisterEndpoint(MethodKafkaListenerEndpoint<?, ?> mainEndpoint, EndpointProcessor endpointProcessor,
-											KafkaListenerContainerFactory<?> factory,
+											@Nullable KafkaListenerContainerFactory<?> factory,
 											String defaultFactoryBeanName,
 											KafkaListenerEndpointRegistrar registrar,
 											RetryTopicConfiguration configuration, DestinationTopicProcessor.Context context,
@@ -454,7 +455,7 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 	}
 
 	private KafkaListenerContainerFactory<?> resolveAndConfigureFactoryForMainEndpoint(
-			KafkaListenerContainerFactory<?> providedFactory,
+			@Nullable KafkaListenerContainerFactory<?> providedFactory,
 			String defaultFactoryBeanName, RetryTopicConfiguration configuration) {
 
 		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory = this.containerFactoryResolver
@@ -465,7 +466,7 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 	}
 
 	private KafkaListenerContainerFactory<?> resolveAndConfigureFactoryForRetryEndpoint(
-			KafkaListenerContainerFactory<?> providedFactory,
+			@Nullable KafkaListenerContainerFactory<?> providedFactory,
 			String defaultFactoryBeanName,
 			RetryTopicConfiguration configuration) {
 

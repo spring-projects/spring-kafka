@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2024 the original author or authors.
+ * Copyright 2018-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.LongStream;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.retry.backoff.BackOffContext;
 import org.springframework.retry.backoff.BackOffPolicy;
@@ -50,7 +52,7 @@ public class BackOffValuesGenerator {
 
 	private final BackOffPolicy backOffPolicy;
 
-	public BackOffValuesGenerator(int providedMaxAttempts, BackOffPolicy providedBackOffPolicy) {
+	public BackOffValuesGenerator(int providedMaxAttempts, @Nullable BackOffPolicy providedBackOffPolicy) {
 		this.numberOfValuesToCreate = getMaxAttempts(providedMaxAttempts) - 1;
 		BackOffPolicy policy = providedBackOffPolicy != null ? providedBackOffPolicy : DEFAULT_BACKOFF_POLICY;
 		checkBackOffPolicyType(policy);

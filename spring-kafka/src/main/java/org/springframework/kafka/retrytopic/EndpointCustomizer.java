@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2024 the original author or authors.
+ * Copyright 2021-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +17,8 @@
 package org.springframework.kafka.retrytopic;
 
 import java.util.Collection;
+
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 
@@ -48,9 +50,9 @@ public interface EndpointCustomizer<T extends MethodKafkaListenerEndpoint<?, ?>>
 
 		private final String mainTopic;
 
-		private final String customizedTopic;
+		private final @Nullable String customizedTopic;
 
-		TopicNamesHolder(String mainTopic, String customizedTopic) {
+		TopicNamesHolder(String mainTopic, @Nullable String customizedTopic) {
 			this.mainTopic = mainTopic;
 			this.customizedTopic = customizedTopic;
 		}
@@ -59,6 +61,7 @@ public interface EndpointCustomizer<T extends MethodKafkaListenerEndpoint<?, ?>>
 			return this.mainTopic;
 		}
 
+		@Nullable
 		String getCustomizedTopic() {
 			return this.customizedTopic;
 		}

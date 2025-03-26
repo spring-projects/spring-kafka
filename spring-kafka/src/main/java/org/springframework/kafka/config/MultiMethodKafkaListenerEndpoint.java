@@ -95,7 +95,7 @@ public class MultiMethodKafkaListenerEndpoint<K, V> extends MethodKafkaListenerE
 	 * @param defaultMethod the default method.
 	 * @since 3.2
 	 */
-	public void setDefaultMethod(Method defaultMethod) {
+	public void setDefaultMethod(@Nullable Method defaultMethod) {
 		this.defaultMethod = defaultMethod;
 	}
 

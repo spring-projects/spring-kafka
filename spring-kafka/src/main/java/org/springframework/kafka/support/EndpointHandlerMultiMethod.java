@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 the original author or authors.
+ * Copyright 2024-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,8 @@ package org.springframework.kafka.support;
 import java.lang.reflect.Method;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * Handler multi method for retrying endpoints.
  *
@@ -29,6 +31,7 @@ import java.util.List;
  */
 public class EndpointHandlerMultiMethod extends EndpointHandlerMethod {
 
+	@Nullable
 	private Method defaultMethod;
 
 	private List<Method> methods;
@@ -39,7 +42,7 @@ public class EndpointHandlerMultiMethod extends EndpointHandlerMethod {
 	 * @param defaultMethod the defaultMethod.
 	 * @param methods the methods.
 	 */
-	public EndpointHandlerMultiMethod(Object bean, Method defaultMethod, List<Method> methods) {
+	public EndpointHandlerMultiMethod(Object bean, @Nullable Method defaultMethod, List<Method> methods) {
 		super(bean);
 		this.defaultMethod = defaultMethod;
 		this.methods = methods;
@@ -65,7 +68,7 @@ public class EndpointHandlerMultiMethod extends EndpointHandlerMethod {
 	 * Return the default method.
 	 * @return the default method.
 	 */
-	public Method getDefaultMethod() {
+	public @Nullable Method getDefaultMethod() {
 		return this.defaultMethod;
 	}
 

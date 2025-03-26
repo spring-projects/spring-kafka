@@ -117,7 +117,7 @@ public class DestinationTopicPropertiesFactory {
 	 * @param dltRoutingRules the specification of which DLT should be used for the particular exception type
 	 * @since 3.2.0
 	 */
-	public DestinationTopicPropertiesFactory(String retryTopicSuffix, String dltSuffix, List<Long> backOffValues,
+	public DestinationTopicPropertiesFactory(@Nullable String retryTopicSuffix, @Nullable String dltSuffix, List<Long> backOffValues,
 			BinaryExceptionClassifier exceptionClassifier,
 			int numPartitions, KafkaOperations<?, ?> kafkaOperations,
 			DltStrategy dltStrategy,
@@ -253,7 +253,7 @@ public class DestinationTopicPropertiesFactory {
 
 		private final String dltSuffix;
 
-		public DestinationTopicSuffixes(String retryTopicSuffix, String dltSuffix) {
+		public DestinationTopicSuffixes(@Nullable String retryTopicSuffix, @Nullable String dltSuffix) {
 			this.retryTopicSuffix = StringUtils.hasText(retryTopicSuffix)
 					? retryTopicSuffix
 					: RetryTopicConstants.DEFAULT_RETRY_SUFFIX;

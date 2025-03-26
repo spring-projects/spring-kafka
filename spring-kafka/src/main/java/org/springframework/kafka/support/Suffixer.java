@@ -19,6 +19,8 @@ package org.springframework.kafka.support;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
+import org.jspecify.annotations.Nullable;
+
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -39,7 +41,7 @@ public class Suffixer {
 		this.suffix = suffix;
 	}
 
-	public String maybeAddTo(String source) {
+	public @Nullable String maybeAddTo(@Nullable String source) {
 		if (!StringUtils.hasText(this.suffix)) {
 			return source;
 		}

@@ -24,6 +24,7 @@ import java.util.function.BiPredicate;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.kafka.core.KafkaOperations;
+import org.springframework.util.Assert;
 
 /**
  *
@@ -38,11 +39,11 @@ import org.springframework.kafka.core.KafkaOperations;
  */
 public class DestinationTopic {
 
-	private final String destinationName;
+	private final @Nullable String destinationName;
 
 	private final Properties properties;
 
-	public DestinationTopic(String destinationName, Properties properties) {
+	public DestinationTopic(@Nullable String destinationName, Properties properties) {
 		this.destinationName = destinationName;
 		this.properties = properties;
 	}
@@ -80,7 +81,7 @@ public class DestinationTopic {
 		return Type.MAIN.equals(this.properties.type);
 	}
 
-	public String getDestinationName() {
+	public @Nullable String getDestinationName() {
 		return this.destinationName;
 	}
 
@@ -113,6 +114,7 @@ public class DestinationTopic {
 			return false;
 		}
 		DestinationTopic that = (DestinationTopic) o;
+		Assert.state(this.destinationName != null, "destination name must not be null");
 		return this.destinationName.equals(that.destinationName) && this.properties.equals(that.properties);
 	}
 

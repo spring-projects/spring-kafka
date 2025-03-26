@@ -79,6 +79,7 @@ public class RetryTopicConfigurationSupport implements ApplicationContextAware, 
 
 	private final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass()));
 
+	@SuppressWarnings("NullAway.Init")
 	private ApplicationContext applicationContext;
 
 	@Override
@@ -349,7 +350,7 @@ public class RetryTopicConfigurationSupport implements ApplicationContextAware, 
 		@Nullable
 		private BackOff backOff;
 
-		@Nullable
+		@SuppressWarnings("NullAway.Init")
 		private Class<? extends Exception>[] retryableExceptions;
 
 		/**
@@ -385,7 +386,6 @@ public class RetryTopicConfigurationSupport implements ApplicationContextAware, 
 			return this.backOff;
 		}
 
-		@Nullable
 		Class<? extends Exception>[] getRetryableExceptions() {
 			return this.retryableExceptions;
 		}

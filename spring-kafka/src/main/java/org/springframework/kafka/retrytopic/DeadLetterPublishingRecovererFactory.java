@@ -71,6 +71,7 @@ public class DeadLetterPublishingRecovererFactory {
 
 	private Consumer<DeadLetterPublishingRecoverer> recovererCustomizer = recoverer -> { };
 
+	@Nullable
 	private BiFunction<ConsumerRecord<?, ?>, Exception, Headers> headersFunction;
 
 	private ListenerExceptionLoggingStrategy loggingStrategy = ListenerExceptionLoggingStrategy.AFTER_RETRIES_EXHAUSTED;
@@ -268,7 +269,7 @@ public class DeadLetterPublishingRecovererFactory {
 	}
 
 	private DeadLetterPublishingRecoverer create(
-			Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver,
+			Function<ProducerRecord<?, ?>, @Nullable KafkaOperations<?, ?>> templateResolver,
 			BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
 
 		return new DeadLetterPublishingRecoverer(templateResolver, destinationResolver);

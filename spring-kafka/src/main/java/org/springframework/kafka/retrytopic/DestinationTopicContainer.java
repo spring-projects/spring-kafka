@@ -85,7 +85,7 @@ public interface DestinationTopicContainer {
 	 * @return The {@link DestinationTopic} instance corresponding to the DLT.
 	 */
 	@Nullable
-	default DestinationTopic getDltFor(String mainListenerId, String topicName, Exception exc) {
+	default DestinationTopic getDltFor(String mainListenerId, String topicName, @Nullable Exception exc) {
 		return null;
 	}
 }

@@ -145,7 +145,7 @@ public class ListenerContainerFactoryResolver {
 	}
 
 	@Nullable
-	private ConcurrentKafkaListenerContainerFactory<?, ?> fromBeanName(String factoryBeanName) {
+	private ConcurrentKafkaListenerContainerFactory<?, ?> fromBeanName(@Nullable String factoryBeanName) {
 		try {
 			return StringUtils.hasText(factoryBeanName)
 					? this.beanFactory.getBean(factoryBeanName, ConcurrentKafkaListenerContainerFactory.class)
@@ -157,18 +157,19 @@ public class ListenerContainerFactoryResolver {
 	}
 
 	private interface FactoryResolver {
-		ConcurrentKafkaListenerContainerFactory<?, ?> resolveFactory(ConcurrentKafkaListenerContainerFactory<?, ?> candidate,
+		@Nullable
+		ConcurrentKafkaListenerContainerFactory<?, ?> resolveFactory(@Nullable ConcurrentKafkaListenerContainerFactory<?, ?> candidate,
 																	Configuration configuration);
 	}
 
 	static class Configuration {
 
-		private final ConcurrentKafkaListenerContainerFactory<?, ?> factoryFromRetryTopicConfiguration;
+		private final @Nullable ConcurrentKafkaListenerContainerFactory<?, ?> factoryFromRetryTopicConfiguration;
 
-		private final String listenerContainerFactoryName;
+		private final @Nullable String listenerContainerFactoryName;
 
-		Configuration(ConcurrentKafkaListenerContainerFactory<?, ?> factoryFromRetryTopicConfiguration,
-					String listenerContainerFactoryName) {
+		Configuration(@Nullable ConcurrentKafkaListenerContainerFactory<?, ?> factoryFromRetryTopicConfiguration,
+					@Nullable String listenerContainerFactoryName) {
 			this.factoryFromRetryTopicConfiguration = factoryFromRetryTopicConfiguration;
 			this.listenerContainerFactoryName = listenerContainerFactoryName;
 		}
@@ -201,7 +202,7 @@ public class ListenerContainerFactoryResolver {
 			this.cacheMap = new HashMap<>();
 		}
 
-		ConcurrentKafkaListenerContainerFactory<?, ?> addIfAbsent(KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation,
+		ConcurrentKafkaListenerContainerFactory<?, ?> addIfAbsent(@Nullable KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation,
 																Configuration config,
 																ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory) {
 			synchronized (this.cacheMap) {
@@ -211,24 +212,25 @@ public class ListenerContainerFactoryResolver {
 			}
 		}
 
-		ConcurrentKafkaListenerContainerFactory<?, ?> fromCache(KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation,
+		@Nullable
+		ConcurrentKafkaListenerContainerFactory<?, ?> fromCache(@Nullable KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation,
 																Configuration config) {
 			synchronized (this.cacheMap) {
 				return this.cacheMap.get(cacheKey(factoryFromKafkaListenerAnnotation, config));
 			}
 		}
 
-		private Key cacheKey(KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation, Configuration config) {
+		private Key cacheKey(@Nullable KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation, Configuration config) {
 			return new Key(factoryFromKafkaListenerAnnotation, config);
 		}
 
 		static class Key {
 
-			private final KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation;
+			private final @Nullable KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation;
 
 			private final Configuration config;
 
-			Key(KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation, Configuration config) {
+			Key(@Nullable KafkaListenerContainerFactory<?> factoryFromKafkaListenerAnnotation, Configuration config) {
 				this.factoryFromKafkaListenerAnnotation = factoryFromKafkaListenerAnnotation;
 				this.config = config;
 			}

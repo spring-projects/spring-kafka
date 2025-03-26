@@ -61,8 +61,10 @@ public class RetryTopicConfigurationBuilder {
 
 	private int maxAttempts = RetryTopicConstants.NOT_SET;
 
+	@Nullable
 	private BackOffPolicy backOffPolicy;
 
+	@Nullable
 	private EndpointHandlerMethod dltHandlerMethod;
 
 	@Nullable
@@ -73,6 +75,7 @@ public class RetryTopicConfigurationBuilder {
 
 	private RetryTopicConfiguration.TopicCreation topicCreationConfiguration = new RetryTopicConfiguration.TopicCreation();
 
+	@Nullable
 	private ConcurrentKafkaListenerContainerFactory<?, ?> listenerContainerFactory;
 
 	@Nullable
@@ -94,7 +97,7 @@ public class RetryTopicConfigurationBuilder {
 	@Nullable
 	private Boolean autoStartDltHandler;
 
-	private Integer concurrency;
+	private @Nullable Integer concurrency;
 
 	/* ---------------- DLT Behavior -------------- */
 	/**

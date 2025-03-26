@@ -68,7 +68,7 @@ public final class JavaUtils {
 	 * @param <T> the value type.
 	 * @return this.
 	 */
-	public <T> JavaUtils acceptIfNotNull(@Nullable T value, Consumer<@Nullable T> consumer) {
+	public <T> JavaUtils acceptIfNotNull(@Nullable T value, Consumer<T> consumer) {
 		if (value != null) {
 			consumer.accept(value);
 		}

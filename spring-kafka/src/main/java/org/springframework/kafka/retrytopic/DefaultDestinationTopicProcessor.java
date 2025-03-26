@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2022 the original author or authors.
+ * Copyright 2017-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+
+import org.jspecify.annotations.Nullable;
 
 /**
  *
@@ -49,7 +51,7 @@ public class DefaultDestinationTopicProcessor implements DestinationTopicProcess
 	}
 
 	@Override
-	public void registerDestinationTopic(String mainTopicName, String destinationTopicName,
+	public void registerDestinationTopic(String mainTopicName, @Nullable String destinationTopicName,
 										DestinationTopic.Properties destinationTopicProperties, Context context) {
 		List<DestinationTopic> topicDestinations = context.destinationsByTopicMap
 				.computeIfAbsent(mainTopicName, newTopic -> new ArrayList<>());

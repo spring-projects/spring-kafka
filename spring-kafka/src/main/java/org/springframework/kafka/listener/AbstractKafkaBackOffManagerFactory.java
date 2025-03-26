@@ -53,7 +53,7 @@ public abstract class AbstractKafkaBackOffManagerFactory
 	 * which will be used to fetch the {@link MessageListenerContainer} to back off.
 	 * @param listenerContainerRegistry the listenerContainerRegistry to use.
 	 */
-	public AbstractKafkaBackOffManagerFactory(ListenerContainerRegistry listenerContainerRegistry) {
+	public AbstractKafkaBackOffManagerFactory(@Nullable ListenerContainerRegistry listenerContainerRegistry) {
 		this.listenerContainerRegistry = listenerContainerRegistry;
 	}
 

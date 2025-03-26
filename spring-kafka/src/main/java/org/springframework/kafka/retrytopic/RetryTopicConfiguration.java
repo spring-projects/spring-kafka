@@ -41,7 +41,7 @@ public class RetryTopicConfiguration {
 
 	private final AllowDenyCollectionManager<String> topicAllowListManager;
 
-	private final EndpointHandlerMethod dltHandlerMethod;
+	private final @Nullable EndpointHandlerMethod dltHandlerMethod;
 
 	private final TopicCreation kafkaTopicAutoCreationConfig;
 
@@ -51,7 +51,7 @@ public class RetryTopicConfiguration {
 	private final Integer concurrency;
 
 	RetryTopicConfiguration(List<DestinationTopic.Properties> destinationTopicProperties,
-							EndpointHandlerMethod dltHandlerMethod,
+							@Nullable EndpointHandlerMethod dltHandlerMethod,
 							TopicCreation kafkaTopicAutoCreationConfig,
 							AllowDenyCollectionManager<String> topicAllowListManager,
 							ListenerContainerFactoryResolver.Configuration factoryResolverConfig,
@@ -76,7 +76,7 @@ public class RetryTopicConfiguration {
 		return this.factoryResolverConfig;
 	}
 
-	public EndpointHandlerMethod getDltHandlerMethod() {
+	public @Nullable EndpointHandlerMethod getDltHandlerMethod() {
 		return this.dltHandlerMethod;
 	}
 

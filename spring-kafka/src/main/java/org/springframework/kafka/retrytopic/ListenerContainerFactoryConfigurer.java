@@ -62,15 +62,14 @@ public class ListenerContainerFactoryConfigurer {
 	@Nullable
 	private BackOff providedBlockingBackOff;
 
-	@Nullable
-	private Class<? extends Exception>[] blockingExceptionTypes;
+	private @Nullable Class<? extends Exception> @Nullable [] blockingExceptionTypes;
 
 	private boolean retainStandardFatal;
 
 	private Consumer<ConcurrentMessageListenerContainer<?, ?>> containerCustomizer = container -> {
 	};
 
-	private Consumer<DefaultErrorHandler> errorHandlerCustomizer = errorHandler -> {
+	private @Nullable Consumer<DefaultErrorHandler> errorHandlerCustomizer = errorHandler -> {
 	};
 
 	private final DeadLetterPublishingRecovererFactory deadLetterPublishingRecovererFactory;
@@ -131,7 +130,7 @@ public class ListenerContainerFactoryConfigurer {
 	 * @since 2.8.4
 	 * @see DefaultErrorHandler
 	 */
-	public void setBlockingRetriesBackOff(BackOff blockingBackOff) {
+	public void setBlockingRetriesBackOff(@Nullable BackOff blockingBackOff) {
 		Assert.notNull(blockingBackOff, "The provided BackOff cannot be null");
 		Assert.state(this.providedBlockingBackOff == null, () ->
 				"Blocking retries back off has already been set. Current: "
@@ -168,12 +167,12 @@ public class ListenerContainerFactoryConfigurer {
 		this.retainStandardFatal = retainStandardFatal;
 	}
 
-	public void setContainerCustomizer(Consumer<ConcurrentMessageListenerContainer<?, ?>> containerCustomizer) {
+	public void setContainerCustomizer(@Nullable Consumer<ConcurrentMessageListenerContainer<?, ?>> containerCustomizer) {
 		Assert.notNull(containerCustomizer, "'containerCustomizer' cannot be null");
 		this.containerCustomizer = containerCustomizer;
 	}
 
-	public void setErrorHandlerCustomizer(Consumer<DefaultErrorHandler> errorHandlerCustomizer) {
+	public void setErrorHandlerCustomizer(@Nullable Consumer<DefaultErrorHandler> errorHandlerCustomizer) {
 		this.errorHandlerCustomizer = errorHandlerCustomizer;
 	}
 
@@ -185,7 +184,9 @@ public class ListenerContainerFactoryConfigurer {
 		if (this.blockingExceptionTypes != null) {
 			errorHandler.addRetryableExceptions(this.blockingExceptionTypes);
 		}
-		this.errorHandlerCustomizer.accept(errorHandler);
+		if (this.errorHandlerCustomizer != null) {
+			this.errorHandlerCustomizer.accept(errorHandler);
+		}
 		return errorHandler;
 	}
 
@@ -206,7 +207,8 @@ public class ListenerContainerFactoryConfigurer {
 	}
 
 	@SuppressWarnings("unchecked")
-	private <T> T checkAndCast(Object obj, Class<T> clazz) {
+	private <T> T checkAndCast(@Nullable Object obj, Class<T> clazz) {
+		Assert.state(obj != null, "Object cannot be null");
 		Assert.isAssignable(clazz, obj.getClass(),
 				() -> String.format("The provided class %s is not assignable from %s",
 						obj.getClass().getSimpleName(), clazz.getSimpleName()));
