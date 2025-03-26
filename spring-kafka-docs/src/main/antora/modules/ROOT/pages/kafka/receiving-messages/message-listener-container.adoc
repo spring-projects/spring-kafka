@@ -16,7 +16,7 @@ Also, starting with version 2.7, there is now a `BatchInterceptor`, providing si
 In addition, the `ConsumerAwareRecordInterceptor` (and `BatchInterceptor`) provide access to the `Consumer<?, ?>`.
 This might be used, for example, to access the consumer metrics in the interceptor.
 
-IMPORTANT: You should not execute any methods that affect the consumer's positions and or committed offsets in these interceptors; the container needs to manage such information.
+IMPORTANT: You should not execute any methods that affect the consumer's positions and/or committed offsets in these interceptors; the container needs to manage such information.
 
 IMPORTANT: If the interceptor mutates the record (by creating a new one), the `topic`, `partition`, and `offset` must remain the same to avoid unexpected side effects such as record loss.
 
