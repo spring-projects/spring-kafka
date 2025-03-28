@@ -772,7 +772,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 					consumerRecords.add(one);
 				}
 			});
-			return new ConsumerRecords<>(records);
+			return new ConsumerRecords<>(records, Map.of());
 		}
 	}
 

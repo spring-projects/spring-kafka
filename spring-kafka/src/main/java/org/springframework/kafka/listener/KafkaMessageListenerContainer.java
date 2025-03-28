@@ -1669,7 +1669,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				TopicPartition next = this.batchIterator.next();
 				List<ConsumerRecord<K, V>> subBatch = Objects.requireNonNull(this.lastBatch).records(next);
-				records = new ConsumerRecords<>(Collections.singletonMap(next, subBatch));
+				records = new ConsumerRecords<>(Collections.singletonMap(next, subBatch), Map.of());
 				if (!this.batchIterator.hasNext()) {
 					this.batchIterator = null;
 				}
@@ -1911,7 +1911,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				long idleEventInterval2 = idleEventInterval;
 				long now = System.currentTimeMillis();
 				if (!this.receivedSome) {
-					idleEventInterval2 *= this.containerProperties.getIdleBeforeDataMultiplier();
+					idleEventInterval2 = (long) (idleEventInterval2 * this.containerProperties.getIdleBeforeDataMultiplier());
 				}
 				if (now > this.lastReceive + idleEventInterval2
 						&& now > this.lastAlertAt + idleEventInterval2) {
@@ -2649,7 +2649,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							tp -> new ArrayList<ConsumerRecord<K, V>>()).add(next);
 				}
 				if (!remaining.isEmpty()) {
-					this.remainingRecords = new ConsumerRecords<>(remaining);
+					this.remainingRecords = new ConsumerRecords<>(remaining, Map.of());
 					return true;
 				}
 			}
@@ -2950,7 +2950,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 											tp -> new ArrayList<>()).add(cRecord);
 				}
 				if (!records.isEmpty()) {
-					this.remainingRecords = new ConsumerRecords<>(records);
+					this.remainingRecords = new ConsumerRecords<>(records, Map.of());
 					this.pauseForPending = true;
 				}
 			}
@@ -2996,7 +2996,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					}
 				}
 				if (!records.isEmpty()) {
-					this.remainingRecords = new ConsumerRecords<>(records);
+					this.remainingRecords = new ConsumerRecords<>(records, Map.of());
 					this.pauseForPending = true;
 				}
 			}
@@ -3614,7 +3614,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							tp -> new ArrayList<>()).add(record);
 				}
 				if (!offsetsToCommit.isEmpty()) {
-					processAcks(new ConsumerRecords<>(offsetsToCommit));
+					processAcks(new ConsumerRecords<>(offsetsToCommit, Map.of()));
 				}
 				this.partial = index;
 			}
@@ -3644,7 +3644,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					newRecords.computeIfAbsent(new TopicPartition(cRecord.topic(), cRecord.partition()),
 							tp -> new LinkedList<>()).add(cRecord);
 				}
-				processAcks(new ConsumerRecords<K, V>(newRecords));
+				processAcks(new ConsumerRecords<K, V>(newRecords, Map.of()));
 			}
 
 			@Override
@@ -3727,7 +3727,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					if (!remainingParts.isEmpty()) {
 						Map<TopicPartition, List<ConsumerRecord<K, V>>> trimmed = new LinkedHashMap<>();
 						remainingParts.forEach(part -> trimmed.computeIfAbsent(part, tp -> remaining.records(tp)));
-						ListenerConsumer.this.remainingRecords = new ConsumerRecords<>(trimmed);
+						ListenerConsumer.this.remainingRecords = new ConsumerRecords<>(trimmed, Map.of());
 					}
 					else {
 						ListenerConsumer.this.remainingRecords = null;

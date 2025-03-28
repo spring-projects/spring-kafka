@@ -278,7 +278,7 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 			Map<TopicPartition, List<ConsumerRecord<K, V>>> remains = new HashMap<>();
 			remaining.forEach(rec -> remains.computeIfAbsent(new TopicPartition(rec.topic(), rec.partition()),
 					tp -> new ArrayList<>()).add((ConsumerRecord<K, V>) rec));
-			return new ConsumerRecords<>(remains);
+			return new ConsumerRecords<>(remains, Map.of());
 		}
 	}
 

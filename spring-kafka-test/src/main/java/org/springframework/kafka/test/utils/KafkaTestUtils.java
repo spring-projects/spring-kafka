@@ -389,7 +389,7 @@ public final class KafkaTestUtils {
 			}
 		}
 		while (count < minRecords && remaining > 0);
-		return new ConsumerRecords<>(records);
+		return new ConsumerRecords<>(records, Map.of());
 	}
 
 	/**
