@@ -1,5 +1,5 @@
 /*
- * Copyright 2023-2024 the original author or authors.
+ * Copyright 2023-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,6 @@ import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.MockConsumer;
-import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.record.TimestampType;
@@ -87,7 +86,7 @@ public class MockConsumerTests {
 
 		@Bean
 		public ConsumerFactory<String, String> consumerFactory() {
-			MockConsumer<String, String> consumer = new MockConsumer<>(OffsetResetStrategy.EARLIEST);
+			MockConsumer<String, String> consumer = new MockConsumer<>("earliest");
 			TopicPartition topicPartition0 = new TopicPartition("foo", 0);
 			TopicPartition topicPartition1 = new TopicPartition("foo", 1);
 			TopicPartition topicPartition2 = new TopicPartition("foo", 2);

@@ -23,7 +23,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.streams.errors.DeserializationExceptionHandler;
-import org.apache.kafka.streams.processor.ProcessorContext;
+import org.apache.kafka.streams.errors.ErrorHandlerContext;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.kafka.listener.ConsumerRecordRecoverer;
@@ -56,7 +56,7 @@ public class RecoveringDeserializationExceptionHandler implements Deserializatio
 	}
 
 	@Override
-	public DeserializationHandlerResponse handle(ProcessorContext context, ConsumerRecord<byte[], byte[]> record,
+	public DeserializationHandlerResponse handle(ErrorHandlerContext context, ConsumerRecord<byte[], byte[]> record,
 			Exception exception) {
 
 		if (this.recoverer == null) {

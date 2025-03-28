@@ -41,7 +41,7 @@ public class NonResponsiveConsumerEvent extends KafkaEvent {
 
 	private final String listenerId;
 
-	private final @Nullable List<TopicPartition> topicPartitions;
+	private final transient @Nullable List<TopicPartition> topicPartitions;
 
 	private transient final Consumer<?, ?> consumer;
 

@@ -74,7 +74,6 @@ import org.springframework.kafka.support.serializer.ToStringSerializer;
  */
 public class KafkaRuntimeHints implements RuntimeHintsRegistrar {
 
-	@SuppressWarnings("deprecation")
 	@Override
 	public void registerHints(RuntimeHints hints, @Nullable ClassLoader classLoader) {
 		ReflectionHints reflectionHints = hints.reflection();
@@ -106,8 +105,7 @@ public class KafkaRuntimeHints implements RuntimeHintsRegistrar {
 					KafkaListenerAnnotationBeanPostProcessor.class)
 				.forEach(type -> reflectionHints.registerType(type,
 						builder -> builder.withMembers(MemberCategory.INVOKE_DECLARED_CONSTRUCTORS,
-								MemberCategory.INVOKE_DECLARED_METHODS,
-								MemberCategory.INTROSPECT_PUBLIC_METHODS)));
+								MemberCategory.INVOKE_DECLARED_METHODS)));
 
 		Stream.of(
 					KafkaBootstrapConfiguration.class,
