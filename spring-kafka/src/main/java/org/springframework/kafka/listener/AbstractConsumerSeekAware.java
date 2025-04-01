@@ -23,12 +23,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.common.TopicPartition;
 import org.jspecify.annotations.Nullable;
-
-import org.springframework.util.CollectionUtils;
 
 /**
  * Manages the {@link ConsumerSeekAware.ConsumerSeekCallback} s for the listener. If the
@@ -90,22 +87,6 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 	}
 
 	/**
-     * Return the callback for the specified topic/partition.
-     * @param topicPartition the topic/partition.
-     * @return the callback (or null if there is no assignment).
-     * @deprecated Replaced by {@link #getSeekCallbacksFor(TopicPartition)}
-     */
-	@Deprecated(since = "3.3", forRemoval = true)
-	@Nullable
-	protected ConsumerSeekCallback getSeekCallbackFor(TopicPartition topicPartition) {
-		List<ConsumerSeekCallback> callbacks = getSeekCallbacksFor(topicPartition);
-		if (CollectionUtils.isEmpty(callbacks)) {
-			return null;
-		}
-		return callbacks.get(0);
-	}
-
-	/**
      * Return the callbacks for the specified topic/partition.
      * @param topicPartition the topic/partition.
      * @return the callbacks (or null if there is no assignment).
@@ -114,22 +95,6 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 	@Nullable
 	protected List<ConsumerSeekCallback> getSeekCallbacksFor(TopicPartition topicPartition) {
 		return this.topicToCallbacks.get(topicPartition);
-	}
-
-	/**
-	 * The map of callbacks for all currently assigned partitions.
-	 * @return the map.
-	 * @deprecated Replaced by {@link #getTopicsAndCallbacks()}
-	 */
-	@Deprecated(since = "3.3", forRemoval = true)
-	protected Map<TopicPartition, ConsumerSeekCallback> getSeekCallbacks() {
-		Map<TopicPartition, List<ConsumerSeekCallback>> topicsAndCallbacks = getTopicsAndCallbacks();
-		return topicsAndCallbacks.entrySet().stream()
-			.filter(entry -> !entry.getValue().isEmpty())
-			.collect(Collectors.toMap(
-					Map.Entry::getKey,
-					entry -> entry.getValue().get(0)
-			));
 	}
 
 	/**
