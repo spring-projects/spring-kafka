@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -148,7 +149,7 @@ public class ConcurrentMessageListenerContainerTests {
 
 		final CountDownLatch latch = new CountDownLatch(3);
 		final Set<String> listenerThreadNames = new ConcurrentSkipListSet<>();
-		final List<String> payloads = new ArrayList<>();
+		List<String> payloads = Collections.synchronizedList(new ArrayList<>());
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
 			ConcurrentMessageListenerContainerTests.this.logger.info("auto: " + message);
 			listenerThreadNames.add(Thread.currentThread().getName());
@@ -198,7 +199,9 @@ public class ConcurrentMessageListenerContainerTests {
 		template.flush();
 		assertThat(intercepted.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(latch.await(60, TimeUnit.SECONDS)).isTrue();
-		assertThat(payloads).containsExactlyInAnyOrder("foo", "bar", "qux");
+		synchronized (payloads) {
+			assertThat(payloads).containsExactlyInAnyOrder("foo", "bar", "qux");
+		}
 		assertThat(listenerThreadNames).contains("testAuto-0", "testAuto-1");
 		List<KafkaMessageListenerContainer<Integer, String>> containers = KafkaTestUtils.getPropertyValue(container,
 				"containers", List.class);
