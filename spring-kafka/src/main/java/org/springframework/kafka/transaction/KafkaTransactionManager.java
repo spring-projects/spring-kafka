@@ -86,6 +86,7 @@ public class KafkaTransactionManager<K, V> extends AbstractPlatformTransactionMa
 	 * one manager is allowed to drive synchronization at any point of time.
 	 * @param producerFactory the ProducerFactory to use
 	 */
+	@SuppressWarnings("this-escape")
 	public KafkaTransactionManager(ProducerFactory<K, V> producerFactory) {
 		Assert.notNull(producerFactory, "The 'ProducerFactory' cannot be null");
 		Assert.isTrue(producerFactory.transactionCapable(), "The 'ProducerFactory' must support transactions");

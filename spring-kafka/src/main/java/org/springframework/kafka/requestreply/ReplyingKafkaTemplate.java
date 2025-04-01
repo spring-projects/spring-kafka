@@ -131,7 +131,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		this(producerFactory, replyContainer, false);
 	}
 
-	@SuppressWarnings("NullAway") // Dataflow analysis limitation
+	@SuppressWarnings({"NullAway", "this-escape"}) // Dataflow analysis limitation
 	public ReplyingKafkaTemplate(ProducerFactory<K, V> producerFactory,
 			GenericMessageListenerContainer<K, R> replyContainer, boolean autoFlush) {
 

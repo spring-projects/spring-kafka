@@ -52,6 +52,7 @@ public class BackOffValuesGenerator {
 
 	private final BackOffPolicy backOffPolicy;
 
+	@SuppressWarnings("this-escape")
 	public BackOffValuesGenerator(int providedMaxAttempts, @Nullable BackOffPolicy providedBackOffPolicy) {
 		this.numberOfValuesToCreate = getMaxAttempts(providedMaxAttempts) - 1;
 		BackOffPolicy policy = providedBackOffPolicy != null ? providedBackOffPolicy : DEFAULT_BACKOFF_POLICY;

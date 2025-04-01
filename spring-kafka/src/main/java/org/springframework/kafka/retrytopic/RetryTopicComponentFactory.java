@@ -44,6 +44,7 @@ import org.springframework.kafka.listener.adapter.KafkaBackoffAwareMessageListen
  */
 public class RetryTopicComponentFactory {
 
+	@SuppressWarnings("this-escape")
 	private final Clock internalRetryTopicClock = createInternalRetryTopicClock();
 
 	/**

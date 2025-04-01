@@ -75,6 +75,7 @@ import org.springframework.util.backoff.FixedBackOff;
 */
 public class RetryTopicConfigurationSupport implements ApplicationContextAware, SmartInitializingSingleton {
 
+	@SuppressWarnings("this-escape")
 	private final RetryTopicComponentFactory componentFactory = createComponentFactory();
 
 	private final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass()));

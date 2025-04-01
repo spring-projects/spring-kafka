@@ -142,6 +142,7 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 	 * {@link KafkaOperations}.
 	 * @since 2.9
 	 */
+	@SuppressWarnings("this-escape")
 	public DefaultAfterRollbackProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer,
 			BackOff backOff, @Nullable BackOffHandler backOffHandler, @Nullable KafkaOperations<?, ?> kafkaOperations,
 			boolean commitRecovered) {

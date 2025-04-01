@@ -40,6 +40,7 @@ public class KafkaRecordSenderContext extends SenderContext<ProducerRecord<?, ?>
 
 	private final ProducerRecord<?, ?> record;
 
+	@SuppressWarnings("this-escape")
 	public KafkaRecordSenderContext(ProducerRecord<?, ?> record, String beanName, Supplier<String> clusterId) {
 		super((carrier, key, value) -> {
 			Headers headers = record.headers();

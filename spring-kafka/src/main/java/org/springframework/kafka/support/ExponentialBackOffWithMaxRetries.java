@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 the original author or authors.
+ * Copyright 2021-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ public class ExponentialBackOffWithMaxRetries extends ExponentialBackOff {
 	 * the maxRetries.
 	 * @param maxRetries the max retries.
 	 */
+	@SuppressWarnings("this-escape")
 	public ExponentialBackOffWithMaxRetries(int maxRetries) {
 		this.maxRetries = maxRetries;
 		calculateMaxElapsed();
@@ -71,6 +72,7 @@ public class ExponentialBackOffWithMaxRetries extends ExponentialBackOff {
 		throw new IllegalStateException("'maxElapsedTime' is calculated from the 'maxRetries' property");
 	}
 
+	@SuppressWarnings("this-escape")
 	private void calculateMaxElapsed() {
 		long maxInterval = getMaxInterval();
 		long maxElapsed = Math.min(getInitialInterval(), maxInterval);

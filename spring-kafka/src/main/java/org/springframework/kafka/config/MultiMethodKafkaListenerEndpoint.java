@@ -57,6 +57,7 @@ public class MultiMethodKafkaListenerEndpoint<K, V> extends MethodKafkaListenerE
 	 * @param bean the bean.
 	 * @since 2.1.3
 	 */
+	@SuppressWarnings("this-escape")
 	public MultiMethodKafkaListenerEndpoint(List<Method> methods, @Nullable Method defaultMethod, Object bean) {
 		this.methods = methods;
 		this.defaultMethod = defaultMethod;

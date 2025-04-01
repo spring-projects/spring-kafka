@@ -37,6 +37,7 @@ public class ContainerPartitionPausingBackOffManagerFactory extends AbstractKafk
 	 * @param listenerContainerRegistry the registry.
 	 * @param applicationContext the application context.
 	 */
+	@SuppressWarnings("this-escape")
 	public ContainerPartitionPausingBackOffManagerFactory(@Nullable ListenerContainerRegistry listenerContainerRegistry,
 			ApplicationContext applicationContext) {
 

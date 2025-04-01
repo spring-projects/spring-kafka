@@ -176,6 +176,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * @param method the method.
 	 * @param errorHandler the kafka listener error handler.
 	 */
+	@SuppressWarnings("this-escape")
 	protected MessagingMessageListenerAdapter(Object bean, Method method, @Nullable KafkaListenerErrorHandler errorHandler) {
 		this.bean = bean;
 		this.inferredType = determineInferredType(method); // NOSONAR = intentionally not final

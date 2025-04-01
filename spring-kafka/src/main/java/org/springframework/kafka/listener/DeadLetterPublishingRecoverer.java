@@ -92,6 +92,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	private final EnumSet<HeaderNames.HeadersToAdd> whichHeaders = EnumSet.allOf(HeaderNames.HeadersToAdd.class);
 
+	@SuppressWarnings("this-escape")
 	private @Nullable HeaderNames headerNames = getHeaderNames();
 
 	private boolean retainExceptionHeader;

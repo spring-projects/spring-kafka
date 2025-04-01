@@ -63,6 +63,7 @@ public class KafkaRecordReceiverContext extends ReceiverContext<ConsumerRecord<?
 	 * @param clusterId		the kafka cluster id.
 	 * @since 3.2
 	 */
+	@SuppressWarnings("this-escape")
 	public KafkaRecordReceiverContext(ConsumerRecord<?, ?> record, String listenerId, @Nullable String clientId,
 			@Nullable String groupId, Supplier<String> clusterId) {
 		super((carrier, key) -> {
