@@ -159,16 +159,6 @@ public final class KafkaUtils {
 	}
 
 	/**
-	 * Set to true to only log record metadata.
-	 * @param onlyMeta true to only log record metadata.
-	 * @since 2.7.12
-	 * @deprecated - no longer used.
-	 */
-	@Deprecated(since = "3.1", forRemoval = true) // 3.2
-	public static void setLogOnlyMetadata(boolean onlyMeta) {
-	}
-
-	/**
 	 * Set a formatter for logging {@link ConsumerRecord}s.
 	 * @param formatter a function to format the record as a String
 	 * @since 2.7.12

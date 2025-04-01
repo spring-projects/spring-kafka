@@ -87,42 +87,6 @@ public final class ListenerUtils {
 	 * interval for this thread.
 	 * @param container the container or parent container.
 	 * @throws InterruptedException if the thread is interrupted.
-	 * @since 2.7
-	 * @deprecated in favor of
-	 * {@link #unrecoverableBackOff(BackOff, Map, Map, MessageListenerContainer)}.
-	 */
-	@Deprecated(since = "3.1", forRemoval = true) // 3.2
-	public static void unrecoverableBackOff(BackOff backOff, ThreadLocal<BackOffExecution> executions,
-			ThreadLocal<Long> lastIntervals, MessageListenerContainer container) throws InterruptedException {
-
-		BackOffExecution backOffExecution = executions.get();
-		if (backOffExecution == null) {
-			backOffExecution = backOff.start();
-			executions.set(backOffExecution);
-		}
-		Long interval = backOffExecution.nextBackOff();
-		if (interval == BackOffExecution.STOP) {
-			interval = lastIntervals.get();
-			if (interval == null) {
-				interval = Long.valueOf(0);
-			}
-		}
-		lastIntervals.set(interval);
-		if (interval > 0) {
-			stoppableSleep(container, interval);
-		}
-	}
-
-	/**
-	 * Sleep according to the {@link BackOff}; when the {@link BackOffExecution} returns
-	 * {@link BackOffExecution#STOP} sleep for the previous backOff.
-	 * @param backOff the {@link BackOff} to create a new {@link BackOffExecution}.
-	 * @param executions a thread local containing the {@link BackOffExecution} for this
-	 * thread.
-	 * @param lastIntervals a thread local containing the previous {@link BackOff}
-	 * interval for this thread.
-	 * @param container the container or parent container.
-	 * @throws InterruptedException if the thread is interrupted.
 	 * @since 3.1
 	 */
 	public static void unrecoverableBackOff(BackOff backOff, Map<Thread, BackOffExecution> executions,

@@ -63,20 +63,6 @@ public interface DestinationTopicContainer {
 
 	/**
 	 * Returns the {@link DestinationTopic} instance registered as
-	 * DLT for the given topic, or null if none is found.
-	 * @param mainListenerId the listener id.
-	 * @param topicName the topic name for which to look the DLT for
-	 * @return The {@link DestinationTopic} instance corresponding to the DLT.
-	 * @deprecated Replaced by {@link #getDltFor(String, String, Exception)}
-	 */
-	@Nullable
-	@Deprecated(since = "3.2", forRemoval = true)
-	default DestinationTopic getDltFor(String mainListenerId, String topicName) {
-		return getDltFor(mainListenerId, topicName, null);
-	}
-
-	/**
-	 * Returns the {@link DestinationTopic} instance registered as
 	 * DLT for the given topic taking into consideration the exception
 	 * thrown, or null if none is found.
 	 * @param mainListenerId the listener id.

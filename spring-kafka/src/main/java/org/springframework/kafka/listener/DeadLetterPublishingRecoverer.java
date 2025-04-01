@@ -92,8 +92,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	private final EnumSet<HeaderNames.HeadersToAdd> whichHeaders = EnumSet.allOf(HeaderNames.HeadersToAdd.class);
 
-	@SuppressWarnings("this-escape")
-	private @Nullable HeaderNames headerNames = getHeaderNames();
+	private @Nullable HeaderNames headerNames;
 
 	private boolean retainExceptionHeader;
 
@@ -875,20 +874,6 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		PrintWriter printWriter = new PrintWriter(stringWriter, true);
 		cause.printStackTrace(printWriter);
 		return stringWriter.getBuffer().toString();
-	}
-
-	/**
-	 * Override this if you want different header names to be used
-	 * in the sent record.
-	 * @return the header names.
-	 * @since 2.7
-	 * @deprecated since 3.0.9 - provide a supplier instead.
-	 * @see #setHeaderNamesSupplier(Supplier)
-	 */
-	@Nullable
-	@Deprecated(since = "3.0.9", forRemoval = true) // 3.2
-	protected HeaderNames getHeaderNames() {
-		return null;
 	}
 
 	/**
