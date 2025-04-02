@@ -79,7 +79,7 @@ public class Application {
 		this.exec.execute(() -> System.out.println("Hit Enter to terminate..."));
 	}
 
-	@KafkaListener(id = "dltGroup", topics = "topic1.DLT")
+	@KafkaListener(id = "dltGroup", topics = "topic1-dlt")
 	public void dltListen(byte[] in) {
 		logger.info("Received from DLT: " + new String(in));
 		this.exec.execute(() -> System.out.println("Hit Enter to terminate..."));
@@ -92,7 +92,7 @@ public class Application {
 
 	@Bean
 	public NewTopic dlt() {
-		return new NewTopic("topic1.DLT", 1, (short) 1);
+		return new NewTopic("topic1-dlt", 1, (short) 1);
 	}
 
 	@Bean
