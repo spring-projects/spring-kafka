@@ -63,8 +63,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 
 	private @Nullable String containerFactoryBeanName;
 
-	@SuppressWarnings("NullAway.Init")
-	private BeanFactory beanFactory;
+	private @Nullable BeanFactory beanFactory;
 
 	private boolean startImmediately;
 
@@ -84,8 +83,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	 * @return the {@link KafkaListenerEndpointRegistry} instance for this
 	 * registrar, may be {@code null}.
 	 */
-	@Nullable
-	public KafkaListenerEndpointRegistry getEndpointRegistry() {
+	public @Nullable KafkaListenerEndpointRegistry getEndpointRegistry() {
 		return this.endpointRegistry;
 	}
 
@@ -130,8 +128,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	 * Return the custom {@link MessageHandlerMethodFactory} to use, if any.
 	 * @return the custom {@link MessageHandlerMethodFactory} to use, if any.
 	 */
-	@Nullable
-	public MessageHandlerMethodFactory getMessageHandlerMethodFactory() {
+	public @Nullable MessageHandlerMethodFactory getMessageHandlerMethodFactory() {
 		return this.messageHandlerMethodFactory;
 	}
 
@@ -173,8 +170,7 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	 * @return the validator.
 	 * @since 2.2
 	 */
-	@Nullable
-	public Validator getValidator() {
+	public @Nullable Validator getValidator() {
 		return this.validator;
 	}
 
@@ -279,13 +275,13 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 	private record KafkaListenerEndpointDescriptor(KafkaListenerEndpoint endpoint,
 				@Nullable KafkaListenerContainerFactory<?> containerFactory) {
 
-			private KafkaListenerEndpointDescriptor(KafkaListenerEndpoint endpoint,
-					@Nullable KafkaListenerContainerFactory<?> containerFactory) {
+		private KafkaListenerEndpointDescriptor(KafkaListenerEndpoint endpoint,
+				@Nullable KafkaListenerContainerFactory<?> containerFactory) {
 
-				this.endpoint = endpoint;
-				this.containerFactory = containerFactory;
-			}
-
+			this.endpoint = endpoint;
+			this.containerFactory = containerFactory;
 		}
+
+	}
 
 }

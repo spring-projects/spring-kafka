@@ -82,8 +82,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private final Collection<TopicPartitionOffset> topicPartitions = new ArrayList<>();
 
-	@SuppressWarnings("NullAway.Init")
-	private BeanFactory beanFactory;
+	private @Nullable BeanFactory beanFactory;
 
 	private @Nullable BeanExpressionResolver resolver;
 
@@ -115,8 +114,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private @Nullable BatchToRecordAdapter<K, V> batchToRecordAdapter;
 
-	@SuppressWarnings("NullAway.Init")
-	private byte[] listenerInfo;
+	private byte @Nullable [] listenerInfo;
 
 	private @Nullable String correlationHeaderName;
 
@@ -135,23 +133,19 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.beanResolver = new BeanFactoryResolver(beanFactory);
 	}
 
-	@Nullable
-	protected BeanFactory getBeanFactory() {
+	protected @Nullable BeanFactory getBeanFactory() {
 		return this.beanFactory;
 	}
 
-	@Nullable
-	protected BeanExpressionResolver getResolver() {
+	protected @Nullable BeanExpressionResolver getResolver() {
 		return this.resolver;
 	}
 
-	@Nullable
-	protected BeanExpressionContext getBeanExpressionContext() {
+	protected @Nullable BeanExpressionContext getBeanExpressionContext() {
 		return this.expressionContext;
 	}
 
-	@Nullable
-	protected BeanResolver getBeanResolver() {
+	protected @Nullable BeanResolver getBeanResolver() {
 		return this.beanResolver;
 	}
 
@@ -164,14 +158,12 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	@Override
-	@Nullable
-	public String getMainListenerId() {
+	public @Nullable String getMainListenerId() {
 		return this.mainListenerId;
 	}
 
-	@Nullable
 	@Override
-	public String getId() {
+	public @Nullable String getId() {
 		return this.id;
 	}
 
@@ -185,9 +177,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.groupId = groupId;
 	}
 
-	@Nullable
 	@Override
-	public String getGroupId() {
+	public @Nullable String getGroupId() {
 		return this.groupId;
 	}
 
@@ -233,9 +224,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * @return the topicPartitions for this endpoint.
 	 * @since 2.3
 	 */
-	@Nullable
 	@Override
-	public TopicPartitionOffset[] getTopicPartitionsToAssign() {
+	public TopicPartitionOffset @Nullable [] getTopicPartitionsToAssign() {
 		return this.topicPartitions.toArray(new TopicPartitionOffset[0]);
 	}
 
@@ -254,15 +244,13 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * Return the topicPattern for this endpoint.
 	 * @return the topicPattern for this endpoint.
 	 */
-	@Nullable
 	@Override
-	public Pattern getTopicPattern() {
+	public @Nullable Pattern getTopicPattern() {
 		return this.topicPattern;
 	}
 
-	@Nullable
 	@Override
-	public String getGroup() {
+	public @Nullable String getGroup() {
 		return this.group;
 	}
 
@@ -290,8 +278,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * @since 2.8
 	 */
 	@Override
-	@Nullable
-	public Boolean getBatchListener() {
+	public @Nullable Boolean getBatchListener() {
 		return this.batchListener;
 	}
 
@@ -313,13 +300,11 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.replyTemplate = replyTemplate;
 	}
 
-	@Nullable
-	protected KafkaTemplate<?, ?> getReplyTemplate() {
+	protected @Nullable KafkaTemplate<?, ?> getReplyTemplate() {
 		return this.replyTemplate;
 	}
 
-	@Nullable
-	protected RecordFilterStrategy<? super K, ? super V> getRecordFilterStrategy() {
+	protected @Nullable RecordFilterStrategy<? super K, ? super V> getRecordFilterStrategy() {
 		return this.recordFilterStrategy;
 	}
 
@@ -344,9 +329,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.ackDiscarded = ackDiscarded;
 	}
 
-	@Nullable
 	@Override
-	public String getClientIdPrefix() {
+	public @Nullable String getClientIdPrefix() {
 		return this.clientIdPrefix;
 	}
 
@@ -361,8 +345,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	@Override
-	@Nullable
-	public Integer getConcurrency() {
+	public @Nullable Integer getConcurrency() {
 		return this.concurrency;
 	}
 
@@ -376,8 +359,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	@Override
-	@Nullable
-	public Boolean getAutoStartup() {
+	public @Nullable Boolean getAutoStartup() {
 		return this.autoStartup;
 	}
 
@@ -400,8 +382,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	@Override
-	@Nullable
-	public Properties getConsumerProperties() {
+	public @Nullable Properties getConsumerProperties() {
 		return this.consumerProperties;
 	}
 
@@ -436,9 +417,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	}
 
 	@Override
-	@SuppressWarnings("NullAway") // Dataflow analysis limitation
-	public byte[] getListenerInfo() {
-		return this.listenerInfo; // NOSONAR
+	public byte @Nullable [] getListenerInfo() {
+		return this.listenerInfo;
 	}
 
 	/**
@@ -450,8 +430,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.listenerInfo = listenerInfo; // NOSONAR
 	}
 
-	@Nullable
-	protected BatchToRecordAdapter<K, V> getBatchToRecordAdapter() {
+	protected @Nullable BatchToRecordAdapter<K, V> getBatchToRecordAdapter() {
 		return this.batchToRecordAdapter;
 	}
 
@@ -525,7 +504,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	protected abstract MessagingMessageListenerAdapter<K, V> createMessageListener(MessageListenerContainer container,
 			@Nullable MessageConverter messageConverter);
 
-	@SuppressWarnings({"unchecked", "NullAway"})
+	@SuppressWarnings("unchecked")
 	private void setupMessageListener(MessageListenerContainer container,
 			@Nullable MessageConverter messageConverter) {
 
@@ -535,8 +514,6 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 				.acceptIfNotNull(this.correlationHeaderName, adapter::setCorrelationHeaderName);
 		adapter.setSplitIterables(this.splitIterables);
 		Object messageListener = adapter;
-		Assert.state(messageListener != null,
-				() -> "Endpoint [" + this + "] must provide a non null message listener");
 		if (this.recordFilterStrategy != null) {
 			if (isBatchListener()) {
 				if (((MessagingMessageListenerAdapter<K, V>) messageListener).isConsumerRecords()) {

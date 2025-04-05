@@ -105,8 +105,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 
 	private @Nullable BatchToRecordAdapter<K, V> batchToRecordAdapter;
 
-	@SuppressWarnings("NullAway.Init")
-	private ApplicationContext applicationContext;
+	private @Nullable ApplicationContext applicationContext;
 
 	private @Nullable ContainerCustomizer<K, V, C> containerCustomizer;
 
@@ -404,7 +403,7 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 * @param instance the container instance to configure.
 	 * @param endpoint the endpoint.
 	 */
-	@SuppressWarnings({"deprecation", "NullAway"})
+	@SuppressWarnings({"NullAway"})
 	protected void initializeContainer(C instance, KafkaListenerEndpoint endpoint) {
 		ContainerProperties properties = instance.getContainerProperties();
 		BeanUtils.copyProperties(this.containerProperties, properties, "topics", "topicPartitions", "topicPattern",

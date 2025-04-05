@@ -21,7 +21,6 @@ import java.util.Properties;
 import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.Topology;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Callback interface that can be used to configure {@link KafkaStreams} directly.
@@ -49,7 +48,7 @@ public interface KafkaStreamsCustomizer {
 	 * @since 3.3.0
 	 */
 	default KafkaStreams initKafkaStreams(
-			@Nullable Topology topology,
+			Topology topology,
 			Properties properties,
 			KafkaClientSupplier clientSupplier
 	) {

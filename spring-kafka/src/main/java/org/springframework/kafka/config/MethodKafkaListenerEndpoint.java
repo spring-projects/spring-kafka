@@ -68,8 +68,7 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 	@SuppressWarnings("NullAway.Init")
 	private Method method;
 
-	@SuppressWarnings("NullAway.Init")
-	private MessageHandlerMethodFactory messageHandlerMethodFactory;
+	private @Nullable MessageHandlerMethodFactory messageHandlerMethodFactory;
 
 	private @Nullable KafkaListenerErrorHandler errorHandler;
 
@@ -195,6 +194,8 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 	 * @return the handler adapter.
 	 */
 	protected HandlerAdapter configureListenerAdapter(MessagingMessageListenerAdapter<K, V> messageListener) {
+		Assert.state(this.messageHandlerMethodFactory != null,
+				"MessageHandlerMethodFactory must not be null");
 		InvocableHandlerMethod invocableHandlerMethod =
 				this.messageHandlerMethodFactory.createInvocableHandlerMethod(getBean(), getMethod());
 		return new HandlerAdapter(invocableHandlerMethod);
@@ -239,8 +240,7 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 		return listener;
 	}
 
-	@SuppressWarnings("null")
-	private String resolve(String value) {
+	private @Nullable String resolve(String value) {
 		BeanExpressionContext beanExpressionContext = getBeanExpressionContext();
 		BeanExpressionResolver resolver = getResolver();
 		if (resolver != null && beanExpressionContext != null) {
