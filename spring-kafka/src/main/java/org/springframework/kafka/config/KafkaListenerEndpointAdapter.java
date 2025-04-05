@@ -38,21 +38,18 @@ class KafkaListenerEndpointAdapter implements KafkaListenerEndpoint {
 	KafkaListenerEndpointAdapter() {
 	}
 
-	@Nullable
 	@Override
-	public String getId() {
+	public @Nullable String getId() {
 		return null;
 	}
 
-	@Nullable
 	@Override
-	public String getGroupId() {
+	public @Nullable String getGroupId() {
 		return null;
 	}
 
-	@Nullable
 	@Override
-	public String getGroup() {
+	public @Nullable String getGroup() {
 		return null;
 	}
 
@@ -61,33 +58,28 @@ class KafkaListenerEndpointAdapter implements KafkaListenerEndpoint {
 		return Collections.emptyList();
 	}
 
-	@Nullable
 	@Override
-	public TopicPartitionOffset[] getTopicPartitionsToAssign() {
+	public TopicPartitionOffset @Nullable [] getTopicPartitionsToAssign() {
 		return new TopicPartitionOffset[0];
 	}
 
-	@Nullable
 	@Override
-	public Pattern getTopicPattern() {
+	public @Nullable Pattern getTopicPattern() {
 		return null;
 	}
 
-	@Nullable
 	@Override
-	public String getClientIdPrefix() {
+	public @Nullable String getClientIdPrefix() {
 		return null;
 	}
 
-	@Nullable
 	@Override
-	public Integer getConcurrency() {
+	public @Nullable Integer getConcurrency() {
 		return null;
 	}
 
-	@Nullable
 	@Override
-	public Boolean getAutoStartup() { // NOSONAR
+	public @Nullable Boolean getAutoStartup() { // NOSONAR
 		return null; // NOSONAR null check by caller
 	}
 

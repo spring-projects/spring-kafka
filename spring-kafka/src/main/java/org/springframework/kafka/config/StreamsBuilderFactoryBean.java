@@ -87,6 +87,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private KafkaClientSupplier clientSupplier = new DefaultKafkaClientSupplier();
 
+	@SuppressWarnings("NullAway.Init")
 	private Properties properties;
 
 	private CleanupConfig cleanupConfig;
@@ -115,7 +116,8 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private volatile boolean running;
 
-	private @Nullable Topology topology;
+	@SuppressWarnings("NullAway.Init")
+	private Topology topology;
 
 	@SuppressWarnings("NullAway.Init")
 	private String beanName;
@@ -219,8 +221,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 * @return {@link StreamsUncaughtExceptionHandler}
 	 * @since 2.8.4
 	 */
-	@Nullable
-	public StreamsUncaughtExceptionHandler getStreamsUncaughtExceptionHandler() {
+	public @Nullable StreamsUncaughtExceptionHandler getStreamsUncaughtExceptionHandler() {
 		return this.streamsUncaughtExceptionHandler;
 	}
 
@@ -253,7 +254,6 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 * @return {@link Topology} object
 	 * @since 2.4.4
 	 */
-	@Nullable
 	public Topology getTopology() {
 		return this.topology;
 	}
@@ -353,9 +353,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	@Override
 	public void stop(Runnable callback) {
 		stop();
-		if (callback != null) {
-			callback.run();
-		}
+		callback.run();
 	}
 
 	@Override
@@ -443,11 +441,8 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		try {
 			this.topology = getObject().build(this.properties);
 			this.infrastructureCustomizer.configureTopology(this.topology);
-			if (this.topology != null) {
-				TopologyDescription description = this.topology.describe();
-				LOGGER.debug(description::toString);
-			}
-
+			TopologyDescription description = this.topology.describe();
+			LOGGER.debug(description::toString);
 		}
 		catch (Exception e) {
 			throw new RuntimeException(e);

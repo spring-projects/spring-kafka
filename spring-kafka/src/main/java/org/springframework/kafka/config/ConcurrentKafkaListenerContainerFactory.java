@@ -31,10 +31,10 @@ import org.springframework.util.Assert;
  * <p>
  * This should be the default for most users and a good transition paths for those that
  * are used to building such container definitions manually.
- *
+ * <p>
  * This factory is primarily for building containers for {@code KafkaListener} annotated
  * methods but can also be used to create any container.
- *
+ * <p>
  * Only containers for {@code KafkaListener} annotated methods are added to the
  * {@code KafkaListenerEndpointRegistry}.
  *
@@ -62,7 +62,7 @@ public class ConcurrentKafkaListenerContainerFactory<K, V>
 
 	@Override
 	protected ConcurrentMessageListenerContainer<K, V> createContainerInstance(KafkaListenerEndpoint endpoint) {
-		@Nullable TopicPartitionOffset[] topicPartitions = endpoint.getTopicPartitionsToAssign();
+		TopicPartitionOffset[] topicPartitions = endpoint.getTopicPartitionsToAssign();
 		if (topicPartitions != null && topicPartitions.length > 0) {
 			ContainerProperties properties = new ContainerProperties(topicPartitions);
 			return new ConcurrentMessageListenerContainer<>(getConsumerFactory(), properties);

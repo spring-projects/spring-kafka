@@ -74,8 +74,7 @@ public interface KafkaListenerEndpoint {
 	 * @return the topicPartitions for this endpoint.
 	 * @since 2.3
 	 */
-	@Nullable
-	TopicPartitionOffset[] getTopicPartitionsToAssign();
+	TopicPartitionOffset @Nullable [] getTopicPartitionsToAssign();
 
 	/**
 	 * Return the topicPattern for this endpoint.
@@ -152,8 +151,7 @@ public interface KafkaListenerEndpoint {
 	 * @return the info.
 	 * @since 2.8.4
 	 */
-	@SuppressWarnings("NullAway") // Dataflow analysis limitation
-	default byte[] getListenerInfo() {
+	default byte @Nullable [] getListenerInfo() {
 		return null;
 	}
 

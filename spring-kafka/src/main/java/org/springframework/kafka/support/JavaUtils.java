@@ -81,7 +81,7 @@ public final class JavaUtils {
 	 * @param consumer the consumer.
 	 * @return this.
 	 */
-	public JavaUtils acceptIfHasText(String value, Consumer<String> consumer) {
+	public JavaUtils acceptIfHasText(@Nullable String value, Consumer<String> consumer) {
 		if (StringUtils.hasText(value)) {
 			consumer.accept(value);
 		}
