@@ -60,7 +60,7 @@ ext {
 	junit4Version = '4.13.2'
 	junitJupiterVersion = '5.11.4'
 	kafkaVersion = '4.0.0'
-	kotlinCoroutinesVersion = '1.10.1'
+	kotlinCoroutinesVersion = '1.10.2'
 	log4jVersion = '2.24.3'
 	micrometerDocsVersion = '1.0.4'
 	micrometerVersion = '1.15.0-SNAPSHOT'
