@@ -743,7 +743,7 @@ public ErrorHandler eh(KafkaOperations<String, String> template) {
                     retries.value()[0]++;
                 }
                 return retries.value()[0] > 5
-                        ? new TopicPartition("topic.DLT", rec.partition())
+                        ? new TopicPartition("topic-dlt", rec.partition())
                         : new TopicPartition("topic", rec.partition());
             }), new FixedBackOff(0L, 0L));
 }

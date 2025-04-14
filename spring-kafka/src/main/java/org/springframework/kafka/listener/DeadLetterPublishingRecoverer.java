@@ -139,7 +139,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	/**
 	 * Create an instance with the provided template and a default destination resolving
-	 * function that returns a TopicPartition based on the original topic (appended with ".DLT")
+	 * function that returns a TopicPartition based on the original topic (appended with "-dlt")
 	 * from the failed record, and the same partition as the failed record. Therefore the
 	 * dead-letter topic must have at least as many partitions as the original topic.
 	 * @param template the {@link KafkaOperations} to use for publishing.
@@ -164,7 +164,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	/**
 	 * Create an instance with the provided templates and a default destination resolving
 	 * function that returns a TopicPartition based on the original topic (appended with
-	 * ".DLT") from the failed record, and the same partition as the failed record.
+	 * "-dlt") from the failed record, and the same partition as the failed record.
 	 * Therefore the dead-letter topic must have at least as many partitions as the
 	 * original topic. The templates map keys are classes and the value the corresponding
 	 * template to use for objects (producer record values) of that type. A
