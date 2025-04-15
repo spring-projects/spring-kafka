@@ -426,8 +426,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * @param listenerInfo the info.
 	 * @since 2.8.4
 	 */
-	public void setListenerInfo(byte[] listenerInfo) {  // NOSONAR
-		this.listenerInfo = listenerInfo; // NOSONAR
+	public void setListenerInfo(byte @Nullable [] listenerInfo) {
+		this.listenerInfo = listenerInfo;
 	}
 
 	protected @Nullable BatchToRecordAdapter<K, V> getBatchToRecordAdapter() {

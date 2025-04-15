@@ -32,6 +32,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -190,8 +191,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private final AtomicBoolean enhancerIsBuilt = new AtomicBoolean();
 
-	@SuppressWarnings("NullAway.Init")
-	private KafkaListenerEndpointRegistry endpointRegistry;
+	private @Nullable KafkaListenerEndpointRegistry endpointRegistry;
 
 	private String defaultContainerFactoryBeanName = DEFAULT_KAFKA_LISTENER_CONTAINER_FACTORY_BEAN_NAME;
 
@@ -207,8 +207,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private Charset charset = StandardCharsets.UTF_8;
 
-	@SuppressWarnings("NullAway.Init")
-	private AnnotationEnhancer enhancer;
+	private @Nullable AnnotationEnhancer enhancer;
 
 	private @Nullable RetryTopicConfigurer retryTopicConfigurer;
 
@@ -327,8 +326,6 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 		if (this.registrar.getEndpointRegistry() == null) {
 			if (this.endpointRegistry == null) {
-				Assert.state(this.beanFactory != null,
-						"BeanFactory must be set to find endpoint registry by bean name");
 				this.endpointRegistry = this.beanFactory.getBean(
 						KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME,
 						KafkaListenerEndpointRegistry.class);
@@ -336,9 +333,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			this.registrar.setEndpointRegistry(this.endpointRegistry);
 		}
 
-		if (this.defaultContainerFactoryBeanName != null) {
-			this.registrar.setContainerFactoryBeanName(this.defaultContainerFactoryBeanName);
-		}
+		this.registrar.setContainerFactoryBeanName(this.defaultContainerFactoryBeanName);
 
 		// Set the custom handler method factory once resolved by the configurer
 		MessageHandlerMethodFactory handlerMethodFactory = this.registrar.getMessageHandlerMethodFactory();
@@ -864,11 +859,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	private String[] resolveTopics(KafkaListener kafkaListener) {
 		String[] topics = kafkaListener.topics();
 		List<String> result = new ArrayList<>();
-		if (topics.length > 0) {
-			for (String topic1 : topics) {
-				Object topic = resolveExpression(topic1);
-				resolveAsString(topic, result);
-			}
+		for (String topic1 : topics) {
+			Object topic = resolveExpression(topic1);
+			resolveAsString(topic, result);
 		}
 		return result.toArray(new String[0]);
 	}
@@ -954,9 +947,9 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	private boolean isRelative(Object topic, PartitionOffset partitionOffset) {
 		Object relativeToCurrentValue = resolveExpression(partitionOffset.relativeToCurrent());
-		Boolean relativeToCurrent;
+		boolean relativeToCurrent;
 		if (relativeToCurrentValue instanceof String str) {
-			relativeToCurrent = Boolean.valueOf(str);
+			relativeToCurrent = Boolean.parseBoolean(str);
 		}
 		else if (relativeToCurrentValue instanceof Boolean bool) {
 			relativeToCurrent = bool;
@@ -1046,8 +1039,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		}
 	}
 
-	@SuppressWarnings("NullAway") // Overridden method does not define nullness
-	private TopicPartitionOffset.SeekPosition resloveTopicPartitionOffsetSeekPosition(@Nullable Object seekPosition) {
+	private TopicPartitionOffset.@Nullable SeekPosition resloveTopicPartitionOffsetSeekPosition(@Nullable Object seekPosition) {
 		TopicPartitionOffset.SeekPosition resloveTpoSp = null;
 		if (seekPosition instanceof String seekPositionName) {
 			String capitalLetterSeekPositionName = seekPositionName.trim().toUpperCase(Locale.ROOT);
@@ -1087,8 +1079,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		return null;
 	}
 
-	@SuppressWarnings("NullAway") // Dataflow analysis limitation
-	private byte[] resolveExpressionAsBytes(String value, String attribute) {
+	private byte @Nullable [] resolveExpressionAsBytes(String value, String attribute) {
 		Object resolved = resolveExpression(value);
 		if (resolved instanceof String str) {
 			if (StringUtils.hasText(str)) {
@@ -1277,7 +1268,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 	static class ListenerScope implements Scope {
 
-		private final Map<String, @Nullable Object> listeners = new HashMap<>();
+		private final Map<String, Object> listeners = new HashMap<>();
 
 		ListenerScope() {
 		}
@@ -1290,16 +1281,15 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			this.listeners.remove(key);
 		}
 
-		@SuppressWarnings("NullAway") // Overridden method does not define nullness
 		@Override
-		public @Nullable Object get(String name, ObjectFactory<?> objectFactory) {
+		public Object get(String name, ObjectFactory<?> objectFactory) {
+			Objects.requireNonNull(this.listeners.get(name), "No listeners registered for " + name);
 			return this.listeners.get(name);
 		}
 
-		@SuppressWarnings("NullAway") // Overridden method does not define nullness
 		@Override
-		public Object remove(String name) {
-			return null;
+		public @Nullable Object remove(String name) {
+			return this.listeners.remove(name);
 		}
 
 		@Override
@@ -1324,7 +1314,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	 * @since 2.7.2
 	 *
 	 */
-	public interface AnnotationEnhancer extends BiFunction<Map<String, Object>, AnnotatedElement, Map<String, Object>> {
+	public interface AnnotationEnhancer extends BiFunction<Map<String, @Nullable Object>, AnnotatedElement, Map<String, Object>> {
 
 	}
 

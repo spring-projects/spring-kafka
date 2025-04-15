@@ -58,7 +58,7 @@ ext {
 	jacksonBomVersion = '2.18.3'
 	jaywayJsonPathVersion = '2.9.0'
 	junit4Version = '4.13.2'
-	junitJupiterVersion = '5.11.4'
+	junitJupiterVersion = '5.12.2'
 	kafkaVersion = '4.0.0'
 	kotlinCoroutinesVersion = '1.10.2'
 	log4jVersion = '2.24.3'
@@ -171,6 +171,7 @@ configure(javaProjects) { subproject ->
 	// dependencies that are common across all java projects
 	dependencies {
 		testImplementation 'org.junit.jupiter:junit-jupiter-api'
+		testImplementation 'org.junit.jupiter:junit-jupiter-params'
 		testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
 		testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
