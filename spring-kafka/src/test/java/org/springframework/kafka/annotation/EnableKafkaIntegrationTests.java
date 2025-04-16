@@ -63,6 +63,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.awaitility.Awaitility;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -141,6 +142,7 @@ import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.converter.AbstractMessageConverter;
 import org.springframework.messaging.converter.SmartMessageConverter;
 import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.messaging.handler.annotation.Headers;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException;
@@ -181,6 +183,7 @@ import static org.mockito.Mockito.spy;
  * @author Soby Chacko
  * @author Wang Zhiyang
  * @author Borahm Lee
+ * @author Sean Sullivan
  */
 @SpringJUnitConfig
 @DirtiesContext
@@ -196,7 +199,7 @@ import static org.mockito.Mockito.spy;
 		"annotated29", "annotated30", "annotated30reply", "annotated31", "annotated32", "annotated33",
 		"annotated34", "annotated35", "annotated36", "annotated37", "foo", "manualStart", "seekOnIdle",
 		"annotated38", "annotated38reply", "annotated39", "annotated40", "annotated41", "annotated42",
-		"annotated43", "annotated43reply", "seekToComputeFn"})
+		"annotated43", "annotated43reply", "seekToComputeFn", "headerMapTopic"})
 @TestPropertySource(properties = "spel.props=fetch.min.bytes=420000,max.poll.records=10")
 public class EnableKafkaIntegrationTests {
 
@@ -241,6 +244,9 @@ public class EnableKafkaIntegrationTests {
 
 	@Autowired
 	public MultiJsonListenerBean multiJsonListener;
+
+	@Autowired
+	public HeaderMapListenerBean headerMapListener;
 
 	@Autowired
 	public MultiListenerNoDefault multiNoDefault;
@@ -582,6 +588,50 @@ public class EnableKafkaIntegrationTests {
 		assertThat(this.multiJsonListener.validated).isNotNull();
 		assertThat(this.multiJsonListener.validated.isValidated()).isTrue();
 		assertThat(this.multiJsonListener.validated.valCount).isEqualTo(1);
+	}
+
+	@Test
+	public void testHeadersAnnotation() throws Exception {
+		template.setDefaultTopic("headerMapTopic");
+
+		template.send(new GenericMessage<>("message1", Collections.emptyMap()));
+		Awaitility.await().untilAsserted(() -> {
+			assertThat(this.headerMapListener.invocationCount.get()).isEqualTo(1);
+		});
+		assertThat(this.headerMapListener.text).isEqualTo("message1");
+		assertThat(this.headerMapListener.headers)
+				.isNotNull()
+				.containsOnlyKeys(
+					"kafka_offset",
+					"kafka_consumer",
+					"kafka_timestampType",
+					"kafka_receivedPartitionId",
+					"kafka_receivedTopic",
+					"kafka_receivedTimestamp",
+					"kafka_groupId");
+
+		template.send(new GenericMessage<>("message2",
+				Map.of("akey", "avalue",
+						"bkey", "bvalue")));
+		Awaitility.await().untilAsserted(() -> {
+			assertThat(this.headerMapListener.invocationCount.get()).isEqualTo(2);
+		});
+		assertThat(this.headerMapListener.text).isEqualTo("message2");
+		assertThat(this.headerMapListener.headers)
+				.isNotNull()
+				.containsOnlyKeys(
+					"kafka_offset",
+					"kafka_consumer",
+					"kafka_timestampType",
+					"kafka_receivedPartitionId",
+					"kafka_receivedTopic",
+					"kafka_receivedTimestamp",
+					"kafka_groupId",
+					"akey",
+					"bkey")
+				.contains(
+					Map.entry("akey", "avalue"),
+					Map.entry("bkey", "bvalue"));
 	}
 
 	@Test
@@ -1543,6 +1593,11 @@ public class EnableKafkaIntegrationTests {
 		@Bean
 		public MultiJsonListenerBean multiJsonListener() {
 			return new MultiJsonListenerBean();
+		}
+
+		@Bean
+		public HeaderMapListenerBean headerMapListener() {
+			return new HeaderMapListenerBean();
 		}
 
 		@Bean
@@ -2738,6 +2793,24 @@ public class EnableKafkaIntegrationTests {
 		public void defaultHandler(Bar bar) {
 			this.bar = bar;
 			this.latch3.countDown();
+		}
+
+	}
+
+	@KafkaListener(id = "headerMap", topics = "headerMapTopic")
+	static class HeaderMapListenerBean {
+
+		final AtomicInteger invocationCount = new AtomicInteger();
+
+		private String text;
+
+		private Map<String, Object> headers;
+
+		@KafkaHandler(isDefault = true)
+		public void defaultHandler(@Payload String text, @Headers Map<String, Object> headers) {
+			this.text = text;
+			this.headers = headers;
+			this.invocationCount.incrementAndGet();
 		}
 
 	}
