@@ -158,7 +158,7 @@ The default executor creates threads named `<name>-C-n`; with the `KafkaMessageL
 
 |[[monitorInterval]]<<monitorInterval,`monitorInterval`>>
 |30s
-|How often to check the state of the consumer threads for `NonResponsiveConsumerEvent` s.
+|How often to check the state of the consumer threads for ``NonResponsiveConsumerEvent``s.
 See `noPollThreshold` and `pollTimeout`.
 
 |[[noPollThreshold]]<<noPollThreshold,`noPollThreshold`>>

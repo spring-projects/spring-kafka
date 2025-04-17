@@ -320,14 +320,14 @@ See xref:kafka/container-props.adoc[Listener Container Properties] for more info
 [[x30-template-changes]]
 === `KafkaTemplate` Changes
 
-The futures returned by this class are now `CompletableFuture` s instead of `ListenableFuture` s.
+The futures returned by this class are now ``CompletableFuture``s instead of ``ListenableFuture``s.
 See xref:kafka/sending-messages.adoc#kafka-template[Using `KafkaTemplate`].
 
 [[x30-rkt-changes]]
 === `ReplyingKafkaTemplate` Changes
 
-The futures returned by this class are now `CompletableFuture` s instead of `ListenableFuture` s.
-See xref:kafka/sending-messages.adoc#replying-template[Using `ReplyingKafkaTemplate`] and xref:kafka/sending-messages.adoc#exchanging-messages[Request/Reply with `Message<?>` s].
+The futures returned by this class are now ``CompletableFuture``s instead of ``ListenableFuture``s.
+See xref:kafka/sending-messages.adoc#replying-template[Using `ReplyingKafkaTemplate`] and xref:kafka/sending-messages.adoc#exchanging-messages[Request/Reply with ``Message<?>``s].
 
 [[x30-listener]]
 === `@KafkaListener` Changes
@@ -395,7 +395,7 @@ See xref:kafka/headers.adoc[Message Headers] for more information.
 [[x29-template-changes]]
 === `KafkaTemplate` Changes
 
-In 3.0, the futures returned by this class will be `CompletableFuture` s instead of `ListenableFuture` s.
+In 3.0, the futures returned by this class will be ``CompletableFuture``s instead of ``ListenableFuture``s.
 See xref:kafka/sending-messages.adoc#kafka-template[Using `KafkaTemplate`] for assistance in transitioning when using this release.
 
 [[x29-rkt-changes]]
@@ -405,8 +405,8 @@ The template now provides a method to wait for assignment on the reply container
 Also available in version 2.8.8 or later.
 See xref:kafka/sending-messages.adoc#replying-template[Using `ReplyingKafkaTemplate`].
 
-In 3.0, the futures returned by this class will be `CompletableFuture` s instead of `ListenableFuture` s.
-See xref:kafka/sending-messages.adoc#replying-template[Using `ReplyingKafkaTemplate`] and xref:kafka/sending-messages.adoc#exchanging-messages[Request/Reply with `Message<?>` s] for assistance in transitioning when using this release.
+In 3.0, the futures returned by this class will be ``CompletableFuture``s instead of ``ListenableFuture``s.
+See xref:kafka/sending-messages.adoc#replying-template[Using `ReplyingKafkaTemplate`] and xref:kafka/sending-messages.adoc#exchanging-messages[Request/Reply with ``Message<?>``s] for assistance in transitioning when using this release.
 
 [[what-s-new-in-2-8-since-2-7]]
 == What's New in 2.8 Since 2.7
@@ -474,7 +474,7 @@ See xref:kafka/annotation-error-handling.adoc#error-handlers[Container Error Han
 
 The `interceptBeforeTx` container property is now `true` by default.
 
-The `authorizationExceptionRetryInterval` property has been renamed to `authExceptionRetryInterval` and now applies to `AuthenticationException` s in addition to `AuthorizationException` s previously.
+The `authorizationExceptionRetryInterval` property has been renamed to `authExceptionRetryInterval` and now applies to ``AuthenticationException``s in addition to ``AuthorizationException``s previously.
 Both exceptions are considered fatal and the container will stop by default, unless this property is set.
 
 See xref:kafka/receiving-messages/message-listener-container.adoc#kafka-container[Using `KafkaMessageListenerContainer`] and xref:kafka/container-props.adoc[Listener Container Properties] for more information.
@@ -537,7 +537,7 @@ See xref:kafka/container-props.adoc[Listener Container Properties] for more info
 
 Error handlers that use a `BackOff` between delivery attempts (e.g. `SeekToCurrentErrorHandler` and `DefaultAfterRollbackProcessor`) will now exit the back off interval soon after the container is stopped, rather than delaying the stop.
 
-Error handlers and after rollback processors that extend `FailedRecordProcessor` can now be configured with one or more `RetryListener` s to receive information about retry and recovery progress.
+Error handlers and after rollback processors that extend `FailedRecordProcessor` can now be configured with one or more ``RetryListener``s to receive information about retry and recovery progress.
 
 The `RecordInterceptor` now has additional methods called after the listener returns (normally, or by throwing an exception).
 It also has a sub-interface `ConsumerAwareRecordInterceptor`.
@@ -578,7 +578,7 @@ See xref:kafka/transactions.adoc[Transactions] for more information.
 
 There is now a mechanism to examine a reply and fail the future exceptionally if some condition exists.
 
-Support for sending and receiving `spring-messaging` `Message<?>` s has been added.
+Support for sending and receiving `spring-messaging` ``Message<?>``s has been added.
 
 See xref:kafka/sending-messages.adoc#replying-template[Using `ReplyingKafkaTemplate`] for more information.
 
@@ -602,9 +602,9 @@ It is now possible to add a `spring-messaging` `SmartMessageConverter` to the `M
 See xref:kafka/serdes.adoc#messaging-message-conversion[Spring Messaging Message Conversion] for more information.
 
 [[x27-sequencing]]
-=== Sequencing `@KafkaListener` s
+=== Sequencing ``@KafkaListener``s
 
-See xref:kafka/receiving-messages/sequencing.adoc[Starting `@KafkaListener` s in Sequence] for more information.
+See xref:kafka/receiving-messages/sequencing.adoc[Starting ``@KafkaListener``s in Sequence] for more information.
 
 [[x27-exp-backoff]]
 === `ExponentialBackOffWithMaxRetries`
@@ -638,7 +638,7 @@ In addition, you can now select the `BackOff` to use based on the failed record 
 You can now configure an `adviceChain` in the container properties.
 See xref:kafka/container-props.adoc[Listener Container Properties] for more information.
 
-When the container is configured to publish `ListenerContainerIdleEvent` s, it now publishes a `ListenerContainerNoLongerIdleEvent` when a record is received after publishing an idle event.
+When the container is configured to publish ``ListenerContainerIdleEvent``s, it now publishes a `ListenerContainerNoLongerIdleEvent` when a record is received after publishing an idle event.
 See xref:kafka/events.adoc[Application Events] and xref:kafka/events.adoc#idle-containers[Detecting Idle and Non-Responsive Consumers] for more information.
 
 [[kafkalistener-changes]]
@@ -742,7 +742,7 @@ See xref:kafka/annotation-error-handling.adoc#error-handlers[Container Error Han
 The `getAssignmentsByClientId()` method has been added, making it easier to determine which consumers in a concurrent container are assigned which partition(s).
 See xref:kafka/container-props.adoc[Listener Container Properties] for more information.
 
-You can now suppress logging entire `ConsumerRecord` s in error, debug logs etc.
+You can now suppress logging entire ``ConsumerRecord``s in error, debug logs etc.
 See `onlyLogRecordMetadata` in xref:kafka/container-props.adoc[Listener Container Properties].
 
 [[x25-template]]
@@ -763,7 +763,7 @@ See xref:kafka/sending-messages.adoc#kafka-template[Using `KafkaTemplate`] for m
 [[x25-string-serializer]]
 === Kafka String Serializer/Deserializer
 
-New `ToStringSerializer`/`StringDeserializer` s as well as an associated `SerDe` are now provided.
+New `ToStringSerializer`/``StringDeserializer``s as well as an associated `SerDe` are now provided.
 See xref:kafka/serdes.adoc#string-serde[String serialization] for more information.
 
 [[x25-json-deser]]
@@ -886,8 +886,8 @@ See xref:kafka/receiving-messages/message-listener-container.adoc#kafka-containe
 [[cb-2-2-and-2-3-listener-container-changes]]
 === Listener Container Changes
 
-Previously, error handlers received `ListenerExecutionFailedException` (with the actual listener exception as the `cause`) when the listener was invoked using a listener adapter (such as `@KafkaListener` s).
-Exceptions thrown by native `GenericMessageListener` s were passed to the error handler unchanged.
+Previously, error handlers received `ListenerExecutionFailedException` (with the actual listener exception as the `cause`) when the listener was invoked using a listener adapter (such as ``@KafkaListener``s).
+Exceptions thrown by native ``GenericMessageListener``s were passed to the error handler unchanged.
 Now a `ListenerExecutionFailedException` is always the argument (with the actual listener exception as the `cause`), which provides access to the container's `group.id` property.
 
 Because the listener container has it's own mechanism for committing offsets, it prefers the Kafka `ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG` to be `false`.
@@ -914,7 +914,7 @@ See its JavaDocs and xref:kafka/receiving-messages/message-listener-container.ad
 When using `AckMode.MANUAL` (or `MANUAL_IMMEDIATE`) you can now cause a redelivery by calling `nack` on the `Acknowledgment`.
 See xref:kafka/receiving-messages/message-listener-container.adoc#committing-offsets[Committing Offsets] for more information.
 
-Listener performance can now be monitored using Micrometer `Timer` s.
+Listener performance can now be monitored using Micrometer ``Timer``s.
 See xref:kafka/micrometer.adoc[Monitoring] for more information.
 
 The containers now publish additional consumer lifecycle events relating to startup.
@@ -942,7 +942,7 @@ See xref:kafka/annotation-error-handling.adoc#dead-letters[Publishing Dead-lette
 [[cb-2-2-and-2-3-topicbuilder]]
 === TopicBuilder
 
-A new class `TopicBuilder` is provided for more convenient creation of `NewTopic` `@Bean` s for automatic topic provisioning.
+A new class `TopicBuilder` is provided for more convenient creation of `NewTopic` ``@Bean``s for automatic topic provisioning.
 See <<configuring-topics>> for more information.
 
 [[cb-2-2-and-2-3-kafka-streams-changes]]
@@ -971,7 +971,7 @@ Also a `JacksonMimeTypeModule` has been introduced for serialization of `org.spr
 See its JavaDocs and xref:kafka/serdes.adoc[Serialization, Deserialization, and Message Conversion] for more information.
 
 A `ByteArrayJsonMessageConverter` has been provided as well as a new super class for all Json converters, `JsonMessageConverter`.
-Also, a `StringOrBytesSerializer` is now available; it can serialize `byte[]`, `Bytes` and `String` values in `ProducerRecord` s.
+Also, a `StringOrBytesSerializer` is now available; it can serialize `byte[]`, `Bytes` and `String` values in ``ProducerRecord``s.
 See xref:kafka/serdes.adoc#messaging-message-conversion[Spring Messaging Message Conversion] for more information.
 
 The `JsonSerializer`, `JsonDeserializer` and `JsonSerde` now have fluent APIs to make programmatic configuration simpler.
