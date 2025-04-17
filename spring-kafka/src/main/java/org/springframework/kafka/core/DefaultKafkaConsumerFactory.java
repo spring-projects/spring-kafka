@@ -428,6 +428,11 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 
 	protected Consumer<K, V> createKafkaConsumer(Map<String, Object> configProps) {
 		checkBootstrap(configProps);
+		if ("consumer".equals(configProps.get("group.protocol")) &&
+				configProps.containsKey(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG)) {
+			LOGGER.warn("Custom partition assignor ignored with group.protocol=consumer; " +
+					"server-side assignors will be used.");
+		}
 		Consumer<K, V> kafkaConsumer = createRawConsumer(configProps);
 		if (!this.listeners.isEmpty() && !(kafkaConsumer instanceof ExtendedKafkaConsumer)) {
 			LOGGER.warn("The 'ConsumerFactory.Listener' configuration is ignored " +
