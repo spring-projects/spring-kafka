@@ -109,7 +109,7 @@ public class ConsumerRebalanceProtocolTests {
 			}
 		};
 
-		ContainerProperties containerProps = new ContainerProperties("rebalance.test1");
+		ContainerProperties containerProps = new ContainerProperties("rebalance.test");
 		containerProps.setGroupId(groupId);
 		containerProps.setConsumerRebalanceListener(listener);
 		containerProps.setMessageListener((MessageListener<String, String>) (ConsumerRecord<String, String> record) -> {

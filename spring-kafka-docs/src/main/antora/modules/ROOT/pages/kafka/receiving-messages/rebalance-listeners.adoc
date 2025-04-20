@@ -72,6 +72,9 @@ To enable the new protocol, configure the `group.protocol` property:
 spring.kafka.consumer.properties.group.protocol=consumer
 ----
 
+Keep in mind that, the above property is a Spring Boot property.
+If you are not using Spring Boot, you may want to set it manually as shown below.
+
 Alternatively, set it programmatically:
 
 [source, java]
@@ -82,10 +85,8 @@ ConsumerFactory<String, String> factory = new DefaultKafkaConsumerFactory<>(prop
 ----
 
 The new protocol works seamlessly with `ConsumerAwareRebalanceListener`.
-Due to incremental rebalancing, `onPartitionsAssigned` may be called multiple times with smaller partition sets, unlike the single callback typical of the legacy protocol (`group.protocol=classic`).
+Due to incremental rebalancing, `onPartitionsAssigned` may be called multiple times with smaller partition sets, unlike the single callback typical of the legacy protocol.
 
 The new protocol uses server-side partition assignments, ignoring client-side custom assignors set via `spring.kafka.consumer.partition-assignment-strategy`.
 A warning is logged if a custom assignor is detected.
-To use custom assignors, set `group.protocol=classic`.
-
-Test applications with `group.protocol=consumer` in a non-production environment to assess rebalancing impacts, and monitor callback frequency for performance tuning.
+To use custom assignors, set `group.protocol=classic` (which is the default if you don't specify a value for `group.protocol`).
