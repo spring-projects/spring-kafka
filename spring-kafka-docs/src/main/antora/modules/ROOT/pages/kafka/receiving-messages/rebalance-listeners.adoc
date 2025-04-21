@@ -59,3 +59,34 @@ If you implement `ConsumerRebalanceListener` you should override the default met
 This is because the listener container will call its own `onPartitionsRevoked` from its implementation of `onPartitionsLost` after calling the method on your implementation.
 If you implementation delegates to the default behavior, `onPartitionsRevoked` will be called twice each time the `Consumer` calls that method on the container's listener.
 
+[[new-rebalalcne-protocol]]
+== Kafka 4.0 Consumer Rebalance Protocol
+
+Spring for Apache Kafka 4.0 supports Apache https://cwiki.apache.org/confluence/display/KAFKA/KIP-848%3A+The+Next+Generation+of+the+Consumer+Rebalance+Protocol[Kafka 4.0’s new consumer rebalance protocol] (KIP-848), which enhances performance with server-driven, incremental partition assignments.
+This reduces rebalancing downtime for consumer groups.
+
+To enable the new protocol, configure the `group.protocol` property:
+
+[source, properties]
+----
+spring.kafka.consumer.properties.group.protocol=consumer
+----
+
+Keep in mind that, the above property is a Spring Boot property.
+If you are not using Spring Boot, you may want to set it manually as shown below.
+
+Alternatively, set it programmatically:
+
+[source, java]
+----
+Map<String, Object> props = new HashMap<>();
+props.put("group.protocol", "consumer");
+ConsumerFactory<String, String> factory = new DefaultKafkaConsumerFactory<>(props);
+----
+
+The new protocol works seamlessly with `ConsumerAwareRebalanceListener`.
+Due to incremental rebalancing, `onPartitionsAssigned` may be called multiple times with smaller partition sets, unlike the single callback typical of the legacy protocol.
+
+The new protocol uses server-side partition assignments, ignoring client-side custom assignors set via `spring.kafka.consumer.partition-assignment-strategy`.
+A warning is logged if a custom assignor is detected.
+To use custom assignors, set `group.protocol=classic` (which is the default if you don't specify a value for `group.protocol`).
