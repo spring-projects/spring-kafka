@@ -37,7 +37,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -143,7 +142,6 @@ public class ConsumerRebalanceProtocolTests {
 	}
 
 	@Configuration
-	@EnableKafka
 	public static class Config {
 
 		@Bean
