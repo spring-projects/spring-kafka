@@ -32,6 +32,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.awaitility.Awaitility;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -108,23 +109,18 @@ public class ConsumerRebalanceProtocolTests {
 			}
 		};
 
-		ContainerProperties containerProps = new ContainerProperties("rebalance.test");
-		containerProps.setGroupId(groupId);
-		containerProps.setConsumerRebalanceListener(listener);
-		containerProps.setMessageListener((MessageListener<String, String>) (ConsumerRecord<String, String> record) -> {
-		});
-
-		KafkaMessageListenerContainer<String, String> container1 = new KafkaMessageListenerContainer<>(consumerFactory, containerProps);
+		KafkaMessageListenerContainer<String, String> container1 =
+				new KafkaMessageListenerContainer<>(consumerFactory, getContainerProperties(groupId, listener));
 		container1.start();
 
-		Thread.sleep(1000); // Wait for initial assignment
+		assertThat(assignedLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
-		KafkaMessageListenerContainer<String, String> container2 = new KafkaMessageListenerContainer<>(consumerFactory, containerProps);
+		KafkaMessageListenerContainer<String, String> container2 =
+				new KafkaMessageListenerContainer<>(consumerFactory, getContainerProperties(groupId, listener));
 		container2.start();
 
 		assertThat(revokedBeforeCommitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(revokedAfterCommitLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(assignedLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
 		assertThat(consumerRef.get()).isNotNull();
 		assertThat(consumerRef.get()).isInstanceOf(Consumer.class);
@@ -139,6 +135,15 @@ public class ConsumerRebalanceProtocolTests {
 
 		container1.stop();
 		container2.stop();
+	}
+
+	private static @NotNull ContainerProperties getContainerProperties(String groupId, ConsumerAwareRebalanceListener listener) {
+		ContainerProperties containerProps = new ContainerProperties("rebalance.test");
+		containerProps.setGroupId(groupId);
+		containerProps.setConsumerRebalanceListener(listener);
+		containerProps.setMessageListener((MessageListener<String, String>) (ConsumerRecord<String, String> record) -> {
+		});
+		return containerProps;
 	}
 
 	@Configuration
