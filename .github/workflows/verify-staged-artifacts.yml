@@ -28,4 +28,28 @@ jobs:
         uses: spring-io/spring-gradle-build-action@v2
 
       - name: Prepare Spring Integration project against Staging
-        run: exit 0
+        run: |
+          printf "allprojects {
+                  repositories {
+                    maven { 
+                      url 'https://repo.spring.io/libs-staging-local'
+                      credentials {
+                        username = '$ARTIFACTORY_USERNAME'
+                        password = '$ARTIFACTORY_PASSWORD'
+                      }
+                    }
+                  }
+                }" > staging-repo-init.gradle
+          
+          sed -i "1,/springKafkaVersion.*/s/springKafkaVersion.*/springKafkaVersion='${{ inputs.releaseVersion }}'/" build.gradle  
+
+      - name: Verify Spring Integration Kafka module against staged release
+        run: gradle :spring-integration-kafka:check --init-script staging-repo-init.gradle
+
+      - name: Capture Test Results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/target/surefire-reports/**/*.*'
+          retention-days: 1
