@@ -82,7 +82,7 @@ return container;
 
 Note that when creating a `DefaultKafkaConsumerFactory`, using the constructor that just takes in the properties as above means that key and value `Deserializer` classes are picked up from configuration.
 Alternatively, `Deserializer` instances may be passed to the `DefaultKafkaConsumerFactory` constructor for key and/or value, in which case all Consumers share the same instances.
-Another option is to provide `Supplier<Deserializer>` s (starting with version 2.3) that will be used to obtain separate `Deserializer` instances for each `Consumer`:
+Another option is to provide ``Supplier<Deserializer>``s (starting with version 2.3) that will be used to obtain separate `Deserializer` instances for each `Consumer`:
 
 [source, java]
 ----

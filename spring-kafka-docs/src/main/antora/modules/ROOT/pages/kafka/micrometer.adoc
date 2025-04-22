@@ -117,5 +117,5 @@ To do so, add a custom `KafkaListenerObservationConvention` and/or `KafkaTemplat
 The `record` property in both observation contexts contains the `ConsumerRecord` or `ProducerRecord` respectively.
 
 The sender and receiver contexts `remoteServiceName` properties are set to the Kafka `clusterId` property; this is retrieved by a `KafkaAdmin`.
-If, for some reason - perhaps lack of admin permissions, you cannot retrieve the cluster id, starting with version 3.1, you can set a manual `clusterId` on the `KafkaAdmin` and inject it into `KafkaTemplate` s and listener containers.
+If, for some reason - perhaps lack of admin permissions, you cannot retrieve the cluster id, starting with version 3.1, you can set a manual `clusterId` on the `KafkaAdmin` and inject it into ``KafkaTemplate``s and listener containers.
 When it is `null` (default), the admin will invoke the `describeCluster` admin operation to retrieve it from the broker.

@@ -286,7 +286,7 @@ Calling `reset()` or `destroy()` will not clean up these producers.
 
 Also see xref:kafka/transactions.adoc#tx-template-mixed[`KafkaTemplate` Transactional and non-Transactional Publishing].
 
-When creating a `DefaultKafkaProducerFactory`, key and/or value `Serializer` classes can be picked up from configuration by calling the constructor that only takes in a Map of properties (see example in xref:kafka/sending-messages.adoc#kafka-template[Using `KafkaTemplate`]), or `Serializer` instances may be passed to the `DefaultKafkaProducerFactory` constructor (in which case all `Producer` s share the same instances).
+When creating a `DefaultKafkaProducerFactory`, key and/or value `Serializer` classes can be picked up from configuration by calling the constructor that only takes in a Map of properties (see example in xref:kafka/sending-messages.adoc#kafka-template[Using `KafkaTemplate`]), or `Serializer` instances may be passed to the `DefaultKafkaProducerFactory` constructor (in which case all ``Producer``s share the same instances).
 Alternatively you can provide `Supplier<Serializer>`+++s+++ (starting with version 2.3) that will be used to obtain separate `Serializer` instances for each `Producer`:
 
 [source, java]
@@ -335,7 +335,7 @@ RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record,
     Duration replyTimeout);
 ----
 
-(Also see xref:kafka/sending-messages.adoc#exchanging-messages[Request/Reply with `Message<?>` s]).
+(Also see xref:kafka/sending-messages.adoc#exchanging-messages[Request/Reply with ``Message<?>``s]).
 
 The result is a `CompletableFuture` that is asynchronously populated with the result (or an exception, for a timeout).
 The result also has a `sendFuture` property, which is the result of calling `KafkaTemplate.send()`.
