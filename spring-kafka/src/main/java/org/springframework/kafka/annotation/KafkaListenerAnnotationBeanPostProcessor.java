@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -148,6 +149,7 @@ import org.springframework.validation.Validator;
  * @author Sanghyeok An
  * @author Soby Chacko
  * @author Omer Celik
+ * @author Sanghyeok An
  *
  * @see KafkaListener
  * @see KafkaListenerErrorHandler
@@ -157,6 +159,7 @@ import org.springframework.validation.Validator;
  * @see KafkaListenerEndpointRegistry
  * @see org.springframework.kafka.config.KafkaListenerEndpoint
  * @see MethodKafkaListenerEndpoint
+ * @see KafkaHandlerParser
  */
 public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		implements BeanPostProcessor, Ordered, ApplicationContextAware, SmartInitializingSingleton {
@@ -212,6 +215,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	private @Nullable RetryTopicConfigurer retryTopicConfigurer;
 
 	private final Lock globalLock = new ReentrantLock();
+
+	private final KafkaHandlerParser kafkaHandlerParser = new KafkaHandlerParser();
 
 	@Override
 	public int getOrder() {
@@ -408,11 +413,19 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 							+ beanName + "': " + annotatedMethods);
 				}
 				if (hasClassLevelListeners) {
-					Set<Method> methodsWithHandler = MethodIntrospector.selectMethods(targetClass,
-							(ReflectionUtils.MethodFilter) method ->
-									AnnotationUtils.findAnnotation(method, KafkaHandler.class) != null);
-					List<Method> multiMethods = new ArrayList<>(methodsWithHandler);
-					processMultiMethodListeners(classLevelListeners, multiMethods, targetClass, bean, beanName);
+					Optional<Method> methodWithoutAnnotation = this.kafkaHandlerParser.parseSingleHandlerMethod(targetClass);
+					if (methodWithoutAnnotation.isPresent() && classLevelListeners.size() == 1) {
+						// Case when target class has class-level @KafkaListener annotation and
+						// has only single public method without @KafkaHandler.
+						for (KafkaListener kafkaListener : classLevelListeners) {
+							processKafkaListener(kafkaListener, methodWithoutAnnotation.get(), bean, beanName);
+						}
+					}
+					else {
+						Set<Method> methodsWithHandler = MethodIntrospector.selectMethods(targetClass, (ReflectionUtils.MethodFilter) method -> AnnotationUtils.findAnnotation(method, KafkaHandler.class) != null);
+						List<Method> multiMethods = new ArrayList<>(methodsWithHandler);
+						processMultiMethodListeners(classLevelListeners, multiMethods, targetClass, bean, beanName);
+					}
 				}
 			}
 		}

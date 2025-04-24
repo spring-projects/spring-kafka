@@ -36,6 +36,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.AliasFor;
 import org.springframework.kafka.annotation.AliasPropertiesTests.Config.ClassAndMethodLevelListener;
+import org.springframework.kafka.annotation.AliasPropertiesTests.Config.ClassLevelListenerWithPublicMethodWithoutHandlerAnnotation;
 import org.springframework.kafka.annotation.KafkaListenerAnnotationBeanPostProcessor.AnnotationEnhancer;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerConfigUtils;
@@ -58,6 +59,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Soby Chacko
+ * @author Sanghyeok An
  *
  * @since 2.2
  *
@@ -81,12 +83,16 @@ public class AliasPropertiesTests {
 	@Autowired
 	private ClassAndMethodLevelListener repeatable;
 
+	@Autowired
+	private ClassLevelListenerWithPublicMethodWithoutHandlerAnnotation withPublicMethod;
+
 	@Test
 	public void testAliasFor() throws Exception {
 		this.template.send("alias.tests", "foo");
 		assertThat(this.config.latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.classLevel.latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.repeatable.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.withPublicMethod.latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.kafkaListenerEndpointRegistry()).isSameAs(this.kafkaListenerEndpointRegistry);
 		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("onMethodInConfigClass").getGroupId())
 				.isEqualTo("onMethodInConfigClass.Config.listen1");
@@ -102,6 +108,8 @@ public class AliasPropertiesTests {
 				.isEqualTo("onMethodRepeatable2.RepeatableClassAndMethodLevelListener.listen1");
 		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("onClassRepeatable2").getGroupId())
 				.isEqualTo("onClassRepeatable2.RepeatableClassAndMethodLevelListener");
+		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("onSinglePublicMethod").getGroupId())
+				.isEqualTo("onSinglePublicMethod.ClassLevelListenerWithPublicMethodWithoutHandlerAnnotation");
 		assertThat(Config.orderedCalledFirst.get()).isTrue();
 	}
 
@@ -215,6 +223,18 @@ public class AliasPropertiesTests {
 			@KafkaListener(id = "onMethodRepeatable1", topics = "alias.tests")
 			@KafkaListener(id = "onMethodRepeatable2", topics = "alias.tests")
 			public void listen1(String in) {
+				this.latch.countDown();
+			}
+
+		}
+
+		@Component
+		@MyListener(id = "onSinglePublicMethod", value = "alias.tests")
+		public static class ClassLevelListenerWithPublicMethodWithoutHandlerAnnotation {
+
+			private final CountDownLatch latch = new CountDownLatch(1);
+
+			public void listen(String in) {
 				this.latch.countDown();
 			}
 
