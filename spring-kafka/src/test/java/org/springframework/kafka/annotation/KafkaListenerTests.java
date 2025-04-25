@@ -31,7 +31,6 @@ import org.springframework.kafka.annotation.KafkaListenerTests.Config.ClassLevel
 import org.springframework.kafka.annotation.KafkaListenerTests.Config.ClassLevelListenerWithSinglePublicMethodAndPrivateMethod;
 import org.springframework.kafka.annotation.KafkaListenerTests.Config.OtherClassLevelListenerWithSinglePublicMethod;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
-import org.springframework.kafka.config.KafkaListenerConfigUtils;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
@@ -39,7 +38,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.test.annotation.DirtiesContext;
@@ -56,6 +55,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringJUnitConfig
 @DirtiesContext
+@EmbeddedKafka(partitions = 1, topics = "default-listener.tests")
 public class KafkaListenerTests {
 
 	private static final String TEST_TOPIC = "default-listener.tests";
@@ -118,15 +118,8 @@ public class KafkaListenerTests {
 	@EnableKafka
 	public static class Config {
 
-		@Bean(KafkaListenerConfigUtils.KAFKA_LISTENER_ENDPOINT_REGISTRY_BEAN_NAME)
-		public KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry() {
-			return new KafkaListenerEndpointRegistry();
-		}
-
-		@Bean
-		public EmbeddedKafkaBroker embeddedKafka() {
-			return new EmbeddedKafkaKraftBroker(1, 1, TEST_TOPIC);
-		}
+		@Autowired
+		EmbeddedKafkaBroker broker;
 
 		@Bean
 		public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory() {
@@ -143,8 +136,10 @@ public class KafkaListenerTests {
 
 		@Bean
 		public Map<String, Object> consumerConfigs() {
-			Map<String, Object> consumerProps =
-					KafkaTestUtils.consumerProps("myDefaultListenerGroup", "false", embeddedKafka());
+			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(
+					this.broker.getBrokersAsString(),
+					"myDefaultListenerGroup",
+					"false");
 			return consumerProps;
 		}
 
@@ -160,7 +155,7 @@ public class KafkaListenerTests {
 
 		@Bean
 		public Map<String, Object> producerConfigs() {
-			return KafkaTestUtils.producerProps(embeddedKafka());
+			return KafkaTestUtils.producerProps(this.broker.getBrokersAsString());
 		}
 
 		@Component
