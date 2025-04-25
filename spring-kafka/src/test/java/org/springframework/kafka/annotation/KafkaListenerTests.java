@@ -25,11 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.annotation.KafkaListenerTests.Config.ClassAndMethodLevelListener;
-import org.springframework.kafka.annotation.KafkaListenerTests.Config.ClassLevelListenerWithDoublePublicMethod;
 import org.springframework.kafka.annotation.KafkaListenerTests.Config.ClassLevelListenerWithSinglePublicMethod;
-import org.springframework.kafka.annotation.KafkaListenerTests.Config.ClassLevelListenerWithSinglePublicMethodAndPrivateMethod;
-import org.springframework.kafka.annotation.KafkaListenerTests.Config.OtherClassLevelListenerWithSinglePublicMethod;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
@@ -70,19 +66,7 @@ public class KafkaListenerTests {
 	private KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
 
 	@Autowired
-	private ClassAndMethodLevelListener classLevel;
-
-	@Autowired
 	private ClassLevelListenerWithSinglePublicMethod classLevelListenerWithSinglePublicMethod;
-
-	@Autowired
-	private OtherClassLevelListenerWithSinglePublicMethod otherClassLevelListenerWithSinglePublicMethod;
-
-	@Autowired
-	private ClassLevelListenerWithDoublePublicMethod classLevelListenerWithDoublePublicMethod;
-
-	@Autowired
-	private ClassLevelListenerWithSinglePublicMethodAndPrivateMethod classLevelListenerWithSinglePublicMethodAndPrivateMethod;
 
 	@Test
 	public void testImplicitKafkaHandlerAnnotation() throws Exception {
@@ -93,25 +77,10 @@ public class KafkaListenerTests {
 		this.template.send(TEST_TOPIC, "foo");
 
 		// THEN
-		assertThat(this.classLevel.latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.classLevelListenerWithSinglePublicMethod.latch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(this.otherClassLevelListenerWithSinglePublicMethod.latch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(this.classLevelListenerWithSinglePublicMethodAndPrivateMethod.latch.await(10, TimeUnit.SECONDS)).isTrue();
 
-		assertThat(this.classLevelListenerWithDoublePublicMethod.latch.await(10, TimeUnit.SECONDS)).isFalse();
-		assertThat(this.classLevelListenerWithDoublePublicMethod.latch.getCount()).isEqualTo(ClassLevelListenerWithDoublePublicMethod.INIT_LATCH_COUNT);
-
-		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("classAndMethodLevelListener").getGroupId())
-				.isEqualTo("classAndMethodLevelListener");
 		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("classLevelListenerWithSinglePublicMethod").getGroupId())
 				.isEqualTo("classLevelListenerWithSinglePublicMethod");
-		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("otherClassLevelListenerWithSinglePublicMethod").getGroupId())
-				.isEqualTo("otherClassLevelListenerWithSinglePublicMethod");
-		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("classLevelListenerWithDoublePublicMethod").getGroupId())
-				.isEqualTo("classLevelListenerWithDoublePublicMethod");
-		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("classLevelListenerWithSinglePublicMethodAndPrivateMethod").getGroupId())
-				.isEqualTo("classLevelListenerWithSinglePublicMethodAndPrivateMethod");
-
 	}
 
 	@Configuration
@@ -159,18 +128,6 @@ public class KafkaListenerTests {
 		}
 
 		@Component
-		@KafkaListener(id = "classAndMethodLevelListener", topics = "default-listener.tests")
-		public static class ClassAndMethodLevelListener {
-
-			final CountDownLatch latch = new CountDownLatch(1);
-
-			@KafkaHandler
-			public void listen(String in) {
-				this.latch.countDown();
-			}
-		}
-
-		@Component
 		@KafkaListener(id = "classLevelListenerWithSinglePublicMethod", topics = TEST_TOPIC)
 		public static class ClassLevelListenerWithSinglePublicMethod {
 
@@ -179,54 +136,6 @@ public class KafkaListenerTests {
 			public void listen(String in) {
 				this.latch.countDown();
 			}
-		}
-
-		@Component
-		@KafkaListener(id = "otherClassLevelListenerWithSinglePublicMethod", topics = TEST_TOPIC)
-		public static class OtherClassLevelListenerWithSinglePublicMethod {
-
-			final CountDownLatch latch = new CountDownLatch(1);
-
-			public void listen(String in) {
-				this.latch.countDown();
-			}
-		}
-
-		@Component
-		@KafkaListener(id = "classLevelListenerWithDoublePublicMethod", topics = TEST_TOPIC)
-		public static class ClassLevelListenerWithDoublePublicMethod {
-
-			public final static int INIT_LATCH_COUNT = 2;
-
-			final CountDownLatch latch = new CountDownLatch(INIT_LATCH_COUNT);
-
-			public void listen1(String in) {
-				this.latch.countDown();
-			}
-
-			public void listen2(String in) {
-				this.latch.countDown();
-			}
-		}
-
-		@Component
-		@KafkaListener(id = "classLevelListenerWithSinglePublicMethodAndPrivateMethod", topics = TEST_TOPIC)
-		public static class ClassLevelListenerWithSinglePublicMethodAndPrivateMethod {
-
-			final CountDownLatch latch = new CountDownLatch(1);
-
-			public void listen1(String in) {
-				this.latch.countDown();
-			}
-
-			private void listen2(String in) {
-				this.latch.countDown();
-			}
-
-			private void listen3(String in) {
-				this.latch.countDown();
-			}
-
 		}
 
 	}

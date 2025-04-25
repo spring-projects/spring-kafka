@@ -417,9 +417,6 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 									Modifier.isPublic(method.getModifiers()));
 
 					if (methodsWithHandler.isEmpty() && publicMethods.size() == 1 && !hasMethodLevelListeners) {
-						// Case when target class has class-level @KafkaListener annotation and
-						// has only single public method without @KafkaHandler.
-						// See, GH-3807 for more details.
 						Method method = publicMethods.iterator().next();
 						for (KafkaListener classLevelListener : classLevelListeners) {
 							processKafkaListener(classLevelListener, method, bean, beanName);

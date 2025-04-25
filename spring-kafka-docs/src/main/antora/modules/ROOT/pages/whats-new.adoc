@@ -70,3 +70,10 @@ Several deprecated items have been removed:
 
 Spring for Apache Kafka 4.0 supports Kafka 4.0’s new consumer rebalance protocol - https://cwiki.apache.org/confluence/display/KAFKA/KIP-848%3A+The+Next+Generation+of+the+Consumer+Rebalance+Protocol[KIP-848].
 For details, see xref:kafka/receiving-messages/rebalance-listeners.adoc#new-rebalalcne-protocol[New Consumer Rebalace Protocol docs].
+
+[[x40-single-public-method-listener]]
+=== Single Public Method Listener Simplification
+
+Spring for Apache Kafka 4.0 simplifies the use of class-level `@KafkaListener` annotations.
+Previously, when `@KafkaListener` was declared at the class level, each public method intended to handle messages had to be annotated explicitly with `@KafkaHandler`.
+Now, if there is exactly one public method in the class, it will be automatically recognized as the listener method even without the `@KafkaHandler` annotation. For details, see xref:kafka/receiving-messages/class-level-kafkalistener.adoc#class-level-kafkalistener[Class Level Kafka Listener].
