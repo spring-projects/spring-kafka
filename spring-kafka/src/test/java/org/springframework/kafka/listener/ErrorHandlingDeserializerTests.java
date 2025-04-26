@@ -51,7 +51,7 @@ import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.SerializationUtils;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -62,14 +62,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Gary Russell
+ * @author Sanghyeok An
  * @since 2.2
  *
  */
 @SpringJUnitConfig
 @DirtiesContext
+@EmbeddedKafka(partitions = 1, topics = ErrorHandlingDeserializerTests.TOPIC)
 public class ErrorHandlingDeserializerTests {
 
-	private static final String TOPIC = "ehdt";
+	static final String TOPIC = "ehdt";
 
 	@Autowired
 	public Config config;
@@ -180,6 +182,9 @@ public class ErrorHandlingDeserializerTests {
 	@EnableKafka
 	public static class Config {
 
+		@Autowired
+		EmbeddedKafkaBroker broker;
+
 		private final CountDownLatch latch = new CountDownLatch(6);
 
 		private final AtomicInteger goodCount = new AtomicInteger();
@@ -200,11 +205,6 @@ public class ErrorHandlingDeserializerTests {
 		public void listen2(ConsumerRecord<String, String> record) {
 			this.goodCount.incrementAndGet();
 			this.latch.countDown();
-		}
-
-		@Bean
-		public EmbeddedKafkaBroker embeddedKafka() {
-			return new EmbeddedKafkaKraftBroker(1,  1, TOPIC);
 		}
 
 		@Bean
@@ -245,7 +245,7 @@ public class ErrorHandlingDeserializerTests {
 
 		@Bean
 		public ConsumerFactory<String, String> cf() {
-			Map<String, Object> props = KafkaTestUtils.consumerProps(TOPIC + ".g1", "false", embeddedKafka());
+			Map<String, Object> props = KafkaTestUtils.consumerProps(this.broker.getBrokersAsString(), TOPIC + ".g1", "false");
 			props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ExtendedEHD.class.getName());
 			props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
 			props.put(ErrorHandlingDeserializer.KEY_DESERIALIZER_CLASS, FailSometimesDeserializer.class);
@@ -255,7 +255,7 @@ public class ErrorHandlingDeserializerTests {
 
 		@Bean
 		public ConsumerFactory<String, String> cfWithExplicitDeserializers() {
-			Map<String, Object> props = KafkaTestUtils.consumerProps(TOPIC + ".g2", "false", embeddedKafka());
+			Map<String, Object> props = KafkaTestUtils.consumerProps(this.broker.getBrokersAsString(), TOPIC + ".g2", "false");
 			return new DefaultKafkaConsumerFactory<>(props,
 					new ErrorHandlingDeserializer<String>(new FailSometimesDeserializer()).keyDeserializer(true),
 					new ErrorHandlingDeserializer<String>(new FailSometimesDeserializer()));
@@ -263,7 +263,7 @@ public class ErrorHandlingDeserializerTests {
 
 		@Bean
 		public ProducerFactory<String, String> pf() {
-			Map<String, Object> props = KafkaTestUtils.producerProps(embeddedKafka());
+			Map<String, Object> props = KafkaTestUtils.producerProps(broker.getBrokersAsString());
 			props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 			return new DefaultKafkaProducerFactory<>(props);
 		}

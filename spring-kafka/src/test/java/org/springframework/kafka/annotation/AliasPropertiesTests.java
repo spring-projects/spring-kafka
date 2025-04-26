@@ -46,7 +46,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.test.annotation.DirtiesContext;
@@ -58,12 +58,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Soby Chacko
+ * @author Sanghyeok An
  *
  * @since 2.2
  *
  */
 @SpringJUnitConfig
 @DirtiesContext
+@EmbeddedKafka(partitions = 1, topics = "alias.tests")
 public class AliasPropertiesTests {
 
 	@Autowired
@@ -109,6 +111,9 @@ public class AliasPropertiesTests {
 	@EnableKafka
 	public static class Config {
 
+		@Autowired
+		EmbeddedKafkaBroker broker;
+
 		final CountDownLatch latch = new CountDownLatch(1);
 
 		static AtomicBoolean orderedCalledFirst = new AtomicBoolean(true);
@@ -138,11 +143,6 @@ public class AliasPropertiesTests {
 		}
 
 		@Bean
-		public EmbeddedKafkaBroker embeddedKafka() {
-			return new EmbeddedKafkaKraftBroker(1, 1, "alias.tests");
-		}
-
-		@Bean
 		public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
@@ -158,7 +158,7 @@ public class AliasPropertiesTests {
 		@Bean
 		public Map<String, Object> consumerConfigs() {
 			Map<String, Object> consumerProps =
-					KafkaTestUtils.consumerProps("myAliasGroup", "false", embeddedKafka());
+					KafkaTestUtils.consumerProps(this.broker.getBrokersAsString(), "myAliasGroup", "false");
 			return consumerProps;
 		}
 
@@ -174,7 +174,7 @@ public class AliasPropertiesTests {
 
 		@Bean
 		public Map<String, Object> producerConfigs() {
-			return KafkaTestUtils.producerProps(embeddedKafka());
+			return KafkaTestUtils.producerProps(this.broker.getBrokersAsString());
 		}
 
 		@MyListener(id = "onMethodInConfigClass", value = "alias.tests")
