@@ -407,16 +407,30 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 					this.logger.debug(() -> annotatedMethods.size() + " @KafkaListener methods processed on bean '"
 							+ beanName + "': " + annotatedMethods);
 				}
+				Set<Method> methodsWithHandler = MethodIntrospector.selectMethods(targetClass,
+						(ReflectionUtils.MethodFilter) method ->
+								AnnotationUtils.findAnnotation(method, KafkaHandler.class) != null);
+				boolean hasMethodLevelKafkaHandlerAnnotation = !methodsWithHandler.isEmpty();
 				if (hasClassLevelListeners) {
-					Set<Method> methodsWithHandler = MethodIntrospector.selectMethods(targetClass,
-							(ReflectionUtils.MethodFilter) method ->
-									AnnotationUtils.findAnnotation(method, KafkaHandler.class) != null);
 					List<Method> multiMethods = new ArrayList<>(methodsWithHandler);
 					processMultiMethodListeners(classLevelListeners, multiMethods, targetClass, bean, beanName);
 				}
+				throwErrorIfNoListenerMethods(bean, hasMethodLevelListeners,
+											hasClassLevelListeners, hasMethodLevelKafkaHandlerAnnotation);
 			}
 		}
 		return bean;
+	}
+
+	private void throwErrorIfNoListenerMethods(Object bean, boolean hasMethodLevelListeners,
+				boolean hasClassLevelListeners, boolean hasMethodLevelKafkaHandlerAnnotation) {
+		if (hasMethodLevelListeners) {
+			return;
+		}
+
+		if (hasClassLevelListeners && !hasMethodLevelKafkaHandlerAnnotation) {
+			throw new IllegalStateException("No kafka listener methods found on bean type: " + bean.getClass());
+		}
 	}
 
 	/*
