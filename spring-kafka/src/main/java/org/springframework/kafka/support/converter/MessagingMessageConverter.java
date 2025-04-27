@@ -58,6 +58,7 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  * @author Dariusz Szablinski
  * @author Biju Kunjummen
+ * @author Sanghyeok An
  */
 public class MessagingMessageConverter implements RecordMessageConverter {
 
@@ -84,6 +85,15 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	}
 
 	/**
+	 * Construct an instance that uses given HeaderMapper.
+	 * @param headerMapper the Header mapper.
+	 * @since 4.0.0
+	 */
+	public MessagingMessageConverter(KafkaHeaderMapper headerMapper) {
+		this(msg -> msg.getHeaders().get(KafkaHeaders.PARTITION, Integer.class), headerMapper);
+	}
+
+	/**
 	 * Construct an instance that uses the supplied partition provider function. The
 	 * function can return null to delegate the partition selection to the kafka client.
 	 * @param partitionProvider the provider.
@@ -97,6 +107,18 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 		else {
 			this.headerMapper = new SimpleKafkaHeaderMapper();
 		}
+		this.partitionProvider = partitionProvider;
+	}
+
+	/**
+	 * Construct an instance that uses the supplied partition provider function and given HeaderMapper.
+	 * @param partitionProvider the provider.
+	 * @param headerMapper the Header mapper.
+	 * @since 4.0.0
+	 */
+	public MessagingMessageConverter(Function<Message<?>, @Nullable Integer> partitionProvider, KafkaHeaderMapper headerMapper) {
+		Assert.notNull(partitionProvider, "'partitionProvider' cannot be null");
+		this.headerMapper = headerMapper;
 		this.partitionProvider = partitionProvider;
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2025 the original author or authors.
+ * Copyright 2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,6 +48,7 @@ import org.springframework.util.ClassUtils;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Soby Chacko
+ * @author Sanghyoek An
  *
  * @since 1.3
  *
@@ -324,10 +325,22 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 					populateJsonValueHeader(header, requestedType, headers);
 				}
 				else {
-					headers.put(headerName, headerValueToAddIn(header));
+					handleHeader(headerName, header, headers);
 				}
 			}
 		});
+	}
+
+	/**
+	 * Handle non-reserved headers in {@link DefaultKafkaHeaderMapper}.
+	 * @param headerName the header name.
+	 * @param header the header instance.
+	 * @param headers the target headers.
+	 * @since 4.0.0
+	 */
+
+	protected void handleHeader(String headerName, Header header, final Map<String, Object> headers) {
+		headers.put(headerName, headerValueToAddIn(header));
 	}
 
 	private void populateJsonValueHeader(Header header, String requestedType, Map<String, Object> headers) {
