@@ -1,8 +1,7 @@
 [[class-level-kafkalistener]]
 = `@KafkaListener` on a Class
 
-When you use `@KafkaListener` at the class-level, if there is only one public method, you do not need to specify `@KafkaHandler`.
-However, if there are multiple public methods, you must specify `@KafkaHandler` at the method level.
+When you use `@KafkaListener` at the class-level, you must specify `@KafkaHandler` at the method level.
 When messages are delivered, the converted message payload type is used to determine which method to call.
 The following example shows how to do so:
 
@@ -59,3 +58,4 @@ void listen(Object in, @Header(KafkaHeaders.RECORD_METADATA) ConsumerRecordMetad
     ...
 }
 ----
+

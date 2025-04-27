@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -412,20 +411,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 					Set<Method> methodsWithHandler = MethodIntrospector.selectMethods(targetClass,
 							(ReflectionUtils.MethodFilter) method ->
 									AnnotationUtils.findAnnotation(method, KafkaHandler.class) != null);
-					Set<Method> publicMethods = MethodIntrospector.selectMethods(targetClass,
-							(ReflectionUtils.MethodFilter) method ->
-									Modifier.isPublic(method.getModifiers()));
-
-					if (methodsWithHandler.isEmpty() && publicMethods.size() == 1 && !hasMethodLevelListeners) {
-						Method method = publicMethods.iterator().next();
-						for (KafkaListener classLevelListener : classLevelListeners) {
-							processKafkaListener(classLevelListener, method, bean, beanName);
-						}
-					}
-					else {
-						List<Method> multiMethods = new ArrayList<>(methodsWithHandler);
-						processMultiMethodListeners(classLevelListeners, multiMethods, targetClass, bean, beanName);
-					}
+					List<Method> multiMethods = new ArrayList<>(methodsWithHandler);
+					processMultiMethodListeners(classLevelListeners, multiMethods, targetClass, bean, beanName);
 				}
 			}
 		}
