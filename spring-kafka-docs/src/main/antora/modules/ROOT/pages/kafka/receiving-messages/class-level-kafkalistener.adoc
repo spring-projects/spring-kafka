@@ -2,9 +2,9 @@
 = `@KafkaListener` on a Class
 
 When you use `@KafkaListener` at the class-level, you must specify `@KafkaHandler` at the method level.
-If you do not use `@KafkaHandler`, no method will be used as a listener.
-
-IMPORTANT: This is because a class annotated at the class-level may be extended or inherited in various ways.
+If no `@KafkaHandler` on any methods of this class or its sub-classes, the framework will reject such a configuration.
+The `@KafkaHandler` annotation is required for explicit and concise purpose of the method.
+Otherwise it is hard to make a decision about this or other method without extra restrictions.
 
 When messages are delivered, the converted message payload type is used to determine which method to call.
 The following example shows how to do so:
