@@ -415,22 +415,14 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 					List<Method> multiMethods = new ArrayList<>(methodsWithHandler);
 					processMultiMethodListeners(classLevelListeners, multiMethods, targetClass, bean, beanName);
 				}
-				throwErrorIfNoListenerMethods(bean, hasMethodLevelListeners,
-											hasClassLevelListeners, hasMethodLevelKafkaHandlerAnnotation);
+
+				if (!hasMethodLevelListeners && hasClassLevelListeners &&
+					!hasMethodLevelKafkaHandlerAnnotation) {
+					throw new IllegalStateException("No kafka listener methods found on bean type.");
+				}
 			}
 		}
 		return bean;
-	}
-
-	private void throwErrorIfNoListenerMethods(Object bean, boolean hasMethodLevelListeners,
-				boolean hasClassLevelListeners, boolean hasMethodLevelKafkaHandlerAnnotation) {
-		if (hasMethodLevelListeners) {
-			return;
-		}
-
-		if (hasClassLevelListeners && !hasMethodLevelKafkaHandlerAnnotation) {
-			throw new IllegalStateException("No kafka listener methods found on bean type: " + bean.getClass());
-		}
 	}
 
 	/*

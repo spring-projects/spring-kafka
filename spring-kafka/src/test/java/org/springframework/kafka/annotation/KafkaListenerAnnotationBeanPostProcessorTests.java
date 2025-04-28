@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2025 the original author or authors.
+ * Copyright 2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,11 +20,10 @@ import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.stereotype.Component;
 
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 /**
  * @author Sanghyeok An
@@ -32,42 +31,30 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * @since 4.0.0
  */
 
-class KafkaListenerAnnotationBeanPostProcessorTest {
+class KafkaListenerAnnotationBeanPostProcessorTests {
 
 	@Test
 	void ctx_should_be_fail_to_register_bean_when_no_listener_methods_exist() {
-		// GIVEN
+
 		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
 		ctx.register(TestConfig.class);
 
-		// GIVEN - expected
-		Class<?> expectedErrorType = BeanCreationException.class;
-		String expectedErrorMsg =
-				"Error creating bean with name 'org.springframework.kafka.annotation."
-				+ "KafkaListenerAnnotationBeanPostProcessorTest$TestConfig$BuggyListener': "
-				+ "No kafka listener methods found on bean type: class org.springframework.kafka"
-				+ ".annotation.KafkaListenerAnnotationBeanPostProcessorTest$TestConfig$BuggyListener";
+		assertThatExceptionOfType(BeanCreationException.class)
+				.isThrownBy(ctx::refresh)
+				.withMessageContaining("No kafka listener methods found on bean type.")
+				.withMessageContaining("NoHandlerMethodListener");
 
-		// WHEN + THEN
-		assertThatThrownBy(ctx::refresh)
-				.isInstanceOf(expectedErrorType)
-				.hasMessage(expectedErrorMsg);
 	}
 
+	@EnableKafka
 	@Configuration
 	static class TestConfig {
 
-		@Bean
-		public KafkaListenerAnnotationBeanPostProcessor<Object, Object> kafkaListenerAnnotationBeanPostProcessor() {
-			return new KafkaListenerAnnotationBeanPostProcessor<>();
-		}
-
 		@Component
 		@KafkaListener
-		static class BuggyListener {
+		static class NoHandlerMethodListener {
 
 			public void listen(String message) {
-				return;
 			}
 		}
 
