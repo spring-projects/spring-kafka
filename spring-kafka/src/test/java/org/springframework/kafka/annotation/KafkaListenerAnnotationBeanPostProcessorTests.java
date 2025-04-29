@@ -41,7 +41,8 @@ class KafkaListenerAnnotationBeanPostProcessorTests {
 
 		assertThatExceptionOfType(BeanCreationException.class)
 				.isThrownBy(ctx::refresh)
-				.withMessageContaining("No kafka listener methods found on bean type.")
+				.withRootCauseInstanceOf(IllegalStateException.class)
+				.withMessageContaining("No Kafka listener methods in bean:")
 				.withMessageContaining("NoHandlerMethodListener");
 
 	}
