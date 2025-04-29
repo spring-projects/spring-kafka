@@ -418,7 +418,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 
 				if (!hasMethodLevelListeners && hasClassLevelListeners &&
 					!hasMethodLevelKafkaHandlerAnnotation) {
-					throw new IllegalStateException("No kafka listener methods found on bean type.");
+					throw new IllegalStateException("No Kafka listener methods in bean: " + bean);
 				}
 			}
 		}
