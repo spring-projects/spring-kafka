@@ -411,6 +411,11 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 					Set<Method> methodsWithHandler = MethodIntrospector.selectMethods(targetClass,
 							(ReflectionUtils.MethodFilter) method ->
 									AnnotationUtils.findAnnotation(method, KafkaHandler.class) != null);
+
+					if (methodsWithHandler.isEmpty()) {
+						throw new IllegalStateException("No Kafka listener methods in bean: " + bean);
+					}
+
 					List<Method> multiMethods = new ArrayList<>(methodsWithHandler);
 					processMultiMethodListeners(classLevelListeners, multiMethods, targetClass, bean, beanName);
 				}
