@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2019 the original author or authors.
+ * Copyright 2002-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,32 +14,34 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.test.rule;
+package org.springframework.kafka.test.extensions;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import org.apache.logging.log4j.Level;
-import org.junit.rules.MethodRule;
-import org.junit.runners.model.FrameworkMethod;
-import org.junit.runners.model.Statement;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.InvocationInterceptor;
+import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
 
 import org.springframework.kafka.test.utils.JUnitUtils;
 import org.springframework.kafka.test.utils.JUnitUtils.LevelsContainer;
 
 /**
- * A JUnit method &#064;Rule that changes the logger level for a set of classes
+ * A JUnit extension &#064; that changes the logger level for a set of classes
  * while a test method is running. Useful for performance or scalability tests
  * where we don't want to generate a large log in a tight inner loop.
  *
  * @author Dave Syer
  * @author Artem Bilan
  * @author Gary Russell
+ * @author Sanghyoek An
  *
  */
-public class Log4j2LevelAdjuster implements MethodRule {
+public class Log4j2LevelAdjuster implements InvocationInterceptor {
 
 	private final List<Class<?>> classes;
 
@@ -60,25 +62,25 @@ public class Log4j2LevelAdjuster implements MethodRule {
 	}
 
 	@Override
-	public Statement apply(final Statement base, FrameworkMethod method, Object target) {
-		return new Statement() {
-			@Override
-			public void evaluate() throws Throwable {
-				LevelsContainer container = null;
-				try {
-					container = JUnitUtils.adjustLogLevels(method.getName(),
-							Log4j2LevelAdjuster.this.classes, Log4j2LevelAdjuster.this.categories,
-							Log4j2LevelAdjuster.this.level);
-					base.evaluate();
-				}
-				finally {
-					if (container != null) {
-						JUnitUtils.revertLevels(method.getName(), container);
-					}
-				}
-			}
+	public void interceptTestMethod(Invocation<Void> invocation,
+									ReflectiveInvocationContext<Method> invocationContext,
+									ExtensionContext extensionContext) throws Throwable {
+		String methodName = extensionContext.getRequiredTestMethod().getName();
+		LevelsContainer container = null;
 
-		};
+		try {
+			container = JUnitUtils.adjustLogLevels(
+					methodName,
+					Log4j2LevelAdjuster.this.classes,
+					Log4j2LevelAdjuster.this.categories,
+					Log4j2LevelAdjuster.this.level);
+			invocation.proceed();
+		}
+		finally {
+			if (container != null) {
+				JUnitUtils.revertLevels(methodName, container);
+			}
+		}
 	}
 
 }
