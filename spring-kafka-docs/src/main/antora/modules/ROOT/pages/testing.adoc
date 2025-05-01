@@ -121,15 +121,19 @@ The following example configuration creates topics called `cat` and `hat` with f
 
 [source, java]
 ----
+@ExtendWith(SpringExtension.class)
+@EmbeddedKafka(
+		partitions = 5,
+		topics = {"cat", "hat"}
+)
 public class MyTests {
 
-    @ClassRule
-    private static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, false, 5, "cat", "hat");
+    @Autowired
+    private EmbeddedKafkaBroker broker;
 
     @Test
     public void test() {
-        embeddedKafkaRule.getEmbeddedKafka()
-              .addTopics(new NewTopic("thing1", 10, (short) 1), new NewTopic("thing2", 15, (short) 1));
+        broker.addTopics(new NewTopic("thing1", 10, (short) 1), new NewTopic("thing2", 15, (short) 1));
         ...
     }
 
@@ -225,7 +229,7 @@ The following example shows how to use it:
 
 [source, java]
 ----
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 @DirtiesContext
 @EmbeddedKafka(partitions = 1,
          topics = {
@@ -237,7 +241,7 @@ public class KafkaStreamsTests {
     private EmbeddedKafkaBroker embeddedKafka;
 
     @Test
-    public void someTest() {
+    void someTest() {
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testGroup", "true", this.embeddedKafka);
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
@@ -333,7 +337,7 @@ The following example shows how to do so:
 =====
 [source, java]
 ----
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 @SpringBootTest(properties = "spring.autoconfigure.exclude="
     + "org.springframework.cloud.stream.test.binder.TestSupportBinderAutoConfiguration")
 public class MyApplicationTests {
@@ -349,6 +353,38 @@ They include:
 
 * xref:testing.adoc#kafka-testing-junit4-class-rule[JUnit4 Class Rule]
 * xref:testing.adoc#kafka-testing-embeddedkafka-annotation[`@EmbeddedKafka` Annotation or `EmbeddedKafkaBroker` Bean]
+
+[[kafka-testing-junit4-embedded-broker]]
+=== Junit4 Embedded Broker
+
+The following example shows how to create an embedded broker in Junit4:
+[source, java]
+----
+@SpringBootTest
+public class MyApplicationTests {
+
+    @Autowired
+    private final EmbeddedKafkaBroker broker;
+
+    @Autowired
+    private KafkaTemplate<String, String> template;
+
+    @Test
+    public void test() {
+        ...
+    }
+
+    @Configuration
+    public static class MyConfiguration {
+        @Bean
+        public EmbeddedKafkaBroker embeddedKafkaBroker() {
+            return new EmbeddedKafkaKraftBroker(1, 1, "someTopic");
+        }
+
+    }
+
+}
+----
 
 [[kafka-testing-junit4-class-rule]]
 === JUnit4 Class Rule
@@ -378,6 +414,10 @@ public class MyApplicationTests {
 
 Notice that, since this is a Spring Boot application, we override the broker list property to set Spring Boot's property.
 
+NOTE: The `EmbeddedKafkaRule` JUnit 4 rule has been removed in version 4.0.
+For JUnit 4, you should use the `EmbeddedKafkaKraftBroker` directly or migrate to JUnit 5 with the `@EmbeddedKafka` annotation.
+Please refer to xref:kafka-testing-junit4-embedded-broker[Junit4 Embedded Broker]
+
 [[embedded-broker-with-springjunitconfig-annotations]]
 == `@EmbeddedKafka` with `@SpringJunitConfig`
 
@@ -395,7 +435,7 @@ The following example shows how to use an `@EmbeddedKafka` Annotation to create 
 
 [source, java]
 ----
-@RunWith(SpringRunner.class)
+@ExtendWith(SpringExtension.class)
 @EmbeddedKafka(topics = "someTopic",
         bootstrapServersProperty = "spring.kafka.bootstrap-servers") // this is now the default
 public class MyApplicationTests {
@@ -404,7 +444,7 @@ public class MyApplicationTests {
     private KafkaTemplate<String, String> template;
 
     @Test
-    public void test() {
+    void test() {
         ...
     }
 

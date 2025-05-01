@@ -37,8 +37,11 @@ import org.springframework.kafka.test.utils.JUnitUtils.LevelsContainer;
  * @author Dave Syer
  * @author Artem Bilan
  * @author Gary Russell
- *
+ * @author Sanghyeok An
+ * @deprecated since Spring for Apache Kafka 4.0 in favor of the
+ * {@link org.springframework.kafka.test.condition.LogLevels} and JUnit Jupiter.
  */
+@Deprecated(since = "4.0")
 public class Log4j2LevelAdjuster implements MethodRule {
 
 	private final List<Class<?>> classes;
