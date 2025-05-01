@@ -57,6 +57,7 @@ ext {
 	hibernateValidationVersion = '8.0.2.Final'
 	jacksonBomVersion = '2.18.3'
 	jaywayJsonPathVersion = '2.9.0'
+	junit4Version = '4.13.2'
 	junitJupiterVersion = '5.12.2'
 	kafkaVersion = '4.0.0'
 	kotlinCoroutinesVersion = '1.10.2'
@@ -377,6 +378,9 @@ project ('spring-kafka-test') {
 		api 'org.junit.platform:junit-platform-launcher'
 		optionalApi "org.hamcrest:hamcrest-core:$hamcrestVersion"
 		optionalApi "org.mockito:mockito-core:$mockitoVersion"
+		optionalApi ("junit:junit:$junit4Version") {
+			exclude group: 'org.hamcrest', module: 'hamcrest-core'
+		}
 		optionalApi "org.apache.logging.log4j:log4j-core:$log4jVersion"
 	}
 }

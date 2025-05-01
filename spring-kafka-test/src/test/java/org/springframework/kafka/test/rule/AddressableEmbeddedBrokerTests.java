@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.springframework.kafka.test.extensions;
+package org.springframework.kafka.test.rule;
 
 import java.io.IOException;
 import java.net.ServerSocket;
