@@ -19,6 +19,7 @@ package org.springframework.kafka.support;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -104,6 +105,23 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	}
 
 	/**
+	 * Construct an instance with the default object mapper and default header patterns
+	 * for outbound headers; all inbound headers are mapped. The default pattern list is
+	 * {@code "!id", "!timestamp" and "*"}. In addition, most of the headers in
+	 * {@link KafkaHeaders} are never mapped as headers since they represent data in
+	 * consumer/producer records.
+	 * @see #DefaultKafkaHeaderMapper(ObjectMapper)
+	 * @param patternsForListValue
+	 */
+	public DefaultKafkaHeaderMapper(List<String> patternsForListValue) {
+		this(JacksonUtils.enhancedObjectMapper(),
+			 patternsForListValue,
+			 "!" + MessageHeaders.ID,
+			 "!" + MessageHeaders.TIMESTAMP,
+			 "*");
+	}
+
+	/**
 	 * Construct an instance with the provided object mapper and default header patterns
 	 * for outbound headers; all inbound headers are mapped. The patterns are applied in
 	 * order, stopping on the first match (positive or negative). Patterns are negated by
@@ -149,11 +167,32 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
 	 */
 	public DefaultKafkaHeaderMapper(ObjectMapper objectMapper, String... patterns) {
-		this(true, objectMapper, patterns);
+		this(true, objectMapper, new ArrayList<>(), patterns);
+	}
+
+	/**
+	 * Construct an instance with the provided object mapper and the provided header
+	 * patterns for outbound headers; all inbound headers are mapped. The patterns are
+	 * applied in order, stopping on the first match (positive or negative). Patterns are
+	 * negated by preceding them with "!". The patterns will replace the default patterns;
+	 * you generally should not map the {@code "id" and "timestamp"} headers. Note: most
+	 * of the headers in {@link KafkaHeaders} are never mapped as headers since they
+	 * represent data in consumer/producer records.
+	 * @param objectMapper the object mapper.
+	 * @param patternsForListValue the patterns for multiple values at the same key.
+	 * @param patterns the patterns.
+	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
+	 */
+	public DefaultKafkaHeaderMapper(ObjectMapper objectMapper, List<String> patternsForListValue, String... patterns) {
+		this(true, objectMapper, patternsForListValue, patterns);
 	}
 
 	private DefaultKafkaHeaderMapper(boolean outbound, ObjectMapper objectMapper, String... patterns) {
-		super(outbound, patterns);
+		this(outbound, objectMapper, new ArrayList<>(), patterns);
+	}
+
+	private DefaultKafkaHeaderMapper(boolean outbound, ObjectMapper objectMapper, List<String> patternsForListValue, String... patterns) {
+		super(outbound, patternsForListValue, patterns);
 		Assert.notNull(objectMapper, "'objectMapper' must not be null");
 		Assert.noNullElements(patterns, "'patterns' must not have null elements");
 		this.objectMapper = objectMapper;
@@ -340,7 +379,22 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 */
 
 	protected void handleHeader(String headerName, Header header, final Map<String, Object> headers) {
-		headers.put(headerName, headerValueToAddIn(header));
+		if (!this.isHeaderForListValue(headerName)) {
+			headers.put(headerName, headerValueToAddIn(header));
+		}
+		else {
+			Object values = headers.getOrDefault(headerName, new ArrayList<>());
+
+			if (values instanceof List) {
+				@SuppressWarnings("unchecked")
+				List<Object> castedValues = (List<Object>) values;
+				castedValues.add(headerValueToAddIn(header));
+				headers.put(headerName, castedValues);
+			}
+			else {
+				headers.put(headerName, headerValueToAddIn(header));
+			}
+		}
 	}
 
 	private void populateJsonValueHeader(Header header, String requestedType, Map<String, Object> headers) {

@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -79,6 +80,12 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 
 	private Charset charset = StandardCharsets.UTF_8;
 
+	private final List<HeaderMatcher> matchersForListValue = new ArrayList<>();
+
+	private final Set<String> cachedHeadersForListValue = new LinkedHashSet<>();
+
+	private final Set<String> cachedHeadersForSingleValue = new LinkedHashSet<>();
+
 	/**
 	 * Construct a mapper that will match the supplied patterns (outbound) and all headers
 	 * (inbound). For outbound mapping, certain internal framework headers are never
@@ -97,6 +104,18 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	 * @param patterns the patterns.
 	 */
 	protected AbstractKafkaHeaderMapper(boolean outbound, String... patterns) {
+		this(outbound, new ArrayList<>(), patterns);
+	}
+
+	/**
+	 * Construct a mapper that will match the supplied patterns (outbound) and all headers
+	 * (inbound). For outbound mapping, certain internal framework headers are never
+	 * mapped.
+	 * @param outbound true for an outbound mapper.
+	 * @param patternsForListValue the patterns for multiple values at the same key.
+	 * @param patterns the patterns.
+	 */
+	protected AbstractKafkaHeaderMapper(boolean outbound, List<String> patternsForListValue, String... patterns) {
 		Assert.notNull(patterns, "'patterns' must not be null");
 		this.outbound = outbound;
 		if (outbound) {
@@ -123,6 +142,11 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 		for (String pattern : patterns) {
 			this.matchers.add(new SimplePatternBasedHeaderMatcher(pattern));
 		}
+
+		for (String patternForListValue : patternsForListValue) {
+			this.matchersForListValue.add(new SimplePatternBasedHeaderMatcher(patternForListValue));
+		}
+
 	}
 
 	/**
@@ -285,6 +309,34 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 			return new String(value, this.charset);
 		}
 		return null;
+	}
+
+	/**
+	 * Check whether the header value should be mapped to multiple values.
+	 * @param headerName the header name.
+	 * @return True for multiple values at the same key.
+	 */
+	protected boolean isHeaderForListValue(String headerName) {
+		if (this.matchersForListValue.isEmpty()) {
+			return false;
+		}
+
+		if (this.cachedHeadersForSingleValue.contains(headerName)) {
+			return false;
+		}
+
+		if (this.cachedHeadersForListValue.contains(headerName)) {
+			return true;
+		}
+
+		for (HeaderMatcher headerMatcher : this.matchersForListValue) {
+			if (headerMatcher.matchHeader(headerName)) {
+				this.cachedHeadersForListValue.add(headerName);
+				return true;
+			}
+		}
+		this.cachedHeadersForSingleValue.add(headerName);
+		return false;
 	}
 
 	/**

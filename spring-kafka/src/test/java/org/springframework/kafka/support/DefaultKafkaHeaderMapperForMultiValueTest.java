@@ -44,9 +44,9 @@ import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurationBuilder;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurationSupport;
 import org.springframework.kafka.retrytopic.RetryTopicHeaders;
-import org.springframework.kafka.support.MultiValueKafkaHeaderMapperTest.Config.MultiValueTestListener;
-import org.springframework.kafka.support.MultiValueKafkaHeaderMapperTest.RetryTopicConfigurations.FirstTopicListener;
-import org.springframework.kafka.support.MultiValueKafkaHeaderMapperTest.RetryTopicConfigurations.MyCustomDltProcessor;
+import org.springframework.kafka.support.DefaultKafkaHeaderMapperForMultiValueTest.Config.MultiValueTestListener;
+import org.springframework.kafka.support.DefaultKafkaHeaderMapperForMultiValueTest.RetryTopicConfigurations.FirstTopicListener;
+import org.springframework.kafka.support.DefaultKafkaHeaderMapperForMultiValueTest.RetryTopicConfigurations.MyCustomDltProcessor;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
@@ -71,10 +71,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka(partitions = 1, topics = {
-		MultiValueKafkaHeaderMapperTest.TEST_TOPIC,
-		MultiValueKafkaHeaderMapperTest.RETRY_TOPIC
+		DefaultKafkaHeaderMapperForMultiValueTest.TEST_TOPIC,
+		DefaultKafkaHeaderMapperForMultiValueTest.RETRY_TOPIC
 })
-class MultiValueKafkaHeaderMapperTest {
+class DefaultKafkaHeaderMapperForMultiValueTest {
 
 	public final static String TEST_TOPIC = "multi-value.tests";
 
@@ -211,10 +211,8 @@ class MultiValueKafkaHeaderMapperTest {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 
-			MultiValueKafkaHeaderMapper headerMapper = new MultiValueKafkaHeaderMapper();
-
-			// Add Test
-			headerMapper.addSingleValueHeader(SINGLE_VALUE_HEADER);
+			// For Test
+			DefaultKafkaHeaderMapper headerMapper = new DefaultKafkaHeaderMapper(List.of(MULTI_VALUE_HEADER1, MULTI_VALUE_HEADER2));
 			MessagingMessageConverter converter = new MessagingMessageConverter(headerMapper);
 
 			factory.setConsumerFactory(consumerFactory());
