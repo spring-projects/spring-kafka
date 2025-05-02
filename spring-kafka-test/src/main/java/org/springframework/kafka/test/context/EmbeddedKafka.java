@@ -43,7 +43,7 @@ import org.springframework.test.context.aot.DisabledInAotMode;
  * <p>
  * The typical usage of this annotation is like:
  * <pre class="code">
- * &#064;ExtendWith(SpringExtension.class)
+ * &#064;SpringJUnitConfig
  * &#064;EmbeddedKafka
  * public class MyKafkaTests {
  *
