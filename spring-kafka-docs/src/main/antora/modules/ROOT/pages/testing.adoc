@@ -56,7 +56,11 @@ If this is not possible for some reason, note that the `consumeFromEmbeddedTopic
 Since it does not have access to the consumer properties, you must use the overloaded method that takes a `seekToEnd` boolean parameter to seek to the end instead of the beginning.
 ====
 
-NOTE: `Spring Kafka` no longer supports JUnit4. Please consider migrating from JUnit4 to JUnit5.
+[NOTE]
+====
+`Spring Kafka` no longer supports `JUnit4`.
+Migration to `JUnit Jupiter` is recommended.
+====
 
 The `EmbeddedKafkaBroker` class has a utility method that lets you consume for all the topics it created.
 The following example shows how to use it:
@@ -122,8 +126,8 @@ The following example configuration creates topics called `cat` and `hat` with f
 ----
 @SpringJUnitConfig
 @EmbeddedKafka(
-		partitions = 5,
-		topics = {"cat", "hat"}
+        partitions = 5,
+        topics = {"cat", "hat"}
 )
 public class MyTests {
 
@@ -209,7 +213,7 @@ In addition, these properties can be provided:
 
 Essentially these properties mimic some of the `@EmbeddedKafka` attributes.
 
-See more information about configuration properties and how to provide them in the https://junit.org/junit5/docs/current/user-guide/#running-tests-config-params[JUnit 5 User Guide].
+See more information about configuration properties and how to provide them in the https://junit.org/junit5/docs/current/user-guide/#running-tests-config-params[JUnit Jupiter User Guide].
 For example, a `spring.embedded.kafka.brokers.property=my.bootstrap-servers` entry can be added into a `junit-platform.properties` file in the testing classpath.
 Starting with version 3.0.10, the broker automatically sets this to `spring.kafka.bootstrap-servers`, by default, for testing with Spring Boot applications.
 
@@ -291,12 +295,12 @@ In addition, the broker properties are loaded from the `broker.properties` class
 Property placeholders are resolved for the `brokerPropertiesLocation` URL and for any property placeholders found in the resource.
 Properties defined by `brokerProperties` override properties found in `brokerPropertiesLocation`.
 
-You can use the `@EmbeddedKafka` annotation with JUnit 5.
+You can use the `@EmbeddedKafka` annotation with JUnit Jupiter.
 
-[[embedded-kafka-junit5]]
-== `@EmbeddedKafka` Annotation with JUnit5
+[[embedded-kafka-junit-jupiter]]
+== `@EmbeddedKafka` Annotation with JUnit Jupiter
 
-Starting with version 2.3, there are two ways to use the `@EmbeddedKafka` annotation with JUnit5.
+Starting with version 2.3, there are two ways to use the `@EmbeddedKafka` annotation with JUnit Jupiter.
 When used with the `@SpringJunitConfig` annotation, the embedded broker is added to the test application context.
 You can auto wire the broker into your test, at the class or method level, to get the broker address list.
 
