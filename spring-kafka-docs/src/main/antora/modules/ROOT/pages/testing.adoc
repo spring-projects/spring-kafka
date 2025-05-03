@@ -58,8 +58,8 @@ Since it does not have access to the consumer properties, you must use the overl
 
 [NOTE]
 ====
-`Spring Kafka` no longer supports `JUnit4`.
-Migration to `JUnit Jupiter` is recommended.
+Spring for Apache Kafka no longer supports JUnit 4.
+Migration to JUnit Jupiter is recommended.
 ====
 
 The `EmbeddedKafkaBroker` class has a utility method that lets you consume for all the topics it created.
