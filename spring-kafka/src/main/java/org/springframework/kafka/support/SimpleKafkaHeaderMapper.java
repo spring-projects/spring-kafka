@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2022 the original author or authors.
+ * Copyright 2018-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,9 @@
 package org.springframework.kafka.support;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -35,6 +37,7 @@ import org.springframework.messaging.MessageHeaders;
  * The exceptions are correlation and reply headers for request/reply
  *
  * @author Gary Russell
+ * @author Sanghyeok An
  * @since 2.1.3
  *
  */
@@ -111,7 +114,21 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 					target.put(headerName, ByteBuffer.wrap(header.value()).getInt());
 				}
 				else {
-					target.put(headerName, headerValueToAddIn(header));
+					if (!this.doesMatchMultiValueHeader(headerName)) {
+						target.put(headerName, headerValueToAddIn(header));
+					}
+					else {
+						Object values = target.getOrDefault(headerName, new ArrayList<>());
+						if (values instanceof List) {
+							@SuppressWarnings("unchecked")
+							List<Object> castedValues = (List<Object>) values;
+							castedValues.add(headerValueToAddIn(header));
+							target.put(headerName, castedValues);
+						}
+						else {
+							target.put(headerName, headerValueToAddIn(header));
+						}
+					}
 				}
 			}
 		});

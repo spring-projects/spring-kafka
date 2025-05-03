@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 the original author or authors.
+ * Copyright 2017-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package org.springframework.kafka.support;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -338,9 +339,22 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * @param headers the target headers.
 	 * @since 4.0.0
 	 */
-
 	protected void handleHeader(String headerName, Header header, final Map<String, Object> headers) {
-		headers.put(headerName, headerValueToAddIn(header));
+		if (!this.doesMatchMultiValueHeader(headerName)) {
+			headers.put(headerName, headerValueToAddIn(header));
+		}
+		else {
+			Object values = headers.getOrDefault(headerName, new ArrayList<>());
+			if (values instanceof List) {
+				@SuppressWarnings("unchecked")
+				List<Object> castedValues = (List<Object>) values;
+				castedValues.add(headerValueToAddIn(header));
+				headers.put(headerName, castedValues);
+			}
+			else {
+				headers.put(headerName, headerValueToAddIn(header));
+			}
+		}
 	}
 
 	private void populateJsonValueHeader(Header header, String requestedType, Map<String, Object> headers) {

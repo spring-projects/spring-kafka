@@ -65,6 +65,8 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 
 	private final List<HeaderMatcher> matchers = new ArrayList<>();
 
+	private final List<HeaderMatcher> headerMatchersForMultiValue = new ArrayList<>();
+
 	private final Map<String, Boolean> rawMappedHeaders = new HashMap<>();
 
 	{
@@ -191,6 +193,16 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 		this.rawMappedHeaders.put(name, toString);
 	}
 
+	/**
+	 * Add patterns for matching multi-value headers under the same key.
+	 * @param patterns the patterns for header.
+	 */
+	public void addHeaderPatternsForMultiValue(String ... patterns) {
+		for (String pattern : patterns) {
+			this.headerMatchersForMultiValue.add(new SimplePatternBasedHeaderMatcher(pattern));
+		}
+	}
+
 	protected boolean matches(String header, Object value) {
 		if (matches(header)) {
 			if ((header.equals(MessageHeaders.REPLY_CHANNEL) || header.equals(MessageHeaders.ERROR_CHANNEL))
@@ -249,6 +261,20 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 			valueToAdd = value;
 		}
 		return valueToAdd;
+	}
+
+	/**
+	 * Check whether the header value should be mapped to multiple values.
+	 * @param headerName the header name.
+	 * @return True for multiple values at the same key.
+	 */
+	protected boolean doesMatchMultiValueHeader(String headerName) {
+		for (HeaderMatcher headerMatcher : this.headerMatchersForMultiValue) {
+			if (headerMatcher.matchHeader(headerName)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	@SuppressWarnings("NullAway") // Dataflow analysis limitation
