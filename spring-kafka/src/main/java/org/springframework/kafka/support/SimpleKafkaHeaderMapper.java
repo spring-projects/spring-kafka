@@ -37,6 +37,8 @@ import org.springframework.messaging.MessageHeaders;
  * The exceptions are correlation and reply headers for request/reply
  *
  * @author Gary Russell
+ * @author Sanghyeok An
+ *
  * @since 2.1.3
  *
  */
@@ -61,6 +63,25 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 		super("!" + MessageHeaders.ID,
 				"!" + MessageHeaders.TIMESTAMP,
 				"*");
+	}
+
+	/**
+	 * Construct an instance with the default object mapper and default header patterns
+	 * for outbound headers default header patterns for inbound multi-value headers;
+	 * all inbound headers are mapped. The default pattern list is
+	 * {@code "!id", "!timestamp" and "*"}. In addition, most of the headers in
+	 * {@link KafkaHeaders} are never mapped as headers since they represent data in
+	 * consumer/producer records.
+	 * Headers that match the pattern specified in {@code patternsForListValue} will be
+	 * appended to the values under the same key.
+	 *
+	 * @param patternsForMultiValue the patterns for multiple values at the same key.
+	 */
+	public SimpleKafkaHeaderMapper(List<String> patternsForMultiValue) {
+		this(true, patternsForMultiValue,
+		"!" + MessageHeaders.ID,
+			"!" + MessageHeaders.TIMESTAMP,
+			"*");
 	}
 
 	/**

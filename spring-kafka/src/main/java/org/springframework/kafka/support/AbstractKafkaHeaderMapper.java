@@ -110,7 +110,9 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	/**
 	 * Construct a mapper that will match the supplied patterns (outbound) and all headers
 	 * (inbound). For outbound mapping, certain internal framework headers are never
-	 * mapped.
+	 * mapped. For inbound mapping, Headers that match the pattern specified in
+	 * {@code patternsForListValue} will be appended to the values under the same key.
+	 *
 	 * @param outbound true for an outbound mapper.
 	 * @param patternsForListValue the patterns for multiple values at the same key.
 	 * @param patterns the patterns.

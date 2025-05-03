@@ -45,9 +45,9 @@ import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurationBuilder;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurationSupport;
 import org.springframework.kafka.retrytopic.RetryTopicHeaders;
-import org.springframework.kafka.support.DefaultKafkaHeaderMapperForMultiValueTest.Config.MultiValueTestListener;
-import org.springframework.kafka.support.DefaultKafkaHeaderMapperForMultiValueTest.RetryTopicConfigurations.FirstTopicListener;
-import org.springframework.kafka.support.DefaultKafkaHeaderMapperForMultiValueTest.RetryTopicConfigurations.MyCustomDltProcessor;
+import org.springframework.kafka.support.SimpleKafkaHeaderMapperMultiValueIntegrationTest.Config.MultiValueTestListener;
+import org.springframework.kafka.support.SimpleKafkaHeaderMapperMultiValueIntegrationTest.RetryTopicConfigurations.FirstTopicListener;
+import org.springframework.kafka.support.SimpleKafkaHeaderMapperMultiValueIntegrationTest.RetryTopicConfigurations.MyCustomDltProcessor;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
@@ -63,7 +63,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * This test class demonstrates that the DefaultKafkaHeaderMapper can handle
+ * This test class demonstrates that the SimpleKafkaHeaderMapper can handle
  * multi-value headers for both input and output.
  *
  * @author Sanghyeok An
@@ -74,10 +74,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka(partitions = 1, topics = {
-		DefaultKafkaHeaderMapperForMultiValueTest.TEST_TOPIC,
-		DefaultKafkaHeaderMapperForMultiValueTest.RETRY_TOPIC
+		SimpleKafkaHeaderMapperMultiValueIntegrationTest.TEST_TOPIC,
+		SimpleKafkaHeaderMapperMultiValueIntegrationTest.RETRY_TOPIC
 })
-class DefaultKafkaHeaderMapperForMultiValueTest {
+class SimpleKafkaHeaderMapperMultiValueIntegrationTest {
 
 	public final static String TEST_TOPIC = "multi-value.tests";
 
@@ -252,7 +252,7 @@ class DefaultKafkaHeaderMapperForMultiValueTest {
 					new ConcurrentKafkaListenerContainerFactory<>();
 
 			// For Test
-			DefaultKafkaHeaderMapper headerMapper = new DefaultKafkaHeaderMapper(List.of(MULTI_VALUE_HEADER1, MULTI_VALUE_HEADER2));
+			SimpleKafkaHeaderMapper headerMapper = new SimpleKafkaHeaderMapper(List.of(MULTI_VALUE_HEADER1, MULTI_VALUE_HEADER2));
 			MessagingMessageConverter converter = new MessagingMessageConverter(headerMapper);
 
 			factory.setConsumerFactory(consumerFactory());

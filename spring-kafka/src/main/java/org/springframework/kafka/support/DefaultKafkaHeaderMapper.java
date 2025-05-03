@@ -106,19 +106,23 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 
 	/**
 	 * Construct an instance with the default object mapper and default header patterns
-	 * for outbound headers; all inbound headers are mapped. The default pattern list is
+	 * for outbound headers and default header patterns for inbound multi-value headers;
+	 * all inbound headers are mapped. The default pattern list is
 	 * {@code "!id", "!timestamp" and "*"}. In addition, most of the headers in
 	 * {@link KafkaHeaders} are never mapped as headers since they represent data in
 	 * consumer/producer records.
+	 * Headers that match the pattern specified in {@code patternsForListValue} will be
+	 * appended to the values under the same key.
+	 *
+	 * @param patternsForListValue the patterns for multiple values at the same key.
 	 * @see #DefaultKafkaHeaderMapper(ObjectMapper)
-	 * @param patternsForListValue
 	 */
 	public DefaultKafkaHeaderMapper(List<String> patternsForListValue) {
 		this(JacksonUtils.enhancedObjectMapper(),
-			 patternsForListValue,
-			 "!" + MessageHeaders.ID,
-			 "!" + MessageHeaders.TIMESTAMP,
-			 "*");
+		patternsForListValue,
+		"!" + MessageHeaders.ID,
+		"!" + MessageHeaders.TIMESTAMP,
+		"*");
 	}
 
 	/**
