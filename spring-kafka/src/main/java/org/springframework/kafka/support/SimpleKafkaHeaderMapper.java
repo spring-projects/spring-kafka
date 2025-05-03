@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2025 the original author or authors.
+ * Copyright 2018-2022 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,7 @@
 package org.springframework.kafka.support;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -37,8 +35,6 @@ import org.springframework.messaging.MessageHeaders;
  * The exceptions are correlation and reply headers for request/reply
  *
  * @author Gary Russell
- * @author Sanghyeok An
- *
  * @since 2.1.3
  *
  */
@@ -66,25 +62,6 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	}
 
 	/**
-	 * Construct an instance with the default object mapper and default header patterns
-	 * for outbound headers default header patterns for inbound multi-value headers;
-	 * all inbound headers are mapped. The default pattern list is
-	 * {@code "!id", "!timestamp" and "*"}. In addition, most of the headers in
-	 * {@link KafkaHeaders} are never mapped as headers since they represent data in
-	 * consumer/producer records.
-	 * Headers that match the pattern specified in {@code patternsForListValue} will be
-	 * appended to the values under the same key.
-	 *
-	 * @param patternsForMultiValue the patterns for multiple values at the same key.
-	 */
-	public SimpleKafkaHeaderMapper(List<String> patternsForMultiValue) {
-		this(true, patternsForMultiValue,
-		"!" + MessageHeaders.ID,
-			"!" + MessageHeaders.TIMESTAMP,
-			"*");
-	}
-
-	/**
 	 * Construct an instance with a default object mapper and the provided header patterns
 	 * for outbound headers; all inbound headers are mapped. The patterns are applied in
 	 * order, stopping on the first match (positive or negative). Patterns are negated by
@@ -100,11 +77,7 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	}
 
 	private SimpleKafkaHeaderMapper(boolean outbound, String... patterns) {
-		this(outbound, new ArrayList<>(), patterns);
-	}
-
-	private SimpleKafkaHeaderMapper(boolean outbound, List<String> patternsForListValue, String... patterns) {
-		super(outbound, patternsForListValue, patterns);
+		super(outbound, patterns);
 	}
 
 	/**
@@ -138,21 +111,7 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 					target.put(headerName, ByteBuffer.wrap(header.value()).getInt());
 				}
 				else {
-					if (!this.isHeaderForListValue(headerName)) {
-						target.put(headerName, headerValueToAddIn(header));
-					}
-					else {
-						Object values = target.getOrDefault(headerName, new ArrayList<>());
-						if (values instanceof List) {
-							@SuppressWarnings("unchecked")
-							List<Object> castedValues = (List<Object>) values;
-							castedValues.add(headerValueToAddIn(header));
-							target.put(headerName, castedValues);
-						}
-						else {
-							target.put(headerName, headerValueToAddIn(header));
-						}
-					}
+					target.put(headerName, headerValueToAddIn(header));
 				}
 			}
 		});

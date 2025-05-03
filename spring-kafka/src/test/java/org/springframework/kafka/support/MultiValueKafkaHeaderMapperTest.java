@@ -17,7 +17,6 @@
 package org.springframework.kafka.support;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -45,9 +44,9 @@ import org.springframework.kafka.retrytopic.RetryTopicConfiguration;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurationBuilder;
 import org.springframework.kafka.retrytopic.RetryTopicConfigurationSupport;
 import org.springframework.kafka.retrytopic.RetryTopicHeaders;
-import org.springframework.kafka.support.DefaultKafkaHeaderMapperForMultiValueTest.Config.MultiValueTestListener;
-import org.springframework.kafka.support.DefaultKafkaHeaderMapperForMultiValueTest.RetryTopicConfigurations.FirstTopicListener;
-import org.springframework.kafka.support.DefaultKafkaHeaderMapperForMultiValueTest.RetryTopicConfigurations.MyCustomDltProcessor;
+import org.springframework.kafka.support.MultiValueKafkaHeaderMapperTest.Config.MultiValueTestListener;
+import org.springframework.kafka.support.MultiValueKafkaHeaderMapperTest.RetryTopicConfigurations.FirstTopicListener;
+import org.springframework.kafka.support.MultiValueKafkaHeaderMapperTest.RetryTopicConfigurations.MyCustomDltProcessor;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
@@ -63,8 +62,6 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * This test class demonstrates that the DefaultKafkaHeaderMapper can handle
- * multi-value headers for both input and output.
  *
  * @author Sanghyeok An
  *
@@ -74,10 +71,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka(partitions = 1, topics = {
-		DefaultKafkaHeaderMapperForMultiValueTest.TEST_TOPIC,
-		DefaultKafkaHeaderMapperForMultiValueTest.RETRY_TOPIC
+		MultiValueKafkaHeaderMapperTest.TEST_TOPIC,
+		MultiValueKafkaHeaderMapperTest.RETRY_TOPIC
 })
-class DefaultKafkaHeaderMapperForMultiValueTest {
+class MultiValueKafkaHeaderMapperTest {
 
 	public final static String TEST_TOPIC = "multi-value.tests";
 
@@ -128,16 +125,11 @@ class DefaultKafkaHeaderMapperForMultiValueTest {
 	void testForCommonCase() throws InterruptedException {
 
 		// GIVEN
-		byte[] multiHeader1Value1 = "value1".getBytes(StandardCharsets.UTF_8);
-		byte[] multiHeader1Value2 = "value2".getBytes(StandardCharsets.UTF_8);
-		byte[] multiHeader2Value1 = "value3".getBytes(StandardCharsets.UTF_8);
-		String singleHeaderValue = "value4";
-
 		Iterable<org.apache.kafka.common.header.Header> recordHeaders = List.of(
-				new RecordHeader(MULTI_VALUE_HEADER1, multiHeader1Value1),
-				new RecordHeader(MULTI_VALUE_HEADER1, multiHeader1Value2),
-				new RecordHeader(MULTI_VALUE_HEADER2, multiHeader2Value1),
-				new RecordHeader(SINGLE_VALUE_HEADER, singleHeaderValue.getBytes(StandardCharsets.UTF_8))
+				new RecordHeader(MULTI_VALUE_HEADER1, "value1".getBytes(StandardCharsets.UTF_8)),
+				new RecordHeader(MULTI_VALUE_HEADER1, "value2".getBytes(StandardCharsets.UTF_8)),
+				new RecordHeader(MULTI_VALUE_HEADER2, "value3".getBytes(StandardCharsets.UTF_8)),
+				new RecordHeader(SINGLE_VALUE_HEADER, "value3".getBytes(StandardCharsets.UTF_8))
 		);
 
 		ProducerRecord<Integer, String> record = new ProducerRecord<>(
@@ -148,31 +140,22 @@ class DefaultKafkaHeaderMapperForMultiValueTest {
 
 		// THEN
 		assertThat(this.multiValueTestListener.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.multiValueTestListener.latchForHeader1.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.multiValueTestListener.latchForHeader2.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.multiValueTestListener.latchForCustomSingleValueHeaders.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.multiValueTestListener.latchForSingleValueHeaders.await(10, TimeUnit.SECONDS)).isTrue();
 
-		// the multi-value header cannot be converted to String type.
-		assertThat(multiValueTestListener.multiValueHeaders1.get(0)).isEqualTo(multiHeader1Value1);
-		assertThat(multiValueTestListener.multiValueHeaders1.get(1)).isEqualTo(multiHeader1Value2);
-		assertThat(multiValueTestListener.multiValueHeaders2.get(0)).isEqualTo(multiHeader2Value1);
-
-		// the single-value header can be converted to String type.
-		assertThat(multiValueTestListener.singleValueHeaders.get(0)).isEqualTo(singleHeaderValue);
 	}
 
 	@Test
 	void testForDltAndRetryCase() throws InterruptedException {
 
 		// GIVEN
-		byte[] multiHeader1Value1 = "value1".getBytes(StandardCharsets.UTF_8);
-		byte[] multiHeader1Value2 = "value2".getBytes(StandardCharsets.UTF_8);
-		byte[] multiHeader2Value1 = "value3".getBytes(StandardCharsets.UTF_8);
-		String singleHeaderValue = "value4";
-
 		Iterable<org.apache.kafka.common.header.Header> recordHeaders = List.of(
-				new RecordHeader(MULTI_VALUE_HEADER1, multiHeader1Value1),
-				new RecordHeader(MULTI_VALUE_HEADER1, multiHeader1Value2),
-				new RecordHeader(MULTI_VALUE_HEADER2, multiHeader2Value1),
-				new RecordHeader(SINGLE_VALUE_HEADER, singleHeaderValue.getBytes(StandardCharsets.UTF_8))
+				new RecordHeader(MULTI_VALUE_HEADER1, "value1".getBytes(StandardCharsets.UTF_8)),
+				new RecordHeader(MULTI_VALUE_HEADER1, "value2".getBytes(StandardCharsets.UTF_8)),
+				new RecordHeader(MULTI_VALUE_HEADER2, "value3".getBytes(StandardCharsets.UTF_8)),
+				new RecordHeader(SINGLE_VALUE_HEADER, "value3".getBytes(StandardCharsets.UTF_8))
 		);
 
 		ProducerRecord<Integer, String> record = new ProducerRecord<>(
@@ -183,41 +166,18 @@ class DefaultKafkaHeaderMapperForMultiValueTest {
 
 		// THEN
 		assertThat(this.firstTopicListener.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.firstTopicListener.latchForHeader1.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.firstTopicListener.latchForHeader2.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.firstTopicListener.latchForSingleValueHeadersInFirstTry.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.firstTopicListener.latchForCustomSingleValueHeaders.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.firstTopicListener.latchForSingleValueHeadersInRetry.await(10, TimeUnit.SECONDS)).isTrue();
 
 		assertThat(this.myCustomDltProcessor.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.myCustomDltProcessor.latchForHeader1.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.myCustomDltProcessor.latchForHeader2.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.myCustomDltProcessor.latchForSingleValueHeadersInFirstTry.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.myCustomDltProcessor.latchForCustomSingleValueHeaders.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.myCustomDltProcessor.latchForSingleValueHeadersInRetry.await(10, TimeUnit.SECONDS)).isTrue();
-
-		// the multi-value header cannot be converted to String type.
-		assertThat(firstTopicListener.multiValueHeaders1.get(0)).containsExactly(multiHeader1Value1);
-		assertThat(firstTopicListener.multiValueHeaders1.get(1)).containsExactly(multiHeader1Value2);
-		assertThat(firstTopicListener.multiValueHeaders1.get(2)).containsExactly(multiHeader1Value1);
-		assertThat(firstTopicListener.multiValueHeaders1.get(3)).containsExactly(multiHeader1Value2);
-		assertThat(firstTopicListener.multiValueHeaders1.get(4)).containsExactly(multiHeader1Value1);
-		assertThat(firstTopicListener.multiValueHeaders1.get(5)).containsExactly(multiHeader1Value2);
-		assertThat(firstTopicListener.multiValueHeaders1.get(6)).containsExactly(multiHeader1Value1);
-		assertThat(firstTopicListener.multiValueHeaders1.get(7)).containsExactly(multiHeader1Value2);
-		assertThat(firstTopicListener.multiValueHeaders1.get(8)).containsExactly(multiHeader1Value1);
-		assertThat(firstTopicListener.multiValueHeaders1.get(9)).containsExactly(multiHeader1Value2);
-
-		assertThat(firstTopicListener.multiValueHeaders2.get(0)).containsExactly(multiHeader2Value1);
-		assertThat(firstTopicListener.multiValueHeaders2.get(1)).containsExactly(multiHeader2Value1);
-		assertThat(firstTopicListener.multiValueHeaders2.get(2)).containsExactly(multiHeader2Value1);
-		assertThat(firstTopicListener.multiValueHeaders2.get(3)).containsExactly(multiHeader2Value1);
-		assertThat(firstTopicListener.multiValueHeaders2.get(4)).containsExactly(multiHeader2Value1);
-
-		assertThat(myCustomDltProcessor.multiValueHeaders1.get(0)).containsExactly(multiHeader1Value1);
-		assertThat(myCustomDltProcessor.multiValueHeaders1.get(1)).containsExactly(multiHeader1Value2);
-		assertThat(myCustomDltProcessor.multiValueHeaders2.get(0)).containsExactly(multiHeader2Value1);
-
-		// the single-value header can be converted to String type.
-		assertThat(firstTopicListener.singleValueHeaders.get(0)).isEqualTo(singleHeaderValue);
-		assertThat(firstTopicListener.singleValueHeaders.get(1)).isEqualTo(singleHeaderValue);
-		assertThat(firstTopicListener.singleValueHeaders.get(2)).isEqualTo(singleHeaderValue);
-		assertThat(firstTopicListener.singleValueHeaders.get(3)).isEqualTo(singleHeaderValue);
-		assertThat(firstTopicListener.singleValueHeaders.get(4)).isEqualTo(singleHeaderValue);
 	}
 
 	static boolean isHeadersExpected(Map<String, Object> headers, String headerName) {
@@ -251,8 +211,10 @@ class DefaultKafkaHeaderMapperForMultiValueTest {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 
-			// For Test
-			DefaultKafkaHeaderMapper headerMapper = new DefaultKafkaHeaderMapper(List.of(MULTI_VALUE_HEADER1, MULTI_VALUE_HEADER2));
+			MultiValueKafkaHeaderMapper headerMapper = new MultiValueKafkaHeaderMapper();
+
+			// Add Test
+			headerMapper.addSingleValueHeader(SINGLE_VALUE_HEADER);
 			MessagingMessageConverter converter = new MessagingMessageConverter(headerMapper);
 
 			factory.setConsumerFactory(consumerFactory());
@@ -293,26 +255,31 @@ class DefaultKafkaHeaderMapperForMultiValueTest {
 
 			private final CountDownLatch latch = new CountDownLatch(1);
 
+			private final CountDownLatch latchForHeader1 = new CountDownLatch(1);
+
+			private final CountDownLatch latchForHeader2 = new CountDownLatch(1);
+
 			private final CountDownLatch latchForSingleValueHeaders = new CountDownLatch(8);
 
 			private final CountDownLatch latchForCustomSingleValueHeaders = new CountDownLatch(1);
 
-			final List<byte[]> multiValueHeaders1 = new ArrayList<>();
-
-			final List<byte[]> multiValueHeaders2 = new ArrayList<>();
-
-			final List<String> singleValueHeaders = new ArrayList<>();
-
 			@KafkaHandler
-			public void listen1(@Header(MULTI_VALUE_HEADER1) List<byte[]> header1,
-								@Header(MULTI_VALUE_HEADER2) List<byte[]> header2,
+			public void listen1(@Header(MULTI_VALUE_HEADER1) List<String> header1,
+								@Header(MULTI_VALUE_HEADER2) List<Object> header2,
 								@Header(SINGLE_VALUE_HEADER) String header3,
 								@Headers Map<String, Object> headers, String message) {
 				this.latch.countDown();
+				if (!header1.isEmpty()) {
+					this.latchForHeader1.countDown();
+				}
 
-				header1.forEach(value -> multiValueHeaders1.add(value));
-				header2.forEach(value -> multiValueHeaders2.add(value));
-				this.singleValueHeaders.add(header3);
+				if (!header2.isEmpty()) {
+					this.latchForHeader2.countDown();
+				}
+
+				if (header3 != null) {
+					this.latchForCustomSingleValueHeaders.countDown();
+				}
 
 				for (String headerName : SHOULD_BE_SINGLE_VALUE_IN_NOT_RETRY) {
 					if (isHeadersExpected(headers, headerName)) {
@@ -364,28 +331,35 @@ class DefaultKafkaHeaderMapperForMultiValueTest {
 
 			private final CountDownLatch latch = new CountDownLatch(4);
 
+			private final CountDownLatch latchForHeader1 = new CountDownLatch(4);
+
+			private final CountDownLatch latchForHeader2 = new CountDownLatch(4);
+
 			private final CountDownLatch latchForSingleValueHeadersInFirstTry = new CountDownLatch(32);
+
+			private final CountDownLatch latchForCustomSingleValueHeaders = new CountDownLatch(4);
 
 			private final CountDownLatch latchForSingleValueHeadersInRetry = new CountDownLatch(52);
 
-			final List<byte[]> multiValueHeaders1 = new ArrayList<>();
-
-			final List<byte[]> multiValueHeaders2 = new ArrayList<>();
-
-			final List<String> singleValueHeaders = new ArrayList<>();
-
 			@KafkaHandler
 			public void listen(
-					@Header(MULTI_VALUE_HEADER1) List<byte[]> header1,
-					@Header(MULTI_VALUE_HEADER2) List<byte[]> header2,
+					@Header(MULTI_VALUE_HEADER1) List<String> header1,
+					@Header(MULTI_VALUE_HEADER2) List<Object> header2,
 					@Header(SINGLE_VALUE_HEADER) String header3,
-					@Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic,
 					@Headers Map<String, Object> headers, String message) {
 				this.latch.countDown();
+				if (!header1.isEmpty()) {
+					this.latchForHeader1.countDown();
+				}
 
-				header1.forEach(multiValueHeaders1::add);
-				header2.forEach(multiValueHeaders2::add);
-				this.singleValueHeaders.add(header3);
+				if (!header2.isEmpty()) {
+					this.latchForHeader2.countDown();
+				}
+
+				if (header3 != null) {
+					this.latchForCustomSingleValueHeaders.countDown();
+				}
+
 
 				for (String headerName : SHOULD_BE_SINGLE_VALUE_IN_NOT_RETRY) {
 					if (isHeadersExpected(headers, headerName)) {
@@ -407,23 +381,35 @@ class DefaultKafkaHeaderMapperForMultiValueTest {
 
 			private final CountDownLatch latch = new CountDownLatch(1);
 
+			private final CountDownLatch latchForHeader1 = new CountDownLatch(1);
+
+			private final CountDownLatch latchForHeader2 = new CountDownLatch(1);
+
 			private final CountDownLatch latchForSingleValueHeadersInFirstTry = new CountDownLatch(8);
+
+			private final CountDownLatch latchForCustomSingleValueHeaders = new CountDownLatch(1);
 
 			private final CountDownLatch latchForSingleValueHeadersInRetry = new CountDownLatch(13);
 
-			final List<byte[]> multiValueHeaders1 = new ArrayList<>();
-
-			final List<byte[]> multiValueHeaders2 = new ArrayList<>();
-
 			public void processDltMessage(
-					@Header(MULTI_VALUE_HEADER1) List<byte[]> header1,
-					@Header(MULTI_VALUE_HEADER2) List<byte[]> header2,
-					@Headers Map<String, Object> headers, String message) {
+					Object message,
+					@Header(MULTI_VALUE_HEADER1) List<String> header1,
+					@Header(MULTI_VALUE_HEADER2) List<Object> header2,
+					@Header(SINGLE_VALUE_HEADER) String header3,
+					@Headers Map<String, Object> headers) {
 
 				this.latch.countDown();
+				if (!header1.isEmpty()) {
+					this.latchForHeader1.countDown();
+				}
 
-				header1.forEach(multiValueHeaders1::add);
-				header2.forEach(multiValueHeaders2::add);
+				if (!header2.isEmpty()) {
+					this.latchForHeader2.countDown();
+				}
+
+				if (header3 != null) {
+					this.latchForCustomSingleValueHeaders.countDown();
+				}
 
 				for (String headerName : SHOULD_BE_SINGLE_VALUE_IN_NOT_RETRY) {
 					if (isHeadersExpected(headers, headerName)) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2025 the original author or authors.
+ * Copyright 2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package org.springframework.kafka.support;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -49,7 +48,7 @@ import org.springframework.util.ClassUtils;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Soby Chacko
- * @author Sanghyeok An
+ * @author Sanghyoek An
  *
  * @since 1.3
  *
@@ -105,27 +104,6 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	}
 
 	/**
-	 * Construct an instance with the default object mapper and default header patterns
-	 * for outbound headers and default header patterns for inbound multi-value headers;
-	 * all inbound headers are mapped. The default pattern list is
-	 * {@code "!id", "!timestamp" and "*"}. In addition, most of the headers in
-	 * {@link KafkaHeaders} are never mapped as headers since they represent data in
-	 * consumer/producer records.
-	 * Headers that match the pattern specified in {@code patternsForListValue} will be
-	 * appended to the values under the same key.
-	 *
-	 * @param patternsForListValue the patterns for multiple values at the same key.
-	 * @see #DefaultKafkaHeaderMapper(ObjectMapper)
-	 */
-	public DefaultKafkaHeaderMapper(List<String> patternsForListValue) {
-		this(JacksonUtils.enhancedObjectMapper(),
-		patternsForListValue,
-		"!" + MessageHeaders.ID,
-		"!" + MessageHeaders.TIMESTAMP,
-		"*");
-	}
-
-	/**
 	 * Construct an instance with the provided object mapper and default header patterns
 	 * for outbound headers; all inbound headers are mapped. The patterns are applied in
 	 * order, stopping on the first match (positive or negative). Patterns are negated by
@@ -171,32 +149,11 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
 	 */
 	public DefaultKafkaHeaderMapper(ObjectMapper objectMapper, String... patterns) {
-		this(true, objectMapper, new ArrayList<>(), patterns);
-	}
-
-	/**
-	 * Construct an instance with the provided object mapper and the provided header
-	 * patterns for outbound headers; all inbound headers are mapped. The patterns are
-	 * applied in order, stopping on the first match (positive or negative). Patterns are
-	 * negated by preceding them with "!". The patterns will replace the default patterns;
-	 * you generally should not map the {@code "id" and "timestamp"} headers. Note: most
-	 * of the headers in {@link KafkaHeaders} are never mapped as headers since they
-	 * represent data in consumer/producer records.
-	 * @param objectMapper the object mapper.
-	 * @param patternsForListValue the patterns for multiple values at the same key.
-	 * @param patterns the patterns.
-	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
-	 */
-	public DefaultKafkaHeaderMapper(ObjectMapper objectMapper, List<String> patternsForListValue, String... patterns) {
-		this(true, objectMapper, patternsForListValue, patterns);
+		this(true, objectMapper, patterns);
 	}
 
 	private DefaultKafkaHeaderMapper(boolean outbound, ObjectMapper objectMapper, String... patterns) {
-		this(outbound, objectMapper, new ArrayList<>(), patterns);
-	}
-
-	private DefaultKafkaHeaderMapper(boolean outbound, ObjectMapper objectMapper, List<String> patternsForListValue, String... patterns) {
-		super(outbound, patternsForListValue, patterns);
+		super(outbound, patterns);
 		Assert.notNull(objectMapper, "'objectMapper' must not be null");
 		Assert.noNullElements(patterns, "'patterns' must not have null elements");
 		this.objectMapper = objectMapper;
@@ -383,22 +340,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 */
 
 	protected void handleHeader(String headerName, Header header, final Map<String, Object> headers) {
-		if (!this.isHeaderForListValue(headerName)) {
-			headers.put(headerName, headerValueToAddIn(header));
-		}
-		else {
-			Object values = headers.getOrDefault(headerName, new ArrayList<>());
-
-			if (values instanceof List) {
-				@SuppressWarnings("unchecked")
-				List<Object> castedValues = (List<Object>) values;
-				castedValues.add(headerValueToAddIn(header));
-				headers.put(headerName, castedValues);
-			}
-			else {
-				headers.put(headerName, headerValueToAddIn(header));
-			}
-		}
+		headers.put(headerName, headerValueToAddIn(header));
 	}
 
 	private void populateJsonValueHeader(Header header, String requestedType, Map<String, Object> headers) {
