@@ -56,8 +56,11 @@ If this is not possible for some reason, note that the `consumeFromEmbeddedTopic
 Since it does not have access to the consumer properties, you must use the overloaded method that takes a `seekToEnd` boolean parameter to seek to the end instead of the beginning.
 ====
 
-NOTE: The `EmbeddedKafkaRule` JUnit 4 rule has been removed in version 4.0.
-For JUnit 4, you should use the `EmbeddedKafkaKraftBroker` directly or migrate to JUnit 5 with the `@EmbeddedKafka` annotation.
+[NOTE]
+====
+Spring for Apache Kafka no longer supports JUnit 4.
+Migration to JUnit Jupiter is recommended.
+====
 
 The `EmbeddedKafkaBroker` class has a utility method that lets you consume for all the topics it created.
 The following example shows how to use it:
@@ -121,15 +124,19 @@ The following example configuration creates topics called `cat` and `hat` with f
 
 [source, java]
 ----
+@SpringJUnitConfig
+@EmbeddedKafka(
+        partitions = 5,
+        topics = {"cat", "hat"}
+)
 public class MyTests {
 
-    @ClassRule
-    private static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, false, 5, "cat", "hat");
+    @Autowired
+    private EmbeddedKafkaBroker broker;
 
     @Test
     public void test() {
-        embeddedKafkaRule.getEmbeddedKafka()
-              .addTopics(new NewTopic("thing1", 10, (short) 1), new NewTopic("thing2", 15, (short) 1));
+        broker.addTopics(new NewTopic("thing1", 10, (short) 1), new NewTopic("thing2", 15, (short) 1));
         ...
     }
 
@@ -206,7 +213,7 @@ In addition, these properties can be provided:
 
 Essentially these properties mimic some of the `@EmbeddedKafka` attributes.
 
-See more information about configuration properties and how to provide them in the https://junit.org/junit5/docs/current/user-guide/#running-tests-config-params[JUnit 5 User Guide].
+See more information about configuration properties and how to provide them in the https://junit.org/junit5/docs/current/user-guide/#running-tests-config-params[JUnit Jupiter User Guide].
 For example, a `spring.embedded.kafka.brokers.property=my.bootstrap-servers` entry can be added into a `junit-platform.properties` file in the testing classpath.
 Starting with version 3.0.10, the broker automatically sets this to `spring.kafka.bootstrap-servers`, by default, for testing with Spring Boot applications.
 
@@ -225,7 +232,7 @@ The following example shows how to use it:
 
 [source, java]
 ----
-@RunWith(SpringRunner.class)
+@SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka(partitions = 1,
          topics = {
@@ -237,7 +244,7 @@ public class KafkaStreamsTests {
     private EmbeddedKafkaBroker embeddedKafka;
 
     @Test
-    public void someTest() {
+    void someTest() {
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testGroup", "true", this.embeddedKafka);
         consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
@@ -288,12 +295,12 @@ In addition, the broker properties are loaded from the `broker.properties` class
 Property placeholders are resolved for the `brokerPropertiesLocation` URL and for any property placeholders found in the resource.
 Properties defined by `brokerProperties` override properties found in `brokerPropertiesLocation`.
 
-You can use the `@EmbeddedKafka` annotation with JUnit 4 or JUnit 5.
+You can use the `@EmbeddedKafka` annotation with JUnit Jupiter.
 
-[[embedded-kafka-junit5]]
-== `@EmbeddedKafka` Annotation with JUnit5
+[[embedded-kafka-junit-jupiter]]
+== `@EmbeddedKafka` Annotation with JUnit Jupiter
 
-Starting with version 2.3, there are two ways to use the `@EmbeddedKafka` annotation with JUnit5.
+Starting with version 2.3, there are two ways to use the `@EmbeddedKafka` annotation with JUnit Jupiter.
 When used with the `@SpringJunitConfig` annotation, the embedded broker is added to the test application context.
 You can auto wire the broker into your test, at the class or method level, to get the broker address list.
 
@@ -333,7 +340,7 @@ The following example shows how to do so:
 =====
 [source, java]
 ----
-@RunWith(SpringRunner.class)
+@SpringJUnitConfig
 @SpringBootTest(properties = "spring.autoconfigure.exclude="
     + "org.springframework.cloud.stream.test.binder.TestSupportBinderAutoConfiguration")
 public class MyApplicationTests {
@@ -347,36 +354,7 @@ There are several ways to use an embedded broker in a Spring Boot application te
 
 They include:
 
-* xref:testing.adoc#kafka-testing-junit4-class-rule[JUnit4 Class Rule]
 * xref:testing.adoc#kafka-testing-embeddedkafka-annotation[`@EmbeddedKafka` Annotation or `EmbeddedKafkaBroker` Bean]
-
-[[kafka-testing-junit4-class-rule]]
-=== JUnit4 Class Rule
-
-The following example shows how to use a JUnit4 class rule to create an embedded broker:
-
-[source, java]
-----
-@RunWith(SpringRunner.class)
-@SpringBootTest
-public class MyApplicationTests {
-
-    @ClassRule
-    public static EmbeddedKafkaRule broker = new EmbeddedKafkaRule(1, false, "someTopic")
-            .brokerListProperty("spring.kafka.bootstrap-servers");
-
-    @Autowired
-    private KafkaTemplate<String, String> template;
-
-    @Test
-    public void test() {
-        ...
-    }
-
-}
-----
-
-Notice that, since this is a Spring Boot application, we override the broker list property to set Spring Boot's property.
 
 [[embedded-broker-with-springjunitconfig-annotations]]
 == `@EmbeddedKafka` with `@SpringJunitConfig`
@@ -395,7 +373,7 @@ The following example shows how to use an `@EmbeddedKafka` Annotation to create 
 
 [source, java]
 ----
-@RunWith(SpringRunner.class)
+@SpringJUnitConfig
 @EmbeddedKafka(topics = "someTopic",
         bootstrapServersProperty = "spring.kafka.bootstrap-servers") // this is now the default
 public class MyApplicationTests {
@@ -404,7 +382,7 @@ public class MyApplicationTests {
     private KafkaTemplate<String, String> template;
 
     @Test
-    public void test() {
+    void test() {
         ...
     }
 

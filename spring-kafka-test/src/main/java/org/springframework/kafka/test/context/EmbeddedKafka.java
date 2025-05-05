@@ -43,7 +43,7 @@ import org.springframework.test.context.aot.DisabledInAotMode;
  * <p>
  * The typical usage of this annotation is like:
  * <pre class="code">
- * &#064;RunWith(SpringRunner.class)
+ * &#064;SpringJUnitConfig
  * &#064;EmbeddedKafka
  * public class MyKafkaTests {
  *
@@ -67,6 +67,7 @@ import org.springframework.test.context.aot.DisabledInAotMode;
  * @author Pawel Lozinski
  * @author Adrian Chlebosz
  * @author Soby Chacko
+ * @author Sanghyeok An
  *
  * @since 1.3
  *
@@ -169,4 +170,3 @@ public @interface EmbeddedKafka {
 	int adminTimeout() default EmbeddedKafkaBroker.DEFAULT_ADMIN_TIMEOUT;
 
 }
-
