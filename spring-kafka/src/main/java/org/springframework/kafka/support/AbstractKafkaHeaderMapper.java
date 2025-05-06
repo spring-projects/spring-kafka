@@ -279,7 +279,6 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	}
 
 	/**
-	 * TODO: Update docs.
 	 * Handle non-reserved headers in {@link DefaultKafkaHeaderMapper}.
 	 * @param headerName the header name.
 	 * @param header the header instance.
