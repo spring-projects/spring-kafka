@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-2024 the original author or authors.
+ * Copyright 2019-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.kafka.support;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.common.header.Header;
@@ -26,6 +27,7 @@ import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.kafka.retrytopic.RetryTopicHeaders;
 import org.springframework.messaging.MessageHeaders;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,6 +36,7 @@ import static org.assertj.core.api.Assertions.entry;
 
 /**
  * @author Gary Russell
+ * @author Sanghyeok An
  * @since 2.2.5
  *
  */
@@ -184,6 +187,53 @@ public class SimpleKafkaHeaderMapperTests {
 		inboundMapper.toHeaders(headers, mapped);
 		assertThat(mapped).doesNotContainKey("foo")
 				.containsKey(KafkaHeaders.DELIVERY_ATTEMPT);
+	}
+
+	@Test
+	void multiValueHeader() {
+		// GIVEN
+		String multiValueHeader1 = "test-multi-value1";
+		String multiValueHeader2 = "test-multi-value2";
+		String singleValueHeader = "test-single-value1";
+
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		mapper.setMultiValueHeaderPatterns(multiValueHeader1, multiValueHeader2);
+
+		Headers rawHeaders = new RecordHeaders();
+		rawHeaders.add(KafkaHeaders.DELIVERY_ATTEMPT, new byte[] { 0, 0, 0, 1 });
+		rawHeaders.add(KafkaHeaders.ORIGINAL_OFFSET, new byte[] { 0, 0, 0, 1 });
+		rawHeaders.add(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS, new byte[] { 0, 0, 0, 5 });
+		rawHeaders.add(singleValueHeader, new byte[] { 0, 0, 0, 6 });
+
+		rawHeaders.add(multiValueHeader1, new byte[] { 0, 0, 0, 0 });
+		rawHeaders.add(multiValueHeader1, new byte[] { 0, 0, 0, 1 });
+		rawHeaders.add(multiValueHeader1, new byte[] { 0, 0, 0, 2 });
+		rawHeaders.add(multiValueHeader1, new byte[] { 0, 0, 0, 3 });
+
+		rawHeaders.add(multiValueHeader2, new byte[] { 0, 0, 0, 4 });
+		rawHeaders.add(multiValueHeader2, new byte[] { 0, 0, 0, 5 });
+
+		// WHEN
+		Map<String, Object> mappedHeaders = new HashMap<>();
+		mapper.toHeaders(rawHeaders, mappedHeaders);
+
+		// THEN
+		assertThat(mappedHeaders.get(KafkaHeaders.DELIVERY_ATTEMPT)).isEqualTo(1);
+		assertThat(mappedHeaders.get(KafkaHeaders.ORIGINAL_OFFSET)).isEqualTo(new byte[] { 0, 0, 0, 1 });
+		assertThat(mappedHeaders.get(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS)).isEqualTo(new byte[] { 0, 0, 0, 5 });
+		assertThat(mappedHeaders.get(singleValueHeader)).isEqualTo(new byte[] { 0, 0, 0, 6 });
+
+		@SuppressWarnings("unchecked")
+		List<byte[]> multiHeader1Values = (List<byte[]>) mappedHeaders.get(multiValueHeader1);
+		assertThat(multiHeader1Values).contains(new byte[] { 0, 0, 0, 0 },
+												new byte[] { 0, 0, 0, 1 },
+												new byte[] { 0, 0, 0, 2 },
+												new byte[] { 0, 0, 0, 3 });
+
+		@SuppressWarnings("unchecked")
+		List<byte[]> multiHeader2Values = (List<byte[]>) mappedHeaders.get(multiValueHeader2);
+		assertThat(multiHeader2Values).contains(new byte[] { 0, 0, 0, 4 },
+												new byte[] { 0, 0, 0, 5 });
 	}
 
 }
