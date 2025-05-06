@@ -19,7 +19,6 @@ package org.springframework.kafka.support;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -326,35 +325,10 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 					populateJsonValueHeader(header, requestedType, headers);
 				}
 				else {
-					handleHeader(headerName, header, headers);
+					fromUserHeader(headerName, header, headers);
 				}
 			}
 		});
-	}
-
-	/**
-	 * Handle non-reserved headers in {@link DefaultKafkaHeaderMapper}.
-	 * @param headerName the header name.
-	 * @param header the header instance.
-	 * @param headers the target headers.
-	 * @since 4.0.0
-	 */
-	protected void handleHeader(String headerName, Header header, final Map<String, Object> headers) {
-		if (!this.doesMatchMultiValueHeader(headerName)) {
-			headers.put(headerName, headerValueToAddIn(header));
-		}
-		else {
-			Object values = headers.getOrDefault(headerName, new ArrayList<>());
-			if (values instanceof List) {
-				@SuppressWarnings("unchecked")
-				List<Object> castedValues = (List<Object>) values;
-				castedValues.add(headerValueToAddIn(header));
-				headers.put(headerName, castedValues);
-			}
-			else {
-				headers.put(headerName, headerValueToAddIn(header));
-			}
-		}
 	}
 
 	private void populateJsonValueHeader(Header header, String requestedType, Map<String, Object> headers) {

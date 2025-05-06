@@ -17,9 +17,7 @@
 package org.springframework.kafka.support;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -106,29 +104,15 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	}
 
 	@Override
-	public void toHeaders(Headers source, Map<String, Object> target) {
+	public void toHeaders(Headers source, Map<String, Object> headers) {
 		source.forEach(header -> {
 			String headerName = header.key();
 			if (matchesForInbound(headerName)) {
 				if (headerName.equals(KafkaHeaders.DELIVERY_ATTEMPT)) {
-					target.put(headerName, ByteBuffer.wrap(header.value()).getInt());
+					headers.put(headerName, ByteBuffer.wrap(header.value()).getInt());
 				}
 				else {
-					if (!this.doesMatchMultiValueHeader(headerName)) {
-						target.put(headerName, headerValueToAddIn(header));
-					}
-					else {
-						Object values = target.getOrDefault(headerName, new ArrayList<>());
-						if (values instanceof List) {
-							@SuppressWarnings("unchecked")
-							List<Object> castedValues = (List<Object>) values;
-							castedValues.add(headerValueToAddIn(header));
-							target.put(headerName, castedValues);
-						}
-						else {
-							target.put(headerName, headerValueToAddIn(header));
-						}
-					}
+					fromUserHeader(headerName, header, headers);
 				}
 			}
 		});

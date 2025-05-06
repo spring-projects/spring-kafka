@@ -65,7 +65,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 
 	private final List<HeaderMatcher> matchers = new ArrayList<>();
 
-	private final List<HeaderMatcher> headerMatchersForMultiValue = new ArrayList<>();
+	private final List<HeaderMatcher> multiValueHeaderMatchers = new ArrayList<>();
 
 	private final Map<String, Boolean> rawMappedHeaders = new HashMap<>();
 
@@ -197,10 +197,11 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	 * Add patterns for matching multi-value headers under the same key.
 	 * @param patterns the patterns for header.
 	 */
-	public void addHeaderPatternsForMultiValue(String ... patterns) {
-		for (String pattern : patterns) {
-			this.headerMatchersForMultiValue.add(new SimplePatternBasedHeaderMatcher(pattern));
-		}
+	public void setMultiValueHeaderPatterns(String ... patterns) {
+		this.multiValueHeaderMatchers.addAll(Arrays
+												.stream(patterns)
+												.map(SimplePatternBasedHeaderMatcher::new)
+												.toList());
 	}
 
 	protected boolean matches(String header, Object value) {
@@ -269,12 +270,33 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	 * @return True for multiple values at the same key.
 	 */
 	protected boolean doesMatchMultiValueHeader(String headerName) {
-		for (HeaderMatcher headerMatcher : this.headerMatchersForMultiValue) {
+		for (HeaderMatcher headerMatcher : this.multiValueHeaderMatchers) {
 			if (headerMatcher.matchHeader(headerName)) {
 				return true;
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * TODO: Update docs.
+	 * Handle non-reserved headers in {@link DefaultKafkaHeaderMapper}.
+	 * @param headerName the header name.
+	 * @param header the header instance.
+	 * @param headers the target headers.
+	 * @since 4.0.0
+	 */
+	protected void fromUserHeader(String headerName, Header header, final Map<String, Object> headers) {
+		if (!doesMatchMultiValueHeader(headerName)) {
+			headers.put(headerName, headerValueToAddIn(header));
+		}
+		else {
+			@SuppressWarnings("unchecked")
+			List<Object> headerValues = (List<Object>)
+					headers.computeIfAbsent(headerName, key -> new ArrayList<>());
+			headerValues.add(headerValueToAddIn(header));
+			headers.put(headerName, headerValues);
+		}
 	}
 
 	@SuppressWarnings("NullAway") // Dataflow analysis limitation
