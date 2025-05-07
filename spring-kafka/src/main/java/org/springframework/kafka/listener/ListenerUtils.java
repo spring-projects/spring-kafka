@@ -16,10 +16,12 @@
 
 package org.springframework.kafka.listener;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.jspecify.annotations.Nullable;
 
@@ -34,6 +36,7 @@ import org.springframework.util.backoff.BackOffExecution;
  * @author Francois Rosiere
  * @author Antonio Tomac
  * @author Wang Zhiyang
+ * @author Sanghyeok An
  * @since 2.0
  *
  */
@@ -148,6 +151,38 @@ public final class ListenerUtils {
 	}
 
 	/**
+	 * Sleep for the desired timeout, as long as shouldSleepCondition supplies true.
+	 * This method requires that the consumer is paused; otherwise, ConsumerRecord may be lost.
+	 * Periodically calls {@code Consumer.poll(Duration.ZERO)} to prevent a paused consumer from being rebalanced.
+	 * @param shouldSleepCondition to.
+	 * @param interval the timeout.
+	 * @param consumer the kafka consumer to call poll().
+	 * @throws InterruptedException if the thread is interrupted.
+	 */
+	public static void conditionalSleepWithPoll(Supplier<Boolean> shouldSleepCondition,
+												long interval,
+												Consumer<?, ?> consumer) throws InterruptedException {
+		boolean isFirst = true;
+		long timeout = System.currentTimeMillis() + interval;
+		long sleepInterval = interval > SMALL_INTERVAL_THRESHOLD ? DEFAULT_SLEEP_INTERVAL : SMALL_SLEEP_INTERVAL;
+		do {
+			Thread.sleep(sleepInterval);
+			if (!shouldSleepCondition.get()) {
+				break;
+			}
+
+			if (isFirst) {
+				isFirst = false;
+			}
+			else {
+				// To prevent consumer group rebalancing during retry backoff.
+				consumer.poll(Duration.ZERO);
+			}
+		}
+		while (System.currentTimeMillis() < timeout);
+	}
+
+	/**
 	 * Create a new {@link  OffsetAndMetadata} using the given container and offset.
 	 * @param container a container.
 	 * @param offset an offset.
@@ -165,4 +200,3 @@ public final class ListenerUtils {
 		return new OffsetAndMetadata(offset);
 	}
 }
-
