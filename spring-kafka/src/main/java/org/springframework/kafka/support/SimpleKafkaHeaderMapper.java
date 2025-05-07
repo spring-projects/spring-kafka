@@ -18,6 +18,7 @@ package org.springframework.kafka.support;
 
 import java.nio.ByteBuffer;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -95,9 +96,18 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	public void fromHeaders(MessageHeaders headers, Headers target) {
 		headers.forEach((key, value) -> {
 			if (!NEVER.contains(key)) {
-				Object valueToAdd = headerValueToAddOut(key, value);
-				if (valueToAdd instanceof byte[] && matches(key, valueToAdd)) {
-					target.add(new RecordHeader(key, (byte[]) valueToAdd));
+				if (doesMatchMultiValueHeader(key)) {
+					Iterable<?> valuesToMap;
+					if (value instanceof Iterable<?> iterable) {
+						valuesToMap = iterable;
+					}
+					else {
+						valuesToMap = List.of(value);
+					}
+					valuesToMap.forEach(o -> fromHeader(key, o, target));
+				}
+				else {
+					fromHeader(key, value, target);
 				}
 			}
 		});
@@ -116,6 +126,13 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 				}
 			}
 		});
+	}
+
+	private void fromHeader(String key, Object value, Headers target) {
+		Object valueToAdd = headerValueToAddOut(key, value);
+		if (valueToAdd instanceof byte[] && matches(key, valueToAdd)) {
+			target.add(new RecordHeader(key, (byte[]) valueToAdd));
+		}
 	}
 
 }

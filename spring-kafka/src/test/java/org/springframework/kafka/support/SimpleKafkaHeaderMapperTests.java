@@ -28,7 +28,9 @@ import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.retrytopic.RetryTopicHeaders;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
+import org.springframework.messaging.support.MessageBuilder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
@@ -190,7 +192,7 @@ public class SimpleKafkaHeaderMapperTests {
 	}
 
 	@Test
-	void multiValueHeader() {
+	void multiValueHeaderToTest() {
 		// GIVEN
 		String multiValueHeader1 = "test-multi-value1";
 		String multiValueHeader2 = "test-multi-value2";
@@ -234,6 +236,38 @@ public class SimpleKafkaHeaderMapperTests {
 		List<byte[]> multiHeader2Values = (List<byte[]>) mappedHeaders.get(multiValueHeader2);
 		assertThat(multiHeader2Values).contains(new byte[] { 0, 0, 0, 4 },
 												new byte[] { 0, 0, 0, 5 });
+	}
+
+	@Test
+	void multiValueHeaderFromTest() {
+		// GIVEN
+		String multiValueHeader1 = "test-multi-value1";
+		String multiValueHeader2 = "test-multi-value2";
+		String singleValueHeader = "test-single-value1";
+
+		Message<String> message = MessageBuilder
+				.withPayload("test-multi-value-header")
+				.setHeader(multiValueHeader1, List.of(new byte[] { 0, 0, 0, 1 },
+													  new byte[] { 0, 0, 0, 2 }))
+				.setHeader(multiValueHeader2, List.of(new byte[] { 0, 0, 0, 3 },
+													  new byte[] { 0, 0, 0, 4 }))
+				.setHeader(singleValueHeader, new byte[] { 0, 0, 0, 5 })
+				.build();
+
+		SimpleKafkaHeaderMapper mapper = new SimpleKafkaHeaderMapper();
+
+		// WHEN
+		Headers results = new RecordHeaders();
+		mapper.fromHeaders(message.getHeaders(), results);
+
+		// THEN
+		assertThat(results).contains(
+				new RecordHeader(multiValueHeader1, new byte[] { 0, 0, 0, 1 }),
+				new RecordHeader(multiValueHeader1, new byte[] { 0, 0, 0, 2 }),
+				new RecordHeader(multiValueHeader2, new byte[] { 0, 0, 0, 3 }),
+				new RecordHeader(multiValueHeader2, new byte[] { 0, 0, 0, 4 }),
+				new RecordHeader(singleValueHeader, new byte[] { 0, 0, 0, 5 })
+		);
 	}
 
 }

@@ -267,30 +267,18 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 		final ObjectMapper headerObjectMapper = getObjectMapper();
 		headers.forEach((key, rawValue) -> {
 			if (matches(key, rawValue)) {
-				Object valueToAdd = headerValueToAddOut(key, rawValue);
-				if (valueToAdd instanceof byte[]) {
-					target.add(new RecordHeader(key, (byte[]) valueToAdd));
+				if (doesMatchMultiValueHeader(key)) {
+					Iterable<?> valuesToMap;
+					if (rawValue instanceof Iterable<?> iterable) {
+						valuesToMap = iterable;
+					}
+					else {
+						valuesToMap = List.of(rawValue);
+					}
+					valuesToMap.forEach(o -> fromHeader(key, o, jsonHeaders, headerObjectMapper, target));
 				}
 				else {
-					try {
-						String className = valueToAdd.getClass().getName();
-						boolean encodeToJson = this.encodeStrings;
-						if (this.toStringClasses.contains(className)) {
-							valueToAdd = valueToAdd.toString();
-							className = JAVA_LANG_STRING;
-							encodeToJson = true;
-						}
-						if (!encodeToJson && valueToAdd instanceof String) {
-							target.add(new RecordHeader(key, ((String) valueToAdd).getBytes(getCharset())));
-						}
-						else {
-							target.add(new RecordHeader(key, headerObjectMapper.writeValueAsBytes(valueToAdd)));
-						}
-						jsonHeaders.put(key, className);
-					}
-					catch (Exception e) {
-						logger.error(e, () -> "Could not map " + key + " with type " + rawValue.getClass().getName());
-					}
+					fromHeader(key, rawValue, jsonHeaders, headerObjectMapper, target);
 				}
 			}
 		});
@@ -329,6 +317,36 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 				}
 			}
 		});
+	}
+
+	private void fromHeader(String key, Object rawValue, Map<String, String> jsonHeaders,
+							ObjectMapper headerObjectMapper, Headers target) {
+
+		Object valueToAdd = headerValueToAddOut(key, rawValue);
+		if (valueToAdd instanceof byte[]) {
+			target.add(new RecordHeader(key, (byte[]) valueToAdd));
+		}
+		else {
+			try {
+				String className = valueToAdd.getClass().getName();
+				boolean encodeToJson = this.encodeStrings;
+				if (this.toStringClasses.contains(className)) {
+					valueToAdd = valueToAdd.toString();
+					className = JAVA_LANG_STRING;
+					encodeToJson = true;
+				}
+				if (!encodeToJson && valueToAdd instanceof String) {
+					target.add(new RecordHeader(key, ((String) valueToAdd).getBytes(getCharset())));
+				}
+				else {
+					target.add(new RecordHeader(key, headerObjectMapper.writeValueAsBytes(valueToAdd)));
+				}
+				jsonHeaders.put(key, className);
+			}
+			catch (Exception e) {
+				logger.error(e, () -> "Could not map " + key + " with type " + rawValue.getClass().getName());
+			}
+		}
 	}
 
 	private void populateJsonValueHeader(Header header, String requestedType, Map<String, Object> headers) {
