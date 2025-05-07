@@ -391,9 +391,9 @@ public class DefaultKafkaHeaderMapperTests {
 		Message<String> message = MessageBuilder
 				.withPayload("test-multi-value-header")
 				.setHeader(multiValueHeader1, List.of(new byte[] { 0, 0, 0, 1 },
-													  new byte[] { 0, 0, 0, 2 }))
+													new byte[] { 0, 0, 0, 2 }))
 				.setHeader(multiValueHeader2, List.of(new byte[] { 0, 0, 0, 3 },
-													  new byte[] { 0, 0, 0, 4 }))
+													new byte[] { 0, 0, 0, 4 }))
 				.setHeader(singleValueHeader, new byte[] { 0, 0, 0, 5 })
 				.build();
 
@@ -413,7 +413,6 @@ public class DefaultKafkaHeaderMapperTests {
 				new RecordHeader(singleValueHeader, new byte[] { 0, 0, 0, 5 })
 		);
 	}
-
 
 	@Test
 	void deserializationExceptionHeadersAreMappedAsNonByteArray() {
