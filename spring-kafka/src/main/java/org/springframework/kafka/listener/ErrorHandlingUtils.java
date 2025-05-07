@@ -50,6 +50,7 @@ import org.springframework.util.backoff.BackOffExecution;
  * @author Andrii Pelesh
  * @author Antonio Tomac
  * @author Wang Zhiyang
+ * @author Sanghyeok An
  *
  * @since 2.8
  *
@@ -112,12 +113,17 @@ public final class ErrorHandlingUtils {
 					throw new KafkaException("Woken up during retry", logLevel, we);
 				}
 				try {
-					ListenerUtils.conditionalSleep(
+					ListenerUtils.conditionalSleepWithPoll(
 							() -> container.isRunning() &&
 									!container.isPauseRequested() &&
 									records.partitions().stream().noneMatch(container::isPartitionPauseRequested),
-							nextBackOff
+							nextBackOff,
+							consumer
 					);
+				}
+				catch (WakeupException we) {
+					seeker.handleBatch(thrownException, records, consumer, container, NO_OP);
+					throw new KafkaException("Woken up during retry", logLevel, we);
 				}
 				catch (InterruptedException e1) {
 					Thread.currentThread().interrupt();
