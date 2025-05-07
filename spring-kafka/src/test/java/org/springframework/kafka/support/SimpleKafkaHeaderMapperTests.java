@@ -255,6 +255,7 @@ public class SimpleKafkaHeaderMapperTests {
 				.build();
 
 		SimpleKafkaHeaderMapper mapper = new SimpleKafkaHeaderMapper();
+		mapper.setMultiValueHeaderPatterns(multiValueHeader1, multiValueHeader2);
 
 		// WHEN
 		Headers results = new RecordHeaders();
