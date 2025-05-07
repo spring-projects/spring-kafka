@@ -242,6 +242,14 @@ public DefaultErrorHandler errorHandler(ConsumerRecordRecoverer recoverer) {
 }
 ----
 
+[IMPORTANT]
+The `DefaultErrorHandler` only processes exceptions that inherit from `RuntimeException`.
+Exceptions inheriting from `Error` bypass the error handler entirely, causing the consumer to terminate immediately, close the Kafka connection, and skip all retry/recovery mechanisms.
+This critical distinction means applications may report healthy status despite having terminated consumers that no longer process messages.
+Always ensure that exceptions thrown in message processing code explicitly extend from `RuntimeException` rather than `Error` to allow proper error handling.
+In other words, if the application throws an exception, ensure that it is extended from `RuntimeException` and not inadvertently inherited from `Error`.
+Standard errors like `OutOfMemoryError`, `IllegalAccessError`, and other errors beyond the control of the application are still treated as ``Error``s and not retried.
+
 The error handler can be configured with one or more `RetryListener`+++s+++, receiving notifications of retry and recovery progress.
 Starting with version 2.8.10, methods for batch listeners were added.
 
