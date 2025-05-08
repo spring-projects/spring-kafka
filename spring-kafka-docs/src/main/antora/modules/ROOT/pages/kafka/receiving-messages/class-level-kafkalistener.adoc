@@ -62,3 +62,25 @@ void listen(Object in, @Header(KafkaHeaders.RECORD_METADATA) ConsumerRecordMetad
     ...
 }
 ----
+
+Also, this won't work as well.
+The `topic` is resolved to the `payload`.
+
+[source, java]
+----
+@KafkaHandler(isDefault = true)
+public void listenDefault(String payload, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic) {
+    // payload.equals(topic) is True.
+    ...
+}
+----
+
+If there are use cases in which discrete custom headers are required in a default method, use this:
+[source, java]
+----
+@KafkaHandler(isDefault = true)
+void listenDefault(String payload, @Headers Map<String, Object> headers) {
+    Object myValue = headers.get("MyCustomHeader");
+    ...
+}
+----
