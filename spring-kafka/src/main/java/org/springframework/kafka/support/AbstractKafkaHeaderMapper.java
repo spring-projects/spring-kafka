@@ -196,6 +196,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	/**
 	 * Add patterns for matching multi-value headers under the same key.
 	 * @param patterns the patterns for header.
+	 * @since 4.0
 	 */
 	public void setMultiValueHeaderPatterns(String ... patterns) {
 		this.multiValueHeaderMatchers.addAll(Arrays
@@ -268,6 +269,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	 * Check whether the header value should be mapped to multiple values.
 	 * @param headerName the header name.
 	 * @return True for multiple values at the same key.
+	 * @since 4.0
 	 */
 	protected boolean doesMatchMultiValueHeader(String headerName) {
 		for (HeaderMatcher headerMatcher : this.multiValueHeaderMatchers) {
@@ -283,7 +285,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	 * @param headerName the header name.
 	 * @param header the header instance.
 	 * @param headers the target headers.
-	 * @since 4.0.0
+	 * @since 4.0
 	 */
 	protected void fromUserHeader(String headerName, Header header, final Map<String, Object> headers) {
 		if (!doesMatchMultiValueHeader(headerName)) {
@@ -294,7 +296,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 			List<Object> headerValues = (List<Object>)
 					headers.computeIfAbsent(headerName, key -> new ArrayList<>());
 			headerValues.add(headerValueToAddIn(header));
-			headers.put(headerName, headerValues);
+//			headers.put(headerName, headerValues);
 		}
 	}
 

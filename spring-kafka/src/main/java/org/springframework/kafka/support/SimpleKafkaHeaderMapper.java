@@ -97,14 +97,12 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 		headers.forEach((key, value) -> {
 			if (!NEVER.contains(key)) {
 				if (doesMatchMultiValueHeader(key)) {
-					Iterable<?> valuesToMap;
-					if (value instanceof Iterable<?> iterable) {
-						valuesToMap = iterable;
+					if (value instanceof Iterable<?> valuesToMap) {
+						valuesToMap.forEach(o -> fromHeader(key, o, target));
 					}
 					else {
-						valuesToMap = List.of(value);
+						fromHeader(key, value, target);
 					}
-					valuesToMap.forEach(o -> fromHeader(key, o, target));
 				}
 				else {
 					fromHeader(key, value, target);

@@ -268,14 +268,12 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 		headers.forEach((key, rawValue) -> {
 			if (matches(key, rawValue)) {
 				if (doesMatchMultiValueHeader(key)) {
-					Iterable<?> valuesToMap;
-					if (rawValue instanceof Iterable<?> iterable) {
-						valuesToMap = iterable;
+					if (rawValue instanceof Iterable<?> valuesToMap) {
+						valuesToMap.forEach(o -> fromHeader(key, o, jsonHeaders, headerObjectMapper, target));
 					}
 					else {
-						valuesToMap = List.of(rawValue);
+						fromHeader(key, rawValue, jsonHeaders, headerObjectMapper, target);
 					}
-					valuesToMap.forEach(o -> fromHeader(key, o, jsonHeaders, headerObjectMapper, target));
 				}
 				else {
 					fromHeader(key, rawValue, jsonHeaders, headerObjectMapper, target);
@@ -341,7 +339,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 				else {
 					target.add(new RecordHeader(key, headerObjectMapper.writeValueAsBytes(valueToAdd)));
 				}
-				jsonHeaders.put(key, className);
+				jsonHeaders.putIfAbsent(key, className);
 			}
 			catch (Exception e) {
 				logger.error(e, () -> "Could not map " + key + " with type " + rawValue.getClass().getName());
