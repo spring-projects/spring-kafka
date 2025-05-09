@@ -339,10 +339,12 @@ public class DefaultKafkaHeaderMapperTests {
 		// GIVEN
 		String multiValueHeader1 = "test-multi-value1";
 		String multiValueHeader2 = "test-multi-value2";
+		String multiValueWildeCardHeader1 = "test-wildcard-value1";
+		String multiValueWildeCardHeader2 = "test-wildcard-value2";
 		String singleValueHeader = "test-single-value1";
 
 		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
-		mapper.setMultiValueHeaderPatterns(multiValueHeader1, multiValueHeader2);
+		mapper.setMultiValueHeaderPatterns(multiValueHeader1, multiValueHeader2, "test-wildcard-*");
 
 		Headers rawHeaders = new RecordHeaders();
 		rawHeaders.add(KafkaHeaders.DELIVERY_ATTEMPT, new byte[] { 0, 0, 0, 1 });
@@ -357,6 +359,11 @@ public class DefaultKafkaHeaderMapperTests {
 
 		rawHeaders.add(multiValueHeader2, new byte[] { 0, 0, 0, 4 });
 		rawHeaders.add(multiValueHeader2, new byte[] { 0, 0, 0, 5 });
+
+		rawHeaders.add(multiValueWildeCardHeader1, new byte[] { 0, 0, 0, 6 });
+		rawHeaders.add(multiValueWildeCardHeader1, new byte[] { 0, 0, 0, 7 });
+		rawHeaders.add(multiValueWildeCardHeader2, new byte[] { 0, 0, 0, 8 });
+		rawHeaders.add(multiValueWildeCardHeader2, new byte[] { 0, 0, 0, 9 });
 
 		// WHEN
 		Map<String, Object> mappedHeaders = new HashMap<>();
@@ -379,6 +386,16 @@ public class DefaultKafkaHeaderMapperTests {
 		List<byte[]> multiHeader2Values = (List<byte[]>) mappedHeaders.get(multiValueHeader2);
 		assertThat(multiHeader2Values).contains(new byte[] { 0, 0, 0, 4 },
 												new byte[] { 0, 0, 0, 5 });
+
+		@SuppressWarnings("unchecked")
+		List<byte[]> multiValueWildeCardHeader1Values = (List<byte[]>) mappedHeaders.get(multiValueWildeCardHeader1);
+		assertThat(multiValueWildeCardHeader1Values).contains(new byte[] { 0, 0, 0, 6 },
+															new byte[] { 0, 0, 0, 7 });
+
+		@SuppressWarnings("unchecked")
+		List<byte[]> multiValueWildeCardHeader2Values = (List<byte[]>) mappedHeaders.get(multiValueWildeCardHeader2);
+		assertThat(multiValueWildeCardHeader2Values).contains(new byte[] { 0, 0, 0, 8 },
+															new byte[] { 0, 0, 0, 9 });
 	}
 
 	@Test
@@ -386,6 +403,8 @@ public class DefaultKafkaHeaderMapperTests {
 		// GIVEN
 		String multiValueHeader1 = "test-multi-value1";
 		String multiValueHeader2 = "test-multi-value2";
+		String multiValueHeader3 = "test-other-multi-value1";
+		String multiValueHeader4 = "test-prefix-match-multi";
 		String singleValueHeader = "test-single-value1";
 
 		Message<String> message = MessageBuilder
@@ -394,11 +413,17 @@ public class DefaultKafkaHeaderMapperTests {
 													new byte[] { 0, 0, 0, 2 }))
 				.setHeader(multiValueHeader2, List.of(new byte[] { 0, 0, 0, 3 },
 													new byte[] { 0, 0, 0, 4 }))
+				.setHeader(multiValueHeader3, List.of(new byte[] { 0, 0, 0, 9 },
+													new byte[] { 0, 0, 0, 10 }))
+				.setHeader(multiValueHeader4, List.of(new byte[] { 0, 0, 0, 11 },
+													new byte[] { 0, 0, 0, 12 }))
 				.setHeader(singleValueHeader, new byte[] { 0, 0, 0, 5 })
 				.build();
 
 		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
-		mapper.setMultiValueHeaderPatterns(multiValueHeader1, multiValueHeader2);
+		mapper.setMultiValueHeaderPatterns("test-multi-*",
+											multiValueHeader3,
+											"*-prefix-match-multi*");
 
 		// WHEN
 		Headers results = new RecordHeaders();
@@ -410,6 +435,10 @@ public class DefaultKafkaHeaderMapperTests {
 				new RecordHeader(multiValueHeader1, new byte[] { 0, 0, 0, 2 }),
 				new RecordHeader(multiValueHeader2, new byte[] { 0, 0, 0, 3 }),
 				new RecordHeader(multiValueHeader2, new byte[] { 0, 0, 0, 4 }),
+				new RecordHeader(multiValueHeader3, new byte[] { 0, 0, 0, 9 }),
+				new RecordHeader(multiValueHeader3, new byte[] { 0, 0, 0, 10 }),
+				new RecordHeader(multiValueHeader4, new byte[] { 0, 0, 0, 11 }),
+				new RecordHeader(multiValueHeader4, new byte[] { 0, 0, 0, 12 }),
 				new RecordHeader(singleValueHeader, new byte[] { 0, 0, 0, 5 })
 		);
 	}

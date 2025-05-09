@@ -75,4 +75,4 @@ For details, see xref:kafka/receiving-messages/rebalance-listeners.adoc#new-reba
 === Support multi-value header
 
 Spring for Apache Kafka 4.0 supports multi-value header for Kafka Record.
-For details, see xref:kafka/headers.adoc#multi-value-header[Support multi-value header].
+More details are available in xref:kafka/headers.adoc#multi-value-header[Support multi-value header].

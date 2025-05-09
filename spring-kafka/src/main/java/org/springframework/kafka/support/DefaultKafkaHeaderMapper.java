@@ -333,12 +333,14 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 					className = JAVA_LANG_STRING;
 					encodeToJson = true;
 				}
+				final byte[] calculatedValue;
 				if (!encodeToJson && valueToAdd instanceof String) {
-					target.add(new RecordHeader(key, ((String) valueToAdd).getBytes(getCharset())));
+					calculatedValue = ((String) valueToAdd).getBytes(getCharset());
 				}
 				else {
-					target.add(new RecordHeader(key, headerObjectMapper.writeValueAsBytes(valueToAdd)));
+					calculatedValue = headerObjectMapper.writeValueAsBytes(valueToAdd);
 				}
+				target.add(new RecordHeader(key, calculatedValue));
 				jsonHeaders.putIfAbsent(key, className);
 			}
 			catch (Exception e) {

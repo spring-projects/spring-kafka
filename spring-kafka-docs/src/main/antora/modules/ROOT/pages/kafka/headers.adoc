@@ -182,24 +182,58 @@ If using Spring Boot, it will auto configure this converter bean into the auto-c
 [[multi-value-header]]
 == Support multi-value header
 
-Spring for Apache Kafka 4.0 supports multi-value header.
-To use multi-value header, the patterns for multi-value should be configured to `HeaderMapper`.
-If no patterns are configured to `HeaderMapper`, iterable header values under same header name will be handled like single value.
+Spring for Apache Kafka 4.0 supports multi-value header where same logical header key appears more than once in a Kafka record.
 
-If there are use cases in which multi-value headers are required, use this:
+By default, when multiple headers share the same name, the `HeaderMapper` treats them as a single value and serialises the collection to JSON.
+
+* **Producer side:** `DefaultKafkaHeaderMapper` writes the JSON bytes, while `SimpleKafkaHeaderMapper` ignore it.
+* **Consumer side:** the mapper exposes the header as a single value—the **last occurrence wins**; earlier duplicates are silently discarded.
+
+Preserving each individual header requires explicit registration of patterns that designate the header as multi‑valued.
+
+`DefaultKafkaHeaderMapper#setMultiValueHeaderPatterns(String... patterns)` accepts a list of patterns, which can be either wildcard expressions or exact header names.
 
 [source, java]
 ----
+DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+
+// Explicit header names
+mapper.setMultiValueHeaderPatterns("test-multi-value1", "test-multi-value2");
+
+// Wildcard patterns for test-multi-value1, test-multi-value2
+mapper.setMultiValueHeaderPatterns("test-multi-*");
+----
+
+Any header whose name matches one of the supplied patterns is
+
+* **Producer side:** written as separate Kafka headers, one per element.
+* **Consumer side:** reconstructed as a `List<?>` and returned unchanged to the application.
+
+[NOTE]
+====
+Regular expressions are *not* supported; only the `*` wildcard is allowed in simple patterns—supporting direct equality and forms such as:
+
+- `xxx*`
+- `*xxx`
+- `*xxx*`
+- `xxx*yyy`
+====
+
+[IMPORTANT]
+====
+All elements collected under the same multi‑value header **must be of the same Java type**.
+Mixing, for example, `String` and `byte[]` values under a single header key is not supported and will lead to a conversion error.
+====
+
+The mapper is used by multiple components (`KafkaTemplate`, `MessagingMessageConverter`, lister container factories, etc.).
+Define and expose it as a Spring bean wherever it makes sense for your application:
+
+[source,java]
+----
 @Bean
-public void KafkaListenerContainerFactory<Integer, String> containerFactory() {
-    ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
-					new ConcurrentKafkaListenerContainerFactory<>();
-
-    DefaultKafkaHeaderMapper headerMapper = new DefaultKafkaHeaderMapper();
-    headerMapper.setMultiValueHeaderPatterns("test-multi-value1", "test-multi-value2");
-
-    MessagingMessageConverter converter = new MessagingMessageConverter(headerMapper);
-    factory.setRecordMessageConverter(converter);
-    return factory;
+public DefaultKafkaHeaderMapper multiValueHeaderMapper() {
+    DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+    mapper.setMultiValueHeaderPatterns("test-multi-*");
+    return mapper;
 }
 ----

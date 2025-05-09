@@ -296,7 +296,6 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 			List<Object> headerValues = (List<Object>)
 					headers.computeIfAbsent(headerName, key -> new ArrayList<>());
 			headerValues.add(headerValueToAddIn(header));
-//			headers.put(headerName, headerValues);
 		}
 	}
 

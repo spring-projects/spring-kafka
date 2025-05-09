@@ -126,9 +126,8 @@ public class SimpleKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	}
 
 	private void fromHeader(String key, Object value, Headers target) {
-		Object valueToAdd = headerValueToAddOut(key, value);
-		if (valueToAdd instanceof byte[] && matches(key, valueToAdd)) {
-			target.add(new RecordHeader(key, (byte[]) valueToAdd));
+		if (headerValueToAddOut(key, value) instanceof byte[] valueToAdd && matches(key, valueToAdd)) {
+			target.add(new RecordHeader(key, valueToAdd));
 		}
 	}
 
