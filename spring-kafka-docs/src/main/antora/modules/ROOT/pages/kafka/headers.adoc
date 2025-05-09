@@ -179,3 +179,27 @@ MessagingMessageConverter converter() {
 
 If using Spring Boot, it will auto configure this converter bean into the auto-configured `KafkaTemplate`; otherwise you should add this converter to the template.
 
+[[multi-value-header]]
+== Support multi-value header
+
+Spring for Apache Kafka 4.0 supports multi-value header.
+To use multi-value header, the patterns for multi-value should be configured to `HeaderMapper`.
+If no patterns are configured to `HeaderMapper`, iterable header values under same header name will be handled like single value.
+
+If there are use cases in which multi-value headers are required, use this:
+
+[source, java]
+----
+@Bean
+public void KafkaListenerContainerFactory<Integer, String> containerFactory() {
+    ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
+
+    DefaultKafkaHeaderMapper headerMapper = new DefaultKafkaHeaderMapper();
+    headerMapper.setMultiValueHeaderPatterns("test-multi-value1", "test-multi-value2");
+
+    MessagingMessageConverter converter = new MessagingMessageConverter(headerMapper);
+    factory.setRecordMessageConverter(converter);
+    return factory;
+}
+----
