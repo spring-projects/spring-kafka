@@ -189,6 +189,39 @@ By default, when multiple headers share the same name, the `HeaderMapper` treats
 * **Producer side:** `DefaultKafkaHeaderMapper` writes the JSON bytes, while `SimpleKafkaHeaderMapper` ignore it.
 * **Consumer side:** the mapper exposes the header as a single value—the **last occurrence wins**; earlier duplicates are silently discarded.
 
+For example, on the producer side:
+[source, java]
+----
+// For Producer Side
+Message<String> message = MessageBuilder
+       .withPayload("test-multi-value-header")
+       .setHeader("test-multi-value-header", List.of("test-value1", "test-value2"))
+       .build();
+
+DefaultKafkaHeaderMapper headerMapper = new DefaultKafkaHeaderMapper();
+RecordHeaders mappedHeaders = new RecordHeaders();
+headerMapper.fromHeaders(message.getHeaders(), mappedHeaders);
+
+RecordHeader expectedHeader = new RecordHeader("test-multi-value-header", new byte[] {
+       91, 34, 116, 101, 115, 116, 45, 118, 97, 108, 117, 101, 49, 34, 44, 34, 116, 101, 115, 116, 45,
+       118, 97, 108, 117, 101, 50, 34, 93});
+assertThat(mappedHeaders.headers(multiValueHeader1).iterator().next()).isEqualTo(expectedHeader);
+----
+
+For example, on the consumer side:
+[source, java]
+----
+// Consumer Side
+RecordHeaders recordHeaders = new RecordHeaders();
+recordHeaders.add("test-multi-value1", new byte[] { 0, 0, 0, 1 });
+recordHeaders.add("test-multi-value1", new byte[] { 0, 0, 0, 2 });
+
+Map<String, Object> mappedHeaders = new HashMap<>();
+headerMapper.toHeaders(recordHeaders, mappedHeaders);
+
+assertThat(headersMapped.get("test-multi-value1")).isEqualTo(new byte[] { 0, 0, 0, 2 });
+----
+
 Preserving each individual header requires explicit registration of patterns that designate the header as multi‑valued.
 
 `DefaultKafkaHeaderMapper#setMultiValueHeaderPatterns(String... patterns)` accepts a list of patterns, which can be either wildcard expressions or exact header names.
@@ -224,16 +257,3 @@ Regular expressions are *not* supported; only the `*` wildcard is allowed in sim
 All elements collected under the same multi‑value header **must be of the same Java type**.
 Mixing, for example, `String` and `byte[]` values under a single header key is not supported and will lead to a conversion error.
 ====
-
-The mapper is used by multiple components (`KafkaTemplate`, `MessagingMessageConverter`, lister container factories, etc.).
-Define and expose it as a Spring bean wherever it makes sense for your application:
-
-[source,java]
-----
-@Bean
-public DefaultKafkaHeaderMapper multiValueHeaderMapper() {
-    DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
-    mapper.setMultiValueHeaderPatterns("test-multi-*");
-    return mapper;
-}
-----
