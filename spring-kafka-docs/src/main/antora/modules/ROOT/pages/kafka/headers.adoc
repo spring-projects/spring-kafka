@@ -202,9 +202,9 @@ DefaultKafkaHeaderMapper headerMapper = new DefaultKafkaHeaderMapper();
 RecordHeaders mappedHeaders = new RecordHeaders();
 headerMapper.fromHeaders(message.getHeaders(), mappedHeaders);
 
-RecordHeader expectedHeader = new RecordHeader("test-multi-value-header", new byte[] {
-       91, 34, 116, 101, 115, 116, 45, 118, 97, 108, 117, 101, 49, 34, 44, 34, 116, 101, 115, 116, 45,
-       118, 97, 108, 117, 101, 50, 34, 93});
+ObjectMapper objectMapper = new ObjectMapper();
+RecordHeader expectedHeader = new RecordHeader("test-multi-value-header",
+    objectMapper.writeValueAsBytes(List.of("test-value1", "test-value2")));
 assertThat(mappedHeaders.headers(multiValueHeader1).iterator().next()).isEqualTo(expectedHeader);
 ----
 
