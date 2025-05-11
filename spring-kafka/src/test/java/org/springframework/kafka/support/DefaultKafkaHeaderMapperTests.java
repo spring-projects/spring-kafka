@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2024 the original author or authors.
+ * Copyright 2017-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.StreamSupport;
 
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
@@ -33,6 +34,7 @@ import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.retrytopic.RetryTopicHeaders;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper.NonTrustedHeaderType;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.SerializationTestUtils;
@@ -56,6 +58,7 @@ import static org.mockito.Mockito.verify;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Soby Chacko
+ * @author Sanghyeok An
  *
  * @since 1.3
  *
@@ -333,6 +336,147 @@ public class DefaultKafkaHeaderMapperTests {
 	}
 
 	@Test
+	void multiValueHeaderToTest() {
+		// GIVEN
+		String multiValueHeader1 = "test-multi-value1";
+		byte[] multiValueHeader1Value1 = { 0, 0, 0, 0 };
+		byte[] multiValueHeader1Value2 = { 0, 0, 0, 1 };
+		byte[] multiValueHeader1Value3 = { 0, 0, 0, 2 };
+		byte[] multiValueHeader1Value4 = { 0, 0, 0, 3 };
+
+		String multiValueHeader2 = "test-multi-value2";
+		byte[] multiValueHeader2Value1 = { 0, 0, 0, 4 };
+		byte[] multiValueHeader2Value2 = { 0, 0, 0, 5 };
+
+		String multiValueWildCardHeader1 = "test-wildcard-value1";
+		byte[] multiValueWildCardHeader1Value1 = { 0, 0, 0, 6 };
+		byte[] multiValueWildCardHeader1Value2 = { 0, 0, 0, 7 };
+
+		String multiValueWildCardHeader2 = "test-wildcard-value2";
+		byte[] multiValueWildCardHeader2Value1 = { 0, 0, 0, 8 };
+		byte[] multiValueWildCardHeader2Value2 = { 0, 0, 0, 9 };
+
+		String singleValueHeader = "test-single-value1";
+		byte[] singleValueHeaderValue = { 0, 0, 0, 6 };
+
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		mapper.setMultiValueHeaderPatterns(multiValueHeader1, multiValueHeader2, "test-wildcard-*");
+
+		Headers rawHeaders = new RecordHeaders();
+
+		byte[] deliveryAttemptHeaderValue = { 0, 0, 0, 1 };
+		byte[] originalOffsetHeaderValue = { 0, 0, 0, 1 };
+		byte[] defaultHeaderAttemptsValues = { 0, 0, 0, 5 };
+
+		rawHeaders.add(KafkaHeaders.DELIVERY_ATTEMPT, deliveryAttemptHeaderValue);
+		rawHeaders.add(KafkaHeaders.ORIGINAL_OFFSET, originalOffsetHeaderValue);
+		rawHeaders.add(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS, defaultHeaderAttemptsValues);
+		rawHeaders.add(singleValueHeader, singleValueHeaderValue);
+
+		rawHeaders.add(multiValueHeader1, multiValueHeader1Value1);
+		rawHeaders.add(multiValueHeader1, multiValueHeader1Value2);
+		rawHeaders.add(multiValueHeader1, multiValueHeader1Value3);
+		rawHeaders.add(multiValueHeader1, multiValueHeader1Value4);
+
+		rawHeaders.add(multiValueHeader2, multiValueHeader2Value1);
+		rawHeaders.add(multiValueHeader2, multiValueHeader2Value2);
+
+		rawHeaders.add(multiValueWildCardHeader1, multiValueWildCardHeader1Value1);
+		rawHeaders.add(multiValueWildCardHeader1, multiValueWildCardHeader1Value2);
+		rawHeaders.add(multiValueWildCardHeader2, multiValueWildCardHeader2Value1);
+		rawHeaders.add(multiValueWildCardHeader2, multiValueWildCardHeader2Value2);
+
+		// WHEN
+		Map<String, Object> mappedHeaders = new HashMap<>();
+		mapper.toHeaders(rawHeaders, mappedHeaders);
+
+		// THEN
+		assertThat(mappedHeaders.get(KafkaHeaders.DELIVERY_ATTEMPT)).isEqualTo(1);
+		assertThat(mappedHeaders.get(KafkaHeaders.ORIGINAL_OFFSET)).isEqualTo(originalOffsetHeaderValue);
+		assertThat(mappedHeaders.get(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS)).isEqualTo(defaultHeaderAttemptsValues);
+		assertThat(mappedHeaders.get(singleValueHeader)).isEqualTo(singleValueHeaderValue);
+
+		assertValueOfMultiValueHeader(mappedHeaders, multiValueHeader1,
+									multiValueHeader1Value1,
+									multiValueHeader1Value2,
+									multiValueHeader1Value3,
+									multiValueHeader1Value4);
+
+		assertValueOfMultiValueHeader(mappedHeaders, multiValueHeader2,
+									multiValueHeader2Value1,
+									multiValueHeader2Value2);
+
+		assertValueOfMultiValueHeader(mappedHeaders, multiValueWildCardHeader1,
+									multiValueWildCardHeader1Value1,
+									multiValueWildCardHeader1Value2);
+
+		assertValueOfMultiValueHeader(mappedHeaders, multiValueWildCardHeader2,
+									multiValueWildCardHeader2Value1,
+									multiValueWildCardHeader2Value2);
+	}
+
+	@Test
+	void multiValueHeaderFromTest() {
+		// GIVEN
+		String multiValueHeader1 = "test-multi-value1";
+		byte[] multiValueHeader1Value1 = { 0, 0, 0, 1 };
+		byte[] multiValueHeader1Value2 = { 0, 0, 0, 2 };
+
+		String multiValueHeader2 = "test-multi-value2";
+		byte[] multiValueHeader2Value1 = { 0, 0, 0, 3 };
+		byte[] multiValueHeader2Value2 = { 0, 0, 0, 4 };
+
+		String multiValueHeader3 = "test-other-multi-value1";
+		byte[] multiValueHeader3Value1 = { 0, 0, 0, 9 };
+		byte[] multiValueHeader3Value2 = { 0, 0, 0, 10 };
+
+		String multiValueHeader4 = "test-prefix-match-multi";
+		byte[] multiValueHeader4Value1 = { 0, 0, 0, 11 };
+		byte[] multiValueHeader4Value2 = { 0, 0, 0, 12 };
+
+		String singleValueHeader = "test-single-value1";
+		byte[] singleValueHeaderValue1 = { 0, 0, 0, 5 };
+
+		Message<String> message = MessageBuilder
+				.withPayload("test-multi-value-header")
+				.setHeader(multiValueHeader1, List.of(multiValueHeader1Value1,
+													multiValueHeader1Value2))
+				.setHeader(multiValueHeader2, List.of(multiValueHeader2Value1,
+													multiValueHeader2Value2))
+				.setHeader(multiValueHeader3, List.of(multiValueHeader3Value1,
+													multiValueHeader3Value2))
+				.setHeader(multiValueHeader4, List.of(multiValueHeader4Value1,
+													multiValueHeader4Value2))
+				.setHeader(singleValueHeader, singleValueHeaderValue1)
+				.build();
+
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		mapper.setMultiValueHeaderPatterns("test-multi-*",
+											multiValueHeader3,
+											"*-prefix-match-multi*");
+
+		// WHEN
+		Headers results = new RecordHeaders();
+		mapper.fromHeaders(message.getHeaders(), results);
+
+		// THEN
+		List<byte[]> multiValueHeader1Values = extractHeaderValues(results, multiValueHeader1);
+		assertThat(multiValueHeader1Values).containsExactly(multiValueHeader1Value1, multiValueHeader1Value2);
+
+		List<byte[]> multiValueHeader2Values = extractHeaderValues(results, multiValueHeader2);
+		assertThat(multiValueHeader2Values).containsExactly(multiValueHeader2Value1, multiValueHeader2Value2);
+
+		List<byte[]> multiValueHeader3Values = extractHeaderValues(results, multiValueHeader3);
+		assertThat(multiValueHeader3Values).containsExactly(multiValueHeader3Value1, multiValueHeader3Value2);
+
+		List<byte[]> multiValueHeader4Values = extractHeaderValues(results, multiValueHeader4);
+		assertThat(multiValueHeader4Values).containsExactly(multiValueHeader4Value1, multiValueHeader4Value2);
+
+		List<byte[]> singleValueHeaderValues = extractHeaderValues(results, singleValueHeader);
+		assertThat(singleValueHeaderValues).containsExactly(singleValueHeaderValue1);
+	}
+
+	@Test
 	void deserializationExceptionHeadersAreMappedAsNonByteArray() {
 		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
 
@@ -376,6 +520,19 @@ public class DefaultKafkaHeaderMapperTests {
 		assertThat(result).isNull();
 		verify(mockHeader).value();
 		verify(mockHeader, never()).key();
+	}
+
+	private List<byte[]> extractHeaderValues(Headers headers, String headerName) {
+		return StreamSupport.stream(headers.headers(headerName).spliterator(), false)
+							.map(Header::value)
+							.toList();
+	}
+
+	private void assertValueOfMultiValueHeader(Map<String, Object> mappedHeaders,
+											String headerName, byte[]... expectedByteValues) {
+		@SuppressWarnings("unchecked")
+		List<byte[]> multiHeaderValues = (List<byte[]>) mappedHeaders.get(headerName);
+		Arrays.stream(expectedByteValues).forEach(value -> assertThat(multiHeaderValues).contains(expectedByteValues));
 	}
 
 	public static final class Foo {
