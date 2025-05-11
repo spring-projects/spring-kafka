@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.StreamSupport;
 
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
@@ -396,23 +395,22 @@ public class DefaultKafkaHeaderMapperTests {
 		assertThat(mappedHeaders.get(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS)).isEqualTo(defaultHeaderAttemptsValues);
 		assertThat(mappedHeaders.get(singleValueHeader)).isEqualTo(singleValueHeaderValue);
 
-		assertValueOfMultiValueHeader(mappedHeaders, multiValueHeader1,
-									multiValueHeader1Value1,
-									multiValueHeader1Value2,
-									multiValueHeader1Value3,
-									multiValueHeader1Value4);
+		assertThat(mappedHeaders)
+				.extractingByKey(multiValueHeader1, InstanceOfAssertFactories.list(byte[].class))
+				.containsExactly(multiValueHeader1Value1, multiValueHeader1Value2,
+								multiValueHeader1Value3, multiValueHeader1Value4);
 
-		assertValueOfMultiValueHeader(mappedHeaders, multiValueHeader2,
-									multiValueHeader2Value1,
-									multiValueHeader2Value2);
+		assertThat(mappedHeaders)
+				.extractingByKey(multiValueHeader2, InstanceOfAssertFactories.list(byte[].class))
+				.containsExactly(multiValueHeader2Value1, multiValueHeader2Value2);
 
-		assertValueOfMultiValueHeader(mappedHeaders, multiValueWildCardHeader1,
-									multiValueWildCardHeader1Value1,
-									multiValueWildCardHeader1Value2);
+		assertThat(mappedHeaders)
+				.extractingByKey(multiValueWildCardHeader1, InstanceOfAssertFactories.list(byte[].class))
+				.containsExactly(multiValueWildCardHeader1Value1, multiValueWildCardHeader1Value2);
 
-		assertValueOfMultiValueHeader(mappedHeaders, multiValueWildCardHeader2,
-									multiValueWildCardHeader2Value1,
-									multiValueWildCardHeader2Value2);
+		assertThat(mappedHeaders)
+				.extractingByKey(multiValueWildCardHeader2, InstanceOfAssertFactories.list(byte[].class))
+				.containsExactly(multiValueWildCardHeader2Value1, multiValueWildCardHeader2Value2);
 	}
 
 	@Test
@@ -460,20 +458,25 @@ public class DefaultKafkaHeaderMapperTests {
 		mapper.fromHeaders(message.getHeaders(), results);
 
 		// THEN
-		List<byte[]> multiValueHeader1Values = extractHeaderValues(results, multiValueHeader1);
-		assertThat(multiValueHeader1Values).containsExactly(multiValueHeader1Value1, multiValueHeader1Value2);
+		assertThat(results.headers(multiValueHeader1))
+				.extracting(Header::value)
+				.containsExactly(multiValueHeader1Value1, multiValueHeader1Value2);
 
-		List<byte[]> multiValueHeader2Values = extractHeaderValues(results, multiValueHeader2);
-		assertThat(multiValueHeader2Values).containsExactly(multiValueHeader2Value1, multiValueHeader2Value2);
+		assertThat(results.headers(multiValueHeader2))
+				.extracting(Header::value)
+				.containsExactly(multiValueHeader2Value1, multiValueHeader2Value2);
 
-		List<byte[]> multiValueHeader3Values = extractHeaderValues(results, multiValueHeader3);
-		assertThat(multiValueHeader3Values).containsExactly(multiValueHeader3Value1, multiValueHeader3Value2);
+		assertThat(results.headers(multiValueHeader3))
+				.extracting(Header::value)
+				.containsExactly(multiValueHeader3Value1, multiValueHeader3Value2);
 
-		List<byte[]> multiValueHeader4Values = extractHeaderValues(results, multiValueHeader4);
-		assertThat(multiValueHeader4Values).containsExactly(multiValueHeader4Value1, multiValueHeader4Value2);
+		assertThat(results.headers(multiValueHeader4))
+				.extracting(Header::value)
+				.containsExactly(multiValueHeader4Value1, multiValueHeader4Value2);
 
-		List<byte[]> singleValueHeaderValues = extractHeaderValues(results, singleValueHeader);
-		assertThat(singleValueHeaderValues).containsExactly(singleValueHeaderValue1);
+		assertThat(results.headers(singleValueHeader))
+				.extracting(Header::value)
+				.containsExactly(singleValueHeaderValue1);
 	}
 
 	@Test
@@ -520,19 +523,6 @@ public class DefaultKafkaHeaderMapperTests {
 		assertThat(result).isNull();
 		verify(mockHeader).value();
 		verify(mockHeader, never()).key();
-	}
-
-	private List<byte[]> extractHeaderValues(Headers headers, String headerName) {
-		return StreamSupport.stream(headers.headers(headerName).spliterator(), false)
-							.map(Header::value)
-							.toList();
-	}
-
-	private void assertValueOfMultiValueHeader(Map<String, Object> mappedHeaders,
-											String headerName, byte[]... expectedByteValues) {
-		@SuppressWarnings("unchecked")
-		List<byte[]> multiHeaderValues = (List<byte[]>) mappedHeaders.get(headerName);
-		Arrays.stream(expectedByteValues).forEach(value -> assertThat(multiHeaderValues).contains(expectedByteValues));
 	}
 
 	public static final class Foo {

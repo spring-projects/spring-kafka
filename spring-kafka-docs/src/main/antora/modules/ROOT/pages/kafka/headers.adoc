@@ -180,11 +180,12 @@ MessagingMessageConverter converter() {
 If using Spring Boot, it will auto configure this converter bean into the auto-configured `KafkaTemplate`; otherwise you should add this converter to the template.
 
 [[multi-value-header]]
-== Support multi-value header
+== Support multi-value header mapping
 
-Spring for Apache Kafka 4.0 supports multi-value header where same logical header key appears more than once in a Kafka record.
+Starting with 4.0, multi-value header mapping is supported, where the same logical header key appears more than once in a Kafka record.
 
-By default, when multiple headers share the same name, the `HeaderMapper` treats them as a single value and serialises the collection to JSON.
+By default, the `HeaderMapper` does **not** create multiple Kafka headers with the same name.
+Instead, when it encounters a collection value (e.g., a `List<byte[]>`), it serializes the entire collection into **one** Kafka header whose value is a JSON array.
 
 * **Producer side:** `DefaultKafkaHeaderMapper` writes the JSON bytes, while `SimpleKafkaHeaderMapper` ignore it.
 * **Consumer side:** the mapper exposes the header as a single value—the **last occurrence wins**; earlier duplicates are silently discarded.
@@ -192,7 +193,6 @@ By default, when multiple headers share the same name, the `HeaderMapper` treats
 For example, on the producer side:
 [source, java]
 ----
-// For Producer Side
 Message<String> message = MessageBuilder
        .withPayload("test-multi-value-header")
        .setHeader("test-multi-value-header", List.of("test-value1", "test-value2"))
@@ -211,7 +211,6 @@ assertThat(mappedHeaders.headers(multiValueHeader1).iterator().next()).isEqualTo
 For example, on the consumer side:
 [source, java]
 ----
-// Consumer Side
 RecordHeaders recordHeaders = new RecordHeaders();
 recordHeaders.add("test-multi-value1", new byte[] { 0, 0, 0, 1 });
 recordHeaders.add("test-multi-value1", new byte[] { 0, 0, 0, 2 });
@@ -240,7 +239,7 @@ mapper.setMultiValueHeaderPatterns("test-multi-*");
 Any header whose name matches one of the supplied patterns is
 
 * **Producer side:** written as separate Kafka headers, one per element.
-* **Consumer side:** reconstructed as a `List<?>` and returned unchanged to the application.
+* **Consumer side:** collected into a `List<?>` that contains the individual header values; each element is returned to the application **after the usual deserialization or type conversion performed by the configured `HeaderMapper`.**
 
 [NOTE]
 ====

@@ -25,6 +25,7 @@ import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.retrytopic.RetryTopicHeaders;
@@ -195,25 +196,38 @@ public class SimpleKafkaHeaderMapperTests {
 	void multiValueHeaderToTest() {
 		// GIVEN
 		String multiValueHeader1 = "test-multi-value1";
+		byte[] multiValueHeader1Value1 = { 0, 0, 0, 0 };
+		byte[] multiValueHeader1Value2 = { 0, 0, 0, 1 };
+		byte[] multiValueHeader1Value3 = { 0, 0, 0, 2 };
+		byte[] multiValueHeader1Value4 = { 0, 0, 0, 3 };
+
 		String multiValueHeader2 = "test-multi-value2";
+		byte[] multiValueHeader2Value1 = { 0, 0, 0, 4 };
+		byte[] multiValueHeader2Value2 = { 0, 0, 0, 5 };
+
 		String singleValueHeader = "test-single-value1";
+		byte[] singleValueHeaderValue = { 0, 0, 0, 6 };
+
+		byte[] deliveryAttemptValue = { 0, 0, 0, 1 };
+		byte[] originalOffset = { 0, 0, 0, 1 };
+		byte[] defaultHeaderAttempts = { 0, 0, 0, 5 };
 
 		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
 		mapper.setMultiValueHeaderPatterns(multiValueHeader1, multiValueHeader2);
 
 		Headers rawHeaders = new RecordHeaders();
-		rawHeaders.add(KafkaHeaders.DELIVERY_ATTEMPT, new byte[] { 0, 0, 0, 1 });
-		rawHeaders.add(KafkaHeaders.ORIGINAL_OFFSET, new byte[] { 0, 0, 0, 1 });
-		rawHeaders.add(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS, new byte[] { 0, 0, 0, 5 });
-		rawHeaders.add(singleValueHeader, new byte[] { 0, 0, 0, 6 });
+		rawHeaders.add(KafkaHeaders.DELIVERY_ATTEMPT, deliveryAttemptValue);
+		rawHeaders.add(KafkaHeaders.ORIGINAL_OFFSET, originalOffset);
+		rawHeaders.add(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS, defaultHeaderAttempts);
+		rawHeaders.add(singleValueHeader, singleValueHeaderValue);
 
-		rawHeaders.add(multiValueHeader1, new byte[] { 0, 0, 0, 0 });
-		rawHeaders.add(multiValueHeader1, new byte[] { 0, 0, 0, 1 });
-		rawHeaders.add(multiValueHeader1, new byte[] { 0, 0, 0, 2 });
-		rawHeaders.add(multiValueHeader1, new byte[] { 0, 0, 0, 3 });
+		rawHeaders.add(multiValueHeader1, multiValueHeader1Value1);
+		rawHeaders.add(multiValueHeader1, multiValueHeader1Value2);
+		rawHeaders.add(multiValueHeader1, multiValueHeader1Value3);
+		rawHeaders.add(multiValueHeader1, multiValueHeader1Value4);
 
-		rawHeaders.add(multiValueHeader2, new byte[] { 0, 0, 0, 4 });
-		rawHeaders.add(multiValueHeader2, new byte[] { 0, 0, 0, 5 });
+		rawHeaders.add(multiValueHeader2, multiValueHeader2Value1);
+		rawHeaders.add(multiValueHeader2, multiValueHeader2Value2);
 
 		// WHEN
 		Map<String, Object> mappedHeaders = new HashMap<>();
@@ -221,37 +235,39 @@ public class SimpleKafkaHeaderMapperTests {
 
 		// THEN
 		assertThat(mappedHeaders.get(KafkaHeaders.DELIVERY_ATTEMPT)).isEqualTo(1);
-		assertThat(mappedHeaders.get(KafkaHeaders.ORIGINAL_OFFSET)).isEqualTo(new byte[] { 0, 0, 0, 1 });
-		assertThat(mappedHeaders.get(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS)).isEqualTo(new byte[] { 0, 0, 0, 5 });
-		assertThat(mappedHeaders.get(singleValueHeader)).isEqualTo(new byte[] { 0, 0, 0, 6 });
+		assertThat(mappedHeaders.get(KafkaHeaders.ORIGINAL_OFFSET)).isEqualTo(originalOffset);
+		assertThat(mappedHeaders.get(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS)).isEqualTo(defaultHeaderAttempts);
+		assertThat(mappedHeaders.get(singleValueHeader)).isEqualTo(singleValueHeaderValue);
 
-		@SuppressWarnings("unchecked")
-		List<byte[]> multiHeader1Values = (List<byte[]>) mappedHeaders.get(multiValueHeader1);
-		assertThat(multiHeader1Values).contains(new byte[] { 0, 0, 0, 0 },
-												new byte[] { 0, 0, 0, 1 },
-												new byte[] { 0, 0, 0, 2 },
-												new byte[] { 0, 0, 0, 3 });
+		assertThat(mappedHeaders)
+				.extractingByKey(multiValueHeader1, InstanceOfAssertFactories.list(byte[].class))
+				.containsExactly(multiValueHeader1Value1, multiValueHeader1Value2,
+								multiValueHeader1Value3, multiValueHeader1Value4);
 
-		@SuppressWarnings("unchecked")
-		List<byte[]> multiHeader2Values = (List<byte[]>) mappedHeaders.get(multiValueHeader2);
-		assertThat(multiHeader2Values).contains(new byte[] { 0, 0, 0, 4 },
-												new byte[] { 0, 0, 0, 5 });
+		assertThat(mappedHeaders)
+				.extractingByKey(multiValueHeader2, InstanceOfAssertFactories.list(byte[].class))
+				.containsExactly(multiValueHeader2Value1, multiValueHeader2Value2);
 	}
 
 	@Test
 	void multiValueHeaderFromTest() {
 		// GIVEN
 		String multiValueHeader1 = "test-multi-value1";
+		byte[] multiValueHeader1Value1 = { 0, 0, 0, 1 };
+		byte[] multiValueHeader1Value2 = { 0, 0, 0, 2 };
+
 		String multiValueHeader2 = "test-multi-value2";
+		byte[] multiValueHeader2Value1 = { 0, 0, 0, 3 };
+		byte[] multiValueHeader2Value2 = { 0, 0, 0, 4 };
+
 		String singleValueHeader = "test-single-value1";
+		byte[] singleValueHeaderValue = { 0, 0, 0, 5 };
 
 		Message<String> message = MessageBuilder
 				.withPayload("test-multi-value-header")
-				.setHeader(multiValueHeader1, List.of(new byte[] { 0, 0, 0, 1 },
-													new byte[] { 0, 0, 0, 2 }))
-				.setHeader(multiValueHeader2, List.of(new byte[] { 0, 0, 0, 3 },
-													new byte[] { 0, 0, 0, 4 }))
-				.setHeader(singleValueHeader, new byte[] { 0, 0, 0, 5 })
+				.setHeader(multiValueHeader1, List.of(multiValueHeader1Value1, multiValueHeader1Value2))
+				.setHeader(multiValueHeader2, List.of(multiValueHeader2Value1, multiValueHeader2Value2))
+				.setHeader(singleValueHeader, singleValueHeaderValue)
 				.build();
 
 		SimpleKafkaHeaderMapper mapper = new SimpleKafkaHeaderMapper();
@@ -262,13 +278,17 @@ public class SimpleKafkaHeaderMapperTests {
 		mapper.fromHeaders(message.getHeaders(), results);
 
 		// THEN
-		assertThat(results).contains(
-				new RecordHeader(multiValueHeader1, new byte[] { 0, 0, 0, 1 }),
-				new RecordHeader(multiValueHeader1, new byte[] { 0, 0, 0, 2 }),
-				new RecordHeader(multiValueHeader2, new byte[] { 0, 0, 0, 3 }),
-				new RecordHeader(multiValueHeader2, new byte[] { 0, 0, 0, 4 }),
-				new RecordHeader(singleValueHeader, new byte[] { 0, 0, 0, 5 })
-		);
+		assertThat(results.headers(multiValueHeader1))
+				.extracting(Header::value)
+				.containsExactly(multiValueHeader1Value1, multiValueHeader1Value2);
+
+		assertThat(results.headers(multiValueHeader2))
+				.extracting(Header::value)
+				.containsExactly(multiValueHeader2Value1, multiValueHeader2Value2);
+
+		assertThat(results.headers(singleValueHeader))
+				.extracting(Header::value)
+				.containsExactly(singleValueHeaderValue);
 	}
 
 }
