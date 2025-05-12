@@ -190,37 +190,6 @@ Instead, when it encounters a collection value (e.g., a `List<byte[]>`), it seri
 * **Producer side:** `DefaultKafkaHeaderMapper` writes the JSON bytes, while `SimpleKafkaHeaderMapper` ignore it.
 * **Consumer side:** the mapper exposes the header as a single value—the **last occurrence wins**; earlier duplicates are silently discarded.
 
-For example, on the producer side:
-[source, java]
-----
-Message<String> message = MessageBuilder
-       .withPayload("test-multi-value-header")
-       .setHeader("test-multi-value-header", List.of("test-value1", "test-value2"))
-       .build();
-
-DefaultKafkaHeaderMapper headerMapper = new DefaultKafkaHeaderMapper();
-RecordHeaders mappedHeaders = new RecordHeaders();
-headerMapper.fromHeaders(message.getHeaders(), mappedHeaders);
-
-ObjectMapper objectMapper = new ObjectMapper();
-RecordHeader expectedHeader = new RecordHeader("test-multi-value-header",
-    objectMapper.writeValueAsBytes(List.of("test-value1", "test-value2")));
-assertThat(mappedHeaders.headers(multiValueHeader1).iterator().next()).isEqualTo(expectedHeader);
-----
-
-For example, on the consumer side:
-[source, java]
-----
-RecordHeaders recordHeaders = new RecordHeaders();
-recordHeaders.add("test-multi-value1", new byte[] { 0, 0, 0, 1 });
-recordHeaders.add("test-multi-value1", new byte[] { 0, 0, 0, 2 });
-
-Map<String, Object> mappedHeaders = new HashMap<>();
-headerMapper.toHeaders(recordHeaders, mappedHeaders);
-
-assertThat(headersMapped.get("test-multi-value1")).isEqualTo(new byte[] { 0, 0, 0, 2 });
-----
-
 Preserving each individual header requires explicit registration of patterns that designate the header as multi‑valued.
 
 `DefaultKafkaHeaderMapper#setMultiValueHeaderPatterns(String... patterns)` accepts a list of patterns, which can be either wildcard expressions or exact header names.
@@ -241,18 +210,9 @@ Any header whose name matches one of the supplied patterns is
 * **Producer side:** written as separate Kafka headers, one per element.
 * **Consumer side:** collected into a `List<?>` that contains the individual header values; each element is returned to the application **after the usual deserialization or type conversion performed by the configured `HeaderMapper`.**
 
-[NOTE]
-====
-Regular expressions are *not* supported; only the `*` wildcard is allowed in simple patterns—supporting direct equality and forms such as:
-
-- `xxx*`
-- `*xxx`
-- `*xxx*`
-- `xxx*yyy`
-====
+NOTE: Regular expressions are *not* supported; only the +*+ wildcard is allowed in simple patterns—supporting direct equality and forms such as: +xxx*+, +*xxx+, +*xxx*+, +xxx*yyy+.
 
 [IMPORTANT]
 ====
-All elements collected under the same multi‑value header **must be of the same Java type**.
-Mixing, for example, `String` and `byte[]` values under a single header key is not supported and will lead to a conversion error.
+On the *Producer Side*, When `DefaultKafkaHeaderMapper` serializes a multi-value header, every element in that collection must be of a single Java type—mixing, for example, `String` and `byte[]` values under a single header key will lead to a conversion error.
 ====
