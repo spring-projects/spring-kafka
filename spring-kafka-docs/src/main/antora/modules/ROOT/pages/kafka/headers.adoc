@@ -179,3 +179,40 @@ MessagingMessageConverter converter() {
 
 If using Spring Boot, it will auto configure this converter bean into the auto-configured `KafkaTemplate`; otherwise you should add this converter to the template.
 
+[[multi-value-header]]
+== Support multi-value header mapping
+
+Starting with 4.0, multi-value header mapping is supported, where the same logical header key appears more than once in a Kafka record.
+
+By default, the `HeaderMapper` does **not** create multiple Kafka headers with the same name.
+Instead, when it encounters a collection value (e.g., a `List<byte[]>`), it serializes the entire collection into **one** Kafka header whose value is a JSON array.
+
+* **Producer side:** `DefaultKafkaHeaderMapper` writes the JSON bytes, while `SimpleKafkaHeaderMapper` ignore it.
+* **Consumer side:** the mapper exposes the header as a single value—the **last occurrence wins**; earlier duplicates are silently discarded.
+
+Preserving each individual header requires explicit registration of patterns that designate the header as multi‑valued.
+
+`DefaultKafkaHeaderMapper#setMultiValueHeaderPatterns(String... patterns)` accepts a list of patterns, which can be either wildcard expressions or exact header names.
+
+[source, java]
+----
+DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+
+// Explicit header names
+mapper.setMultiValueHeaderPatterns("test-multi-value1", "test-multi-value2");
+
+// Wildcard patterns for test-multi-value1, test-multi-value2
+mapper.setMultiValueHeaderPatterns("test-multi-*");
+----
+
+Any header whose name matches one of the supplied patterns is
+
+* **Producer side:** written as separate Kafka headers, one per element.
+* **Consumer side:** collected into a `List<?>` that contains the individual header values; each element is returned to the application **after the usual deserialization or type conversion performed by the configured `HeaderMapper`.**
+
+NOTE: Regular expressions are *not* supported; only the +*+ wildcard is allowed in simple patterns—supporting direct equality and forms such as: +xxx*+, +*xxx+, +*xxx*+, +xxx*yyy+.
+
+[IMPORTANT]
+====
+On the *Producer Side*, When `DefaultKafkaHeaderMapper` serializes a multi-value header, every element in that collection must be of a single Java type—mixing, for example, `String` and `byte[]` values under a single header key will lead to a conversion error.
+====

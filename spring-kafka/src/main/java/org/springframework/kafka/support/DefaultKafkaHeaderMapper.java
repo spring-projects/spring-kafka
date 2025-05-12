@@ -48,6 +48,7 @@ import org.springframework.util.ClassUtils;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Soby Chacko
+ * @author Sanghyoek An
  *
  * @since 1.3
  *
@@ -266,30 +267,16 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 		final ObjectMapper headerObjectMapper = getObjectMapper();
 		headers.forEach((key, rawValue) -> {
 			if (matches(key, rawValue)) {
-				Object valueToAdd = headerValueToAddOut(key, rawValue);
-				if (valueToAdd instanceof byte[]) {
-					target.add(new RecordHeader(key, (byte[]) valueToAdd));
+				if (doesMatchMultiValueHeader(key)) {
+					if (rawValue instanceof Iterable<?> valuesToMap) {
+						valuesToMap.forEach(o -> fromHeader(key, o, jsonHeaders, headerObjectMapper, target));
+					}
+					else {
+						fromHeader(key, rawValue, jsonHeaders, headerObjectMapper, target);
+					}
 				}
 				else {
-					try {
-						String className = valueToAdd.getClass().getName();
-						boolean encodeToJson = this.encodeStrings;
-						if (this.toStringClasses.contains(className)) {
-							valueToAdd = valueToAdd.toString();
-							className = JAVA_LANG_STRING;
-							encodeToJson = true;
-						}
-						if (!encodeToJson && valueToAdd instanceof String) {
-							target.add(new RecordHeader(key, ((String) valueToAdd).getBytes(getCharset())));
-						}
-						else {
-							target.add(new RecordHeader(key, headerObjectMapper.writeValueAsBytes(valueToAdd)));
-						}
-						jsonHeaders.put(key, className);
-					}
-					catch (Exception e) {
-						logger.error(e, () -> "Could not map " + key + " with type " + rawValue.getClass().getName());
-					}
+					fromHeader(key, rawValue, jsonHeaders, headerObjectMapper, target);
 				}
 			}
 		});
@@ -324,10 +311,42 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 					populateJsonValueHeader(header, requestedType, headers);
 				}
 				else {
-					headers.put(headerName, headerValueToAddIn(header));
+					fromUserHeader(headerName, header, headers);
 				}
 			}
 		});
+	}
+
+	private void fromHeader(String key, Object rawValue, Map<String, String> jsonHeaders,
+							ObjectMapper headerObjectMapper, Headers target) {
+
+		Object valueToAdd = headerValueToAddOut(key, rawValue);
+		if (valueToAdd instanceof byte[]) {
+			target.add(new RecordHeader(key, (byte[]) valueToAdd));
+		}
+		else {
+			try {
+				String className = valueToAdd.getClass().getName();
+				boolean encodeToJson = this.encodeStrings;
+				if (this.toStringClasses.contains(className)) {
+					valueToAdd = valueToAdd.toString();
+					className = JAVA_LANG_STRING;
+					encodeToJson = true;
+				}
+				final byte[] calculatedValue;
+				if (!encodeToJson && valueToAdd instanceof String) {
+					calculatedValue = ((String) valueToAdd).getBytes(getCharset());
+				}
+				else {
+					calculatedValue = headerObjectMapper.writeValueAsBytes(valueToAdd);
+				}
+				target.add(new RecordHeader(key, calculatedValue));
+				jsonHeaders.putIfAbsent(key, className);
+			}
+			catch (Exception e) {
+				logger.error(e, () -> "Could not map " + key + " with type " + rawValue.getClass().getName());
+			}
+		}
 	}
 
 	private void populateJsonValueHeader(Header header, String requestedType, Map<String, Object> headers) {
