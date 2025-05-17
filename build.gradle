@@ -64,7 +64,7 @@ ext {
 	log4jVersion = '2.24.3'
 	micrometerDocsVersion = '1.0.4'
 	micrometerVersion = '1.15.1-SNAPSHOT'
-	micrometerTracingVersion = '1.5.0-SNAPSHOT'
+	micrometerTracingVersion = '1.5.1-SNAPSHOT'
 	mockitoVersion = '5.15.2'
 	reactorVersion = '2024.0.5'
 	scalaVersion = '2.13'
