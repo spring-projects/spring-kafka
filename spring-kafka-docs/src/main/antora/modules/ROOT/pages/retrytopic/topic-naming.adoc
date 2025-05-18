@@ -94,7 +94,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
             .newInstance()
             .fixedBackOff(3_000)
             .maxAttempts(5)
-            .useSingleTopicForFixedDelays()
+            .useSingleTopicForSameIntervals()
             .create(template);
 }
 ----
