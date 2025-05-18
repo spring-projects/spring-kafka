@@ -67,7 +67,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * is to extend directly from this class and override methods as necessary, remembering
  * to add {@link Configuration @Configuration} to the subclass and {@link Bean @Bean}
  * to overridden {@link Bean @Bean} methods. For more details see the javadoc of
- * {@link EnableKafkaRetryTopic @EnableRetryTopic}.
+ * {@link EnableKafkaRetryTopic @EnableKafkaRetryTopic}.
  *
  * @author Tomaz Fernandes
  * @author Gary Russell
