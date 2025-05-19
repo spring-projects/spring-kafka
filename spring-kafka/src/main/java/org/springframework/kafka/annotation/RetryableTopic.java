@@ -119,7 +119,7 @@ public @interface RetryableTopic {
 	/**
 	 * The replication factor for the automatically created topics. Expressions must
 	 * resolve to a short or a String that can be parsed as such. Default is -1 to use the
-	 * broker default if the broker is earlier than version 2.4, an explicit value is
+	 * broker default. If the broker is earlier than version 2.4, an explicit value is
 	 * required.
 	 *
 	 * @return the replication factor.
