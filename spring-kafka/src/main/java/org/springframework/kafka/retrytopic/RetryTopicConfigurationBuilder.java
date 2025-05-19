@@ -428,8 +428,8 @@ public class RetryTopicConfigurationBuilder {
 	 * Configure the topic creation behavior to auto create topics with the provided
 	 * properties.
 	 * @param numPartitions the number of partitions.
-	 * @param replicationFactor the replication factor (-1 to use the broker default if the
-	 * broker is version 2.4 or later).
+	 * @param replicationFactor the replication factor (-1 to use the broker default. If the
+	 * broker is earlier than version 2.4, an explicit value is required).
 	 * @return the builder.
 	 */
 	public RetryTopicConfigurationBuilder autoCreateTopicsWith(@Nullable Integer numPartitions, @Nullable Short replicationFactor) {
@@ -443,8 +443,8 @@ public class RetryTopicConfigurationBuilder {
 	 * properties.
 	 * @param shouldCreate true to auto create.
 	 * @param numPartitions the number of partitions.
-	 * @param replicationFactor the replication factor (-1 to use the broker default if the
-	 * broker is version 2.4 or later).
+	 * @param replicationFactor the replication factor (-1 to use the broker default. If the
+	 * broker is earlier than version 2.4, an explicit value is required).
 	 * @return the builder.
 	 */
 	public RetryTopicConfigurationBuilder autoCreateTopics(@Nullable Boolean shouldCreate, @Nullable Integer numPartitions,
