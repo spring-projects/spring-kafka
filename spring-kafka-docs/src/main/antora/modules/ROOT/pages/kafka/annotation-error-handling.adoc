@@ -694,7 +694,7 @@ Here is an example of configuring the publisher with `KafkaTemplate`+++s+++ that
 @Bean
 public DeadLetterPublishingRecoverer publisher(KafkaTemplate<?, ?> stringTemplate,
         KafkaTemplate<?, ?> bytesTemplate) {
-    Map<Class<?>, KafkaTemplate<?, ?>> templates = new LinkedHashMap<>();
+    Map<Class<?>, KafkaOperations<?, ?>> templates = new LinkedHashMap<>();
     templates.put(String.class, stringTemplate);
     templates.put(byte[].class, bytesTemplate);
     return new DeadLetterPublishingRecoverer(templates);
