@@ -116,6 +116,7 @@ import org.springframework.util.StringUtils;
  * @author Thomas Strauß
  * @author Adrian Gygax
  * @author Soby Chacko
+ * @author Jaeyeon Kim
  */
 public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		implements ProducerFactory<K, V>, ApplicationContextAware,
@@ -1181,13 +1182,11 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 		@Override
 		public void abortTransaction() throws ProducerFencedException {
-			LOGGER.debug(() -> toString() + " abortTransaction()");
-			if (this.producerFailed != null) {
-				LOGGER.debug(() -> {
-					String message = this.producerFailed == null ? "" : this.producerFailed.getMessage();
-					return "abortTransaction ignored - previous txFailed: " + message
-							+ ": " + this;
-				});
+			Exception producerFailedToUse = this.producerFailed;
+			LOGGER.debug(() -> this + " abortTransaction()");
+			if (producerFailedToUse != null) {
+				LOGGER.debug(() -> "abortTransaction ignored - previous txFailed: " + producerFailedToUse.getMessage()
+						+ ": " + this);
 			}
 			else {
 				try {
