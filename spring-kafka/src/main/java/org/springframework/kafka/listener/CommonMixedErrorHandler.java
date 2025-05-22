@@ -30,7 +30,7 @@ import org.springframework.util.Assert;
  * for record and batch listeners.
  *
  * @author Gary Russell
- * @auther JaeYeon Kim
+ * @author JaeYeon Kim
  * @since 2.8
  *
  */
