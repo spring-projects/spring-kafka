@@ -1181,13 +1181,11 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 		@Override
 		public void abortTransaction() throws ProducerFencedException {
+			Exception producerFailedToUse = this.producerFailed;
 			LOGGER.debug(() -> toString() + " abortTransaction()");
-			if (this.producerFailed != null) {
-				LOGGER.debug(() -> {
-					String message = this.producerFailed == null ? "" : this.producerFailed.getMessage();
-					return "abortTransaction ignored - previous txFailed: " + message
-							+ ": " + this;
-				});
+			if (producerFailedToUse != null) {
+				LOGGER.debug(() -> "abortTransaction ignored - previous txFailed: " + producerFailedToUse.getMessage()
+						+ ": " + this);
 			}
 			else {
 				try {
