@@ -46,7 +46,7 @@ public class CommonMixedErrorHandler implements CommonErrorHandler {
 	 */
 	public CommonMixedErrorHandler(CommonErrorHandler recordErrorHandler, CommonErrorHandler batchErrorHandler) {
 		Assert.notNull(recordErrorHandler, "'recordErrorHandler' cannot be null");
-		Assert.notNull(recordErrorHandler, "'batchErrorHandler' cannot be null");
+		Assert.notNull(batchErrorHandler, "'batchErrorHandler' cannot be null");
 		this.recordErrorHandler = recordErrorHandler;
 		this.batchErrorHandler = batchErrorHandler;
 	}
