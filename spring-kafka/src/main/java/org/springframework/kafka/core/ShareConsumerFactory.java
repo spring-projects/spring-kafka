@@ -38,12 +38,10 @@ public interface ShareConsumerFactory<K, V> {
 	/**
 	 * Create a share consumer with the provided group id and client id.
 	 * @param groupId the group id (maybe null).
-	 * @param clientIdPrefix the client id prefix.
-	 * @param clientIdSuffix the client id suffix.
+	 * @param clientId the client id.
 	 * @return the share consumer.
 	 */
-	ShareConsumer<K, V> createShareConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
-			@Nullable String clientIdSuffix);
+	ShareConsumer<K, V> createShareConsumer(@Nullable String groupId, @Nullable String clientId);
 
 	/**
 	 * Return an unmodifiable reference to the configuration map for this factory.

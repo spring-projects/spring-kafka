@@ -55,7 +55,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 		topics = {"embedded-share-test"}, partitions = 1,
 		brokerProperties = {
 				"unstable.api.versions.enable=true",
-				"group.coordinator.rebalance.protocols=classic,consumer,share",
+				"group.coordinator.rebalance.protocols=classic,share",
 				"share.coordinator.state.topic.replication.factor=1",
 				"share.coordinator.state.topic.min.isr=1"
 		})
@@ -129,34 +129,8 @@ class DefaultShareConsumerFactoryTests {
 		configs.put("key.deserializer", StringDeserializer.class);
 		configs.put("value.deserializer", StringDeserializer.class);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(configs);
-		ShareConsumer<String, String> shareConsumer = factory.createShareConsumer("group", "prefix", "suffix");
+		ShareConsumer<String, String> shareConsumer = factory.createShareConsumer("group", "myapp-client-id");
 		assertThat(shareConsumer).isNotNull();
-	}
-
-	@Test
-	void shouldSetConfigureDeserializersFlag() {
-		Map<String, Object> configs = new HashMap<>();
-		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(configs);
-		factory.setConfigureDeserializers(false);
-		assertThat(factory.isConfigureDeserializers()).isFalse();
-	}
-
-	@Test
-	void shouldRespectConfigureDeserializersFlag() {
-		var configs = new HashMap<String, Object>();
-		configs.put("bootstrap.servers", "localhost:9092");
-		var keyDeserializer = new StringDeserializer();
-		var valueDeserializer = new StringDeserializer();
-		var factory = new DefaultShareConsumerFactory<>(configs, keyDeserializer, valueDeserializer, false);
-		// Should not configure deserializers from config if flag is false
-		assertThat(factory.isConfigureDeserializers())
-				.as("configureDeserializers flag should be false")
-				.isFalse();
-		// Setting the flag to true should update behavior
-		factory.setConfigureDeserializers(true);
-		assertThat(factory.isConfigureDeserializers())
-				.as("configureDeserializers flag should be true after set")
-				.isTrue();
 	}
 
 	@Test
@@ -215,10 +189,9 @@ class DefaultShareConsumerFactoryTests {
 		consumerProps.put("key.deserializer", StringDeserializer.class);
 		consumerProps.put("value.deserializer", StringDeserializer.class);
 		consumerProps.put("group.id", groupId);
-		consumerProps.put("share.auto.offset.reset", "earliest");
 
 		var factory = new DefaultShareConsumerFactory<String, String>(consumerProps);
-		var consumer = factory.createShareConsumer(groupId, null, null);
+		var consumer = factory.createShareConsumer(groupId, "myapp-client-id");
 		consumer.subscribe(Collections.singletonList(topic));
 
 		var records = consumer.poll(Duration.ofSeconds(10));

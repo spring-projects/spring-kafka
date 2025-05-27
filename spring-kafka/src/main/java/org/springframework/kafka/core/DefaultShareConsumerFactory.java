@@ -38,7 +38,7 @@ import org.springframework.util.Assert;
 /**
  * The {@link ShareConsumerFactory} implementation to produce new {@link ShareConsumer} instances
  * for provided {@link Map} {@code configs} and optional {@link Deserializer}s on each
- * {@link #createShareConsumer(String, String, String)} invocation.
+ * {@link #createShareConsumer(String, String)} invocation.
  * <p>
  * If you are using {@link Deserializer}s that have no-arg constructors and require no setup, then simplest to
  * specify {@link Deserializer} classes in the configs passed to the
@@ -130,27 +130,30 @@ public class DefaultShareConsumerFactory<K, V> extends KafkaResourceFactory
 		this.valueDeserializerSupplier = valueDeserializerSupplier;
 	}
 
+	/**
+	 * Create a share consumer with the provided group id and client id.
+	 * @param groupId the group id (maybe null).
+	 * @param clientId the client id.
+	 * @return the share consumer.
+	 */
 	@Override
-	public ShareConsumer<K, V> createShareConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
-			@Nullable String clientIdSuffix) {
-		return createRawConsumer(groupId, clientIdPrefix, clientIdSuffix);
+	public ShareConsumer<K, V> createShareConsumer(@Nullable String groupId, @Nullable String clientId) {
+		return createRawConsumer(groupId, clientId);
 	}
 
 	/**
-	 * Create a {@link ShareConsumer}.
-	 * By default, this method returns an internal {@link ExtendedShareConsumer}
-	 * which is aware of provided listeners, therefore it is recommended
-	 * to extend that class if listeners are still involved for a custom {@link ShareConsumer}.
-	 * @param groupId the group id.
-	 * @param clientIdPrefix the client id prefix.
-	 * @param clientIdSuffix the client id suffix.
-	 * @return the consumer.
+	 * Actually create the consumer.
+	 * @param groupId the group id (maybe null).
+	 * @param clientId the client id.
+	 * @return the share consumer.
 	 */
-	protected ShareConsumer<K, V> createRawConsumer(@Nullable String groupId, @Nullable String clientIdPrefix,
-			@Nullable String clientIdSuffix) {
+	protected ShareConsumer<K, V> createRawConsumer(@Nullable String groupId, @Nullable String clientId) {
 		Map<String, Object> consumerProperties = new HashMap<>(this.configs);
 		if (groupId != null) {
 			consumerProperties.put("group.id", groupId);
+		}
+		if (clientId != null) {
+			consumerProperties.put("client.id", clientId);
 		}
 		return new ExtendedShareConsumer(consumerProperties);
 	}
@@ -227,14 +230,6 @@ public class DefaultShareConsumerFactory<K, V> extends KafkaResourceFactory
 	}
 
 	/**
-	 * Return whether deserializers are configured automatically.
-	 * @return true if deserializers are configured automatically
-	 */
-	public boolean isConfigureDeserializers() {
-		return this.configureDeserializers;
-	}
-
-	/**
 	 * Get the current list of listeners.
 	 * @return the listeners.
 	 */
@@ -255,8 +250,18 @@ public class DefaultShareConsumerFactory<K, V> extends KafkaResourceFactory
 
 	/**
 	 * Add a listener at a specific index.
+	 * <p>
+	 * This method allows insertion of a listener at a particular position in the internal listener list.
+	 * While this enables ordering of listener callbacks (which can be important for certain monitoring or extension scenarios),
+	 * there is intentionally no corresponding {@code removeListener(int index)} contract. Removing listeners by index is
+	 * discouraged because the position of a listener can change if others are added or removed, making it easy to
+	 * accidentally remove the wrong one. Managing listeners by their reference (object) is safer and less error-prone,
+	 * especially as listeners are usually set up once during initialization.
+	 * {@see #removeListener(Listener)}
+	 * </p>
 	 * @param index the index (list position).
-	 * @param listener the listener.
+	 * @param listener the listener to add.
+	 * @since 2.5
 	 */
 	@Override
 	public void addListener(int index, Listener<K, V> listener) {
