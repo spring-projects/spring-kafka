@@ -69,7 +69,7 @@ Several deprecated items have been removed:
 === New Consumer Rebalance Protocol
 
 Spring for Apache Kafka 4.0 supports Kafka 4.0’s new consumer rebalance protocol - https://cwiki.apache.org/confluence/display/KAFKA/KIP-848%3A+The+Next+Generation+of+the+Consumer+Rebalance+Protocol[KIP-848].
-For details, see xref:kafka/receiving-messages/rebalance-listeners.adoc#new-rebalalcne-protocol[New Consumer Rebalace Protocol docs].
+For details, see xref:kafka/receiving-messages/rebalance-listeners.adoc#new-rebalance-protocol[New Consumer Rebalance Protocol docs].
 
 [[x40-multi-value-header]]
 === Support multi-value header
