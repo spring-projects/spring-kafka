@@ -59,7 +59,7 @@ If you implement `ConsumerRebalanceListener` you should override the default met
 This is because the listener container will call its own `onPartitionsRevoked` from its implementation of `onPartitionsLost` after calling the method on your implementation.
 If you implementation delegates to the default behavior, `onPartitionsRevoked` will be called twice each time the `Consumer` calls that method on the container's listener.
 
-[[new-rebalalcne-protocol]]
+[[new-rebalance-protocol]]
 == Kafka 4.0 Consumer Rebalance Protocol
 
 Spring for Apache Kafka 4.0 supports Apache https://cwiki.apache.org/confluence/display/KAFKA/KIP-848%3A+The+Next+Generation+of+the+Consumer+Rebalance+Protocol[Kafka 4.0’s new consumer rebalance protocol] (KIP-848), which enhances performance with server-driven, incremental partition assignments.
