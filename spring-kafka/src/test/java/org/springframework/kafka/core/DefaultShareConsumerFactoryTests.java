@@ -144,6 +144,7 @@ class DefaultShareConsumerFactoryTests {
 	}
 
 	@Test
+	@SuppressWarnings("try")
 	void integrationTestDefaultShareConsumerFactory(EmbeddedKafkaBroker broker) throws Exception {
 		final String topic = "embedded-share-test";
 		final String groupId = "testGroup";
