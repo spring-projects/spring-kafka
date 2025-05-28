@@ -36,11 +36,8 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -59,12 +56,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 				"share.coordinator.state.topic.replication.factor=1",
 				"share.coordinator.state.topic.min.isr=1"
 		})
-@SpringJUnitConfig
-@DirtiesContext
 class DefaultShareConsumerFactoryTests {
-
-	@Autowired
-	private EmbeddedKafkaBroker embeddedKafka;
 
 	@Test
 	void shouldInstantiateWithConfigs() {
@@ -152,10 +144,10 @@ class DefaultShareConsumerFactoryTests {
 	}
 
 	@Test
-	void integrationTestDefaultShareConsumerFactory() throws Exception {
+	void integrationTestDefaultShareConsumerFactory(EmbeddedKafkaBroker broker) throws Exception {
 		final String topic = "embedded-share-test";
 		final String groupId = "testGroup";
-		var bootstrapServers = embeddedKafka.getBrokersAsString();
+		var bootstrapServers = broker.getBrokersAsString();
 
 		var producerProps = new java.util.Properties();
 		producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);

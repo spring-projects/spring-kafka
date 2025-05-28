@@ -261,7 +261,6 @@ public class DefaultShareConsumerFactory<K, V> extends KafkaResourceFactory
 	 * </p>
 	 * @param index the index (list position).
 	 * @param listener the listener to add.
-	 * @since 2.5
 	 */
 	@Override
 	public void addListener(int index, Listener<K, V> listener) {
