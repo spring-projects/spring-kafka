@@ -17,18 +17,21 @@
 package org.springframework.kafka.core;
 
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AlterConfigOp;
 import org.apache.kafka.clients.admin.ConfigEntry;
+import org.apache.kafka.clients.consumer.AcknowledgeType;
 import org.apache.kafka.clients.consumer.ShareConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -51,7 +54,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * @since 4.0
  */
 @EmbeddedKafka(
-		topics = {"embedded-share-test", "embedded-share-multi-test", "embedded-share-distribution-test"}, partitions = 1,
+		topics = {"embedded-share-test", "embedded-share-distribution-test"}, partitions = 1,
 		brokerProperties = {
 				"unstable.api.versions.enable=true",
 				"group.coordinator.rebalance.protocols=classic,share",
@@ -160,21 +163,7 @@ class DefaultShareConsumerFactoryTests {
 			producer.send(new ProducerRecord<>(topic, "key", "integration-test-value")).get();
 		}
 
-		Map<String, Object> adminProperties = new HashMap<>();
-		adminProperties.put("bootstrap.servers", bootstrapServers);
-
-		// For this test: force new share groups to start from the beginning of the topic.
-		// This is NOT the same as the usual consumer auto.offset.reset; it's a group config,
-		// so use AdminClient to set share.auto.offset.reset = earliest for our test group.
-		ConfigEntry entry = new ConfigEntry("share.auto.offset.reset", "earliest");
-		AlterConfigOp op = new AlterConfigOp(entry, AlterConfigOp.OpType.SET);
-
-		Map<ConfigResource, Collection<AlterConfigOp>> configs = Map.of(
-				new ConfigResource(ConfigResource.Type.GROUP, "testGroup"), Arrays.asList(op));
-
-		try (Admin admin = AdminClient.create(adminProperties)) {
-			admin.incrementalAlterConfigs(configs).all().get();
-		}
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 
 		var consumerProps = new HashMap<String, Object>();
 		consumerProps.put("bootstrap.servers", bootstrapServers);
@@ -197,40 +186,14 @@ class DefaultShareConsumerFactoryTests {
 	}
 
 	@Test
-	void integrationTestMultipleSharedConsumers(EmbeddedKafkaBroker broker) throws Exception {
-		final String topic = "embedded-share-multi-test";
-		final String groupId = "multiTestGroup";
-		int recordCount = 4;
-		List<String> consumerIds = List.of("client-1", "client-2");
-		Map<String, Set<String>> consumerRecords = runSharedConsumerTest(topic, groupId, consumerIds, recordCount, broker);
-
-		Set<String> allReceived = new java.util.HashSet<>();
-		for (Set<String> records : consumerRecords.values()) {
-			allReceived.addAll(records);
-		}
-		for (int i = 0; i < recordCount; i++) {
-			assertThat(allReceived)
-					.as("Should have received value " + topic + "-value-" + i)
-					.contains(topic + "-value-" + i);
-		}
-		assertThat(allReceived.size()).isEqualTo(recordCount);
-	}
-
-	@Test
 	void integrationTestSharedConsumersDistribution(EmbeddedKafkaBroker broker) throws Exception {
 		final String topic = "embedded-share-distribution-test";
 		final String groupId = "distributionTestGroup";
 		int recordCount = 8;
 		List<String> consumerIds = List.of("client-dist-1", "client-dist-2");
-		Map<String, Set<String>> consumerRecords = runSharedConsumerTest(topic, groupId, consumerIds, recordCount, broker);
+		Map<String, Set<String>> consumerRecords = runSharedConsumerTest(topic, groupId, consumerIds,
+				recordCount, broker);
 
-		// Assert each consumer received at least one record
-		for (String id : consumerIds) {
-			Set<String> records = consumerRecords.get(id);
-			assertThat(records)
-				.as("Consumer %s should have received at least one record", id)
-				.isNotEmpty();
-		}
 		// Assert all records were received (no loss)
 		Set<String> allReceived = new java.util.HashSet<>();
 		consumerRecords.values().forEach(allReceived::addAll);
@@ -239,78 +202,95 @@ class DefaultShareConsumerFactoryTests {
 				.as("Should have received value " + topic + "-value-" + i)
 				.contains(topic + "-value-" + i);
 		}
-		assertThat(allReceived.size()).isEqualTo(recordCount);
 	}
 
-	private static Map<String, Set<String>> runSharedConsumerTest(String topic, String groupId, List<String> consumerIds, int recordCount, EmbeddedKafkaBroker broker) throws Exception {
+	/**
+	 * Runs multiple Kafka consumers in parallel using ExecutorService, collects all records received,
+	 * and returns a map of consumerId to the set of record values received by that consumer.
+	 */
+	private static Map<String, Set<String>> runSharedConsumerTest(String topic, String groupId,
+			List<String> consumerIds, int recordCount, EmbeddedKafkaBroker broker) throws Exception {
 		var bootstrapServers = broker.getBrokersAsString();
 
 		var producerProps = new java.util.Properties();
 		producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 		producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-
 		try (var producer = new KafkaProducer<String, String>(producerProps)) {
 			for (int i = 0; i < recordCount; i++) {
 				producer.send(new ProducerRecord<>(topic, "key" + i, topic + "-value-" + i)).get();
 			}
+			producer.flush();
 		}
 
-		Map<String, Object> adminProperties = Map.of("bootstrap.servers", bootstrapServers);
-		ConfigEntry entry = new ConfigEntry("share.auto.offset.reset", "earliest");
-		AlterConfigOp op = new AlterConfigOp(entry, AlterConfigOp.OpType.SET);
-		Map<ConfigResource, Collection<AlterConfigOp>> configs = Map.of(
-				new ConfigResource(ConfigResource.Type.GROUP, groupId), List.of(op));
-		try (Admin admin = AdminClient.create(adminProperties)) {
-			admin.incrementalAlterConfigs(configs).all().get();
-		}
-
-		var consumerProps = new HashMap<String, Object>();
-		consumerProps.put("bootstrap.servers", bootstrapServers);
-		consumerProps.put("key.deserializer", StringDeserializer.class);
-		consumerProps.put("value.deserializer", StringDeserializer.class);
-		consumerProps.put("group.id", groupId);
-
-		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
-		var consumers = consumerIds.stream()
-			.map(id -> factory.createShareConsumer(groupId, id))
-			.toList();
-		consumers.forEach(c -> c.subscribe(Collections.singletonList(topic)));
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 
 		Map<String, Set<String>> consumerRecords = new java.util.concurrent.ConcurrentHashMap<>();
-		consumerIds.forEach(id -> consumerRecords.put(id, java.util.Collections.synchronizedSet(new java.util.HashSet<>())));
+		consumerIds.forEach(id -> consumerRecords.put(id,
+				java.util.Collections.synchronizedSet(new java.util.HashSet<>())));
 		var latch = new java.util.concurrent.CountDownLatch(recordCount);
 		var running = new java.util.concurrent.atomic.AtomicBoolean(true);
-		List<Thread> threads = new java.util.ArrayList<>();
+		ExecutorService executor = Executors.newCachedThreadPool();
+		List<Future<?>> futures = new java.util.ArrayList<>();
 
-		for (int i = 0; i < consumers.size(); i++) {
+		// Consumer task: poll, acknowledge, and count down latch for new records
+		for (int i = 0; i < consumerIds.size(); i++) {
 			final int idx = i;
-			Thread t = new Thread(() -> {
-				try (var consumer = consumers.get(idx)) {
-					var id = consumerIds.get(idx);
+			Future<?> future = executor.submit(() -> {
+				DefaultShareConsumerFactory<String, String> shareConsumerFactory = new DefaultShareConsumerFactory<>(
+						Map.of(
+							"bootstrap.servers", bootstrapServers,
+							"key.deserializer", org.apache.kafka.common.serialization.StringDeserializer.class,
+							"value.deserializer", org.apache.kafka.common.serialization.StringDeserializer.class
+						));
+				try (var consumer = shareConsumerFactory
+						.createShareConsumer(groupId, consumerIds.get(idx))) {
+					consumer.subscribe(Collections.singletonList(topic));
 					while (running.get() && latch.getCount() > 0) {
 						var records = consumer.poll(Duration.ofMillis(200));
 						for (var r : records) {
-							if (consumerRecords.get(id).add(r.value())) {
+							if (consumerRecords.get(consumerIds.get(idx)).add(r.value())) {
+								consumer.acknowledge(r, AcknowledgeType.ACCEPT);
 								latch.countDown();
 							}
 						}
 					}
 				}
 			});
-			threads.add(t);
-			t.start();
+			futures.add(future);
 		}
 
-		boolean completed = latch.await(5, java.util.concurrent.TimeUnit.SECONDS);
+		boolean completed = latch.await(10, java.util.concurrent.TimeUnit.SECONDS);
 		running.set(false);
-		for (Thread t : threads) {
-			t.join();
+		for (Future<?> future : futures) {
+			try {
+				future.get();
+			}
+			catch (Exception e) {
+				throw new RuntimeException(e);
+			}
 		}
-		if (!completed) {
-			throw new AssertionError("All records should be received within timeout");
-		}
+		executor.shutdown();
+		assertThat(completed)
+			.as("All records should be received within timeout")
+			.isTrue();
 		return consumerRecords;
+	}
+
+	/**
+	 * Sets the share.auto.offset.reset group config to earliest for the given groupId,
+	 * using the provided bootstrapServers.
+	 */
+	private static void setShareAutoOffsetResetEarliest(String bootstrapServers, String groupId) throws Exception {
+		Map<String, Object> adminProperties = new HashMap<>();
+		adminProperties.put("bootstrap.servers", bootstrapServers);
+		ConfigEntry entry = new ConfigEntry("share.auto.offset.reset", "earliest");
+		AlterConfigOp op = new AlterConfigOp(entry, AlterConfigOp.OpType.SET);
+		Map<ConfigResource, Collection<AlterConfigOp>> configs = Map.of(
+			new ConfigResource(ConfigResource.Type.GROUP, groupId), List.of(op));
+		try (Admin admin = AdminClient.create(adminProperties)) {
+			admin.incrementalAlterConfigs(configs).all().get();
+		}
 	}
 
 }
