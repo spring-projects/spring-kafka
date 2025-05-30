@@ -416,8 +416,7 @@ public class DefaultKafkaHeaderMapperTests {
 	}
 
 	@ParameterizedTest
-	@ValueSource(ints = {2000})
-//	@ValueSource(ints = {500, 1000, 2000})
+	@ValueSource(ints = {500, 1000, 2000})
 	void hugeNumberOfSingleValueHeaderToTest(int numberOfSingleValueHeaderCount) {
 		// GIVEN
 		Headers rawHeaders = new RecordHeaders();
