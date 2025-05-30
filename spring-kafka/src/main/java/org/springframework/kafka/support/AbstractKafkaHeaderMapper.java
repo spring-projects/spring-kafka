@@ -444,7 +444,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	/**
 	 * A Cache that remembers whether a header name matches the multi-value pattern.
 	 */
-	class HeaderPatternMatchCache {
+	private static final class HeaderPatternMatchCache {
 
 		private static final int MAX_SIZE = 1000;
 
@@ -452,19 +452,19 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 
 		private final ConcurrentLruCache<String, Boolean> singleValueHeaderPatternMatchCache = new ConcurrentLruCache<>(MAX_SIZE, key -> Boolean.TRUE);
 
-		public boolean isMultiValuePattern(String headerName) {
+		boolean isMultiValuePattern(String headerName) {
 			return this.multiValueHeaderPatternMatchCache.contains(headerName);
 		}
 
-		public boolean isSingleValuePattern(String headerName) {
+		boolean isSingleValuePattern(String headerName) {
 			return this.singleValueHeaderPatternMatchCache.contains(headerName);
 		}
 
-		public void cacheAsSingleValueHeader(String headerName) {
+		void cacheAsSingleValueHeader(String headerName) {
 			this.singleValueHeaderPatternMatchCache.get(headerName);
 		}
 
-		public void cacheAsMultiValueHeader(String headerName) {
+		void cacheAsMultiValueHeader(String headerName) {
 			this.multiValueHeaderPatternMatchCache.get(headerName);
 		}
 
