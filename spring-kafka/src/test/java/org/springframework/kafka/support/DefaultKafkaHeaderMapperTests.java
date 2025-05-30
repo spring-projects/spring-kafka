@@ -31,6 +31,8 @@ import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.retrytopic.RetryTopicHeaders;
@@ -411,6 +413,103 @@ public class DefaultKafkaHeaderMapperTests {
 		assertThat(mappedHeaders)
 				.extractingByKey(multiValueWildCardHeader2, InstanceOfAssertFactories.list(byte[].class))
 				.containsExactly(multiValueWildCardHeader2Value1, multiValueWildCardHeader2Value2);
+	}
+
+	@ParameterizedTest
+	@ValueSource(ints = {2000})
+//	@ValueSource(ints = {500, 1000, 2000})
+	void hugeNumberOfSingleValueHeaderToTest(int numberOfSingleValueHeaderCount) {
+		// GIVEN
+		Headers rawHeaders = new RecordHeaders();
+
+		String multiValueHeader1 = "test-multi-value1";
+		byte[] multiValueHeader1Value1 = { 0, 0, 0, 0 };
+		byte[] multiValueHeader1Value2 = { 0, 0, 0, 1 };
+
+		rawHeaders.add(multiValueHeader1, multiValueHeader1Value1);
+		rawHeaders.add(multiValueHeader1, multiValueHeader1Value2);
+
+		byte[] deliveryAttemptHeaderValue = { 0, 0, 0, 1 };
+		byte[] originalOffsetHeaderValue = { 0, 0, 0, 2 };
+		byte[] defaultHeaderAttemptsValues = { 0, 0, 0, 5 };
+
+		rawHeaders.add(KafkaHeaders.DELIVERY_ATTEMPT, deliveryAttemptHeaderValue);
+		rawHeaders.add(KafkaHeaders.ORIGINAL_OFFSET, originalOffsetHeaderValue);
+		rawHeaders.add(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS, defaultHeaderAttemptsValues);
+
+		byte[] singleValueHeaderValue = { 0, 0, 0, 6 };
+		for (int i = 0; i < numberOfSingleValueHeaderCount; i++) {
+			String singleValueHeader = "test-single-value" + i;
+			rawHeaders.add(singleValueHeader, singleValueHeaderValue);
+		}
+
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		mapper.setMultiValueHeaderPatterns(multiValueHeader1);
+
+		// WHEN
+		Map<String, Object> mappedHeaders = new HashMap<>();
+		mapper.toHeaders(rawHeaders, mappedHeaders);
+
+		// THEN
+		assertThat(mappedHeaders.get(KafkaHeaders.DELIVERY_ATTEMPT)).isEqualTo(1);
+		assertThat(mappedHeaders.get(KafkaHeaders.ORIGINAL_OFFSET)).isEqualTo(originalOffsetHeaderValue);
+		assertThat(mappedHeaders.get(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS)).isEqualTo(defaultHeaderAttemptsValues);
+
+		for (int i = 0; i < numberOfSingleValueHeaderCount; i++) {
+			String singleValueHeader = "test-single-value" + i;
+			assertThat(mappedHeaders.get(singleValueHeader)).isEqualTo(singleValueHeaderValue);
+		}
+
+		assertThat(mappedHeaders)
+				.extractingByKey(multiValueHeader1, InstanceOfAssertFactories.list(byte[].class))
+				.containsExactly(multiValueHeader1Value1, multiValueHeader1Value2);
+	}
+
+	@ParameterizedTest
+	@ValueSource(ints = {500, 1000, 2000})
+	void hugeNumberOfMultiValueHeaderToTest(int numberOfMultiValueHeaderCount) {
+		// GIVEN
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		Headers rawHeaders = new RecordHeaders();
+
+		byte[] multiValueHeader1Value1 = { 0, 0, 0, 0 };
+		byte[] multiValueHeader1Value2 = { 0, 0, 0, 1 };
+
+		for (int i = 0; i < numberOfMultiValueHeaderCount; i++) {
+			String multiValueHeader = "test-multi-value" + i;
+			mapper.setMultiValueHeaderPatterns(multiValueHeader);
+			rawHeaders.add(multiValueHeader, multiValueHeader1Value1);
+			rawHeaders.add(multiValueHeader, multiValueHeader1Value2);
+		}
+
+		byte[] deliveryAttemptHeaderValue = { 0, 0, 0, 1 };
+		byte[] originalOffsetHeaderValue = { 0, 0, 0, 2 };
+		byte[] defaultHeaderAttemptsValues = { 0, 0, 0, 5 };
+
+		rawHeaders.add(KafkaHeaders.DELIVERY_ATTEMPT, deliveryAttemptHeaderValue);
+		rawHeaders.add(KafkaHeaders.ORIGINAL_OFFSET, originalOffsetHeaderValue);
+		rawHeaders.add(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS, defaultHeaderAttemptsValues);
+
+		String singleValueHeader = "test-single-value";
+		byte[] singleValueHeaderValue = { 0, 0, 0, 6 };
+		rawHeaders.add(singleValueHeader, singleValueHeaderValue);
+
+		// WHEN
+		Map<String, Object> mappedHeaders = new HashMap<>();
+		mapper.toHeaders(rawHeaders, mappedHeaders);
+
+		// THEN
+		assertThat(mappedHeaders.get(KafkaHeaders.DELIVERY_ATTEMPT)).isEqualTo(1);
+		assertThat(mappedHeaders.get(KafkaHeaders.ORIGINAL_OFFSET)).isEqualTo(originalOffsetHeaderValue);
+		assertThat(mappedHeaders.get(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS)).isEqualTo(defaultHeaderAttemptsValues);
+		assertThat(mappedHeaders.get(singleValueHeader)).isEqualTo(singleValueHeaderValue);
+
+		for (int i = 0; i < numberOfMultiValueHeaderCount; i++) {
+			String multiValueHeader = "test-multi-value" + i;
+			assertThat(mappedHeaders)
+					.extractingByKey(multiValueHeader, InstanceOfAssertFactories.list(byte[].class))
+					.containsExactly(multiValueHeader1Value1, multiValueHeader1Value2);
+		}
 	}
 
 	@Test

@@ -36,6 +36,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.Assert;
+import org.springframework.util.ConcurrentLruCache;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.PatternMatchUtils;
 
@@ -66,6 +67,8 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	private final List<HeaderMatcher> matchers = new ArrayList<>();
 
 	private final List<HeaderMatcher> multiValueHeaderMatchers = new ArrayList<>();
+
+	private final HeaderPatternMatchCache headerMatchedCache = new HeaderPatternMatchCache();
 
 	private final Map<String, Boolean> rawMappedHeaders = new HashMap<>();
 
@@ -272,11 +275,22 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	 * @since 4.0
 	 */
 	protected boolean doesMatchMultiValueHeader(String headerName) {
+		if (this.headerMatchedCache.isMultiValuePattern(headerName)) {
+			return true;
+		}
+
+		if (this.headerMatchedCache.isSingleValuePattern(headerName)) {
+			return false;
+		}
+
 		for (HeaderMatcher headerMatcher : this.multiValueHeaderMatchers) {
 			if (headerMatcher.matchHeader(headerName)) {
+				this.headerMatchedCache.cacheAsMultiValueHeader(headerName);
 				return true;
 			}
 		}
+
+		this.headerMatchedCache.cacheAsSingleValueHeader(headerName);
 		return false;
 	}
 
@@ -423,6 +437,35 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 		@Override
 		public boolean isNegated() {
 			return this.negate;
+		}
+
+	}
+
+	/**
+	 * A Cache that remembers whether a header name matches the multi-value pattern.
+	 */
+	class HeaderPatternMatchCache {
+
+		private static final int MAX_SIZE = 1000;
+
+		private final ConcurrentLruCache<String, Boolean> multiValueHeaderPatternMatchCache = new ConcurrentLruCache<>(MAX_SIZE, key -> Boolean.TRUE);
+
+		private final ConcurrentLruCache<String, Boolean> singleValueHeaderPatternMatchCache = new ConcurrentLruCache<>(MAX_SIZE, key -> Boolean.TRUE);
+
+		public boolean isMultiValuePattern(String headerName) {
+			return this.multiValueHeaderPatternMatchCache.contains(headerName);
+		}
+
+		public boolean isSingleValuePattern(String headerName) {
+			return this.singleValueHeaderPatternMatchCache.contains(headerName);
+		}
+
+		public void cacheAsSingleValueHeader(String headerName) {
+			this.singleValueHeaderPatternMatchCache.get(headerName);
+		}
+
+		public void cacheAsMultiValueHeader(String headerName) {
+			this.multiValueHeaderPatternMatchCache.get(headerName);
 		}
 
 	}
