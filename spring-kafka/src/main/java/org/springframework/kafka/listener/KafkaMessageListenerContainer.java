@@ -2853,18 +2853,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void recordInterceptAfter(ConsumerRecord<K, V> records, @Nullable Exception exception) {
-			if (!this.commonRecordInterceptors.isEmpty()) {
-				try {
-					if (exception == null) {
-						this.commonRecordInterceptors.forEach(interceptor -> interceptor.success(records, this.consumer));
-					}
-					else {
-						this.commonRecordInterceptors.forEach(interceptor -> interceptor.failure(records, exception, this.consumer));
-					}
+			try {
+				if (exception == null) {
+					this.commonRecordInterceptors.forEach(interceptor -> interceptor.success(records, this.consumer));
 				}
-				catch (Exception e) {
-					this.logger.error(e, "RecordInterceptor.success/failure threw an exception");
+				else {
+					this.commonRecordInterceptors.forEach(interceptor -> interceptor.failure(records, exception, this.consumer));
 				}
+			}
+			catch (Exception e) {
+				this.logger.error(e, "RecordInterceptor.success/failure threw an exception");
 			}
 		}
 

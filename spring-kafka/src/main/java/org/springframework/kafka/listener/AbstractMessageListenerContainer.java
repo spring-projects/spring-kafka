@@ -115,7 +115,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private int topicCheckTimeout = DEFAULT_TOPIC_CHECK_TIMEOUT;
 
-	// TODO: HERE ASH
 	private List<RecordInterceptor<K, V>> recordInterceptors = new ArrayList<>();
 
 	private @Nullable BatchInterceptor<K, V> batchInterceptor;
