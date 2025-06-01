@@ -60,7 +60,6 @@ import org.springframework.util.Assert;
  * @author Tomaz Fernandes
  * @author Wang Zhiyang
  * @author Lokesh Alamuri
- * @author Sanghyeok An
  */
 public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
 
@@ -283,9 +282,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		container.setClientIdSuffix(this.concurrency > 1 || this.alwaysClientIdSuffix ? "-" + index : "");
 		container.setCommonErrorHandler(getCommonErrorHandler());
 		container.setAfterRollbackProcessor(getAfterRollbackProcessor());
-		for (RecordInterceptor<K, V> recordInterceptor : getRecordInterceptors()) {
-			container.setRecordInterceptor(recordInterceptor);
-		}
+		container.setRecordInterceptor(getRecordInterceptor());
 		container.setBatchInterceptor(getBatchInterceptor());
 		container.setInterceptBeforeTx(isInterceptBeforeTx());
 		container.setListenerInfo(getListenerInfo());

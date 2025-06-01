@@ -16,7 +16,6 @@
 
 package org.springframework.kafka.listener;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -115,7 +114,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private int topicCheckTimeout = DEFAULT_TOPIC_CHECK_TIMEOUT;
 
-	private List<RecordInterceptor<K, V>> recordInterceptors = new ArrayList<>();
+	private @Nullable RecordInterceptor<K, V> recordInterceptor;
 
 	private @Nullable BatchInterceptor<K, V> batchInterceptor;
 
@@ -461,8 +460,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		this.kafkaAdmin = kafkaAdmin;
 	}
 
-	protected List<RecordInterceptor<K, V>> getRecordInterceptors() {
-		return this.recordInterceptors;
+	protected @Nullable RecordInterceptor<K, V> getRecordInterceptor() {
+		return this.recordInterceptor;
 	}
 
 	/**
@@ -473,9 +472,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @see #setInterceptBeforeTx(boolean)
 	 */
 	public void setRecordInterceptor(@Nullable RecordInterceptor<K, V> recordInterceptor) {
-		if (recordInterceptor != null) {
-			this.recordInterceptors.add(recordInterceptor);
-		}
+		this.recordInterceptor = recordInterceptor;
 	}
 
 	protected @Nullable BatchInterceptor<K, V> getBatchInterceptor() {

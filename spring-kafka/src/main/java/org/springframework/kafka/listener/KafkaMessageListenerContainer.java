@@ -714,17 +714,17 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final @Nullable Duration syncCommitTimeout;
 
-		private final List<RecordInterceptor<K, V>> recordInterceptors =
+		private final @Nullable RecordInterceptor<K, V> recordInterceptor =
 				!isInterceptBeforeTx() || this.transactionManager == null
-						? getRecordInterceptors()
-						: new ArrayList<>();
+						? getRecordInterceptor()
+						: null;
 
-		private final List<RecordInterceptor<K, V>> earlyRecordInterceptors =
+		private final @Nullable RecordInterceptor<K, V> earlyRecordInterceptor =
 				isInterceptBeforeTx() && this.transactionManager != null
-						? getRecordInterceptors()
-						: new ArrayList<>();
+						? getRecordInterceptor()
+						: null;
 
-		private final List<RecordInterceptor<K, V>> commonRecordInterceptors = getRecordInterceptors();
+		private final @Nullable RecordInterceptor<K, V> commonRecordInterceptor = getRecordInterceptor();
 
 		private final @Nullable BatchInterceptor<K, V> batchInterceptor =
 				!isInterceptBeforeTx() || this.transactionManager == null
@@ -738,7 +738,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final @Nullable BatchInterceptor<K, V> commonBatchInterceptor = getBatchInterceptor();
 
-		private final List<ThreadStateProcessor> pollThreadStateProcessor;
+		private final @Nullable ThreadStateProcessor pollThreadStateProcessor;
 
 		private final ConsumerSeekCallback seekCallback = new InitialOrIdleSeekCallback();
 
@@ -1040,20 +1040,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private List<ThreadStateProcessor> setUpPollProcessor(boolean batch) {
-			if (batch) {
-				if (this.commonBatchInterceptor != null) {
-					List<ThreadStateProcessor> threadStateProcessors = new ArrayList<>();
-					threadStateProcessors.add(this.commonBatchInterceptor);
-					return threadStateProcessors;
-				}
-				else {
-					return new ArrayList<>();
-				}
-			}
-			else {
-				return new ArrayList<>(this.commonRecordInterceptors);
-			}
+		@Nullable
+		private ThreadStateProcessor setUpPollProcessor(boolean batch) {
+			return batch ? this.commonBatchInterceptor : this.commonRecordInterceptor;
 		}
 
 		@Nullable
@@ -1559,7 +1548,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void clearThreadState() {
-			this.pollThreadStateProcessor.forEach(threadStateProcessor -> threadStateProcessor.clearThreadState(this.consumer));
+			if (this.pollThreadStateProcessor != null) {
+				this.pollThreadStateProcessor.clearThreadState(this.consumer);
+			}
 		}
 
 		private void checkIdlePartitions() {
@@ -1717,7 +1708,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void beforePoll() {
-			this.pollThreadStateProcessor.forEach(threadStateProcessor -> threadStateProcessor.setupThreadState(this.consumer));
+			if (this.pollThreadStateProcessor != null) {
+				this.pollThreadStateProcessor.setupThreadState(this.consumer);
+			}
 		}
 
 		private synchronized void captureOffsets(ConsumerRecords<K, V> records) {
@@ -2555,7 +2548,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					this.logger.error(ex, "Transaction rolled back");
 					recordAfterRollback(iterator, cRecord, ex);
 				}
-				this.commonRecordInterceptors.forEach(interceptor -> interceptor.afterRecord(cRecord, this.consumer));
+				if (this.commonRecordInterceptor != null) {
+					this.commonRecordInterceptor.afterRecord(cRecord, this.consumer);
+				}
 				if (this.nackSleepDurationMillis >= 0) {
 					handleNack(records, cRecord);
 					break;
@@ -2632,7 +2627,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				this.logger.trace(() -> "Processing " + KafkaUtils.format(cRecord));
 				doInvokeRecordListener(cRecord, iterator);
-				this.commonRecordInterceptors.forEach(interceptor -> interceptor.afterRecord(cRecord, this.consumer));
+				if (this.commonRecordInterceptor !=  null) {
+					this.commonRecordInterceptor.afterRecord(cRecord, this.consumer);
+				}
 				if (this.nackSleepDurationMillis >= 0) {
 					handleNack(records, cRecord);
 					break;
@@ -2683,16 +2680,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private ConsumerRecord<K, V> checkEarlyIntercept(ConsumerRecord<K, V> recordArg) {
 			internalHeaders(recordArg);
 			ConsumerRecord<K, V> cRecord = recordArg;
-
-			for (RecordInterceptor<K, V> earlyRecordInterceptor : this.earlyRecordInterceptors) {
-				cRecord = earlyRecordInterceptor.intercept(cRecord, this.consumer);
+			if (this.earlyRecordInterceptor != null) {
+				cRecord = this.earlyRecordInterceptor.intercept(cRecord, this.consumer);
 				if (cRecord == null) {
 					this.logger.debug(() -> "RecordInterceptor returned null, skipping: "
-											+ KafkaUtils.format(recordArg));
+						+ KafkaUtils.format(recordArg));
 					ackCurrent(recordArg);
-					earlyRecordInterceptor.success(recordArg, this.consumer);
-					earlyRecordInterceptor.afterRecord(recordArg, this.consumer);
-					break;
+					this.earlyRecordInterceptor.success(recordArg, this.consumer);
+					this.earlyRecordInterceptor.afterRecord(recordArg, this.consumer);
 				}
 			}
 			return cRecord;
@@ -2853,16 +2848,18 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void recordInterceptAfter(ConsumerRecord<K, V> records, @Nullable Exception exception) {
-			try {
-				if (exception == null) {
-					this.commonRecordInterceptors.forEach(interceptor -> interceptor.success(records, this.consumer));
+			if (this.commonRecordInterceptor != null) {
+				try {
+					if (exception == null) {
+						this.commonRecordInterceptor.success(records, this.consumer);
+					}
+					else {
+						this.commonRecordInterceptor.failure(records, exception, this.consumer);
+					}
 				}
-				else {
-					this.commonRecordInterceptors.forEach(interceptor -> interceptor.failure(records, exception, this.consumer));
+				catch (Exception e) {
+					this.logger.error(e, "RecordInterceptor.success/failure threw an exception");
 				}
-			}
-			catch (Exception e) {
-				this.logger.error(e, "RecordInterceptor.success/failure threw an exception");
 			}
 		}
 
@@ -2891,11 +2888,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void doInvokeOnMessage(final ConsumerRecord<K, V> recordArg) {
 			ConsumerRecord<K, V> cRecord = recordArg;
-			for (RecordInterceptor<K, V> recordInterceptor : this.recordInterceptors) {
-				cRecord = recordInterceptor.intercept(cRecord, this.consumer);
-				if (cRecord == null) {
-					break;
-				}
+			if (this.recordInterceptor != null) {
+				cRecord = this.recordInterceptor.intercept(cRecord, this.consumer);
 			}
 			if (cRecord == null) {
 				this.logger.debug(() -> "RecordInterceptor returned null, skipping: "
