@@ -47,7 +47,7 @@ public class MissingTopicsTests {
 
 	@Test
 	public void testMissingTopicCMLC() {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("missing1", "true", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "missing1", true);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties("notexisting");
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> { });
@@ -67,7 +67,7 @@ public class MissingTopicsTests {
 
 	@Test
 	public void testMissingTopicKMLC() {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("missing2", "true", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "missing2", true);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties("notexisting");
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> { });

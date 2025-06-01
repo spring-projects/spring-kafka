@@ -1334,7 +1334,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 			Map<String, Object> props = KafkaTestUtils.consumerProps(
 					this.broker.getBrokersAsString(),
 					"groupId",
-					"false");
+					false);
 			return new DefaultKafkaConsumerFactory<>(props);
 		}
 

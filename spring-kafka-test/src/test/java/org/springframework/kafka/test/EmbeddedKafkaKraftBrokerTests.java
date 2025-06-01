@@ -51,7 +51,7 @@ public class EmbeddedKafkaKraftBrokerTests {
 		Map<String, Object> producerProps = KafkaTestUtils.producerProps(kafka);
 		KafkaProducer<Integer, String> producer = new KafkaProducer<>(producerProps);
 		producer.send(new ProducerRecord<>("seekTestTopic", 0, 1, "beforeSeekToEnd"));
-		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("seekTest", "false", kafka);
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(kafka, "seekTest", false);
 		KafkaConsumer<Integer, String> consumer = new KafkaConsumer<>(consumerProps);
 		kafka.consumeFromAnEmbeddedTopic(consumer, true /* seekToEnd */, "seekTestTopic");
 		producer.send(new ProducerRecord<>("seekTestTopic", 0, 1, "afterSeekToEnd"));

@@ -222,7 +222,7 @@ public class KafkaMessageListenerContainerTests {
 
 	@Test
 	public void testDelegateType() throws Exception {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("delegate", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "delegate", false);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic3);
 		containerProps.setShutdownTimeout(60_000L);
@@ -308,7 +308,7 @@ public class KafkaMessageListenerContainerTests {
 
 	@Test
 	public void testNoResetPolicy() throws Exception {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("delegate", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "delegate", false);
 		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "none");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic17);
@@ -334,7 +334,7 @@ public class KafkaMessageListenerContainerTests {
 
 	@Test
 	public void testListenerTypes() throws Exception {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("lt1", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "lt1", false);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic4);
 
@@ -475,7 +475,7 @@ public class KafkaMessageListenerContainerTests {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testCommitsAreFlushedOnStop() throws Exception {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("flushedOnStop", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "flushedOnStop", false);
 		DefaultKafkaConsumerFactory<Integer, String> cf = spy(new DefaultKafkaConsumerFactory<>(props));
 		AtomicReference<Consumer<Integer, String>> consumer = new AtomicReference<>();
 		willAnswer(inv -> {
@@ -526,7 +526,7 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	public void testRecordAck() throws Exception {
 		logger.info("Start record ack");
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test6", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "test6", false);
 		props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic6);
@@ -1149,7 +1149,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testBatchAck() throws Exception {
 		logger.info("Start batch ack");
 
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test6", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "test6", false);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic7);
 		containerProps.setMessageListener((MessageListener<Integer, String>) message -> {
@@ -1216,7 +1216,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testBatchListener() throws Exception {
 		logger.info("Start batch listener");
 
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test8", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "test8", false);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic8);
 		containerProps.setMessageListener((BatchMessageListener<Integer, String>) messages -> {
@@ -1293,7 +1293,7 @@ public class KafkaMessageListenerContainerTests {
 		template.sendDefault(1, 0, "qux");
 		template.flush();
 
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test9", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "test9", false);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic9);
 		final CountDownLatch latch = new CountDownLatch(4);
@@ -1353,7 +1353,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testBatchListenerErrors() throws Exception {
 		logger.info("Start batch listener errors");
 
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test9", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "test9", false);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic10);
 		containerProps.setMessageListener((BatchMessageListener<Integer, String>) messages -> {
@@ -1484,7 +1484,7 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	public void testSeekBatch() throws Exception {
 		logger.info("Start seek batch seek");
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test16", "true", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "test16", true);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic16);
 		final CountDownLatch registerLatch = new CountDownLatch(1);
@@ -1538,11 +1538,11 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	private static Stream<Arguments> testSeekParameters() {
-		Map<String, Object> noAutoCommit = KafkaTestUtils.consumerProps("test15", "true", embeddedKafka);
+		Map<String, Object> noAutoCommit = KafkaTestUtils.consumerProps(embeddedKafka, "test15", true);
 		noAutoCommit.remove(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG); // test false by default
 		return Stream.of(
-				Arguments.of(KafkaTestUtils.consumerProps("test11", "false", embeddedKafka), topic11, false),
-				Arguments.of(KafkaTestUtils.consumerProps("test12", "true", embeddedKafka), topic12, true),
+				Arguments.of(KafkaTestUtils.consumerProps(embeddedKafka, "test11", false), topic11, false),
+				Arguments.of(KafkaTestUtils.consumerProps(embeddedKafka, "test12", true), topic12, true),
 				Arguments.of(noAutoCommit, topic15, false));
 	}
 
@@ -1675,7 +1675,7 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	public void testDefinedPartitions() throws Exception {
 		this.logger.info("Start defined parts");
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test13", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "test13", false);
 		TopicPartitionOffset topic1Partition0 = new TopicPartitionOffset(topic13, 0, 0L);
 
 		CountDownLatch initialConsumersLatch = new CountDownLatch(2);
@@ -1986,7 +1986,7 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	public void testManualAckRebalance() throws Exception {
 		logger.info("Start manual ack rebalance");
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test14", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "test14", false);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic14);
 		final List<AtomicInteger> counts = new ArrayList<>();
@@ -2078,7 +2078,7 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	public void testJsonSerDeConfiguredType() throws Exception {
 		this.logger.info("Start JSON1");
-		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "testJson", false);
 		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 		props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, Foo.class);
 		DefaultKafkaConsumerFactory<Integer, Foo> cf = new DefaultKafkaConsumerFactory<>(props);
@@ -2118,7 +2118,7 @@ public class KafkaMessageListenerContainerTests {
 	public void testJsonSerDeWithInstanceDoesNotUseConfiguration() throws Exception {
 		this.logger.info("Start JSON1a");
 		Class<Foo1> consumerConfigValueDefaultType = Foo1.class;
-		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "testJson", false);
 		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 		props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, consumerConfigValueDefaultType);
 		DefaultKafkaConsumerFactory<Integer, Foo> cf = new DefaultKafkaConsumerFactory<>(props, null, new JsonDeserializer<>(Foo.class));
@@ -2158,7 +2158,7 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	public void testJsonSerDeHeaderSimpleType() throws Exception {
 		this.logger.info("Start JSON2");
-		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "testJson", false);
 		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 		props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
@@ -2200,7 +2200,7 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	public void testJsonSerDeTypeMappings() throws Exception {
 		this.logger.info("Start JSON3");
-		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "testJson", false);
 		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 		props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
 		props.put(JsonDeserializer.TYPE_MAPPINGS, "foo:" + Foo1.class.getName() + " , bar:" + Bar1.class.getName());
@@ -2241,7 +2241,7 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	public void testJsonSerDeIgnoreTypeHeadersInbound() throws Exception {
 		this.logger.info("Start JSON4");
-		Map<String, Object> props = KafkaTestUtils.consumerProps("testJson", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "testJson", false);
 		props.put("spring.deserializer.value.delegate.class",
 				"org.apache.kafka.common.serialization.StringDeserializer");
 		ErrorHandlingDeserializer<Foo1> errorHandlingDeserializer =
@@ -2283,7 +2283,7 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	public void testStaticAssign() throws Exception {
 		this.logger.info("Start static");
-		Map<String, Object> props = KafkaTestUtils.consumerProps("testStatic", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "testStatic", false);
 
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(new TopicPartitionOffset(topic22, 0),
@@ -2326,7 +2326,7 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	public void testPatternAssign() throws Exception {
 		this.logger.info("Start pattern");
-		Map<String, Object> props = KafkaTestUtils.consumerProps("testpattern", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "testpattern", false);
 
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(Pattern.compile(topic23 + ".*"));
@@ -2359,7 +2359,7 @@ public class KafkaMessageListenerContainerTests {
 
 	@Test
 	public void testBadListenerType() {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("testStatic", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "testStatic", false);
 		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties("foo");
 		containerProps.setMissingTopicsFatal(false);
@@ -2381,7 +2381,7 @@ public class KafkaMessageListenerContainerTests {
 
 	@Test
 	public void testBadAckMode() {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("testStatic", "true", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "testStatic", true);
 		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties("foo");
 		containerProps.setMissingTopicsFatal(false);
@@ -2398,7 +2398,7 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	public void testRebalanceAfterFailedRecord() throws Exception {
 		logger.info("Start rebalance after failed record");
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test18", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "test18", false);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic18);
 		final List<AtomicInteger> counts = new ArrayList<>();
@@ -3003,7 +3003,7 @@ public class KafkaMessageListenerContainerTests {
 		final CountDownLatch consumeFirstLatch = new CountDownLatch(1);
 		final CountDownLatch consumeLatch = new CountDownLatch(2);
 
-		Map<String, Object> props = KafkaTestUtils.consumerProps("test19", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "test19", false);
 		props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, 3_000);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic19);

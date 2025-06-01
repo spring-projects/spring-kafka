@@ -570,7 +570,7 @@ public class ObservationTests {
 
 		@Bean
 		ConsumerFactory<Integer, String> consumerFactory(EmbeddedKafkaBroker broker) {
-			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("obs", "false", broker);
+			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(broker, "obs", false);
 			consumerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString() + ","
 					+ broker.getBrokersAsString() + "," + broker.getBrokersAsString());
 			return new DefaultKafkaConsumerFactory<>(consumerProps);

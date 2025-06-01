@@ -100,7 +100,7 @@ public class ReactiveKafkaProducerTemplateTransactionIntegrationTests {
 	@BeforeAll
 	public static void setUpBeforeClass() {
 		Map<String, Object> consumerProps =
-				KafkaTestUtils.consumerProps(CONSUMER_GROUP_ID, "false", EmbeddedKafkaCondition.getBroker());
+				KafkaTestUtils.consumerProps(EmbeddedKafkaCondition.getBroker(), CONSUMER_GROUP_ID, false);
 		reactiveKafkaConsumerTemplate =
 				new ReactiveKafkaConsumerTemplate<>(setupReceiverOptionsWithDefaultTopic(consumerProps));
 	}

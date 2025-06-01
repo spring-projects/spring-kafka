@@ -111,7 +111,7 @@ public class MicrometerMetricsTests {
 		@Bean
 		ConsumerFactory<Integer, String> consumerFactory(EmbeddedKafkaBroker broker) {
 			return new DefaultKafkaConsumerFactory<>(
-					KafkaTestUtils.consumerProps("metrics", "false", broker));
+					KafkaTestUtils.consumerProps(broker, "metrics", false));
 		}
 
 		@Bean

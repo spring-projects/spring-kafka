@@ -343,7 +343,7 @@ public class AsyncListenerTests {
 
 		@Bean
 		public Map<String, Object> consumerConfigs(EmbeddedKafkaBroker embeddedKafka) {
-			return KafkaTestUtils.consumerProps("test", "false", embeddedKafka);
+			return KafkaTestUtils.consumerProps(embeddedKafka, "test", false);
 		}
 
 		@Bean

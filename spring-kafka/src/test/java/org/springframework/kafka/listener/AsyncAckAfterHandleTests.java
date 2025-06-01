@@ -110,7 +110,7 @@ public class AsyncAckAfterHandleTests {
 
 		@Bean
 		ConsumerFactory<Integer, String> consumerFactory(EmbeddedKafkaBroker broker) {
-			Map<String, Object> props = KafkaTestUtils.consumerProps("asaac.grp", "false", broker);
+			Map<String, Object> props = KafkaTestUtils.consumerProps(broker, "asaac.grp", false);
 			props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 3);
 			return new DefaultKafkaConsumerFactory<>(
 					props);

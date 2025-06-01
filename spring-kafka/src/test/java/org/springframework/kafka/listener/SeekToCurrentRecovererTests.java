@@ -89,7 +89,7 @@ public class SeekToCurrentRecovererTests {
 
 	@Test
 	public void testMaxFailures() throws Exception {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("seekTestMaxFailures", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "seekTestMaxFailures", false);
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props, null,
 				new ErrorHandlingDeserializer<>(new JsonDeserializer<>(String.class)));

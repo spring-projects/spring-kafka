@@ -246,7 +246,7 @@ class DeliveryAttemptAwareRetryListenerIntegrationTests {
 			Map<String, Object> props = KafkaTestUtils.consumerProps(
 					this.broker.getBrokersAsString(),
 					"DeliveryAttemptAwareRetryListenerIntegrationTestsGroupId",
-					"true");
+					true);
 			return new DefaultKafkaConsumerFactory<>(props);
 		}
 

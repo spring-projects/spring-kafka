@@ -47,7 +47,7 @@ public class MissingTopicCheckOverrideAdminConfigTests {
 
 	@Test
 	void configOverride(EmbeddedKafkaBroker broker) {
-		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("grp", "false", broker);
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(broker, "grp", false);
 		consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "junkjunk");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		ContainerProperties props = new ContainerProperties("mtccac");
@@ -70,7 +70,7 @@ public class MissingTopicCheckOverrideAdminConfigTests {
 
 	@Test
 	void configOverrideDefault(EmbeddedKafkaBroker broker) {
-		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("grp", "false", broker);
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(broker, "grp", false);
 		consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "junkjunk");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		ContainerProperties props = new ContainerProperties("mtccac");

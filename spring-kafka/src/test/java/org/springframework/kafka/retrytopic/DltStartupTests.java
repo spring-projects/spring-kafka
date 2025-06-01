@@ -250,7 +250,7 @@ public class DltStartupTests {
 
 		@Bean
 		ConsumerFactory<Integer, String> cf(EmbeddedKafkaBroker broker) {
-			return new DefaultKafkaConsumerFactory<>(KafkaTestUtils.consumerProps("dltStart", "false", broker));
+			return new DefaultKafkaConsumerFactory<>(KafkaTestUtils.consumerProps(broker, "dltStart", false));
 		}
 
 		@Bean

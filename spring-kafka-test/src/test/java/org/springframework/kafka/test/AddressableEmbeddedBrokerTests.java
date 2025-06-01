@@ -69,7 +69,7 @@ public class AddressableEmbeddedBrokerTests {
 
 	@Test
 	public void testLateStartedConsumer() {
-		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(TEST_EMBEDDED, "false", this.broker);
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.broker, TEST_EMBEDDED, false);
 		Consumer<Integer, String> consumer = new KafkaConsumer<>(consumerProps);
 		this.broker.consumeFromAnEmbeddedTopic(consumer, TEST_EMBEDDED);
 
@@ -78,7 +78,7 @@ public class AddressableEmbeddedBrokerTests {
 		producer.close();
 		KafkaTestUtils.getSingleRecord(consumer, TEST_EMBEDDED);
 
-		consumerProps = KafkaTestUtils.consumerProps("another" + TEST_EMBEDDED, "false", this.broker);
+		consumerProps = KafkaTestUtils.consumerProps(this.broker, "another" + TEST_EMBEDDED, false);
 		Consumer<Integer, String> consumer2 = new KafkaConsumer<>(consumerProps);
 		this.broker.consumeFromAnEmbeddedTopic(consumer2, TEST_EMBEDDED);
 		KafkaTestUtils.getSingleRecord(consumer2, TEST_EMBEDDED);

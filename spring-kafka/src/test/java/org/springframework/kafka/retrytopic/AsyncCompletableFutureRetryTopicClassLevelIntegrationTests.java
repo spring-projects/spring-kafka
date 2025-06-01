@@ -895,7 +895,7 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 			Map<String, Object> props = KafkaTestUtils.consumerProps(
 					this.broker.getBrokersAsString(),
 					"groupId",
-					"false");
+					false);
 			props.put(
 					ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG,
 					StringDeserializer.class);
