@@ -475,28 +475,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		this.recordInterceptor = recordInterceptor;
 	}
 
-	/**
-	 * Add an interceptor to be called before calling the record listener
-	 * If the {@link AbstractMessageListenerContainer} is not configured with a
-	 * {@link CompositeRecordInterceptor}, {@link CompositeRecordInterceptor} will be created internally
-	 * and configured to hold the added interceptor.
-	 * Does not apply to batch listeners.
-	 * @param recordInterceptor the interceptor.
-	 * @since 4.0
-	 */
-	public void addRecordInterceptor(RecordInterceptor<K, V> recordInterceptor) {
-		if (this.recordInterceptor instanceof CompositeRecordInterceptor<K, V> compositeRecordInterceptor) {
-			compositeRecordInterceptor.addRecordInterceptor(recordInterceptor);
-		}
-		else if (this.recordInterceptor == null) {
-			this.recordInterceptor = new CompositeRecordInterceptor<>(recordInterceptor);
-		}
-		else {
-			this.recordInterceptor = new CompositeRecordInterceptor<>(this.recordInterceptor,
-																	recordInterceptor);
-		}
-	}
-
 	protected @Nullable BatchInterceptor<K, V> getBatchInterceptor() {
 		return this.batchInterceptor;
 	}

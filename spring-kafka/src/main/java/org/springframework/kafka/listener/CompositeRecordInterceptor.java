@@ -92,12 +92,4 @@ public class CompositeRecordInterceptor<K, V> implements RecordInterceptor<K, V>
 		this.delegates.forEach(del -> del.afterRecord(record, consumer));
 	}
 
-	/**
-	 * Add an {@link RecordInterceptor} to delegates.
-	 * @param recordInterceptor the interceptor.
-	 */
-	public void addRecordInterceptor(RecordInterceptor<K, V> recordInterceptor) {
-		this.delegates.add(recordInterceptor);
-	}
-
 }
