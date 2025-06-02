@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -231,20 +231,17 @@ class DefaultShareConsumerFactoryTests {
 		var latch = new java.util.concurrent.CountDownLatch(recordCount);
 		var running = new java.util.concurrent.atomic.AtomicBoolean(true);
 		ExecutorService executor = Executors.newCachedThreadPool();
-		List<Future<?>> futures = new java.util.ArrayList<>();
-
-		// Consumer task: poll, acknowledge, and count down latch for new records
+		DefaultShareConsumerFactory<String, String> shareConsumerFactory = new DefaultShareConsumerFactory<>(
+				Map.of(
+					"bootstrap.servers", bootstrapServers,
+					"key.deserializer", org.apache.kafka.common.serialization.StringDeserializer.class,
+					"value.deserializer", org.apache.kafka.common.serialization.StringDeserializer.class
+				)
+		);
 		for (int i = 0; i < consumerIds.size(); i++) {
 			final int idx = i;
-			Future<?> future = executor.submit(() -> {
-				DefaultShareConsumerFactory<String, String> shareConsumerFactory = new DefaultShareConsumerFactory<>(
-						Map.of(
-							"bootstrap.servers", bootstrapServers,
-							"key.deserializer", org.apache.kafka.common.serialization.StringDeserializer.class,
-							"value.deserializer", org.apache.kafka.common.serialization.StringDeserializer.class
-						));
-				try (var consumer = shareConsumerFactory
-						.createShareConsumer(groupId, consumerIds.get(idx))) {
+			executor.submit(() -> {
+				try (var consumer = shareConsumerFactory.createShareConsumer(groupId, consumerIds.get(idx))) {
 					consumer.subscribe(Collections.singletonList(topic));
 					while (running.get() && latch.getCount() > 0) {
 						var records = consumer.poll(Duration.ofMillis(200));
@@ -257,22 +254,15 @@ class DefaultShareConsumerFactoryTests {
 					}
 				}
 			});
-			futures.add(future);
 		}
 
-		boolean completed = latch.await(10, java.util.concurrent.TimeUnit.SECONDS);
-		running.set(false);
-		for (Future<?> future : futures) {
-			try {
-				future.get();
-			}
-			catch (Exception e) {
-				throw new RuntimeException(e);
-			}
-		}
-		executor.shutdown();
-		assertThat(completed)
+		assertThat(latch.await(10, TimeUnit.SECONDS))
 			.as("All records should be received within timeout")
+			.isTrue();
+		running.set(false);
+		executor.shutdown();
+		assertThat(executor.awaitTermination(10, TimeUnit.SECONDS))
+			.as("Executor should terminate after shutdown")
 			.isTrue();
 		return consumerRecords;
 	}
