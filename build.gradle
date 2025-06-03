@@ -133,7 +133,7 @@ configure(javaProjects) { subproject ->
 
 	java {
 		toolchain {
-			languageVersion = JavaLanguageVersion.of(23)
+			languageVersion = JavaLanguageVersion.of(24)
 		}
 		withJavadocJar()
 		withSourcesJar()
@@ -156,11 +156,10 @@ configure(javaProjects) { subproject ->
 		}
 	}
 
-	compileTestKotlin {
-		kotlinOptions {
-			jvmTarget = JavaVersion.VERSION_17
-		}
+	tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask).configureEach {
 		compilerOptions {
+			jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+			javaParameters = true
 			allWarningsAsErrors = true
 		}
 	}
