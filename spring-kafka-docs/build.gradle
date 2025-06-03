@@ -12,6 +12,12 @@ apply plugin: 'kotlin-spring'
 
 description = 'Spring Kafka Code Snippets For Docs'
 
+
+tasks.withType(JavaCompile).configureEach {
+    sourceCompatibility = JavaVersion.VERSION_17
+    options.encoding = 'UTF-8'
+}
+
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask).configureEach {
     compilerOptions {
         jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
