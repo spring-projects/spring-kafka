@@ -460,7 +460,11 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		this.kafkaAdmin = kafkaAdmin;
 	}
 
-	protected @Nullable RecordInterceptor<K, V> getRecordInterceptor() {
+	/**
+	 * Get the {@link RecordInterceptor} for modification, if configured.
+	 * @return the {@link RecordInterceptor}, or {@code null} if not configured
+	 */
+	public @Nullable RecordInterceptor<K, V> getRecordInterceptor() {
 		return this.recordInterceptor;
 	}
 
