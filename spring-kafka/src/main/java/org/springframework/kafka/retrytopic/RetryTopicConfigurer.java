@@ -76,7 +76,7 @@ import org.springframework.kafka.support.TopicForRetryable;
  * ContainerProperties' idlePartitionEventInterval property.
  * property, a {@link org.springframework.kafka.event.ListenerContainerPartitionIdleEvent}
  * is published, which the {@link org.springframework.kafka.listener.KafkaConsumerBackoffManager}
- * listens to in order to check whether or not it should unpause the partition.
+ * listens to in order to check whether it should unpause the partition.
  *
  * <p>If, when consumption is resumed, processing fails again, the message is forwarded to
  * the next topic and so on, until it gets to the dlt.
@@ -498,7 +498,7 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 
 	static class LoggingDltListenerHandlerMethod {
 
-		public static final String DEFAULT_DLT_METHOD_NAME = "logMessage";
+		static final String DEFAULT_DLT_METHOD_NAME = "logMessage";
 
 		public void logMessage(Object message, @NonNull Acknowledgment ack) {
 			if (message instanceof ConsumerRecord) {

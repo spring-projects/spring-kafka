@@ -111,7 +111,7 @@
 		<module name="JavadocMethod">
 		</module>
 		<module name="JavadocVariable">
-			<property name="scope" value="public"/>
+			<property name="accessModifiers" value="public"/>
 		</module>
 		<module name="JavadocStyle">
 			<property name="checkEmptyJavadoc" value="true"/>

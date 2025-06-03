@@ -52,23 +52,23 @@ ext {
 	modifiedFiles.finalizeValueOnRead()
 
 	assertjVersion = '3.27.3'
-	awaitilityVersion = '4.2.2'
+	awaitilityVersion = '4.3.0'
 	hamcrestVersion = '3.0'
 	hibernateValidationVersion = '8.0.2.Final'
-	jacksonBomVersion = '2.18.4'
+	jacksonBomVersion = '2.19.0'
 	jaywayJsonPathVersion = '2.9.0'
 	junit4Version = '4.13.2'
-	junitJupiterVersion = '5.12.2'
+	junitJupiterVersion = '5.13.0'
 	kafkaVersion = '4.0.0'
 	kotlinCoroutinesVersion = '1.10.2'
 	log4jVersion = '2.24.3'
 	micrometerDocsVersion = '1.0.4'
 	micrometerVersion = '1.15.0'
 	micrometerTracingVersion = '1.5.0'
-	mockitoVersion = '5.15.2'
-	reactorVersion = '2024.0.6'
+	mockitoVersion = '5.18.0'
+	reactorVersion = '2025.0.0-SNAPSHOT'
 	scalaVersion = '2.13'
-	springBootVersion = '3.3.8' // docs module
+	springBootVersion = '3.5.0' // docs module
 	springDataVersion = '2025.1.0-SNAPSHOT'
 	springRetryVersion = '2.0.12'
 	springVersion = '7.0.0-SNAPSHOT'
@@ -94,6 +94,7 @@ allprojects {
 		maven { url 'https://repo.spring.io/milestone' }
 		if (version.endsWith('SNAPSHOT')) {
 			maven { url 'https://repo.spring.io/snapshot' }
+			maven { url 'https://oss.sonatype.org/content/repositories/snapshots' }
 		}
 //		maven { url 'https://repository.apache.org/content/groups/staging/' }
 	}
@@ -195,8 +196,8 @@ configure(javaProjects) { subproject ->
 	}
 
 	checkstyle {
-		configDirectory.set(rootProject.file('src/checkstyle'))
-		toolVersion = '10.21.1'
+		configDirectory.set(file("${rootDir}/src/checkstyle"))
+		toolVersion = '10.25.0'
 	}
 
 	publishing {
