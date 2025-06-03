@@ -18,17 +18,15 @@ updates:
         update-types:
           - patch
         patterns:
-          - com.gradle.*
+          - org.gradle.*
           - io.spring.*
           - org.ajoberstar.grgit
+          - io.freefair.aggregate-javadoc
           - org.antora
           - io.micrometer:micrometer-docs-generator
           - org.hibernate.validator:hibernate-validator
           - org.awaitility:awaitility
-          - net.ltgt.errorprone
-          - com.uber.nullaway*
           - org.springframework.boot*
-          - com.google.errorprone*
 
   - package-ecosystem: gradle
     target-branch: 3.3.x
@@ -49,9 +47,10 @@ updates:
         update-types:
           - patch
         patterns:
-          - com.gradle.*
+          - org.gradle.*
           - io.spring.*
           - org.ajoberstar.grgit
+          - io.freefair.aggregate-javadoc
           - org.antora
           - io.micrometer:micrometer-docs-generator
           - org.hibernate.validator:hibernate-validator
@@ -78,9 +77,10 @@ updates:
         update-types:
           - patch
         patterns:
-          - com.gradle.*
+          - org.gradle.*
           - io.spring.*
           - org.ajoberstar.grgit
+          - io.freefair.aggregate-javadoc
           - org.antora
           - io.micrometer:micrometer-docs-generator
           - org.hibernate.validator:hibernate-validator
