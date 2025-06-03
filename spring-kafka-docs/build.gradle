@@ -12,6 +12,14 @@ apply plugin: 'kotlin-spring'
 
 description = 'Spring Kafka Code Snippets For Docs'
 
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask).configureEach {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+        javaParameters = true
+        allWarningsAsErrors = true
+    }
+}
+
 dependencies {
     implementation "org.springframework.boot:spring-boot-starter:$springBootVersion"
     implementation project (':spring-kafka')
