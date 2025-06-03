@@ -17,12 +17,12 @@
 package org.springframework.kafka.core;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -187,28 +187,32 @@ class DefaultShareConsumerFactoryTests {
 
 	@Test
 	void integrationTestSharedConsumersDistribution(EmbeddedKafkaBroker broker) throws Exception {
-		final String topic = "embedded-share-distribution-test";
+		String topic = "shared-consumer-dist-test";
 		final String groupId = "distributionTestGroup";
 		int recordCount = 8;
 		List<String> consumerIds = List.of("client-dist-1", "client-dist-2");
-		Map<String, Set<String>> consumerRecords = runSharedConsumerTest(topic, groupId, consumerIds,
-				recordCount, broker);
+		List<String> allReceived = runSharedConsumerTest(topic, groupId, consumerIds, recordCount, broker);
 
-		// Assert all records were received (no loss)
-		Set<String> allReceived = new java.util.HashSet<>();
-		consumerRecords.values().forEach(allReceived::addAll);
-		for (int i = 0; i < recordCount; i++) {
-			assertThat(allReceived)
-				.as("Should have received value " + topic + "-value-" + i)
-				.contains(topic + "-value-" + i);
-		}
+		// Assert all records were received (no loss and no duplicates)
+		assertThat(allReceived)
+			.containsExactlyInAnyOrder(
+				topic + "-value-0",
+				topic + "-value-1",
+				topic + "-value-2",
+				topic + "-value-3",
+				topic + "-value-4",
+				topic + "-value-5",
+				topic + "-value-6",
+				topic + "-value-7"
+			)
+			.doesNotHaveDuplicates();
 	}
 
 	/**
 	 * Runs multiple Kafka consumers in parallel using ExecutorService, collects all records received,
-	 * and returns a map of consumerId to the set of record values received by that consumer.
+	 * and returns a list of all record values received by all consumers.
 	 */
-	private static Map<String, Set<String>> runSharedConsumerTest(String topic, String groupId,
+	private static List<String> runSharedConsumerTest(String topic, String groupId,
 			List<String> consumerIds, int recordCount, EmbeddedKafkaBroker broker) throws Exception {
 		var bootstrapServers = broker.getBrokersAsString();
 
@@ -225,11 +229,8 @@ class DefaultShareConsumerFactoryTests {
 
 		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 
-		Map<String, Set<String>> consumerRecords = new java.util.concurrent.ConcurrentHashMap<>();
-		consumerIds.forEach(id -> consumerRecords.put(id,
-				java.util.Collections.synchronizedSet(new java.util.HashSet<>())));
+		List<String> allReceived = Collections.synchronizedList(new ArrayList<>());
 		var latch = new java.util.concurrent.CountDownLatch(recordCount);
-		var running = new java.util.concurrent.atomic.AtomicBoolean(true);
 		ExecutorService executor = Executors.newCachedThreadPool();
 		DefaultShareConsumerFactory<String, String> shareConsumerFactory = new DefaultShareConsumerFactory<>(
 				Map.of(
@@ -243,13 +244,12 @@ class DefaultShareConsumerFactoryTests {
 			executor.submit(() -> {
 				try (var consumer = shareConsumerFactory.createShareConsumer(groupId, consumerIds.get(idx))) {
 					consumer.subscribe(Collections.singletonList(topic));
-					while (running.get() && latch.getCount() > 0) {
+					while (latch.getCount() > 0) {
 						var records = consumer.poll(Duration.ofMillis(200));
 						for (var r : records) {
-							if (consumerRecords.get(consumerIds.get(idx)).add(r.value())) {
-								consumer.acknowledge(r, AcknowledgeType.ACCEPT);
-								latch.countDown();
-							}
+							allReceived.add(r.value());
+							consumer.acknowledge(r, AcknowledgeType.ACCEPT);
+							latch.countDown();
 						}
 					}
 				}
@@ -259,12 +259,11 @@ class DefaultShareConsumerFactoryTests {
 		assertThat(latch.await(10, TimeUnit.SECONDS))
 			.as("All records should be received within timeout")
 			.isTrue();
-		running.set(false);
 		executor.shutdown();
 		assertThat(executor.awaitTermination(10, TimeUnit.SECONDS))
 			.as("Executor should terminate after shutdown")
 			.isTrue();
-		return consumerRecords;
+		return allReceived;
 	}
 
 	/**
