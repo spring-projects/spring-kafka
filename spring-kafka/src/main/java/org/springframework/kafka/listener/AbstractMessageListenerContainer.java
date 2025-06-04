@@ -463,6 +463,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	/**
 	 * Get the {@link RecordInterceptor} for modification, if configured.
 	 * @return the {@link RecordInterceptor}, or {@code null} if not configured
+	 * @since 4.0
 	 */
 	public @Nullable RecordInterceptor<K, V> getRecordInterceptor() {
 		return this.recordInterceptor;
