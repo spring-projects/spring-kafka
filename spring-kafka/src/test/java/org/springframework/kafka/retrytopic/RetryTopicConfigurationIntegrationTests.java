@@ -126,7 +126,7 @@ class RetryTopicConfigurationIntegrationTests {
 		@Bean
 		ConsumerFactory<Integer, String> consumerFactory(EmbeddedKafkaBroker embeddedKafka) {
 			return new DefaultKafkaConsumerFactory<>(
-					KafkaTestUtils.consumerProps("retryConfig", "false", embeddedKafka));
+					KafkaTestUtils.consumerProps(embeddedKafka, "retryConfig", false));
 		}
 
 		@Bean

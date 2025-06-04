@@ -150,7 +150,7 @@ class AbstractConsumerSeekAwareTests {
 
 		@Bean
 		ConsumerFactory<String, String> consumerFactory() {
-			return new DefaultKafkaConsumerFactory<>(KafkaTestUtils.consumerProps("test-group", "false", this.broker));
+			return new DefaultKafkaConsumerFactory<>(KafkaTestUtils.consumerProps(this.broker, "test-group", false));
 		}
 
 		@Bean

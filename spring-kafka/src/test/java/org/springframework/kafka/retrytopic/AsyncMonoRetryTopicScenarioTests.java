@@ -1329,7 +1329,7 @@ public class AsyncMonoRetryTopicScenarioTests {
 			Map<String, Object> props = KafkaTestUtils.consumerProps(
 					this.broker.getBrokersAsString(),
 					"groupId",
-					"false");
+					false);
 			return new DefaultKafkaConsumerFactory<>(props);
 		}
 

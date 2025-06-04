@@ -124,7 +124,7 @@ class RetryTopicConfigurationManualAssignmentIntegrationTests {
 
 		@Bean
 		ConsumerFactory<Integer, String> consumerFactory(EmbeddedKafkaBroker embeddedKafka) {
-			Map<String, Object> props = KafkaTestUtils.consumerProps("retryConfig", "false", embeddedKafka);
+			Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "retryConfig", false);
 			props.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 2000);
 			return new DefaultKafkaConsumerFactory<>(
 					props);

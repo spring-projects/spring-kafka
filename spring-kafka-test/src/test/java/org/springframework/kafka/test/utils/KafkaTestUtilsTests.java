@@ -55,7 +55,7 @@ public class KafkaTestUtilsTests {
 		producer.send(new ProducerRecord<>("singleTopic1", 0, 1, "foo"));
 		producer.send(new ProducerRecord<>("singleTopic2", 0, 1, "foo"));
 		producer.close();
-		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("ktuTests1", "false", broker);
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(broker, "ktuTests1", false);
 		KafkaConsumer<Integer, String> consumer = new KafkaConsumer<>(consumerProps);
 		broker.consumeFromAllEmbeddedTopics(consumer);
 		KafkaTestUtils.getSingleRecord(consumer, "singleTopic1");
@@ -72,7 +72,7 @@ public class KafkaTestUtilsTests {
 		Map<String, Object> producerProps = KafkaTestUtils.producerProps(broker);
 		KafkaProducer<Integer, String> producer = new KafkaProducer<>(producerProps);
 		producer.send(new ProducerRecord<>("singleTopic4", 0, 1, "foo"));
-		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("ktuTests2", "false", broker);
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(broker, "ktuTests2", false);
 		KafkaConsumer<Integer, String> consumer = new KafkaConsumer<>(consumerProps);
 		broker.consumeFromEmbeddedTopics(consumer, "singleTopic4", "singleTopic5");
 		long t1 = System.currentTimeMillis();
@@ -117,7 +117,7 @@ public class KafkaTestUtilsTests {
 		Map<String, Object> producerProps = KafkaTestUtils.producerProps(broker);
 		KafkaProducer<Integer, String> producer = new KafkaProducer<>(producerProps);
 		producer.send(new ProducerRecord<>("multiTopic1", 0, 1, "foo"));
-		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("ktuTests3", "false", broker);
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(broker, "ktuTests3", false);
 		KafkaConsumer<Integer, String> consumer = new KafkaConsumer<>(consumerProps);
 		broker.consumeFromAnEmbeddedTopic(consumer, "multiTopic1");
 		new Thread(() -> {

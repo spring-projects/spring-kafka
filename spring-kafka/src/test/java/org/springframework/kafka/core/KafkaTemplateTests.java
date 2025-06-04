@@ -136,7 +136,7 @@ public class KafkaTemplateTests {
 	public static void setUp() {
 		embeddedKafka = EmbeddedKafkaCondition.getBroker();
 		Map<String, Object> consumerProps = KafkaTestUtils
-				.consumerProps("KafkaTemplatetests" + UUID.randomUUID(), "false", embeddedKafka);
+				.consumerProps(embeddedKafka, "KafkaTemplatetests" + UUID.randomUUID(), false);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		consumer = cf.createConsumer();
 		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, INT_KEY_TOPIC);
@@ -165,7 +165,7 @@ public class KafkaTemplateTests {
 		template.setDefaultTopic(INT_KEY_TOPIC);
 
 		template.setConsumerFactory(
-				new DefaultKafkaConsumerFactory<>(KafkaTestUtils.consumerProps("xx", "false", embeddedKafka)));
+				new DefaultKafkaConsumerFactory<>(KafkaTestUtils.consumerProps(embeddedKafka, "xx", false)));
 		ConsumerRecords<Integer, String> initialRecords =
 				template.receive(Collections.singleton(new TopicPartitionOffset(INT_KEY_TOPIC, 1, 1L)));
 		assertThat(initialRecords).isEmpty();
@@ -475,7 +475,7 @@ public class KafkaTemplateTests {
 		pf.setKeySerializer(new StringSerializer());
 		KafkaTemplate<String, String> template = new KafkaTemplate<>(pf, true);
 		template.setDefaultTopic(STRING_KEY_TOPIC);
-		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("testTString", "false", embeddedKafka);
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(embeddedKafka, "testTString", false);
 		DefaultKafkaConsumerFactory<String, String> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		cf.setKeyDeserializer(new StringDeserializer());
 		Consumer<String, String> localConsumer = cf.createConsumer();
@@ -630,7 +630,7 @@ public class KafkaTemplateTests {
 		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
 
 		template.setConsumerFactory(
-				new DefaultKafkaConsumerFactory<>(KafkaTestUtils.consumerProps("xx", "false", embeddedKafka)));
+				new DefaultKafkaConsumerFactory<>(KafkaTestUtils.consumerProps(embeddedKafka, "xx", false)));
 		TopicPartitionOffset tpoWithNullOffset = new TopicPartitionOffset(INT_KEY_TOPIC, 1, offset);
 
 		assertThatExceptionOfType(KafkaException.class)

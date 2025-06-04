@@ -112,7 +112,7 @@ public class KafkaStreamsBranchTests {
 
 	private Consumer<String, String> createConsumer() {
 		Map<String, Object> consumerProps =
-				KafkaTestUtils.consumerProps(UUID.randomUUID().toString(), "false", this.embeddedKafka);
+				KafkaTestUtils.consumerProps(this.embeddedKafka, UUID.randomUUID().toString(), false);
 		consumerProps.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 10000);
 
 		DefaultKafkaConsumerFactory<String, String> kafkaConsumerFactory =

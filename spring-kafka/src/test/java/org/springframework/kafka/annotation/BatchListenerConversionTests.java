@@ -199,7 +199,7 @@ public class BatchListenerConversionTests {
 		@Bean
 		public Map<String, Object> consumerConfigs(EmbeddedKafkaBroker embeddedKafka) {
 			Map<String, Object> consumerProps =
-					KafkaTestUtils.consumerProps(DEFAULT_TEST_GROUP_ID, "false", embeddedKafka);
+					KafkaTestUtils.consumerProps(embeddedKafka, DEFAULT_TEST_GROUP_ID, false);
 			consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, BytesDeserializer.class);
 			consumerProps.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1000);
 			consumerProps.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, 500);

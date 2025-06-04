@@ -48,7 +48,7 @@ public class SerializationIntegrationTests {
 	@Test
 	void configurePreLoadedDelegates() {
 		Map<String, Object> consumerProps =
-				KafkaTestUtils.consumerProps(DBTD_TOPIC, "false", EmbeddedKafkaCondition.getBroker());
+				KafkaTestUtils.consumerProps(EmbeddedKafkaCondition.getBroker(), DBTD_TOPIC, false);
 		consumerProps.put(DelegatingByTopicDeserializer.VALUE_SERIALIZATION_TOPIC_CONFIG, DBTD_TOPIC + ":"
 				+ TestDeserializer.class.getName());
 		TestDeserializer testDeser = new TestDeserializer();

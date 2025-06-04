@@ -135,7 +135,7 @@ public class ContainerEnforceRebalanceTests {
 		@Bean
 		ConsumerFactory<Integer, String> cf() {
 			return new DefaultKafkaConsumerFactory<>(
-					KafkaTestUtils.consumerProps("enforce-rebalance-topic", "false", this.broker));
+					KafkaTestUtils.consumerProps(this.broker, "enforce-rebalance-topic", false));
 		}
 	}
 

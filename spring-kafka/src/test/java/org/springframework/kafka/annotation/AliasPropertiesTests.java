@@ -157,9 +157,7 @@ public class AliasPropertiesTests {
 
 		@Bean
 		public Map<String, Object> consumerConfigs() {
-			Map<String, Object> consumerProps =
-					KafkaTestUtils.consumerProps("myAliasGroup", "false", embeddedKafka());
-			return consumerProps;
+			return KafkaTestUtils.consumerProps(embeddedKafka(), "myAliasGroup", false);
 		}
 
 		@Bean

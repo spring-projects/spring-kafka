@@ -134,7 +134,7 @@ public class SubBatchPerPartitionTests {
 
 	@Test
 	void defaults() {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("sbpp", "false", this.broker);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(this.broker, "sbpp", false);
 		ConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties("sbpp");
 		containerProps.setMessageListener(mock(MessageListener.class));

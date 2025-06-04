@@ -76,7 +76,7 @@ public class DefaultErrorHandlerBatchIntegrationTests {
 
 	@Test
 	public void recoveryAndDlt() throws Exception {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("recoverBatch", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "recoverBatch", false);
 		props.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1000);
 		props.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, 500);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
@@ -147,7 +147,7 @@ public class DefaultErrorHandlerBatchIntegrationTests {
 
 	@Test
 	public void recoveryFails() throws Exception {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("recoverBatch2", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "recoverBatch2", false);
 		props.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 1000);
 		props.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, 500);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);

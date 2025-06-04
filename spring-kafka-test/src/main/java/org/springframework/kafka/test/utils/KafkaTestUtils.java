@@ -59,6 +59,7 @@ import org.springframework.util.Assert;
  * @author Hugo Wood
  * @author Artem Bilan
  * @author Sanghyeok An
+ * @author Mikhail Polivakha
  */
 public final class KafkaTestUtils {
 
@@ -81,9 +82,26 @@ public final class KafkaTestUtils {
 	 * @param autoCommit the auto commit.
 	 * @param embeddedKafka a {@link EmbeddedKafkaBroker} instance.
 	 * @return the properties.
+	 * @deprecated please, use {@link #consumerProps(EmbeddedKafkaBroker, String, boolean)} instead
 	 */
+	@Deprecated(forRemoval = true, since = "4.0.0")
 	public static Map<String, Object> consumerProps(String group, String autoCommit,
 			EmbeddedKafkaBroker embeddedKafka) {
+
+		return consumerProps(embeddedKafka.getBrokersAsString(), group, autoCommit);
+	}
+
+	/**
+	 * Set up test properties for an {@code <Integer, String>} consumer.
+	 *
+	 * @param group the group id.
+	 * @param autoCommit the auto commit.
+	 * @param embeddedKafka a {@link EmbeddedKafkaBroker} instance.
+	 * @return the properties.
+	 * @since 4.0
+	 */
+	public static Map<String, Object> consumerProps(EmbeddedKafkaBroker embeddedKafka, String group,
+			boolean autoCommit) {
 
 		return consumerProps(embeddedKafka.getBrokersAsString(), group, autoCommit);
 	}
@@ -96,7 +114,7 @@ public final class KafkaTestUtils {
 	 * @since 3.3
 	 */
 	public static Map<String, Object> consumerProps(String brokers, String group) {
-		return consumerProps(brokers, group, "false");
+		return consumerProps(brokers, group, false);
 	}
 
 	/**
@@ -114,8 +132,22 @@ public final class KafkaTestUtils {
 	 * @param group the group id.
 	 * @param autoCommit the auto commit.
 	 * @return the properties.
-	 */
+	 * @deprecated Please, use {@link #consumerProps(String, String, boolean)} instead.
+ 	 */
+	@Deprecated(forRemoval = true, since = "4.0.0")
 	public static Map<String, Object> consumerProps(String brokers, String group, String autoCommit) {
+		return consumerProps(brokers, group, Boolean.parseBoolean(autoCommit));
+	}
+
+	/**
+	 * Set up test properties for an {@code <Integer, String>} consumer.
+	 * @param brokers the bootstrapServers property.
+	 * @param group the group id.
+	 * @param autoCommit the auto commit.
+	 * @return the properties.
+	 * @since 4.0
+	 */
+	public static Map<String, Object> consumerProps(String brokers, String group, boolean autoCommit) {
 		Map<String, Object> props = new HashMap<>();
 		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokers);
 		props.put(ConsumerConfig.GROUP_ID_CONFIG, group);
@@ -235,7 +267,7 @@ public final class KafkaTestUtils {
 	public static ConsumerRecord<?, ?> getOneRecord(String brokerAddresses, String group, String topic, int partition,
 			boolean seekToLast, boolean commit, Duration timeout) {
 
-		Map<String, Object> consumerConfig = consumerProps(brokerAddresses, group, "false");
+		Map<String, Object> consumerConfig = consumerProps(brokerAddresses, group, false);
 		consumerConfig.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1);
 		try (KafkaConsumer consumer = new KafkaConsumer(consumerConfig)) {
 			TopicPartition topicPart = new TopicPartition(topic, partition);

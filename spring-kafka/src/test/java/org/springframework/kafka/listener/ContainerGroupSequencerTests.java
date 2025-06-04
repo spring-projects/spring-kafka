@@ -154,7 +154,7 @@ public class ContainerGroupSequencerTests {
 
 		@Bean
 		ConsumerFactory<Integer, String> cf(EmbeddedKafkaBroker broker) {
-			return new DefaultKafkaConsumerFactory<>(KafkaTestUtils.consumerProps("", "false", broker));
+			return new DefaultKafkaConsumerFactory<>(KafkaTestUtils.consumerProps(broker, "", false));
 		}
 
 		@Bean

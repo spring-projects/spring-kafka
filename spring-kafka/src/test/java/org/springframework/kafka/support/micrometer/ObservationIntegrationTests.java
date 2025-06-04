@@ -131,7 +131,7 @@ public class ObservationIntegrationTests extends SampleTestRunner {
 
 		@Bean
 		ConsumerFactory<Integer, String> consumerFactory(EmbeddedKafkaBroker broker) {
-			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("obs", "false", broker);
+			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(broker, "obs", false);
 			return new DefaultKafkaConsumerFactory<>(consumerProps);
 		}
 

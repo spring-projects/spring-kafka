@@ -157,7 +157,7 @@ public class DeliveryHeaderTests {
 		@Primary
 		ConsumerFactory<Integer, String> cf() {
 			return new DefaultKafkaConsumerFactory<>(
-					KafkaTestUtils.consumerProps("dh1", "false", this.broker));
+					KafkaTestUtils.consumerProps(this.broker, "dh1", false));
 		}
 
 		@Bean

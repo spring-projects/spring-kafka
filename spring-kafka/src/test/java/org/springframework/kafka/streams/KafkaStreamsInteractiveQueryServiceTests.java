@@ -226,8 +226,7 @@ class KafkaStreamsInteractiveQueryServiceTests {
 
 		@Bean
 		public Map<String, Object> consumerConfigs() {
-			return KafkaTestUtils.consumerProps(this.brokerAddresses, "testGroup",
-					"false");
+			return KafkaTestUtils.consumerProps(this.brokerAddresses, "testGroup", false);
 		}
 
 		@Bean

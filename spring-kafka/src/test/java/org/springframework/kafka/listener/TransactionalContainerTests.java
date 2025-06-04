@@ -494,7 +494,7 @@ public class TransactionalContainerTests {
 	@SuppressWarnings({ "unchecked"})
 	@Test
 	public void testRollbackRecord() throws Exception {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("txTest1", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "txTest1", false);
 		props.put(ConsumerConfig.GROUP_ID_CONFIG, "group");
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
@@ -599,7 +599,7 @@ public class TransactionalContainerTests {
 
 	@SuppressWarnings({"unchecked"})
 	private void testFixLagGuts(String topic, int whichTm) throws InterruptedException {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("txTest2", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "txTest2", false);
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic);
@@ -655,7 +655,7 @@ public class TransactionalContainerTests {
 	@Test
 	public void testMaxFailures() throws Exception {
 		String group = "groupInARBP";
-		Map<String, Object> props = KafkaTestUtils.consumerProps(group, "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, group, false);
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic3);
@@ -763,7 +763,7 @@ public class TransactionalContainerTests {
 	@Test
 	public void testBatchListenerMaxFailuresOnRecover() throws Exception {
 		String group = "groupInARBP2";
-		Map<String, Object> props = KafkaTestUtils.consumerProps(group, "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, group, false);
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic8);
@@ -880,7 +880,7 @@ public class TransactionalContainerTests {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testRollbackProcessorCrash() throws Exception {
-		Map<String, Object> props = KafkaTestUtils.consumerProps("testRollbackNoRetries", "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "testRollbackNoRetries", false);
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic4);
@@ -941,7 +941,7 @@ public class TransactionalContainerTests {
 	@Test
 	public void testBatchListenerRecoverAfterRollbackProcessorCrash() throws Exception {
 		String group = "testBatchListenerRollbackNoRetries";
-		Map<String, Object> props = KafkaTestUtils.consumerProps(group, "false", embeddedKafka);
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, group, false);
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2);
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
@@ -1095,7 +1095,7 @@ public class TransactionalContainerTests {
 		final KafkaTemplate<Object, Object> template = new KafkaTemplate<>(pf);
 		// init consumer
 		String group = "groupInARBP3";
-		Map<String, Object> consumerProperties = KafkaTestUtils.consumerProps(group, "false", embeddedKafka);
+		Map<String, Object> consumerProperties = KafkaTestUtils.consumerProps(embeddedKafka, group, false);
 		consumerProperties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProperties);
 		ContainerProperties containerProps = new ContainerProperties(topic10);
