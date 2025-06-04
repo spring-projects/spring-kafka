@@ -115,7 +115,7 @@ public interface ProducerFactory<K, V> {
 	 * @since 2.5
 	 */
 	@Nullable
-	default Supplier<Serializer<V>> getValueSerializerSupplier() {
+	default Supplier<@Nullable Serializer<V>> getValueSerializerSupplier() {
 		return () -> null;
 	}
 
@@ -126,7 +126,7 @@ public interface ProducerFactory<K, V> {
 	 * @since 2.5
 	 */
 	@Nullable
-	default Supplier<Serializer<K>> getKeySerializerSupplier() {
+	default Supplier<@Nullable Serializer<K>> getKeySerializerSupplier() {
 		return () -> null;
 	}
 
