@@ -3862,7 +3862,7 @@ public class KafkaMessageListenerContainerTests {
 
 			@Override
 			public @NonNull ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record,
-																	  Consumer<Integer, String> consumer) {
+																	Consumer<Integer, String> consumer) {
 
 				return record;
 			}
