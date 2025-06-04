@@ -76,6 +76,7 @@ import org.springframework.util.StringUtils;
  * @author Yaniv Nahoum
  * @author Sanghyeok An
  * @author Borahm Lee
+ * @author Soby Chacko
  */
 public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 		implements ConsumerFactory<K, V>, BeanNameAware, ApplicationContextAware {
@@ -88,9 +89,9 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 
 	private final List<ConsumerPostProcessor<K, V>> postProcessors = new ArrayList<>();
 
-	private @Nullable Supplier<Deserializer<K>> keyDeserializerSupplier;
+	private @Nullable Supplier<@Nullable Deserializer<K>> keyDeserializerSupplier;
 
-	private @Nullable Supplier<Deserializer<V>> valueDeserializerSupplier;
+	private @Nullable Supplier<@Nullable Deserializer<V>> valueDeserializerSupplier;
 
 	private String beanName = "not.managed.by.Spring";
 
@@ -148,8 +149,8 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	 * @since 2.3
 	 */
 	public DefaultKafkaConsumerFactory(Map<String, Object> configs,
-			@Nullable Supplier<Deserializer<K>> keyDeserializerSupplier,
-			@Nullable Supplier<Deserializer<V>> valueDeserializerSupplier) {
+			@Nullable Supplier<@Nullable Deserializer<K>> keyDeserializerSupplier,
+			@Nullable Supplier<@Nullable Deserializer<V>> valueDeserializerSupplier) {
 
 		this(configs, keyDeserializerSupplier, valueDeserializerSupplier, true);
 	}
@@ -166,8 +167,8 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	 * @since 2.8.7
 	 */
 	public DefaultKafkaConsumerFactory(Map<String, Object> configs,
-			@Nullable Supplier<Deserializer<K>> keyDeserializerSupplier,
-			@Nullable Supplier<Deserializer<V>> valueDeserializerSupplier, boolean configureDeserializers) {
+			@Nullable Supplier<@Nullable Deserializer<K>> keyDeserializerSupplier,
+			@Nullable Supplier<@Nullable Deserializer<V>> valueDeserializerSupplier, boolean configureDeserializers) {
 
 		this.configs = new ConcurrentHashMap<>(configs);
 		this.configureDeserializers = configureDeserializers;
@@ -207,7 +208,7 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	 * @param keyDeserializerSupplier the supplier.
 	 * @since 2.8
 	 */
-	public void setKeyDeserializerSupplier(Supplier<Deserializer<K>> keyDeserializerSupplier) {
+	public void setKeyDeserializerSupplier(@Nullable Supplier<@Nullable Deserializer<K>> keyDeserializerSupplier) {
 		this.keyDeserializerSupplier = keyDeserializerSupplier;
 	}
 
@@ -218,7 +219,7 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	 * @param valueDeserializerSupplier the supplier.
 	 * @since 2.8
 	 */
-	public void setValueDeserializerSupplier(Supplier<Deserializer<V>> valueDeserializerSupplier) {
+	public void setValueDeserializerSupplier(@Nullable Supplier<@Nullable Deserializer<V>> valueDeserializerSupplier) {
 		this.valueDeserializerSupplier = valueDeserializerSupplier;
 	}
 
@@ -245,12 +246,12 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 	}
 
 	@Override
-	public Deserializer<K> getKeyDeserializer() {
+	public @Nullable Deserializer<K> getKeyDeserializer() {
 		return Objects.requireNonNull(this.keyDeserializerSupplier).get();
 	}
 
 	@Override
-	public Deserializer<V> getValueDeserializer() {
+	public @Nullable Deserializer<V> getValueDeserializer() {
 		return Objects.requireNonNull(this.valueDeserializerSupplier).get();
 	}
 
