@@ -310,6 +310,8 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private boolean restartAfterAuthExceptions;
 
+	private boolean recordObservationsInBatch;
+
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
 	 * @param topics the topics.
@@ -1091,6 +1093,27 @@ public class ContainerProperties extends ConsumerProperties {
 		this.restartAfterAuthExceptions = restartAfterAuthExceptions;
 	}
 
+	/**
+	 * When true, and a batch listener is configured with observation enabled, an observation
+	 * will be started for each record in the batch.
+	 * @return recordObservationsInBatch.
+	 * @since 4.0
+	 */
+	public boolean isRecordObservationsInBatch() {
+		return this.recordObservationsInBatch;
+	}
+
+	/**
+	 * Set whether to enable individual record observations in a batch.
+	 * When true, and a batch listener is configured with observation enabled, an observation
+	 * will be started for each record in the batch. Default false.
+	 * @param recordObservationsInBatch true to enable individual record observations.
+	 * @since 4.0
+	 */
+	public void setRecordObservationsInBatch(boolean recordObservationsInBatch) {
+		this.recordObservationsInBatch = recordObservationsInBatch;
+	}
+
 	@Override
 	public String toString() {
 		return "ContainerProperties ["
@@ -1141,6 +1164,7 @@ public class ContainerProperties extends ConsumerProperties {
 						? "\n observationRegistry=" + this.observationRegistry
 						: "")
 				+ "\n restartAfterAuthExceptions=" + this.restartAfterAuthExceptions
+				+ "\n recordObservationsInBatch=" + this.recordObservationsInBatch
 				+ "\n]";
 	}
 
