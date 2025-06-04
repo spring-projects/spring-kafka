@@ -898,7 +898,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.isBatchListener = true;
 				this.wantsFullRecords = this.batchListener.wantsPollResult();
 				this.pollThreadStateProcessor = setUpPollProcessor(true);
-				this.observationEnabled = false;
+				this.observationEnabled =  this.containerProperties.isObservationEnabled() && this.containerProperties.isRecordObservationsInBatch();
 			}
 			else if (listener instanceof MessageListener) {
 				this.listener = (MessageListener<K, V>) listener;
@@ -2423,6 +2423,21 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		private void invokeBatchWithIndividualRecordObservation(List<ConsumerRecord<K, V>> recordList) {
+			// Create individual observations for each record without scopes
+			for (ConsumerRecord<K, V> record : recordList) {
+				Observation observation = KafkaListenerObservation.LISTENER_OBSERVATION.observation(
+						this.containerProperties.getObservationConvention(),
+							DefaultKafkaListenerObservationConvention.INSTANCE,
+							() -> new KafkaRecordReceiverContext(record, getListenerId(), getClientId(), this.consumerGroupId,
+									this::clusterId),
+							this.observationRegistry);
+				observation.observe(() -> {
+					this.logger.debug(() -> "Observing record in batch: " + KafkaUtils.format(record));
+				});
+			}
+		}
+
 		private void invokeBatchOnMessageWithRecordsOrList(final ConsumerRecords<K, V> recordsArg,
 				List<ConsumerRecord<K, V>> recordListArg) {
 
@@ -2443,7 +2458,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			Object sample = startMicrometerSample();
+
+
 			try {
+				if (this.observationEnabled) {
+					invokeBatchWithIndividualRecordObservation(recordList);
+				}
+
 				if (this.wantsFullRecords) {
 					Objects.requireNonNull(this.batchListener).onMessage(records, // NOSONAR
 							this.isAnyManualAck

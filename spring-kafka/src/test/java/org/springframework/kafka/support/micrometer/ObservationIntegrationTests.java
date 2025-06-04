@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 import io.micrometer.common.KeyValues;
 import io.micrometer.core.tck.MeterRegistryAssert;
@@ -79,10 +78,10 @@ public class ObservationIntegrationTests extends SampleTestRunner {
 					.hasSize(4);
 			List<FinishedSpan> producerSpans = finishedSpans.stream()
 					.filter(span -> span.getKind().equals(Kind.PRODUCER))
-					.collect(Collectors.toList());
+					.toList();
 			List<FinishedSpan> consumerSpans = finishedSpans.stream()
 					.filter(span -> span.getKind().equals(Kind.CONSUMER))
-					.collect(Collectors.toList());
+					.toList();
 			SpanAssert.assertThat(producerSpans.get(0))
 					.hasTag("spring.kafka.template.name", "template");
 			assertThat(producerSpans.get(0).getRemoteServiceName())

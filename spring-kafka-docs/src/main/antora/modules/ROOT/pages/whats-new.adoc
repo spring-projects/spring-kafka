@@ -76,3 +76,9 @@ For details, see xref:kafka/receiving-messages/rebalance-listeners.adoc#new-reba
 
 The `DefaultKafkaHeaderMapper` and `SimpleKafkaHeaderMapper` support multi-value header mapping for Kafka records.
 More details are available in xref:kafka/headers.adoc#multi-value-header[Support multi-value header mapping].
+
+[[x40-batch-observability]]
+=== Per-Record Observation in Batch Listeners
+
+It is now possible to get an observation for each record when using a batch listener.
+See xref:kafka/micrometer.adoc#batch-listener-obs[Observability for Batch Listeners] for more information.
