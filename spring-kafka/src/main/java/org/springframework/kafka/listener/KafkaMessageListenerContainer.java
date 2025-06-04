@@ -898,7 +898,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.isBatchListener = true;
 				this.wantsFullRecords = this.batchListener.wantsPollResult();
 				this.pollThreadStateProcessor = setUpPollProcessor(true);
-				this.observationEnabled = false;
+				this.observationEnabled =  this.containerProperties.isObservationEnabled() && this.containerProperties.isRecordObservationsInBatch();
 			}
 			else if (listener instanceof MessageListener) {
 				this.listener = (MessageListener<K, V>) listener;
@@ -2443,25 +2443,32 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			Object sample = startMicrometerSample();
-			try {
-				if (this.wantsFullRecords) {
-					Objects.requireNonNull(this.batchListener).onMessage(records, // NOSONAR
-							this.isAnyManualAck
-									? new ConsumerBatchAcknowledgment(records, recordList)
-									: null,
-							this.consumer);
-				}
-				else {
-					doInvokeBatchOnMessage(records, recordList); // NOSONAR
-				}
-				batchInterceptAfter(records, null);
-				successTimer(sample, null);
+			
+			// Handle individual record tracing for batch mode if enabled
+			if (this.containerProperties.isRecordObservationsInBatch() && this.observationEnabled) {
+				invokeBatchWithIndividualRecordTracing(records, recordList, sample);
 			}
-			catch (RuntimeException e) {
-				this.batchFailed = true;
-				failureTimer(sample, null, e);
-				batchInterceptAfter(records, e);
-				throw e;
+			else {
+				try {
+					if (this.wantsFullRecords) {
+						Objects.requireNonNull(this.batchListener).onMessage(records, // NOSONAR
+								this.isAnyManualAck
+										? new ConsumerBatchAcknowledgment(records, recordList)
+										: null,
+								this.consumer);
+					}
+					else {
+						doInvokeBatchOnMessage(records, recordList); // NOSONAR
+					}
+					batchInterceptAfter(records, null);
+					successTimer(sample, null);
+				}
+				catch (RuntimeException e) {
+					this.batchFailed = true;
+					failureTimer(sample, null, e);
+					batchInterceptAfter(records, e);
+					throw e;
+				}
 			}
 		}
 
@@ -4003,6 +4010,69 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				return null;
 			}
 
+		}
+
+		private void invokeBatchWithIndividualRecordTracing(final ConsumerRecords<K, V> records,
+				List<ConsumerRecord<K, V>> recordList, @Nullable Object sample) {
+			
+			List<Observation> observations = new ArrayList<>();
+			List<Observation.Scope> scopes = new ArrayList<>();
+			
+			try {
+				// Create individual observations for each record
+				for (ConsumerRecord<K, V> record : recordList) {
+					Observation observation = KafkaListenerObservation.LISTENER_OBSERVATION.observation(
+							this.containerProperties.getObservationConvention(),
+								DefaultKafkaListenerObservationConvention.INSTANCE,
+								() -> new KafkaRecordReceiverContext(record, getListenerId(), getClientId(), this.consumerGroupId,
+										this::clusterId),
+								this.observationRegistry);
+					observation.start();
+					observations.add(observation);
+					scopes.add(observation.openScope());
+				}
+				
+				// Invoke the batch listener
+				if (this.wantsFullRecords) {
+					Objects.requireNonNull(this.batchListener).onMessage(records,
+							this.isAnyManualAck
+									? new ConsumerBatchAcknowledgment(records, recordList)
+									: null,
+							this.consumer);
+				}
+				else {
+					doInvokeBatchOnMessage(records, recordList);
+				}
+				
+				batchInterceptAfter(records, null);
+				successTimer(sample, null);
+			}
+			catch (RuntimeException e) {
+				this.batchFailed = true;
+				failureTimer(sample, null, e);
+				batchInterceptAfter(records, e);
+				
+				// Mark all observations with error
+				for (Observation observation : observations) {
+					if (!isListenerAdapterObservationAware()) {
+						observation.error(e);
+					}
+				}
+				throw e;
+			}
+			finally {
+				// Close scopes in reverse order
+				for (int i = scopes.size() - 1; i >= 0; i--) {
+					scopes.get(i).close();
+				}
+				
+				// Stop observations
+				for (Observation observation : observations) {
+					if (!isListenerAdapterObservationAware()) {
+						observation.stop();
+					}
+				}
+			}
 		}
 
 	}
