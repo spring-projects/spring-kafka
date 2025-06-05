@@ -21,7 +21,6 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.BeanUtils;
@@ -48,6 +47,7 @@ import org.springframework.util.Assert;
  * @param <V> the value type
  *
  * @author Soby Chacko
+ * @since 4.0
  */
 public abstract class AbstractShareKafkaMessageListenerContainer<K, V>
 		implements GenericMessageListenerContainer<K, V>, BeanNameAware, ApplicationEventPublisherAware,
@@ -58,7 +58,6 @@ public abstract class AbstractShareKafkaMessageListenerContainer<K, V>
 	 */
 	public static final int DEFAULT_PHASE = Integer.MAX_VALUE - 100;
 
-	@NonNull
 	protected final ShareConsumerFactory<K, V> shareConsumerFactory;
 
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(this.getClass()));
@@ -67,7 +66,6 @@ public abstract class AbstractShareKafkaMessageListenerContainer<K, V>
 
 	protected final ReentrantLock lifecycleLock = new ReentrantLock();
 
-	@NonNull
 	private String beanName = "noBeanNameSet";
 
 	@Nullable

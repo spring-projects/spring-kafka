@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -49,9 +50,12 @@ import org.springframework.util.Assert;
  * @param <V> the value type
  *
  * @author Soby Chacko
+ * @since 4.0
  */
 public class ShareKafkaMessageListenerContainer<K, V>
 		extends AbstractShareKafkaMessageListenerContainer<K, V> {
+
+	private static final int POLL_TIMEOUT = 1000;
 
 	@Nullable
 	private String clientId;
@@ -166,11 +170,12 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			this.consumer = ShareKafkaMessageListenerContainer.this.shareConsumerFactory.createShareConsumer(
 				ShareKafkaMessageListenerContainer.this.getGroupId(),
 				ShareKafkaMessageListenerContainer.this.getClientId());
+
 			this.genericListener = listener;
 			this.clientId = ShareKafkaMessageListenerContainer.this.getClientId();
 			// Subscribe to topics, just like in the test
 			ContainerProperties containerProperties = getContainerProperties();
-			this.consumer.subscribe(java.util.Arrays.asList(containerProperties.getTopics()));
+			this.consumer.subscribe(Arrays.asList(containerProperties.getTopics()));
 		}
 
 		@Nullable
@@ -184,7 +189,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			Throwable exitThrowable = null;
 			while (isRunning()) {
 				try {
-					var records = this.consumer.poll(java.time.Duration.ofMillis(1000));
+					var records = this.consumer.poll(java.time.Duration.ofMillis(POLL_TIMEOUT));
 					if (records != null && records.count() > 0) {
 						for (var record : records) {
 							@SuppressWarnings("unchecked")
@@ -199,6 +204,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 				}
 				catch (Error e) {
 					this.logger.error(e, "Stopping share consumer due to an Error");
+					wrapUp();
 					throw e;
 				}
 				catch (Exception e) {
@@ -213,13 +219,17 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			if (exitThrowable != null) {
 				this.logger.error(exitThrowable, "ShareListenerConsumer exiting due to error");
 			}
-			this.consumer.close();
-			this.logger.info(() -> this.consumerGroupId + ": Consumer stopped");
+			wrapUp();
 		}
 
 		protected void initialize() {
 			publishConsumerStartingEvent();
 			publishConsumerStartedEvent();
+		}
+
+		private void wrapUp(){
+			this.consumer.close();
+			this.logger.info(() -> this.consumerGroupId + ": Consumer stopped");
 		}
 
 		@Override
