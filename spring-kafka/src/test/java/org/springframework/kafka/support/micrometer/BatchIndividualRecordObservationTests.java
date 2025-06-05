@@ -19,15 +19,32 @@ package org.springframework.kafka.support.micrometer;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.observation.DefaultMeterObservationHandler;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationHandler;
 import io.micrometer.observation.ObservationRegistry;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.TraceContext;
+import io.micrometer.tracing.Tracer;
+import io.micrometer.tracing.handler.DefaultTracingObservationHandler;
+import io.micrometer.tracing.handler.PropagatingReceiverTracingObservationHandler;
+import io.micrometer.tracing.handler.PropagatingSenderTracingObservationHandler;
+import io.micrometer.tracing.propagation.Propagator;
+import io.micrometer.tracing.test.simple.SimpleSpan;
+import io.micrometer.tracing.test.simple.SimpleTracer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,13 +80,15 @@ public class BatchIndividualRecordObservationTests {
 
 	public static final String BATCH_ONLY_OBSERVATION_TOPIC = "batch.only.observation";
 
-	@Test
+		@Test
 	void batchIndividualRecordObservationCreatesObservationPerRecord(@Autowired BatchListener listener,
-			@Autowired KafkaTemplate<Integer, String> template, @Autowired TestObservationHandler observationHandler)
+			@Autowired KafkaTemplate<Integer, String> template, @Autowired TestObservationHandler observationHandler,
+			@Autowired SimpleTracer tracer)
 			throws InterruptedException {
 
-		// Clear any existing observations
+		// Clear any existing observations and spans
 		observationHandler.clear();
+		tracer.getSpans().clear();
 
 		// Send multiple messages
 		template.send(BATCH_INDIVIDUAL_OBSERVATION_TOPIC, "message-1");
@@ -82,7 +101,51 @@ public class BatchIndividualRecordObservationTests {
 		// With batch individual record observation enabled, we should get observations for individual records
 		assertThat(observationHandler.getStartedObservations())
 				.as("Should create observations when batch individual record observation is enabled")
-				.isPositive();
+				.isEqualTo(3);
+
+		// Verify that consumer observations are children of producer observations
+		var spans = new ArrayList<>(tracer.getSpans());
+		var producerSpans = spans.stream()
+				.filter(span -> "PRODUCER".equals(span.getKind().name()))
+				.toList();
+		var consumerSpans = spans.stream()
+				.filter(span -> "CONSUMER".equals(span.getKind().name()))
+				.toList();
+
+		assertThat(producerSpans)
+				.as("Should have producer spans")
+				.isNotEmpty();
+		
+		assertThat(consumerSpans)
+				.as("Should have consumer spans for individual records")
+				.isNotEmpty();
+
+		// Verify propagation worked - each consumer span should have the propagated values
+		// And verify that consumer spans are in the correct order
+		assertThat(consumerSpans)
+				.as("Should have exactly 3 consumer spans")
+				.hasSize(3);
+
+		// Verify first consumer span has msg-1
+		assertThat(consumerSpans.get(0).getTags())
+				.as("First consumer span should have propagated values from first producer")
+				.containsEntry("foo", "some foo value")
+				.containsEntry("bar", "some bar value")
+				.containsEntry("message-id", "msg-1");
+
+		// Verify second consumer span has msg-2
+		assertThat(consumerSpans.get(1).getTags())
+				.as("Second consumer span should have propagated values from second producer")
+				.containsEntry("foo", "some foo value")
+				.containsEntry("bar", "some bar value")
+				.containsEntry("message-id", "msg-2");
+
+		// Verify third consumer span has msg-3
+		assertThat(consumerSpans.get(2).getTags())
+				.as("Third consumer span should have propagated values from third producer")
+				.containsEntry("foo", "some foo value")
+				.containsEntry("bar", "some bar value")
+				.containsEntry("message-id", "msg-3");
 
 		assertThat(listener.processedRecords).hasSize(3);
 	}
@@ -127,9 +190,10 @@ public class BatchIndividualRecordObservationTests {
 		}
 
 		@Bean
-		KafkaTemplate<Integer, String> template(ProducerFactory<Integer, String> pf) {
+		KafkaTemplate<Integer, String> template(ProducerFactory<Integer, String> pf, ObservationRegistry observationRegistry) {
 			KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 			template.setObservationEnabled(true);
+			template.setObservationRegistry(observationRegistry);
 			return template;
 		}
 
@@ -177,9 +241,65 @@ public class BatchIndividualRecordObservationTests {
 		}
 
 		@Bean
-		ObservationRegistry observationRegistry(TestObservationHandler testObservationHandler) {
+		MeterRegistry meterRegistry() {
+			return new SimpleMeterRegistry();
+		}
+
+		@Bean
+		SimpleTracer simpleTracer() {
+			return new SimpleTracer();
+		}
+
+		@Bean
+		Propagator propagator(Tracer tracer) {
+			return new Propagator() {
+
+				private final AtomicInteger messageCounter = new AtomicInteger(0);
+
+				// List of headers required for tracing propagation
+				@Override
+				public List<String> fields() {
+					return Arrays.asList("foo", "bar", "message-id");
+				}
+
+				// This is called on the producer side when the message is being sent
+				@Override
+				public <C> void inject(TraceContext context, @Nullable C carrier, Setter<C> setter) {
+					setter.set(carrier, "foo", "some foo value");
+					setter.set(carrier, "bar", "some bar value");
+					// Add unique message identifier
+					String messageId = "msg-" + messageCounter.incrementAndGet();
+					setter.set(carrier, "message-id", messageId);
+				}
+
+				// This is called on the consumer side when the message is consumed
+				@Override
+				public <C> Span.Builder extract(C carrier, Getter<C> getter) {
+					String foo = getter.get(carrier, "foo");
+					String bar = getter.get(carrier, "bar");
+					String messageId = getter.get(carrier, "message-id");
+					return tracer.spanBuilder()
+							.tag("foo", foo)
+							.tag("bar", bar)
+							.tag("message-id", messageId);
+				}
+			};
+		}
+
+		@Bean
+		ObservationRegistry observationRegistry(Tracer tracer, Propagator propagator, MeterRegistry meterRegistry, TestObservationHandler testObservationHandler) {
 			ObservationRegistry observationRegistry = ObservationRegistry.create();
 			observationRegistry.observationConfig()
+					.observationHandler(
+							// Composite will pick the first matching handler
+							new ObservationHandler.FirstMatchingCompositeObservationHandler(
+									// This is responsible for creating a child span on the sender side
+									new PropagatingSenderTracingObservationHandler<>(tracer, propagator),
+									// This is responsible for creating a span on the receiver side
+									new PropagatingReceiverTracingObservationHandler<>(tracer, propagator),
+									// This is responsible for creating a default span
+									new DefaultTracingObservationHandler(tracer)))
+					.observationHandler(new DefaultMeterObservationHandler(meterRegistry))
 					.observationHandler(testObservationHandler);
 			return observationRegistry;
 		}
@@ -227,6 +347,9 @@ public class BatchIndividualRecordObservationTests {
 
 		@Override
 		public void onStart(Observation.Context context) {
+			if (!(context instanceof KafkaRecordReceiverContext)) {
+				return; // Ignore if not a valid observation context
+			}
 			startedObservations.incrementAndGet();
 		}
 
@@ -253,5 +376,7 @@ public class BatchIndividualRecordObservationTests {
 			startedObservations.set(0);
 		}
 	}
+
+
 
 }

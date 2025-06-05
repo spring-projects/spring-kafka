@@ -2443,7 +2443,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			Object sample = startMicrometerSample();
-			
+
 			// Handle individual record tracing for batch mode if enabled
 			if (this.containerProperties.isRecordObservationsInBatch() && this.observationEnabled) {
 				invokeBatchWithIndividualRecordObservation(records, recordList, sample);
@@ -4014,9 +4014,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void invokeBatchWithIndividualRecordObservation(final ConsumerRecords<K, V> records,
 				List<ConsumerRecord<K, V>> recordList, @Nullable Object sample) {
-			
+
 			List<Observation> observations = new ArrayList<>();
-			
+
 			try {
 				// Create individual observations for each record without scopes
 				for (ConsumerRecord<K, V> record : recordList) {
@@ -4029,7 +4029,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					observation.start();
 					observations.add(observation);
 				}
-				
+
 				// Invoke the batch listener
 				if (this.wantsFullRecords) {
 					Objects.requireNonNull(this.batchListener).onMessage(records,
@@ -4041,7 +4041,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				else {
 					doInvokeBatchOnMessage(records, recordList);
 				}
-				
+
 				batchInterceptAfter(records, null);
 				successTimer(sample, null);
 			}
@@ -4049,7 +4049,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.batchFailed = true;
 				failureTimer(sample, null, e);
 				batchInterceptAfter(records, e);
-				
+
 				// Mark all observations with error
 				for (Observation observation : observations) {
 					if (!isListenerAdapterObservationAware()) {
@@ -4059,9 +4059,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				throw e;
 			}
 			finally {
-				// Stop observations
-				for (Observation observation : observations) {
-					if (!isListenerAdapterObservationAware()) {
+				if (!isListenerAdapterObservationAware()) {
+					// Stop observations
+					for (Observation observation : observations) {
 						observation.stop();
 					}
 				}
