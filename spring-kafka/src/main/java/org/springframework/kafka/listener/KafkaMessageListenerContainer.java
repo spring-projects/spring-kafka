@@ -2444,31 +2444,30 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			Object sample = startMicrometerSample();
 
-			// Handle individual record tracing for batch mode if enabled
-			if (this.containerProperties.isRecordObservationsInBatch() && this.observationEnabled) {
-				invokeBatchWithIndividualRecordObservation(records, recordList, sample);
+
+			try {
+				if (this.containerProperties.isRecordObservationsInBatch() && this.observationEnabled) {
+					invokeBatchWithIndividualRecordObservation(recordList);
+				}
+
+				if (this.wantsFullRecords) {
+					Objects.requireNonNull(this.batchListener).onMessage(records, // NOSONAR
+							this.isAnyManualAck
+									? new ConsumerBatchAcknowledgment(records, recordList)
+									: null,
+							this.consumer);
+				}
+				else {
+					doInvokeBatchOnMessage(records, recordList); // NOSONAR
+				}
+				batchInterceptAfter(records, null);
+				successTimer(sample, null);
 			}
-			else {
-				try {
-					if (this.wantsFullRecords) {
-						Objects.requireNonNull(this.batchListener).onMessage(records, // NOSONAR
-								this.isAnyManualAck
-										? new ConsumerBatchAcknowledgment(records, recordList)
-										: null,
-								this.consumer);
-					}
-					else {
-						doInvokeBatchOnMessage(records, recordList); // NOSONAR
-					}
-					batchInterceptAfter(records, null);
-					successTimer(sample, null);
-				}
-				catch (RuntimeException e) {
-					this.batchFailed = true;
-					failureTimer(sample, null, e);
-					batchInterceptAfter(records, e);
-					throw e;
-				}
+			catch (RuntimeException e) {
+				this.batchFailed = true;
+				failureTimer(sample, null, e);
+				batchInterceptAfter(records, e);
+				throw e;
 			}
 		}
 
@@ -4012,12 +4011,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		}
 
-		private void invokeBatchWithIndividualRecordObservation(final ConsumerRecords<K, V> records,
-				List<ConsumerRecord<K, V>> recordList, @Nullable Object sample) {
-
-			List<Observation> observations = new ArrayList<>();
-
-			try {
+		private void invokeBatchWithIndividualRecordObservation(List<ConsumerRecord<K, V>> recordList) {
 				// Create individual observations for each record without scopes
 				for (ConsumerRecord<K, V> record : recordList) {
 					Observation observation = KafkaListenerObservation.LISTENER_OBSERVATION.observation(
@@ -4026,46 +4020,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 								() -> new KafkaRecordReceiverContext(record, getListenerId(), getClientId(), this.consumerGroupId,
 										this::clusterId),
 								this.observationRegistry);
-					observation.start();
-					observations.add(observation);
+					observation.observe(() -> {
+						logger.debug("processing record: " + KafkaUtils.format(record));
+					});
 				}
-
-				// Invoke the batch listener
-				if (this.wantsFullRecords) {
-					Objects.requireNonNull(this.batchListener).onMessage(records,
-							this.isAnyManualAck
-									? new ConsumerBatchAcknowledgment(records, recordList)
-									: null,
-							this.consumer);
-				}
-				else {
-					doInvokeBatchOnMessage(records, recordList);
-				}
-
-				batchInterceptAfter(records, null);
-				successTimer(sample, null);
-			}
-			catch (RuntimeException e) {
-				this.batchFailed = true;
-				failureTimer(sample, null, e);
-				batchInterceptAfter(records, e);
-
-				// Mark all observations with error
-				for (Observation observation : observations) {
-					if (!isListenerAdapterObservationAware()) {
-						observation.error(e);
-					}
-				}
-				throw e;
-			}
-			finally {
-				if (!isListenerAdapterObservationAware()) {
-					// Stop observations
-					for (Observation observation : observations) {
-						observation.stop();
-					}
-				}
-			}
 		}
 
 	}

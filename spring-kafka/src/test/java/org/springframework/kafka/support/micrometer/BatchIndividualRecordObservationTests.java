@@ -16,18 +16,6 @@
 
 package org.springframework.kafka.support.micrometer;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.observation.DefaultMeterObservationHandler;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -41,12 +29,10 @@ import io.micrometer.tracing.handler.DefaultTracingObservationHandler;
 import io.micrometer.tracing.handler.PropagatingReceiverTracingObservationHandler;
 import io.micrometer.tracing.handler.PropagatingSenderTracingObservationHandler;
 import io.micrometer.tracing.propagation.Propagator;
-import io.micrometer.tracing.test.simple.SimpleSpan;
 import io.micrometer.tracing.test.simple.SimpleTracer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -64,6 +50,15 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
 /**
  * Tests for batch individual record observation functionality.
  *
@@ -71,7 +66,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
  * @since 3.4
  */
 @SpringJUnitConfig
-@EmbeddedKafka(topics = {BatchIndividualRecordObservationTests.BATCH_INDIVIDUAL_OBSERVATION_TOPIC, 
+@EmbeddedKafka(topics = {BatchIndividualRecordObservationTests.BATCH_INDIVIDUAL_OBSERVATION_TOPIC,
 		BatchIndividualRecordObservationTests.BATCH_ONLY_OBSERVATION_TOPIC}, partitions = 1)
 @DirtiesContext
 public class BatchIndividualRecordObservationTests {
@@ -80,10 +75,10 @@ public class BatchIndividualRecordObservationTests {
 
 	public static final String BATCH_ONLY_OBSERVATION_TOPIC = "batch.only.observation";
 
-		@Test
+	@Test
 	void batchIndividualRecordObservationCreatesObservationPerRecord(@Autowired BatchListener listener,
-			@Autowired KafkaTemplate<Integer, String> template, @Autowired TestObservationHandler observationHandler,
-			@Autowired SimpleTracer tracer)
+																	 @Autowired KafkaTemplate<Integer, String> template, @Autowired TestObservationHandler observationHandler,
+																	 @Autowired SimpleTracer tracer)
 			throws InterruptedException {
 
 		// Clear any existing observations and spans
@@ -115,7 +110,7 @@ public class BatchIndividualRecordObservationTests {
 		assertThat(producerSpans)
 				.as("Should have 3 producer spans")
 				.hasSize(3);
-		
+
 		assertThat(consumerSpans)
 				.as("Should have 3 consumer spans for individual records")
 				.hasSize(3);
@@ -152,7 +147,7 @@ public class BatchIndividualRecordObservationTests {
 
 	@Test
 	void batchIndividualRecordObservationDisabledCreatesNoIndividualObservations(@Autowired BatchListenerWithoutIndividualObservation batchListener,
-			@Autowired KafkaTemplate<Integer, String> template, @Autowired TestObservationHandler observationHandler)
+																				 @Autowired KafkaTemplate<Integer, String> template, @Autowired TestObservationHandler observationHandler)
 			throws InterruptedException {
 
 		// Clear any existing observations
@@ -342,7 +337,7 @@ public class BatchIndividualRecordObservationTests {
 	}
 
 	static class TestObservationHandler implements ObservationHandler<Observation.Context> {
-		
+
 		private final AtomicInteger startedObservations = new AtomicInteger(0);
 
 		@Override
@@ -376,7 +371,6 @@ public class BatchIndividualRecordObservationTests {
 			startedObservations.set(0);
 		}
 	}
-
 
 
 }
