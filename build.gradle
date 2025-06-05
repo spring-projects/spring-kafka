@@ -302,7 +302,6 @@ project ('spring-kafka') {
 		optionalApi "com.jayway.jsonpath:json-path:$jaywayJsonPathVersion"
 
 		optionalApi 'io.projectreactor:reactor-core'
-		optionalApi 'io.projectreactor.kafka:reactor-kafka'
 		optionalApi 'io.micrometer:micrometer-core'
 		optionalApi 'io.micrometer:micrometer-tracing'
 
