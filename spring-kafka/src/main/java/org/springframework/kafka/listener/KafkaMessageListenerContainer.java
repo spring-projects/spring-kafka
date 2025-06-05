@@ -2446,7 +2446,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			
 			// Handle individual record tracing for batch mode if enabled
 			if (this.containerProperties.isRecordObservationsInBatch() && this.observationEnabled) {
-				invokeBatchWithIndividualRecordTracing(records, recordList, sample);
+				invokeBatchWithIndividualRecordObservation(records, recordList, sample);
 			}
 			else {
 				try {
@@ -4012,14 +4012,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		}
 
-		private void invokeBatchWithIndividualRecordTracing(final ConsumerRecords<K, V> records,
+		private void invokeBatchWithIndividualRecordObservation(final ConsumerRecords<K, V> records,
 				List<ConsumerRecord<K, V>> recordList, @Nullable Object sample) {
 			
 			List<Observation> observations = new ArrayList<>();
-			List<Observation.Scope> scopes = new ArrayList<>();
 			
 			try {
-				// Create individual observations for each record
+				// Create individual observations for each record without scopes
 				for (ConsumerRecord<K, V> record : recordList) {
 					Observation observation = KafkaListenerObservation.LISTENER_OBSERVATION.observation(
 							this.containerProperties.getObservationConvention(),
@@ -4029,7 +4028,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 								this.observationRegistry);
 					observation.start();
 					observations.add(observation);
-					scopes.add(observation.openScope());
 				}
 				
 				// Invoke the batch listener
@@ -4061,11 +4059,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				throw e;
 			}
 			finally {
-				// Close scopes in reverse order
-				for (int i = scopes.size() - 1; i >= 0; i--) {
-					scopes.get(i).close();
-				}
-				
 				// Stop observations
 				for (Observation observation : observations) {
 					if (!isListenerAdapterObservationAware()) {

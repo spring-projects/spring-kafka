@@ -1097,7 +1097,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * When true, and a batch listener is configured with observation enabled, an observation
 	 * will be started for each record in the batch.
 	 * @return recordObservationsInBatch.
-	 * @since 3.4
+	 * @since 4.0
 	 */
 	public boolean isRecordObservationsInBatch() {
 		return this.recordObservationsInBatch;
@@ -1108,7 +1108,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * When true, and a batch listener is configured with observation enabled, an observation
 	 * will be started for each record in the batch. Default false.
 	 * @param recordObservationsInBatch true to enable individual record observations.
-	 * @since 3.4
+	 * @since 4.0
 	 */
 	public void setRecordObservationsInBatch(boolean recordObservationsInBatch) {
 		this.recordObservationsInBatch = recordObservationsInBatch;

@@ -1,23 +1,6 @@
 [[history]]
 = Change History
 
-[[what-s-new-in-3-4-since-3-3]]
-== What's New in 3.4 Since 3.3
-:page-section-summary-toc: 1
-
-This section covers the changes made from version 3.3 to version 3.4.
-For changes in earlier version, see xref:appendix/change-history.adoc[Change History].
-
-[[x34-record-observations-in-batch]]
-=== Individual Record Observations in Batch Processing
-
-A new `ContainerProperties` property `recordObservationsInBatch` has been introduced to enable individual record observations within batch listeners.
-When enabled, and a batch listener is configured with observation enabled, an observation will be started for each record in the batch.
-This allows for proper distributed tracing of individual records within a batch, even when each record originated from different producers with different trace contexts.
-The default value is `false` to maintain backward compatibility.
-
-See xref:kafka/micrometer.adoc#observation[Micrometer Observation] for more details.
-
 [[what-s-new-in-3-3-since-3-2]]
 == What's New in 3.3 Since 3.2
 :page-section-summary-toc: 1
