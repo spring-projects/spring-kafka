@@ -103,7 +103,7 @@ public class BatchIndividualRecordObservationTests {
 				.as("Should create observations when batch individual record observation is enabled")
 				.isEqualTo(3);
 
-		// Verify that consumer observations are children of producer observations
+		// Verify that producer and consumer observations are created
 		var spans = new ArrayList<>(tracer.getSpans());
 		var producerSpans = spans.stream()
 				.filter(span -> "PRODUCER".equals(span.getKind().name()))
@@ -113,12 +113,12 @@ public class BatchIndividualRecordObservationTests {
 				.toList();
 
 		assertThat(producerSpans)
-				.as("Should have producer spans")
-				.isNotEmpty();
+				.as("Should have 3 producer spans")
+				.hasSize(3);
 		
 		assertThat(consumerSpans)
-				.as("Should have consumer spans for individual records")
-				.isNotEmpty();
+				.as("Should have 3 consumer spans for individual records")
+				.hasSize(3);
 
 		// Verify propagation worked - each consumer span should have the propagated values
 		// And verify that consumer spans are in the correct order
