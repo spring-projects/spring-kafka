@@ -22,6 +22,10 @@ IMPORTANT: If the interceptor mutates the record (by creating a new one), the `t
 
 The `CompositeRecordInterceptor` and `CompositeBatchInterceptor` can be used to invoke multiple interceptors.
 
+Starting with version 4.0, `AbstractMessageListenerContainer` exposes `getRecordInterceptor()` as a public method.
+If the returned interceptor is an instance of `CompositeRecordInterceptor`, additional `RecordInterceptor` instances can be added to it even after the container instance extending `AbstractMessageListenerContainer` has been created and a `RecordInterceptor` has already been configured.
+
+
 By default, starting with version 2.8, when using transactions, the interceptor is invoked before the transaction has started.
 You can set the listener container's `interceptBeforeTx` property to `false` to invoke the interceptor after the transaction has started instead.
 Starting with version 2.9, this will apply to any transaction manager, not just `KafkaAwareTransactionManager`+++s+++.
@@ -265,4 +269,3 @@ The listener containers implement `SmartLifecycle`, and `autoStartup` is `true` 
 The containers are started in a late phase (`Integer.MAX-VALUE - 100`).
 Other components that implement `SmartLifecycle`, to handle data from listeners, should be started in an earlier phase.
 The `- 100` leaves room for later phases to enable components to be auto-started after the containers.
-

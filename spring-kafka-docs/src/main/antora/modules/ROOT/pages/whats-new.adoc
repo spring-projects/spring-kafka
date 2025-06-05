@@ -82,3 +82,4 @@ More details are available in xref:kafka/headers.adoc#multi-value-header[Support
 
 The `KafkaMessageListenerContainer` and `ConcurrentMessageListenerContainer` support `getRecordInterceptor()`.
 If the returned interceptor is an instance of `CompositeRecordInterceptor`, additional `RecordInterceptor` instances can be added to it.
+More details are available in xref:kafka/receiving-messages/message-listener-container.adoc#message-listener-container[Message Listener Containers].
