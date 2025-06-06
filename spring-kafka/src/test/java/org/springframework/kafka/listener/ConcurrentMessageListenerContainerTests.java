@@ -1088,10 +1088,28 @@ public class ConcurrentMessageListenerContainerTests {
 		assertThat(container.getContainers()).
 				doesNotContain(childContainer1);
 
-		container.getContainers().forEach(containerForEach -> containerForEach.stop());
+		KafkaMessageListenerContainer<Integer, String> childContainer0SecRun = container.getContainers().get(0);
+		KafkaMessageListenerContainer<Integer, String> childContainer1SecRun = container.getContainers().get(1);
+
+		childContainer0SecRun.stopAbnormally(() -> {
+		});
+
+		childContainer1SecRun.stop();
+
 		assertThat(container.getContainers()).isNotEmpty();
 		container.stop();
 		assertThat(concurrentContainerSecondStopLatch.await(30, TimeUnit.SECONDS)).isTrue();
+
+		events.stream().forEach(event -> {
+			if (event.getContainer(MessageListenerContainer.class).equals(childContainer0SecRun)
+					&& event instanceof ConsumerStoppedEvent) {
+				assertThat(((ConsumerStoppedEvent) event).getReason()).isEqualTo(ConsumerStoppedEvent.Reason.ABNORMAL);
+			}
+			else if (event.getContainer(MessageListenerContainer.class).equals(childContainer1SecRun)
+					&& event instanceof ConsumerStoppedEvent) {
+				assertThat(((ConsumerStoppedEvent) event).getReason()).isEqualTo(ConsumerStoppedEvent.Reason.NORMAL);
+			}
+		});
 
 		this.logger.info("Stop containerStartStop");
 	}

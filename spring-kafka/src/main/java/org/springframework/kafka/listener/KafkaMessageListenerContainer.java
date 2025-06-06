@@ -537,6 +537,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			else if (throwable instanceof NoOffsetForPartitionException) {
 				reason = Reason.NO_OFFSET;
 			}
+			else if (!this.isStoppedNormally()) {
+				reason = Reason.ABNORMAL;
+			}
 			else {
 				reason = Reason.NORMAL;
 			}
