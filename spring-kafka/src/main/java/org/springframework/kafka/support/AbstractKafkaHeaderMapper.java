@@ -66,11 +66,13 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 
 	private final List<HeaderMatcher> matchers = new ArrayList<>();
 
-	private final ConcurrentLruCache<String, Boolean> matcherResultCache = new ConcurrentLruCache<>(1000, this::doesMatchInternal);
+	private final ConcurrentLruCache<String, Boolean> matcherResultCache =
+			new ConcurrentLruCache<>(1000, this::doesMatchInternal);
 
 	private final List<HeaderMatcher> multiValueHeaderMatchers = new ArrayList<>();
 
-	private final ConcurrentLruCache<String, Boolean> multiValueMatcherResultCache = new ConcurrentLruCache<>(1000, this::doesMatchMultiValueHeaderInternal);
+	private final ConcurrentLruCache<String, Boolean> multiValueMatcherResultCache =
+			new ConcurrentLruCache<>(1000, this::doesMatchMultiValueHeaderInternal);
 
 	private final Map<String, Boolean> rawMappedHeaders = new HashMap<>();
 
