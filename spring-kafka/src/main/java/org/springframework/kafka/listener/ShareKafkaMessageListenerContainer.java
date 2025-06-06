@@ -227,7 +227,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			publishConsumerStartedEvent();
 		}
 
-		private void wrapUp(){
+		private void wrapUp() {
 			this.consumer.close();
 			this.logger.info(() -> this.consumerGroupId + ": Consumer stopped");
 		}
