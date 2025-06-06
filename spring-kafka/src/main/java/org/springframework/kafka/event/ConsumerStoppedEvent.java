@@ -24,6 +24,7 @@ package org.springframework.kafka.event;
  * to restart a container that was stopped because a transactional producer was fenced.
  *
  * @author Gary Russell
+ * @author Lokesh Alamuri
  * @since 2.2
  *
  */
@@ -42,6 +43,13 @@ public class ConsumerStoppedEvent extends KafkaEvent {
 		 * The consumer was stopped because the container was stopped.
 		 */
 		NORMAL,
+
+		/**
+		 * The consumer was stopped because the container was stopped abnormally.
+		 * @since 4.0
+		 *
+		 */
+		ABNORMAL,
 
 		/**
 		 * The transactional producer was fenced and the container
