@@ -35,6 +35,7 @@ public void configureRecordInterceptor(KafkaMessageListenerContainer<Integer, St
         compositeInterceptor = interceptor;
     } else {
         compositeInterceptor = new CompositeRecordInterceptor<>();
+        container.setRecordInterceptor(compositeInterceptor);
     }
 
     RecordInterceptor<Integer, String> recordInterceptor1 = new RecordInterceptor() {...};
