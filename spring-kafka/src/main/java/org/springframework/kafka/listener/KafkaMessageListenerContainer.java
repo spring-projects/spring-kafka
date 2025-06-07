@@ -2446,7 +2446,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 
 			try {
-				if (this.containerProperties.isRecordObservationsInBatch() ) {
+				if (this.containerProperties.isObservationEnabled() ) {
 					invokeBatchWithIndividualRecordObservation(recordList);
 				}
 
