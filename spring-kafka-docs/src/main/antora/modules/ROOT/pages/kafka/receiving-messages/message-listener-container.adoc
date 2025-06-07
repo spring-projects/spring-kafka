@@ -31,11 +31,16 @@ The following example shows how to do so:
 public void configureRecordInterceptor(KafkaMessageListenerContainer<Integer, String> container) {
     CompositeRecordInterceptor compositeInterceptor;
 
-    if (container.getRecordInterceptor() instanceof CompositeRecordInterceptor interceptor) {
+    RecordInterceptor<Integer, String> previousInterceptor = container.getRecordInterceptor();
+    if (previousInterceptor instanceof CompositeRecordInterceptor interceptor) {
         compositeInterceptor = interceptor;
     } else {
         compositeInterceptor = new CompositeRecordInterceptor<>();
         container.setRecordInterceptor(compositeInterceptor);
+    }
+
+    if (previousInterceptor != null) {
+        compositeRecordInterceptor.addRecordInterceptor(previousInterceptor);
     }
 
     RecordInterceptor<Integer, String> recordInterceptor1 = new RecordInterceptor() {...};
