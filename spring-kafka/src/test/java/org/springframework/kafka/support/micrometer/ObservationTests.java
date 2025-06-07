@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2024 the original author or authors.
+ * Copyright 2022-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package org.springframework.kafka.support.micrometer;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
@@ -27,6 +28,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.StreamSupport;
 
@@ -47,7 +49,10 @@ import io.micrometer.tracing.handler.PropagatingReceiverTracingObservationHandle
 import io.micrometer.tracing.handler.PropagatingSenderTracingObservationHandler;
 import io.micrometer.tracing.propagation.Propagator;
 import io.micrometer.tracing.test.simple.SimpleSpan;
+import io.micrometer.tracing.test.simple.SimpleTraceContext;
 import io.micrometer.tracing.test.simple.SimpleTracer;
+import io.opentelemetry.api.trace.SpanContext;
+import io.opentelemetry.context.Context;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -61,6 +66,15 @@ import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.kafka.annotation.DltHandler;
+import org.springframework.kafka.annotation.EnableKafkaRetryTopic;
+import org.springframework.kafka.annotation.RetryableTopic;
+import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import reactor.core.publisher.Mono;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -71,6 +85,9 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
+
+import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -81,6 +98,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.RecordInterceptor;
+
 import org.springframework.kafka.requestreply.ReplyingKafkaTemplate;
 import org.springframework.kafka.support.ProducerListener;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservation.DefaultKafkaListenerObservationConvention;
@@ -93,6 +111,8 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.util.StringUtils;
 
+import static java.util.concurrent.CompletableFuture.runAsync;
+import static java.util.concurrent.CompletableFuture.supplyAsync;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.awaitility.Awaitility.await;
@@ -112,7 +132,8 @@ import static org.mockito.Mockito.mock;
 @EmbeddedKafka(topics = {ObservationTests.OBSERVATION_TEST_1, ObservationTests.OBSERVATION_TEST_2,
 		ObservationTests.OBSERVATION_TEST_3, ObservationTests.OBSERVATION_TEST_4, ObservationTests.OBSERVATION_REPLY,
 		ObservationTests.OBSERVATION_RUNTIME_EXCEPTION, ObservationTests.OBSERVATION_ERROR,
-		ObservationTests.OBSERVATION_TRACEPARENT_DUPLICATE}, partitions = 1)
+		ObservationTests.OBSERVATION_TRACEPARENT_DUPLICATE, ObservationTests.OBSERVATION_ASYNC_FAILURE_TEST,
+		ObservationTests.OBSERVATION_ASYNC_FAILURE_WITH_RETRY_TEST}, partitions = 1)
 @DirtiesContext
 public class ObservationTests {
 
@@ -135,6 +156,51 @@ public class ObservationTests {
 	public final static String OBSERVATION_ERROR_MONO = "observation.error.mono";
 
 	public final static String OBSERVATION_TRACEPARENT_DUPLICATE = "observation.traceparent.duplicate";
+
+	public final static String OBSERVATION_ASYNC_FAILURE_TEST = "observation.async.failure.test";
+
+	public final static String OBSERVATION_ASYNC_FAILURE_WITH_RETRY_TEST = "observation.async.failure.retry.test";
+
+	@Test
+	void asyncRetryScopePropagation(@Autowired AsyncFailureListener asyncFailureListener,
+			@Autowired KafkaTemplate<Integer, String> template,
+			@Autowired SimpleTracer tracer,
+			@Autowired ObservationRegistry observationRegistry) throws InterruptedException {
+
+		// Clear any previous spans
+		tracer.getSpans().clear();
+
+		// Create an observation scope to ensure we have a proper trace context
+		var testObservation = Observation.createNotStarted("test.message.send", observationRegistry);
+
+		// Send a message within the observation scope to ensure trace context is propagated
+		testObservation.observe(() -> {
+			try {
+				template.send(OBSERVATION_ASYNC_FAILURE_TEST, "trigger-async-failure").get(5, TimeUnit.SECONDS);
+			} catch (Exception e) {
+				throw new RuntimeException("Failed to send message", e);
+			}
+		});
+
+		// Wait for the listener to process the message (initial + retry + DLT = 3 invocations)
+		assertThat(asyncFailureListener.asyncFailureLatch.await(15, TimeUnit.SECONDS)).isTrue();
+
+		// Verify that the captured spans from the listener contexts are all part of the same trace
+		// This demonstrates that the tracing context propagates correctly through the retry mechanism
+		Deque<SimpleSpan> spans = tracer.getSpans();
+		assertThat(spans).hasSizeGreaterThanOrEqualTo(4); // template + listener + retry + DLT spans
+
+		// Verify that spans were captured for each phase and belong to the same trace
+		assertThat(asyncFailureListener.capturedSpanInListener).isNotNull();
+		assertThat(asyncFailureListener.capturedSpanInRetry).isNotNull();
+		assertThat(asyncFailureListener.capturedSpanInDlt).isNotNull();
+
+		// All spans should have the same trace ID, demonstrating trace continuity
+		var originalTraceId = asyncFailureListener.capturedSpanInListener.getTraceId();
+		assertThat(originalTraceId).isNotBlank();
+		assertThat(asyncFailureListener.capturedSpanInRetry.getTraceId()).isEqualTo(originalTraceId);
+		assertThat(asyncFailureListener.capturedSpanInDlt.getTraceId()).isEqualTo(originalTraceId);
+	}
 
 	@Test
 	void endToEnd(@Autowired Listener listener, @Autowired KafkaTemplate<Integer, String> template,
@@ -628,6 +694,11 @@ public class ObservationTests {
 				if (container.getListenerId().equals("obs3")) {
 					container.setKafkaAdmin(this.mockAdmin);
 				}
+				if (container.getListenerId().contains("asyncFailure")) {
+					// Enable async acks to trigger async failure handling
+					container.getContainerProperties().setAsyncAcks(true);
+					container.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL);
+				}
 				if (container.getListenerId().equals("obs4")) {
 					container.setRecordInterceptor(new RecordInterceptor<>() {
 
@@ -683,29 +754,45 @@ public class ObservationTests {
 				// List of headers required for tracing propagation
 				@Override
 				public List<String> fields() {
-					return Arrays.asList("foo", "bar");
+					return Arrays.asList("traceId", "foo", "bar");
 				}
 
 				// This is called on the producer side when the message is being sent
-				// Normally we would pass information from tracing context - for tests we don't need to
 				@Override
 				public <C> void inject(TraceContext context, C carrier, Setter<C> setter) {
 					setter.set(carrier, "foo", "some foo value");
 					setter.set(carrier, "bar", "some bar value");
+
+					if (context.traceId() != "") {
+						setter.set(carrier, "traceId", context.traceId());
+						setter.set(carrier, "spanId", context.spanId());
+					}
 
 					// Add a traceparent header to simulate W3C trace context
 					setter.set(carrier, "traceparent", "traceparent-from-propagator");
 				}
 
 				// This is called on the consumer side when the message is consumed
-				// Normally we would use tools like Extractor from tracing but for tests we are just manually creating a span
 				@Override
 				public <C> Span.Builder extract(C carrier, Getter<C> getter) {
 					String foo = getter.get(carrier, "foo");
 					String bar = getter.get(carrier, "bar");
-					return tracer.spanBuilder()
+
+					var traceId = getter.get(carrier, "traceId");
+					var spanId = getter.get(carrier, "spanId");
+
+					Span.Builder spanBuilder = tracer.spanBuilder()
 							.tag("foo", foo)
 							.tag("bar", bar);
+					// If we have trace context from headers, tag it for verification
+					if (traceId != null) {
+						var traceContext = new SimpleTraceContext();
+						traceContext.setTraceId(traceId);
+						traceContext.setSpanId(spanId);
+						spanBuilder = spanBuilder.setParent(traceContext);
+					}
+					
+					return spanBuilder;
 				}
 			};
 		}
@@ -720,6 +807,15 @@ public class ObservationTests {
 			return new ExceptionListener();
 		}
 
+		@Bean
+		AsyncFailureListener asyncFailureListener(SimpleTracer tracer) {
+			return new AsyncFailureListener(tracer);
+		}
+
+		@Bean
+		public TaskScheduler taskExecutor() {
+			return new ThreadPoolTaskScheduler();
+		}
 	}
 
 	public static class Listener {
@@ -800,5 +896,53 @@ public class ObservationTests {
 		}
 
 	}
+
+	public static class AsyncFailureListener {
+
+		final CountDownLatch asyncFailureLatch = new CountDownLatch(3);
+
+		volatile SimpleSpan capturedSpanInListener;
+		volatile SimpleSpan capturedSpanInRetry;
+		volatile SimpleSpan capturedSpanInDlt;
+
+		private final SimpleTracer tracer;
+
+		public AsyncFailureListener(SimpleTracer tracer) {
+			this.tracer = tracer;
+		}
+
+		@RetryableTopic(
+				attempts = "2",
+				backoff = @Backoff(delay = 1000)
+		)
+		@KafkaListener(id = "asyncFailure", topics = OBSERVATION_ASYNC_FAILURE_TEST)
+		CompletableFuture<Void> handleAsync(ConsumerRecord<Integer, String> record) {
+			// Use topic name to distinguish between original and retry calls
+			String topicName = record.topic();
+			
+			if (topicName.equals(OBSERVATION_ASYNC_FAILURE_TEST)) {
+				// This is the original call
+				this.capturedSpanInListener = this.tracer.currentSpan();
+			} else {
+				// This is a retry call (topic name will be different for retry topics)
+				this.capturedSpanInRetry = this.tracer.currentSpan();
+			}
+
+			this.asyncFailureLatch.countDown();
+
+			// Return a failed CompletableFuture to trigger async failure handling
+			return supplyAsync(() -> {
+				throw new RuntimeException("Async failure for observation test");
+			});
+		}
+
+		@DltHandler
+		void handleDlt(ConsumerRecord<Integer, String> record, Exception exception) {
+			this.capturedSpanInDlt = this.tracer.currentSpan();
+			this.asyncFailureLatch.countDown();
+		}
+	}
+
+
 
 }
