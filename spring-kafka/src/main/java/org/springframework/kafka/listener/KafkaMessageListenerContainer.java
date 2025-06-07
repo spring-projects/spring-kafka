@@ -1487,7 +1487,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			// We will give up on retrying with the remaining copied and failed Records.
 			for (FailedRecordTuple<K, V> copyFailedRecord : copyFailedRecords) {
 				try {
-					invokeErrorHandlerBySingleRecord(copyFailedRecord);
+					if (copyFailedRecord.observation != null) {
+						copyFailedRecord.observation.scoped(() -> invokeErrorHandlerBySingleRecord(copyFailedRecord));
+					} else {
+						invokeErrorHandlerBySingleRecord(copyFailedRecord);
+					}
 				}
 				catch (Exception e) {
 					this.logger.warn(() ->
@@ -3414,7 +3418,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void callbackForAsyncFailure(ConsumerRecord<K, V> cRecord, RuntimeException ex) {
-			this.failedRecords.addLast(new FailedRecordTuple<>(cRecord, ex));
+			this.failedRecords.addLast(new FailedRecordTuple<>(cRecord, ex, observationRegistry != null ? observationRegistry.getCurrentObservation() : null));
 		}
 
 		@Override
@@ -4031,6 +4035,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	}
 
-	private record FailedRecordTuple<K, V>(ConsumerRecord<K, V> record, RuntimeException ex) { }
+	private record FailedRecordTuple<K, V>(ConsumerRecord<K, V> record, RuntimeException ex, Observation observation) { }
 
 }
