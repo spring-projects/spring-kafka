@@ -65,12 +65,12 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 	}
 
 	/**
-	 * Construct an instance with the map of delegates; keys matched exactly or if the
-	 * target object is assignable to the key, depending on the assignable argument.
-	 * If assignable, entries are checked in the natural entry order so an ordered map
-	 * such as a {@link LinkedHashMap} is recommended.
-	 * @param delegates the delegates.
-	 * @param assignable whether the target is assignable to the key.
+	 * Construct an instance with the map of delegates.
+	 * If {@code assignable} is {@code false}, only exact key matches are considered.
+	 * If {@code assignable} is {@code true}, a delegate is selected if its key class
+	 * is assignable from the target object's class. When multiple matches are possible,
+	 * the most specific matching class is selected — that is, the closest match in the
+	 * class hierarchy.
 	 * @since 2.8.3
 	 */
 	public DelegatingByTypeSerializer(Map<Class<?>, Serializer<?>> delegates, boolean assignable) {
