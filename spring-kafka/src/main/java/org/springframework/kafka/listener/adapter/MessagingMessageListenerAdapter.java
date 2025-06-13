@@ -548,7 +548,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 
 		completableFutureResult.whenComplete((r, t) -> {
-			try {
+			try (var scope = observation.openScope()) {
 				if (t == null) {
 					asyncSuccess(r, replyTopic, source, messageReturnType);
 					if (isAsyncReplies()) {
@@ -734,12 +734,14 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 									"Async Fail", source.getPayload()), cause));
 		}
 		catch (Throwable ex) {
-			this.logger.error(t, () -> "Future, Mono, or suspend function was completed with an exception for " + source);
 			acknowledge(acknowledgment);
 			if (canAsyncRetry(request, ex) && this.asyncRetryCallback != null) {
 				@SuppressWarnings("unchecked")
 				ConsumerRecord<K, V> record = (ConsumerRecord<K, V>) request;
 				this.asyncRetryCallback.accept(record, (RuntimeException) ex);
+			}
+			else {
+				this.logger.error(ex, () -> "Future, Mono, or suspend function was completed with an exception for " + source);
 			}
 		}
 	}
