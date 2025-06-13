@@ -1,5 +1,5 @@
 /*
- * Copyright 2022-2024 the original author or authors.
+ * Copyright 2022-2025 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -803,6 +803,7 @@ public class ObservationTests {
 		public TaskScheduler taskExecutor() {
 			return new ThreadPoolTaskScheduler();
 		}
+
 	}
 
 	public static class Listener {
@@ -888,11 +889,11 @@ public class ObservationTests {
 
 		final CountDownLatch asyncFailureLatch = new CountDownLatch(3);
 
-		volatile @Nullable SimpleSpan capturedSpanInListener;
+		volatile SimpleSpan capturedSpanInListener;
 
-		volatile @Nullable SimpleSpan capturedSpanInRetry;
+		volatile SimpleSpan capturedSpanInRetry;
 
-		volatile @Nullable SimpleSpan capturedSpanInDlt;
+		volatile SimpleSpan capturedSpanInDlt;
 
 		private final SimpleTracer tracer;
 
@@ -932,6 +933,7 @@ public class ObservationTests {
 			this.capturedSpanInDlt = this.tracer.currentSpan();
 			this.asyncFailureLatch.countDown();
 		}
+
 	}
 
 }
