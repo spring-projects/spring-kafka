@@ -1,0 +1,61 @@
+/*
+ * Copyright 2021-2025 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.springframework.kafka.support.serializer;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+import org.apache.kafka.common.serialization.Serializer;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+
+/**
+ * @author Mahesh Aravind V
+ *
+ */
+class DelegatingByTypeSerializerTests {
+	@Nested
+	class AssignableTest {
+		@Test
+		void shouldOrderDelegatesSoChildComesBeforeParent() {
+			class Parent { }
+
+			class Child extends Parent { }
+
+			Serializer mockParentSerializer = mock(Serializer.class);
+			Serializer mockChildSerializer = mock(Serializer.class);
+
+			// Using LinkedHashMap to ensure the order is always wrong
+			Map<Class<?>, Serializer<?>> delegates = new LinkedHashMap<>();
+			delegates.put(Parent.class, mockParentSerializer);
+			delegates.put(Child.class, mockChildSerializer);
+
+			DelegatingByTypeSerializer serializer = new DelegatingByTypeSerializer(delegates, true);
+
+
+			Serializer childSerializer = serializer.findDelegate(mock(Child.class));
+			Serializer parentSerializer = serializer.findDelegate(mock(Parent.class));
+
+
+			assertThat(childSerializer).isEqualTo(mockChildSerializer);
+			assertThat(parentSerializer).isEqualTo(mockParentSerializer);
+		}
+	}
+}
