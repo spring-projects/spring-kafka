@@ -26,6 +26,10 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
 
+/**
+ * @author Mahesh Aravind V
+ *
+ */
 class DelegatingByTypeSerializerTest {
 	@Nested
 	class AssignableTest {
