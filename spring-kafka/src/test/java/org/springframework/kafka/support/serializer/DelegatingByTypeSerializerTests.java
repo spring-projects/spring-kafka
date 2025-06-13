@@ -16,27 +16,29 @@
 
 package org.springframework.kafka.support.serializer;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import org.apache.kafka.common.serialization.Serializer;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 /**
  * @author Mahesh Aravind V
  *
  */
-class DelegatingByTypeSerializerTest {
+class DelegatingByTypeSerializerTests {
 	@Nested
 	class AssignableTest {
 		@Test
 		void shouldOrderDelegatesSoChildComesBeforeParent() {
-			class Parent {}
-			class Child extends Parent {}
+			class Parent { }
+
+			class Child extends Parent { }
+
 			Serializer mockParentSerializer = mock(Serializer.class);
 			Serializer mockChildSerializer = mock(Serializer.class);
 
@@ -52,8 +54,8 @@ class DelegatingByTypeSerializerTest {
 			Serializer parentSerializer = serializer.findDelegate(mock(Parent.class));
 
 
-			assertEquals(mockChildSerializer, childSerializer);
-			assertEquals(mockParentSerializer, parentSerializer);
+			assertThat(childSerializer).isEqualTo(mockChildSerializer);
+			assertThat(parentSerializer).isEqualTo(mockParentSerializer);
 		}
 	}
 }

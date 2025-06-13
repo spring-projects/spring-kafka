@@ -41,20 +41,24 @@ import org.springframework.util.Assert;
  */
 public class DelegatingByTypeSerializer implements Serializer<Object> {
 
-	private final Map<Class<?>, Serializer<?>> delegates = new LinkedHashMap<>();
-
-	private final boolean assignable;
-
 	private static final Comparator<Entry<Class<?>, Serializer<?>>> DELEGATES_ASSIGNABILITY_COMPARATOR =
 			(entry1, entry2) -> {
 				Class<?> type1 = entry1.getKey();
 				Class<?> type2 = entry2.getKey();
 
-				if (type1.isAssignableFrom(type2)) return 1;
-				if (type2.isAssignableFrom(type1)) return -1;
+				if (type1.isAssignableFrom(type2)) {
+					return 1;
+				}
+				if (type2.isAssignableFrom(type1)) {
+					return -1;
+				}
 
 				return 0;
 			};
+
+	private final Map<Class<?>, Serializer<?>> delegates = new LinkedHashMap<>();
+
+	private final boolean assignable;
 
 	/**
 	 * Construct an instance with the map of delegates; keys matched exactly.
@@ -71,6 +75,11 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 	 * is assignable from the target object's class. When multiple matches are possible,
 	 * the most specific matching class is selected — that is, the closest match in the
 	 * class hierarchy.
+	 *
+	 * @param delegates the delegates
+	 * @param assignable true if {@link #findDelegate(Object, Map)} should consider assignability to
+	 * the key rather than an exact match.
+	 *
 	 * @since 2.8.3
 	 */
 	public DelegatingByTypeSerializer(Map<Class<?>, Serializer<?>> delegates, boolean assignable) {
@@ -79,7 +88,8 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 
 		if (!assignable) {
 			this.delegates.putAll(delegates);
-		} else {
+		}
+		else {
 			List<Entry<Class<?>, Serializer<?>>> sortedDelegates = delegates.entrySet().stream()
 					.sorted(DELEGATES_ASSIGNABILITY_COMPARATOR).toList();
 
