@@ -16,7 +16,9 @@
 
 package org.springframework.kafka.support.serializer;
 
+import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -32,11 +34,27 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Wang Zhiyang
+ * @author Mahesh Aravind V
  *
  * @since 2.7.9
  *
  */
 public class DelegatingByTypeSerializer implements Serializer<Object> {
+
+	private static final Comparator<Entry<Class<?>, Serializer<?>>> DELEGATES_ASSIGNABILITY_COMPARATOR =
+			(entry1, entry2) -> {
+				Class<?> type1 = entry1.getKey();
+				Class<?> type2 = entry2.getKey();
+
+				if (type1.isAssignableFrom(type2)) {
+					return 1;
+				}
+				if (type2.isAssignableFrom(type1)) {
+					return -1;
+				}
+
+				return 0;
+			};
 
 	private final Map<Class<?>, Serializer<?>> delegates = new LinkedHashMap<>();
 
@@ -51,18 +69,33 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 	}
 
 	/**
-	 * Construct an instance with the map of delegates; keys matched exactly or if the
-	 * target object is assignable to the key, depending on the assignable argument.
-	 * If assignable, entries are checked in the natural entry order so an ordered map
-	 * such as a {@link LinkedHashMap} is recommended.
-	 * @param delegates the delegates.
-	 * @param assignable whether the target is assignable to the key.
+	 * Construct an instance with the map of delegates.
+	 * If {@code assignable} is {@code false}, only exact key matches are considered.
+	 * If {@code assignable} is {@code true}, a delegate is selected if its key class
+	 * is assignable from the target object's class. When multiple matches are possible,
+	 * the most specific matching class is selected — that is, the closest match in the
+	 * class hierarchy.
+	 *
+	 * @param delegates the delegates
+	 * @param assignable true if {@link #findDelegate(Object, Map)} should consider assignability to
+	 * the key rather than an exact match.
+	 *
 	 * @since 2.8.3
 	 */
 	public DelegatingByTypeSerializer(Map<Class<?>, Serializer<?>> delegates, boolean assignable) {
 		Assert.notNull(delegates, "'delegates' cannot be null");
 		Assert.noNullElements(delegates.values(), "Serializers in delegates map cannot be null");
-		this.delegates.putAll(delegates);
+
+		if (!assignable) {
+			this.delegates.putAll(delegates);
+		}
+		else {
+			List<Entry<Class<?>, Serializer<?>>> sortedDelegates = delegates.entrySet().stream()
+					.sorted(DELEGATES_ASSIGNABILITY_COMPARATOR).toList();
+
+			sortedDelegates.forEach(it -> this.delegates.put(it.getKey(), it.getValue()));
+		}
+
 		this.assignable = assignable;
 	}
 
@@ -101,7 +134,7 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 		return delegate.serialize(topic, headers, data);
 	}
 
-	private  <T> Serializer<T> findDelegate(T data) {
+	protected  <T> Serializer<T> findDelegate(T data) {
 		return findDelegate(data, this.delegates);
 	}
 
