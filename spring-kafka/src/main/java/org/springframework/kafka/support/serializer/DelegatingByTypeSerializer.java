@@ -16,10 +16,7 @@
 
 package org.springframework.kafka.support.serializer;
 
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 
 import org.apache.kafka.common.errors.SerializationException;
@@ -41,10 +38,8 @@ import org.springframework.util.Assert;
  */
 public class DelegatingByTypeSerializer implements Serializer<Object> {
 
-	private static final Comparator<Entry<Class<?>, Serializer<?>>> DELEGATES_ASSIGNABILITY_COMPARATOR =
-			(entry1, entry2) -> {
-				Class<?> type1 = entry1.getKey();
-				Class<?> type2 = entry2.getKey();
+	private static final Comparator<Class<?>> DELEGATES_ASSIGNABILITY_COMPARATOR =
+			(type1, type2) -> {
 
 				if (type1.isAssignableFrom(type2)) {
 					return 1;
@@ -56,7 +51,7 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 				return 0;
 			};
 
-	private final Map<Class<?>, Serializer<?>> delegates = new LinkedHashMap<>();
+	private final Map<Class<?>, Serializer<?>> delegates = new TreeMap<>(DELEGATES_ASSIGNABILITY_COMPARATOR);
 
 	private final boolean assignable;
 
@@ -86,16 +81,7 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 		Assert.notNull(delegates, "'delegates' cannot be null");
 		Assert.noNullElements(delegates.values(), "Serializers in delegates map cannot be null");
 
-		if (!assignable) {
-			this.delegates.putAll(delegates);
-		}
-		else {
-			List<Entry<Class<?>, Serializer<?>>> sortedDelegates = delegates.entrySet().stream()
-					.sorted(DELEGATES_ASSIGNABILITY_COMPARATOR).toList();
-
-			sortedDelegates.forEach(it -> this.delegates.put(it.getKey(), it.getValue()));
-		}
-
+		this.delegates.putAll(delegates);
 		this.assignable = assignable;
 	}
 
