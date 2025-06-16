@@ -19,6 +19,7 @@ package org.springframework.kafka.support.serializer;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.apache.kafka.common.errors.SerializationException;
@@ -41,6 +42,7 @@ import org.springframework.messaging.MessageHeaders;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -120,6 +122,31 @@ public class DelegatingSerializationTests {
 				+ ", int:" + IntegerDeserializer.class.getName() + ", string: " + StringDeserializer.class.getName());
 		deserializer.configure(configs, true);
 		doTestKeys(serializer, deserializer);
+	}
+
+	@Test
+	void shouldOrderDelegatesSoChildComesBeforeParent() {
+		class Parent { }
+
+		class Child extends Parent { }
+
+		Serializer<?> mockParentSerializer = mock(Serializer.class);
+		Serializer<?> mockChildSerializer = mock(Serializer.class);
+
+		// Using LinkedHashMap to ensure the order is always wrong
+		Map<Class<?>, Serializer<?>> delegates = new LinkedHashMap<>();
+		delegates.put(Parent.class, mockParentSerializer);
+		delegates.put(Child.class, mockChildSerializer);
+
+		DelegatingByTypeSerializer serializer = new DelegatingByTypeSerializer(delegates, true);
+
+
+		Serializer<?> childSerializer = serializer.findDelegate(mock(Child.class));
+		Serializer<?> parentSerializer = serializer.findDelegate(mock(Parent.class));
+
+
+		assertThat(childSerializer).isEqualTo(mockChildSerializer);
+		assertThat(parentSerializer).isEqualTo(mockParentSerializer);
 	}
 
 	private void doTest(DelegatingSerializer serializer, DelegatingDeserializer deserializer) {
