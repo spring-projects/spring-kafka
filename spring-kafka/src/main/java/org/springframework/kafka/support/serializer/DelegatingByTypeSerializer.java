@@ -16,8 +16,10 @@
 
 package org.springframework.kafka.support.serializer;
 
-import java.util.*;
+import java.util.Comparator;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
@@ -39,16 +41,18 @@ import org.springframework.util.Assert;
 public class DelegatingByTypeSerializer implements Serializer<Object> {
 
 	private static final Comparator<Class<?>> DELEGATES_ASSIGNABILITY_COMPARATOR =
-			(type1, type2) -> {
+			(class1, class2) -> {
 
-				if (type1.isAssignableFrom(type2)) {
-					return 1;
+				if (class1 == class2) {
+					return 0; // Classes are the same
 				}
-				if (type2.isAssignableFrom(type1)) {
-					return -1;
+				if (class1.isAssignableFrom(class2)) {
+					return 1; // class2 is a superclass or superinterface of class1, so class2 should come first
 				}
-
-				return 0;
+				if (class2.isAssignableFrom(class1)) {
+					return -1; // class1 is a superclass or superinterface of class2, so class1 should come first
+				}
+				return class1.getName().compareTo(class2.getName()); // If no inheritance relation, compare by name
 			};
 
 	private final Map<Class<?>, Serializer<?>> delegates = new TreeMap<>(DELEGATES_ASSIGNABILITY_COMPARATOR);
@@ -70,11 +74,9 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 	 * is assignable from the target object's class. When multiple matches are possible,
 	 * the most specific matching class is selected — that is, the closest match in the
 	 * class hierarchy.
-	 *
 	 * @param delegates the delegates
 	 * @param assignable true if {@link #findDelegate(Object, Map)} should consider assignability to
 	 * the key rather than an exact match.
-	 *
 	 * @since 2.8.3
 	 */
 	public DelegatingByTypeSerializer(Map<Class<?>, Serializer<?>> delegates, boolean assignable) {
