@@ -1,0 +1,21 @@
+name: Finalize Release Manually
+
+on:
+  workflow_dispatch:
+    inputs:
+      milestone:
+        description: 'Milestone title, e.g 3.0.0-M1, 3.1.0-RC1, 3.2.0 etc.'
+
+jobs:
+  finalize-release:
+    permissions:
+      actions: write
+      contents: write
+      issues: write
+
+    uses: spring-io/spring-github-workflows/.github/workflows/spring-finalize-release.yml@main
+    with:
+      milestone: ${{ inputs.milestone }}
+    secrets:
+      GH_ACTIONS_REPO_TOKEN: ${{ secrets.GH_ACTIONS_REPO_TOKEN }}
+#      SPRING_RELEASE_CHAT_WEBHOOK_URL: ${{ secrets.SPRING_RELEASE_GCHAT_WEBHOOK_URL }}
