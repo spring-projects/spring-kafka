@@ -64,7 +64,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests for batch individual record observation functionality.
  *
  * @author Igor Quintanilha
- * @since 3.4
+ * @since 4.0
  */
 @SpringJUnitConfig
 @EmbeddedKafka(topics = {BatchIndividualRecordObservationTests.BATCH_INDIVIDUAL_OBSERVATION_TOPIC,

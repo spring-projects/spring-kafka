@@ -16,9 +16,10 @@
 
 package org.springframework.kafka.support.serializer;
 
-import java.util.LinkedHashMap;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
@@ -32,13 +33,29 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Wang Zhiyang
+ * @author Mahesh Aravind V
  *
  * @since 2.7.9
  *
  */
 public class DelegatingByTypeSerializer implements Serializer<Object> {
 
-	private final Map<Class<?>, Serializer<?>> delegates = new LinkedHashMap<>();
+	private static final Comparator<Class<?>> DELEGATES_ASSIGNABILITY_COMPARATOR =
+			(class1, class2) -> {
+
+				if (class1 == class2) {
+					return 0; // Classes are the same
+				}
+				if (class1.isAssignableFrom(class2)) {
+					return 1; // class2 is a superclass or superinterface of class1, so class2 should come first
+				}
+				if (class2.isAssignableFrom(class1)) {
+					return -1; // class1 is a superclass or superinterface of class2, so class1 should come first
+				}
+				return class1.getName().compareTo(class2.getName()); // If no inheritance relation, compare by name
+			};
+
+	private final Map<Class<?>, Serializer<?>> delegates = new TreeMap<>(DELEGATES_ASSIGNABILITY_COMPARATOR);
 
 	private final boolean assignable;
 
@@ -51,17 +68,21 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 	}
 
 	/**
-	 * Construct an instance with the map of delegates; keys matched exactly or if the
-	 * target object is assignable to the key, depending on the assignable argument.
-	 * If assignable, entries are checked in the natural entry order so an ordered map
-	 * such as a {@link LinkedHashMap} is recommended.
-	 * @param delegates the delegates.
-	 * @param assignable whether the target is assignable to the key.
+	 * Construct an instance with the map of delegates.
+	 * If {@code assignable} is {@code false}, only exact key matches are considered.
+	 * If {@code assignable} is {@code true}, a delegate is selected if its key class
+	 * is assignable from the target object's class. When multiple matches are possible,
+	 * the most specific matching class is selected — that is, the closest match in the
+	 * class hierarchy.
+	 * @param delegates the delegates
+	 * @param assignable true if {@link #findDelegate(Object, Map)} should consider assignability to
+	 * the key rather than an exact match.
 	 * @since 2.8.3
 	 */
 	public DelegatingByTypeSerializer(Map<Class<?>, Serializer<?>> delegates, boolean assignable) {
 		Assert.notNull(delegates, "'delegates' cannot be null");
 		Assert.noNullElements(delegates.values(), "Serializers in delegates map cannot be null");
+
 		this.delegates.putAll(delegates);
 		this.assignable = assignable;
 	}
@@ -101,7 +122,7 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 		return delegate.serialize(topic, headers, data);
 	}
 
-	private  <T> Serializer<T> findDelegate(T data) {
+	protected  <T> Serializer<T> findDelegate(T data) {
 		return findDelegate(data, this.delegates);
 	}
 

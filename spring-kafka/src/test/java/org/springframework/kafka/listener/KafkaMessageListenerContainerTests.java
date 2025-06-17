@@ -3842,7 +3842,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setClientId("clientId");
 
 		CountDownLatch afterLatch = new CountDownLatch(1);
-		RecordInterceptor<Integer, String> recordInterceptor = spy(new RecordInterceptor<Integer, String>() {
+		RecordInterceptor<Integer, String> recordInterceptor1 = spy(new RecordInterceptor<Integer, String>() {
 
 			@Override
 			public @NonNull ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record,
@@ -3858,25 +3858,54 @@ public class KafkaMessageListenerContainerTests {
 
 		});
 
+		RecordInterceptor<Integer, String> recordInterceptor2 = spy(new RecordInterceptor<Integer, String>() {
+
+			@Override
+			public @NonNull ConsumerRecord<Integer, String> intercept(ConsumerRecord<Integer, String> record,
+																	Consumer<Integer, String> consumer) {
+
+				return record;
+			}
+
+			@Override
+			public void clearThreadState(Consumer<?, ?> consumer) {
+				afterLatch.countDown();
+			}
+
+		});
+
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
-		container.setRecordInterceptor(recordInterceptor);
+		container.setRecordInterceptor(new CompositeRecordInterceptor<>());
+		if (container.getRecordInterceptor() instanceof CompositeRecordInterceptor<Integer, String> composite) {
+			composite.addRecordInterceptor(recordInterceptor1);
+			composite.addRecordInterceptor(recordInterceptor2);
+		}
+
 		container.start();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(afterLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
-		InOrder inOrder = inOrder(recordInterceptor, messageListener, consumer);
-		inOrder.verify(recordInterceptor).setupThreadState(eq(consumer));
+		InOrder inOrder = inOrder(recordInterceptor1, recordInterceptor2, messageListener, consumer);
+		inOrder.verify(recordInterceptor1).setupThreadState(eq(consumer));
+		inOrder.verify(recordInterceptor2).setupThreadState(eq(consumer));
 		inOrder.verify(consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
-		inOrder.verify(recordInterceptor).intercept(eq(firstRecord), eq(consumer));
+		inOrder.verify(recordInterceptor1).intercept(eq(firstRecord), eq(consumer));
+		inOrder.verify(recordInterceptor2).intercept(eq(firstRecord), eq(consumer));
 		inOrder.verify(messageListener).onMessage(eq(firstRecord));
-		inOrder.verify(recordInterceptor).success(eq(firstRecord), eq(consumer));
-		inOrder.verify(recordInterceptor).afterRecord(eq(firstRecord), eq(consumer));
-		inOrder.verify(recordInterceptor).intercept(eq(secondRecord), eq(consumer));
+		inOrder.verify(recordInterceptor1).success(eq(firstRecord), eq(consumer));
+		inOrder.verify(recordInterceptor2).success(eq(firstRecord), eq(consumer));
+		inOrder.verify(recordInterceptor1).afterRecord(eq(firstRecord), eq(consumer));
+		inOrder.verify(recordInterceptor2).afterRecord(eq(firstRecord), eq(consumer));
+		inOrder.verify(recordInterceptor1).intercept(eq(secondRecord), eq(consumer));
+		inOrder.verify(recordInterceptor2).intercept(eq(secondRecord), eq(consumer));
 		inOrder.verify(messageListener).onMessage(eq(secondRecord));
-		inOrder.verify(recordInterceptor).success(eq(secondRecord), eq(consumer));
-		inOrder.verify(recordInterceptor).afterRecord(eq(secondRecord), eq(consumer));
-		inOrder.verify(recordInterceptor).clearThreadState(eq(consumer));
+		inOrder.verify(recordInterceptor1).success(eq(secondRecord), eq(consumer));
+		inOrder.verify(recordInterceptor2).success(eq(secondRecord), eq(consumer));
+		inOrder.verify(recordInterceptor1).afterRecord(eq(secondRecord), eq(consumer));
+		inOrder.verify(recordInterceptor2).afterRecord(eq(secondRecord), eq(consumer));
+		inOrder.verify(recordInterceptor1).clearThreadState(eq(consumer));
+		inOrder.verify(recordInterceptor2).clearThreadState(eq(consumer));
 		container.stop();
 	}
 
