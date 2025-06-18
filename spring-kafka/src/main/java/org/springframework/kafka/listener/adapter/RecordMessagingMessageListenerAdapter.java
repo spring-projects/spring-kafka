@@ -50,11 +50,11 @@ import org.springframework.messaging.Message;
 public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessageListenerAdapter<K, V>
 		implements AcknowledgingConsumerAwareMessageListener<K, V> {
 
-	public RecordMessagingMessageListenerAdapter(Object bean, Method method) {
+	public RecordMessagingMessageListenerAdapter(@Nullable Object bean, @Nullable Method method) {
 		this(bean, method, null);
 	}
 
-	public RecordMessagingMessageListenerAdapter(Object bean, Method method,
+	public RecordMessagingMessageListenerAdapter(@Nullable Object bean, @Nullable Method method,
 			@Nullable KafkaListenerErrorHandler errorHandler) {
 
 		super(bean, method, errorHandler);

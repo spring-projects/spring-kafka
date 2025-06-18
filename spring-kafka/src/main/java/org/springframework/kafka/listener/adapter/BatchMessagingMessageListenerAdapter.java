@@ -69,7 +69,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	 * @param bean the listener bean.
 	 * @param method the listener method.
 	 */
-	public BatchMessagingMessageListenerAdapter(Object bean, Method method) {
+	public BatchMessagingMessageListenerAdapter(@Nullable Object bean, @Nullable Method method) {
 		this(bean, method, null);
 	}
 
@@ -79,7 +79,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	 * @param method the listener method.
 	 * @param errorHandler the error handler.
 	 */
-	public BatchMessagingMessageListenerAdapter(Object bean, Method method,
+	public BatchMessagingMessageListenerAdapter(@Nullable Object bean, @Nullable Method method,
 			@Nullable KafkaListenerErrorHandler errorHandler) {
 
 		super(bean, method, errorHandler);

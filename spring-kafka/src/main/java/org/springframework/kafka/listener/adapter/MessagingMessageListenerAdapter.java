@@ -111,7 +111,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	private static final boolean monoPresent =
 			ClassUtils.isPresent("reactor.core.publisher.Mono", MessageListener.class.getClassLoader());
 
-	private final Object bean;
+	private final @Nullable Object bean;
 
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); //NOSONAR
 
@@ -166,7 +166,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * @param bean the bean.
 	 * @param method the method.
 	 */
-	protected MessagingMessageListenerAdapter(Object bean, Method method) {
+	protected MessagingMessageListenerAdapter(@Nullable Object bean, @Nullable Method method) {
 		this(bean, method, null);
 	}
 
@@ -177,7 +177,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * @param errorHandler the kafka listener error handler.
 	 */
 	@SuppressWarnings("this-escape")
-	protected MessagingMessageListenerAdapter(Object bean, Method method, @Nullable KafkaListenerErrorHandler errorHandler) {
+	protected MessagingMessageListenerAdapter(@Nullable Object bean, @Nullable Method method,
+			@Nullable KafkaListenerErrorHandler errorHandler) {
 		this.bean = bean;
 		this.inferredType = determineInferredType(method); // NOSONAR = intentionally not final
 		this.errorHandler = errorHandler;
