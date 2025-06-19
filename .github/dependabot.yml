@@ -58,36 +58,6 @@ updates:
           - com.github.spotbugs
           - org.springframework.boot*
 
-  - package-ecosystem: gradle
-    target-branch: 3.2.x
-    directory: /
-    schedule:
-      interval: weekly
-      day: saturday
-    ignore:
-      - dependency-name: '*'
-        update-types:
-          - version-update:semver-major
-          - version-update:semver-minor
-    open-pull-requests-limit: 10
-    labels:
-      - 'type: dependency-upgrade'
-    groups:
-      development-dependencies:
-        update-types:
-          - patch
-        patterns:
-          - org.gradle.*
-          - io.spring.*
-          - org.ajoberstar.grgit
-          - io.freefair.aggregate-javadoc
-          - org.antora
-          - io.micrometer:micrometer-docs-generator
-          - org.hibernate.validator:hibernate-validator
-          - org.awaitility:awaitility
-          - com.github.spotbugs
-          - org.springframework.boot*
-
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -102,19 +72,6 @@ updates:
 
   - package-ecosystem: github-actions
     target-branch: 3.3.x
-    directory: /
-    schedule:
-      interval: weekly
-      day: saturday
-    labels:
-      - 'type: task'
-    groups:
-      development-dependencies:
-        patterns:
-          - '*'
-
-  - package-ecosystem: github-actions
-    target-branch: 3.2.x
     directory: /
     schedule:
       interval: weekly
