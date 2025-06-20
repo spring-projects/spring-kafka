@@ -102,6 +102,7 @@ In addition, the `ConsumerStoppedEvent` has the following additional property:
 
 * `reason`:
 ** `NORMAL` - the consumer stopped normally (container was stopped).
+** `ABNORMAL` - the consumer stopped abnormally (container was stopped abnormally).
 ** `ERROR` - a `java.lang.Error` was thrown.
 ** `FENCED` - the transactional producer was fenced and the `stopContainerWhenFenced` container property is `true`.
 ** `AUTH` - an `AuthenticationException` or `AuthorizationException` was thrown and the `authExceptionRetryInterval` is not configured.
