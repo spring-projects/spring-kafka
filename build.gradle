@@ -206,37 +206,6 @@ configure(javaProjects) { subproject ->
 		}
 	}
 
-	tasks.register('updateCopyrights') {
-		onlyIf { !isCI }
-		inputs.files(modifiedFiles.filter { f -> f.path.contains(subproject.name) })
-		outputs.dir('build/classes')
-
-		doLast {
-			def now = Calendar.instance.get(Calendar.YEAR) as String
-			inputs.files.each { file ->
-				def line
-				file.withReader { reader ->
-					while (line = reader.readLine()) {
-						def matcher = line =~ /Copyright (20\d\d)-?(20\d\d)?/
-						if (matcher.count) {
-							def beginningYear = matcher[0][1]
-							if (now != beginningYear && now != matcher[0][2]) {
-								def years = "$beginningYear-$now"
-								def sourceCode = file.getText('UTF-8')
-								sourceCode = sourceCode.replaceFirst(/20\d\d(-20\d\d)?/, years)
-								file.write(sourceCode)
-								println "Copyright updated for file: $file"
-							}
-							break
-						}
-					}
-				}
-			}
-		}
-	}
-
-	compileKotlin.dependsOn updateCopyrights
-
 	jar {
 		manifest {
 			attributes(
