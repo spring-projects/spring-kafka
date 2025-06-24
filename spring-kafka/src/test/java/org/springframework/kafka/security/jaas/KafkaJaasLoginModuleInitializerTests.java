@@ -26,7 +26,7 @@ import javax.security.auth.login.AppConfigurationEntry;
 
 import com.sun.security.auth.login.ConfigFile;
 import org.apache.kafka.common.security.JaasContext;
-import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.BeansException;
@@ -107,7 +107,7 @@ public class KafkaJaasLoginModuleInitializerTests {
 		public static String OtherJaasConfigurationName = "other-jaas-configuration-name";
 
 		@Override
-		public Object postProcessBeforeInitialization(@NotNull Object bean, @NotNull String beanName)
+		public Object postProcessBeforeInitialization(@NonNull Object bean, @NonNull String beanName)
 				throws BeansException {
 
 			// Install our "other" configuration before the KAFKA_CLIENT_CONTEXT_NAME is installed
