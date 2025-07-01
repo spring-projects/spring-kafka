@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present the original author or authors.
+ * Copyright 2025-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,8 +43,6 @@ import org.springframework.util.Assert;
  * This container manages a single-threaded consumer loop using a {@link org.springframework.kafka.core.ShareConsumerFactory}.
  * It is designed for use cases where Kafka's cooperative sharing protocol is desired, and provides a simple polling loop
  * with per-record dispatch and acknowledgement.
- * <p>
- * Lifecycle events are published for consumer starting and started. The container supports direct setting of the client.id.
  *
  * @param <K> the key type
  * @param <V> the value type
@@ -73,7 +71,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 	 * @param shareConsumerFactory the share consumer factory
 	 * @param containerProperties the container properties
 	 */
-	public ShareKafkaMessageListenerContainer(ShareConsumerFactory<? super K, ? super V> shareConsumerFactory,
+	public ShareKafkaMessageListenerContainer(@Nullable ShareConsumerFactory<? super K, ? super V> shareConsumerFactory,
 			ContainerProperties containerProperties) {
 		super(shareConsumerFactory, containerProperties);
 		Assert.notNull(shareConsumerFactory, "A ShareConsumerFactory must be provided");
@@ -152,7 +150,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 	}
 
 	/**
-	 * The inner share consumer thread: polls for records and dispatches to the listener.
+	 * The inner share consumer thread that polls for records and dispatches to the listener.
 	 */
 	private class ShareListenerConsumer implements Runnable {
 
