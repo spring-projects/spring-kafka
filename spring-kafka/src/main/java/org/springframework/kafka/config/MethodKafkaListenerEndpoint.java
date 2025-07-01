@@ -31,13 +31,11 @@ import org.springframework.core.log.LogAccessor;
 import org.springframework.expression.BeanResolver;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.MessageListenerContainer;
-import org.springframework.kafka.listener.ShareKafkaMessageListenerContainer;
 import org.springframework.kafka.listener.adapter.BatchMessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.BatchToRecordAdapter;
 import org.springframework.kafka.listener.adapter.HandlerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
-import org.springframework.kafka.listener.adapter.ShareRecordMessagingMessageListenerAdapter;
 import org.springframework.kafka.support.JavaUtils;
 import org.springframework.kafka.support.converter.BatchMessageConverter;
 import org.springframework.kafka.support.converter.MessageConverter;
@@ -179,12 +177,7 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 				"Could not create message listener - MessageHandlerMethodFactory not set");
 
 		final MessagingMessageListenerAdapter<K, V> messageListener;
-		if (container instanceof ShareKafkaMessageListenerContainer<?, ?>) {
-			messageListener = createShareMessageListenerInstance(messageConverter);
-		}
-		else {
-			messageListener = createMessageListenerInstance(messageConverter);
-		}
+		messageListener = createMessageListenerInstance(messageConverter);
 		messageListener.setHandlerMethod(configureListenerAdapter(messageListener));
 		JavaUtils.INSTANCE
 			.acceptIfNotNull(getReplyTopic(), replyTopic -> {
@@ -208,31 +201,6 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 		InvocableHandlerMethod invocableHandlerMethod =
 				this.messageHandlerMethodFactory.createInvocableHandlerMethod(getBean(), getMethod());
 		return new HandlerAdapter(invocableHandlerMethod);
-	}
-
-	/**
-	 * Create an empty {@link MessagingMessageListenerAdapter} instance.
-	 * @param messageConverter the converter (may be null).
-	 * @return the {@link MessagingMessageListenerAdapter} instance.
-	 */
-	protected MessagingMessageListenerAdapter<K, V> createShareMessageListenerInstance(
-			@Nullable MessageConverter messageConverter) {
-
-		MessagingMessageListenerAdapter<K, V> listener;
-		ShareRecordMessagingMessageListenerAdapter<K, V> messageListener = new ShareRecordMessagingMessageListenerAdapter<>(
-				this.bean, this.method, this.errorHandler);
-		if (messageConverter instanceof RecordMessageConverter recordMessageConverter) {
-			messageListener.setMessageConverter(recordMessageConverter);
-		}
-		listener = messageListener;
-		if (this.messagingConverter != null) {
-			listener.setMessagingConverter(this.messagingConverter);
-		}
-		BeanResolver resolver = getBeanResolver();
-		if (resolver != null) {
-			listener.setBeanResolver(resolver);
-		}
-		return listener;
 	}
 
 	protected MessagingMessageListenerAdapter<K, V> createMessageListenerInstance(

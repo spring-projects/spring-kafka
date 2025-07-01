@@ -21,7 +21,6 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.BeanUtils;
@@ -70,7 +69,6 @@ public abstract class AbstractShareKafkaMessageListenerContainer<K, V>
 
 	protected final ReentrantLock lifecycleLock = new ReentrantLock();
 
-	@NonNull
 	private String beanName = "noBeanNameSet";
 
 	@Nullable
@@ -91,7 +89,7 @@ public abstract class AbstractShareKafkaMessageListenerContainer<K, V>
 	 * @param containerProperties the properties.
 	 */
 	@SuppressWarnings("unchecked")
-	protected AbstractShareKafkaMessageListenerContainer(@Nullable ShareConsumerFactory<? super K, ? super V> shareConsumerFactory,
+	protected AbstractShareKafkaMessageListenerContainer(ShareConsumerFactory<? super K, ? super V> shareConsumerFactory,
 														ContainerProperties containerProperties) {
 		Assert.notNull(containerProperties, "'containerProperties' cannot be null");
 		Assert.notNull(shareConsumerFactory, "'shareConsumerFactory' cannot be null");

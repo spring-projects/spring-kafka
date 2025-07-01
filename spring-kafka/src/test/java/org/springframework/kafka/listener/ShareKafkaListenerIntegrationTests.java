@@ -110,6 +110,7 @@ class ShareKafkaListenerIntegrationTests {
 			AlterConfigsResult alterConfigsResult = admin.incrementalAlterConfigs(configs);
 			alterConfigsResult.all().get();
 		}
+
 	}
 
 	@Configuration
@@ -129,6 +130,7 @@ class ShareKafkaListenerIntegrationTests {
 		@Bean
 		public ShareKafkaListenerContainerFactory<String, String> shareKafkaListenerContainerFactory(
 				ShareConsumerFactory<String, String> shareConsumerFactory) {
+
 			return new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
 		}
 
@@ -136,6 +138,7 @@ class ShareKafkaListenerIntegrationTests {
 		public TestListener listener() {
 			return new TestListener();
 		}
+
 	}
 
 	static class TestListener {
@@ -146,4 +149,5 @@ class ShareKafkaListenerIntegrationTests {
 			latch.countDown();
 		}
 	}
+
 }

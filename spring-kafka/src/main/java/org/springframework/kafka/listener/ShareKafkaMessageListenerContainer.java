@@ -23,6 +23,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 
 import org.apache.kafka.clients.consumer.AcknowledgeType;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ShareConsumer;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
@@ -71,7 +72,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 	 * @param shareConsumerFactory the share consumer factory
 	 * @param containerProperties the container properties
 	 */
-	public ShareKafkaMessageListenerContainer(@Nullable ShareConsumerFactory<? super K, ? super V> shareConsumerFactory,
+	public ShareKafkaMessageListenerContainer(ShareConsumerFactory<? super K, ? super V> shareConsumerFactory,
 			ContainerProperties containerProperties) {
 		super(shareConsumerFactory, containerProperties);
 		Assert.notNull(shareConsumerFactory, "A ShareConsumerFactory must be provided");
@@ -182,6 +183,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		}
 
 		@Override
+		@SuppressWarnings({"unchecked", "rawtypes"})
 		public void run() {
 			initialize();
 			Throwable exitThrowable = null;
@@ -190,9 +192,14 @@ public class ShareKafkaMessageListenerContainer<K, V>
 					var records = this.consumer.poll(java.time.Duration.ofMillis(POLL_TIMEOUT));
 					if (records != null && records.count() > 0) {
 						for (var record : records) {
-							@SuppressWarnings("unchecked")
-							GenericMessageListener<Object> listener = (GenericMessageListener<Object>) this.genericListener;
-							listener.onMessage(record);
+							if (this.genericListener instanceof AcknowledgingConsumerAwareMessageListener ackListener) {
+								ackListener.onMessage(record, null, null);
+							}
+							else {
+								GenericMessageListener<ConsumerRecord<K, V>> listener =
+									(GenericMessageListener<ConsumerRecord<K, V>>) this.genericListener;
+								listener.onMessage(record);
+							}
 							// Temporarily auto-acknowledge and commit.
 							// We will refactor it later on to support more production-like scenarios.
 							this.consumer.acknowledge(record, AcknowledgeType.ACCEPT);
