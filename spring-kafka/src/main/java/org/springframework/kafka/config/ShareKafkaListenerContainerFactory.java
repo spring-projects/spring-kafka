@@ -84,19 +84,19 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	}
 
 	/**
-	 * Set the share consumer factory to use for creating containers.
-	 * @param shareConsumerFactory the share consumer factory
-	 */
-	public void setShareConsumerFactory(ShareConsumerFactory<? super K, ? super V> shareConsumerFactory) {
-		this.shareConsumerFactory = shareConsumerFactory;
-	}
-
-	/**
 	 * Get the share consumer factory.
 	 * @return the share consumer factory
 	 */
 	public ShareConsumerFactory<? super K, ? super V> getShareConsumerFactory() {
 		return this.shareConsumerFactory;
+	}
+
+	/**
+	 * Set the share consumer factory to use for creating containers.
+	 * @param shareConsumerFactory the share consumer factory
+	 */
+	public void setShareConsumerFactory(ShareConsumerFactory<? super K, ? super V> shareConsumerFactory) {
+		this.shareConsumerFactory = shareConsumerFactory;
 	}
 
 	/**
@@ -136,7 +136,8 @@ public class ShareKafkaListenerContainerFactory<K, V>
 		if (endpoint instanceof AbstractKafkaListenerEndpoint) {
 			configureEndpoint((AbstractKafkaListenerEndpoint<K, V>) endpoint);
 		}
-		endpoint.setupListenerContainer(instance, null); // No message converter for MVP
+		// TODO: No message converter for queue at the moment
+		endpoint.setupListenerContainer(instance, null);
 		initializeContainer(instance, endpoint);
 		return instance;
 	}
@@ -192,6 +193,7 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	@Override
 	public ShareKafkaMessageListenerContainer<K, V> createContainer(String... topics) {
 		return createContainerInstance(new KafkaListenerEndpointAdapter() {
+
 			@Override
 			public Collection<String> getTopics() {
 				return Arrays.asList(topics);
@@ -213,6 +215,7 @@ public class ShareKafkaListenerContainerFactory<K, V>
 		Collection<String> topics = endpoint.getTopics();
 		Assert.state(topics != null, "'topics' must not be null");
 		return new ShareKafkaMessageListenerContainer<>(getShareConsumerFactory(),
-					new ContainerProperties(topics.toArray(new String[0])));
+				new ContainerProperties(topics.toArray(new String[0])));
 	}
+
 }

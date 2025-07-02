@@ -79,20 +79,20 @@ public class ShareKafkaMessageListenerContainer<K, V>
 	}
 
 	/**
-	 * Set the {@code client.id} to use for the consumer.
-	 * @param clientId the client id to set
-	 */
-	public void setClientId(String clientId) {
-		this.clientId = clientId;
-	}
-
-	/**
 	 * Get the {@code client.id} for the consumer.
 	 * @return the client id, or null if not set
 	 */
 	@Nullable
 	public String getClientId() {
 		return this.clientId;
+	}
+
+	/**
+	 * Set the {@code client.id} to use for the consumer.
+	 * @param clientId the client id to set
+	 */
+	public void setClientId(String clientId) {
+		this.clientId = clientId;
 	}
 
 	@Override
@@ -167,8 +167,8 @@ public class ShareKafkaMessageListenerContainer<K, V>
 
 		ShareListenerConsumer(GenericMessageListener<?> listener) {
 			this.consumer = ShareKafkaMessageListenerContainer.this.shareConsumerFactory.createShareConsumer(
-				ShareKafkaMessageListenerContainer.this.getGroupId(),
-				ShareKafkaMessageListenerContainer.this.getClientId());
+					ShareKafkaMessageListenerContainer.this.getGroupId(),
+					ShareKafkaMessageListenerContainer.this.getClientId());
 
 			this.genericListener = listener;
 			this.clientId = ShareKafkaMessageListenerContainer.this.getClientId();
@@ -196,7 +196,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 							}
 							else {
 								GenericMessageListener<ConsumerRecord<K, V>> listener =
-									(GenericMessageListener<ConsumerRecord<K, V>>) this.genericListener;
+										(GenericMessageListener<ConsumerRecord<K, V>>) this.genericListener;
 								listener.onMessage(record);
 							}
 							// Temporarily auto-acknowledge and commit.
@@ -239,9 +239,11 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		@Override
 		public String toString() {
 			return "ShareKafkaMessageListenerContainer.ShareListenerConsumer ["
-				+ "consumerGroupId=" + this.consumerGroupId
-				+ ", clientId=" + this.clientId
-				+ "]";
+					+ "consumerGroupId=" + this.consumerGroupId
+					+ ", clientId=" + this.clientId
+					+ "]";
 		}
+
 	}
+
 }
