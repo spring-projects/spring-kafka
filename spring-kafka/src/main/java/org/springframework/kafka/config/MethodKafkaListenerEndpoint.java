@@ -176,8 +176,7 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 		Assert.state(this.messageHandlerMethodFactory != null,
 				"Could not create message listener - MessageHandlerMethodFactory not set");
 
-		final MessagingMessageListenerAdapter<K, V> messageListener;
-		messageListener = createMessageListenerInstance(messageConverter);
+		final MessagingMessageListenerAdapter<K, V> messageListener = createMessageListenerInstance(messageConverter);
 		messageListener.setHandlerMethod(configureListenerAdapter(messageListener));
 		JavaUtils.INSTANCE
 			.acceptIfNotNull(getReplyTopic(), replyTopic -> {
@@ -203,6 +202,11 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 		return new HandlerAdapter(invocableHandlerMethod);
 	}
 
+	/**
+	 * Create an empty {@link MessagingMessageListenerAdapter} instance.
+	 * @param messageConverter the converter (may be null).
+	 * @return the {@link MessagingMessageListenerAdapter} instance.
+	 */
 	protected MessagingMessageListenerAdapter<K, V> createMessageListenerInstance(
 			@Nullable MessageConverter messageConverter) {
 

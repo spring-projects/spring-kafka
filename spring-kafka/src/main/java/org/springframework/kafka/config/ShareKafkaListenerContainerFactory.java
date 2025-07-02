@@ -186,12 +186,7 @@ public class ShareKafkaListenerContainerFactory<K, V>
 
 	@Override
 	public ShareKafkaMessageListenerContainer<K, V> createContainer(TopicPartitionOffset... topicPartitions) {
-		return createContainerInstance(new KafkaListenerEndpointAdapter() {
-			@Override
-			public TopicPartitionOffset[] getTopicPartitionsToAssign() {
-				return Arrays.copyOf(topicPartitions, topicPartitions.length);
-			}
-		});
+		throw new UnsupportedOperationException("ShareConsumer does not support explicit partition assignment");
 	}
 
 	@Override
@@ -206,12 +201,7 @@ public class ShareKafkaListenerContainerFactory<K, V>
 
 	@Override
 	public ShareKafkaMessageListenerContainer<K, V> createContainer(Pattern topicPattern) {
-		return createContainerInstance(new KafkaListenerEndpointAdapter() {
-			@Override
-			public Pattern getTopicPattern() {
-				return topicPattern;
-			}
-		});
+		throw new UnsupportedOperationException("ShareConsumer does not support topic patterns");
 	}
 
 	/**
@@ -220,21 +210,9 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	 * @return the container instance
 	 */
 	protected ShareKafkaMessageListenerContainer<K, V> createContainerInstance(KafkaListenerEndpoint endpoint) {
-		TopicPartitionOffset[] topicPartitions = endpoint.getTopicPartitionsToAssign();
-		if (topicPartitions != null && topicPartitions.length > 0) {
-			return new ShareKafkaMessageListenerContainer<>(getShareConsumerFactory(), new ContainerProperties(topicPartitions));
-		}
-		else {
-			Collection<String> topics = endpoint.getTopics();
-			Assert.state(topics != null, "'topics' must not be null");
-			if (!topics.isEmpty()) {
-				return new ShareKafkaMessageListenerContainer<>(getShareConsumerFactory(),
-						new ContainerProperties(topics.toArray(new String[0])));
-			}
-			else {
-				return new ShareKafkaMessageListenerContainer<>(getShareConsumerFactory(),
-						new ContainerProperties(endpoint.getTopicPattern()));
-			}
-		}
+		Collection<String> topics = endpoint.getTopics();
+		Assert.state(topics != null, "'topics' must not be null");
+		return new ShareKafkaMessageListenerContainer<>(getShareConsumerFactory(),
+					new ContainerProperties(topics.toArray(new String[0])));
 	}
 }

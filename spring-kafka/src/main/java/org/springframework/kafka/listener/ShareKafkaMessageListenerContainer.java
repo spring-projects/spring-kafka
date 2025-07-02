@@ -172,7 +172,6 @@ public class ShareKafkaMessageListenerContainer<K, V>
 
 			this.genericListener = listener;
 			this.clientId = ShareKafkaMessageListenerContainer.this.getClientId();
-			// Subscribe to topics, just like in the test
 			ContainerProperties containerProperties = getContainerProperties();
 			this.consumer.subscribe(Arrays.asList(containerProperties.getTopics()));
 		}
