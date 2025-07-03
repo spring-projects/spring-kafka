@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present the original author or authors.
+ * Copyright 2025-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 
 import org.apache.kafka.clients.consumer.AcknowledgeType;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ShareConsumer;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
@@ -43,8 +44,6 @@ import org.springframework.util.Assert;
  * This container manages a single-threaded consumer loop using a {@link org.springframework.kafka.core.ShareConsumerFactory}.
  * It is designed for use cases where Kafka's cooperative sharing protocol is desired, and provides a simple polling loop
  * with per-record dispatch and acknowledgement.
- * <p>
- * Lifecycle events are published for consumer starting and started. The container supports direct setting of the client.id.
  *
  * @param <K> the key type
  * @param <V> the value type
@@ -80,20 +79,20 @@ public class ShareKafkaMessageListenerContainer<K, V>
 	}
 
 	/**
-	 * Set the {@code client.id} to use for the consumer.
-	 * @param clientId the client id to set
-	 */
-	public void setClientId(String clientId) {
-		this.clientId = clientId;
-	}
-
-	/**
 	 * Get the {@code client.id} for the consumer.
 	 * @return the client id, or null if not set
 	 */
 	@Nullable
 	public String getClientId() {
 		return this.clientId;
+	}
+
+	/**
+	 * Set the {@code client.id} to use for the consumer.
+	 * @param clientId the client id to set
+	 */
+	public void setClientId(String clientId) {
+		this.clientId = clientId;
 	}
 
 	@Override
@@ -152,7 +151,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 	}
 
 	/**
-	 * The inner share consumer thread: polls for records and dispatches to the listener.
+	 * The inner share consumer thread that polls for records and dispatches to the listener.
 	 */
 	private class ShareListenerConsumer implements Runnable {
 
@@ -168,12 +167,11 @@ public class ShareKafkaMessageListenerContainer<K, V>
 
 		ShareListenerConsumer(GenericMessageListener<?> listener) {
 			this.consumer = ShareKafkaMessageListenerContainer.this.shareConsumerFactory.createShareConsumer(
-				ShareKafkaMessageListenerContainer.this.getGroupId(),
-				ShareKafkaMessageListenerContainer.this.getClientId());
+					ShareKafkaMessageListenerContainer.this.getGroupId(),
+					ShareKafkaMessageListenerContainer.this.getClientId());
 
 			this.genericListener = listener;
 			this.clientId = ShareKafkaMessageListenerContainer.this.getClientId();
-			// Subscribe to topics, just like in the test
 			ContainerProperties containerProperties = getContainerProperties();
 			this.consumer.subscribe(Arrays.asList(containerProperties.getTopics()));
 		}
@@ -184,6 +182,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		}
 
 		@Override
+		@SuppressWarnings({"unchecked", "rawtypes"})
 		public void run() {
 			initialize();
 			Throwable exitThrowable = null;
@@ -192,9 +191,14 @@ public class ShareKafkaMessageListenerContainer<K, V>
 					var records = this.consumer.poll(java.time.Duration.ofMillis(POLL_TIMEOUT));
 					if (records != null && records.count() > 0) {
 						for (var record : records) {
-							@SuppressWarnings("unchecked")
-							GenericMessageListener<Object> listener = (GenericMessageListener<Object>) this.genericListener;
-							listener.onMessage(record);
+							if (this.genericListener instanceof AcknowledgingConsumerAwareMessageListener ackListener) {
+								ackListener.onMessage(record, null, null);
+							}
+							else {
+								GenericMessageListener<ConsumerRecord<K, V>> listener =
+										(GenericMessageListener<ConsumerRecord<K, V>>) this.genericListener;
+								listener.onMessage(record);
+							}
 							// Temporarily auto-acknowledge and commit.
 							// We will refactor it later on to support more production-like scenarios.
 							this.consumer.acknowledge(record, AcknowledgeType.ACCEPT);
@@ -235,9 +239,11 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		@Override
 		public String toString() {
 			return "ShareKafkaMessageListenerContainer.ShareListenerConsumer ["
-				+ "consumerGroupId=" + this.consumerGroupId
-				+ ", clientId=" + this.clientId
-				+ "]";
+					+ "consumerGroupId=" + this.consumerGroupId
+					+ ", clientId=" + this.clientId
+					+ "]";
 		}
+
 	}
+
 }

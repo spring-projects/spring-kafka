@@ -58,6 +58,9 @@ public abstract class AbstractShareKafkaMessageListenerContainer<K, V>
 	 */
 	public static final int DEFAULT_PHASE = Integer.MAX_VALUE - 100;
 
+	/**
+	 * The share consumer factory used to create consumer instances.
+	 */
 	protected final ShareConsumerFactory<K, V> shareConsumerFactory;
 
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(this.getClass()));
@@ -86,7 +89,7 @@ public abstract class AbstractShareKafkaMessageListenerContainer<K, V>
 	 * @param containerProperties the properties.
 	 */
 	@SuppressWarnings("unchecked")
-	protected AbstractShareKafkaMessageListenerContainer(@Nullable ShareConsumerFactory<? super K, ? super V> shareConsumerFactory,
+	protected AbstractShareKafkaMessageListenerContainer(ShareConsumerFactory<? super K, ? super V> shareConsumerFactory,
 														ContainerProperties containerProperties) {
 		Assert.notNull(containerProperties, "'containerProperties' cannot be null");
 		Assert.notNull(shareConsumerFactory, "'shareConsumerFactory' cannot be null");
