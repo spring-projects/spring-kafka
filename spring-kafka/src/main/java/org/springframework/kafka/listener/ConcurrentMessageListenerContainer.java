@@ -60,6 +60,7 @@ import org.springframework.util.Assert;
  * @author Tomaz Fernandes
  * @author Wang Zhiyang
  * @author Lokesh Alamuri
+ * @author Su Ko
  */
 public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
 
@@ -320,26 +321,24 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		if (topicPartitions == null) {
 			return null;
 		}
+
 		if (this.concurrency == 1) {
 			return topicPartitions;
 		}
-		else {
-			int numPartitions = topicPartitions.length;
-			if (numPartitions == this.concurrency) {
-				return new TopicPartitionOffset[] { topicPartitions[index] };
-			}
-			else {
-				int perContainer = numPartitions / this.concurrency;
-				TopicPartitionOffset[] subset;
-				if (index == this.concurrency - 1) {
-					subset = Arrays.copyOfRange(topicPartitions, index * perContainer, topicPartitions.length);
-				}
-				else {
-					subset = Arrays.copyOfRange(topicPartitions, index * perContainer, (index + 1) * perContainer);
-				}
-				return subset;
-			}
+
+		int numPartitions = topicPartitions.length;
+
+		if (numPartitions == this.concurrency) {
+			return new TopicPartitionOffset[] { topicPartitions[index] };
 		}
+
+		int perContainer = numPartitions / this.concurrency;
+		int start = index * perContainer;
+		int end = (index == this.concurrency - 1)
+				? numPartitions
+				: start + perContainer;
+
+		return Arrays.copyOfRange(topicPartitions, start, end);
 	}
 
 	/*
