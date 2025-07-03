@@ -20,14 +20,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.regex.Pattern;
 
-import org.apache.commons.logging.LogFactory;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
-import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.ShareConsumerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.ShareKafkaMessageListenerContainer;
@@ -56,11 +54,7 @@ import org.springframework.util.Assert;
 public class ShareKafkaListenerContainerFactory<K, V>
 		implements KafkaListenerContainerFactory<ShareKafkaMessageListenerContainer<K, V>>, ApplicationEventPublisherAware, ApplicationContextAware {
 
-	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass()));
-
-	private final ContainerProperties containerProperties = new ContainerProperties((Pattern) null);
-
-	private ShareConsumerFactory<? super K, ? super V> shareConsumerFactory;
+	private final ShareConsumerFactory<? super K, ? super V> shareConsumerFactory;
 
 	private @Nullable Boolean autoStartup;
 
@@ -84,22 +78,6 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	}
 
 	/**
-	 * Get the share consumer factory.
-	 * @return the share consumer factory
-	 */
-	public ShareConsumerFactory<? super K, ? super V> getShareConsumerFactory() {
-		return this.shareConsumerFactory;
-	}
-
-	/**
-	 * Set the share consumer factory to use for creating containers.
-	 * @param shareConsumerFactory the share consumer factory
-	 */
-	public void setShareConsumerFactory(ShareConsumerFactory<? super K, ? super V> shareConsumerFactory) {
-		this.shareConsumerFactory = shareConsumerFactory;
-	}
-
-	/**
 	 * Set whether containers created by this factory should auto-start.
 	 * @param autoStartup true to auto-start
 	 */
@@ -120,21 +98,14 @@ public class ShareKafkaListenerContainerFactory<K, V>
 		this.applicationEventPublisher = applicationEventPublisher;
 	}
 
-	/**
-	 * Get the container properties.
-	 * @return the container properties
-	 */
-	public ContainerProperties getContainerProperties() {
-		return this.containerProperties;
-	}
-
 	@Override
+	@SuppressWarnings({"unchecked", "rawtypes"})
 	public ShareKafkaMessageListenerContainer<K, V> createListenerContainer(KafkaListenerEndpoint endpoint) {
 		ShareKafkaMessageListenerContainer<K, V> instance = createContainerInstance(endpoint);
 		JavaUtils.INSTANCE
 				.acceptIfNotNull(endpoint.getId(), instance::setBeanName);
-		if (endpoint instanceof AbstractKafkaListenerEndpoint) {
-			configureEndpoint((AbstractKafkaListenerEndpoint<K, V>) endpoint);
+		if (endpoint instanceof AbstractKafkaListenerEndpoint abstractKafkaListenerEndpoint) {
+			configureEndpoint(abstractKafkaListenerEndpoint);
 		}
 		// TODO: No message converter for queue at the moment
 		endpoint.setupListenerContainer(instance, null);
@@ -153,36 +124,19 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	 */
 	protected void initializeContainer(ShareKafkaMessageListenerContainer<K, V> instance, KafkaListenerEndpoint endpoint) {
 		ContainerProperties properties = instance.getContainerProperties();
-		if (this.containerProperties.getAckCount() > 0) {
-			properties.setAckCount(this.containerProperties.getAckCount());
-		}
-		if (this.containerProperties.getAckTime() > 0) {
-			properties.setAckTime(this.containerProperties.getAckTime());
-		}
-		if (endpoint.getAutoStartup() != null) {
-			instance.setAutoStartup(endpoint.getAutoStartup());
-		}
-		else if (this.autoStartup != null) {
-			instance.setAutoStartup(this.autoStartup);
-		}
-		if (this.phase != null) {
-			instance.setPhase(this.phase);
-		}
-		if (this.applicationContext != null) {
-			instance.setApplicationContext(this.applicationContext);
-		}
-		if (this.applicationEventPublisher != null) {
-			instance.setApplicationEventPublisher(this.applicationEventPublisher);
-		}
-		if (endpoint.getGroupId() != null) {
-			instance.getContainerProperties().setGroupId(endpoint.getGroupId());
-		}
-		if (endpoint.getClientIdPrefix() != null) {
-			instance.getContainerProperties().setClientId(endpoint.getClientIdPrefix());
-		}
-		if (endpoint.getConsumerProperties() != null) {
-			instance.getContainerProperties().setKafkaConsumerProperties(endpoint.getConsumerProperties());
-		}
+		JavaUtils.INSTANCE
+				.acceptIfNotNull(endpoint.getAutoStartup(), instance::setAutoStartup)
+				.acceptIfNotNull(this.autoStartup, autoStartup -> {
+					if (endpoint.getAutoStartup() == null) {
+						instance.setAutoStartup(autoStartup);
+					}
+				})
+				.acceptIfNotNull(this.phase, instance::setPhase)
+				.acceptIfNotNull(this.applicationContext, instance::setApplicationContext)
+				.acceptIfNotNull(this.applicationEventPublisher, instance::setApplicationEventPublisher)
+				.acceptIfNotNull(endpoint.getGroupId(), properties::setGroupId)
+				.acceptIfNotNull(endpoint.getClientIdPrefix(), properties::setClientId)
+				.acceptIfNotNull(endpoint.getConsumerProperties(), properties::setKafkaConsumerProperties);
 	}
 
 	@Override
@@ -214,7 +168,7 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	protected ShareKafkaMessageListenerContainer<K, V> createContainerInstance(KafkaListenerEndpoint endpoint) {
 		Collection<String> topics = endpoint.getTopics();
 		Assert.state(topics != null, "'topics' must not be null");
-		return new ShareKafkaMessageListenerContainer<>(getShareConsumerFactory(),
+		return new ShareKafkaMessageListenerContainer<>(this.shareConsumerFactory,
 				new ContainerProperties(topics.toArray(new String[0])));
 	}
 
