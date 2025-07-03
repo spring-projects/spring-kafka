@@ -124,13 +124,9 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	 */
 	protected void initializeContainer(ShareKafkaMessageListenerContainer<K, V> instance, KafkaListenerEndpoint endpoint) {
 		ContainerProperties properties = instance.getContainerProperties();
+		Boolean effectiveAutoStartup = endpoint.getAutoStartup() != null ? endpoint.getAutoStartup() : this.autoStartup;
 		JavaUtils.INSTANCE
-				.acceptIfNotNull(endpoint.getAutoStartup(), instance::setAutoStartup)
-				.acceptIfNotNull(this.autoStartup, autoStartup -> {
-					if (endpoint.getAutoStartup() == null) {
-						instance.setAutoStartup(autoStartup);
-					}
-				})
+				.acceptIfNotNull(effectiveAutoStartup, instance::setAutoStartup)
 				.acceptIfNotNull(this.phase, instance::setPhase)
 				.acceptIfNotNull(this.applicationContext, instance::setApplicationContext)
 				.acceptIfNotNull(this.applicationEventPublisher, instance::setApplicationEventPublisher)
