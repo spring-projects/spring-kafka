@@ -119,3 +119,28 @@ The `record` property in both observation contexts contains the `ConsumerRecord`
 The sender and receiver contexts `remoteServiceName` properties are set to the Kafka `clusterId` property; this is retrieved by a `KafkaAdmin`.
 If, for some reason - perhaps lack of admin permissions, you cannot retrieve the cluster id, starting with version 3.1, you can set a manual `clusterId` on the `KafkaAdmin` and inject it into ``KafkaTemplate``s and listener containers.
 When it is `null` (default), the admin will invoke the `describeCluster` admin operation to retrieve it from the broker.
+
+[[batch-listener-obs]]
+=== Batch Listener Observations
+
+When using a batch listener, by default, no observations are created, even if a `ObservationRegistry` is present.
+This is because the scope of an observation is tied to the thread, and with a batch listener, there is no one-to-one mapping between an observation and a record.
+
+To enable per-record observations in a batch listener, set the container factory property `recordObservationsInBatch` to `true`.
+
+[source,java]
+----
+@Bean
+ConcurrentKafkaListenerContainerFactory<?, ?> kafkaListenerContainerFactory(
+        ConcurrentKafkaListenerContainerFactoryConfigurer configurer,
+        ConsumerFactory<Object, Object> kafkaConsumerFactory) {
+
+    ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
+    configurer.configure(factory, kafkaConsumerFactory);
+    factory.getContainerProperties().setRecordObservationsInBatch(true);
+    return factory;
+}
+----
+
+When this property is `true`, an observation will be created for each record in the batch, but the observation is not propagated to the listener method.
+This allows you to have visibility into the processing of each record, even within a batch context.
