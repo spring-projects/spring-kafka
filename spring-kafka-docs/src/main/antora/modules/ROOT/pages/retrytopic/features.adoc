@@ -87,7 +87,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
 }
 ----
 
-NOTE: The default is having no timeout set, which can also be achieved by providing -1 as the timout value.
+NOTE: The default is having no timeout set, which can also be achieved by providing -1 as the timeout value.
 
 [[retry-topic-ex-classifier]]
 == Exception Classifier
@@ -250,9 +250,9 @@ Starting with version 3.0.9, you can override the `RetryTopicConfigurationSuppor
 [source, java]
 ----
 @Override
-protected Consumer<DeadLetterPublishingRecovererFactory> 
+protected Consumer<DeadLetterPublishingRecovererFactory>
         configureDeadLetterPublishingContainerFactory() {
-    
+
     return (factory) -> factory.setDeadLetterPublisherCreator(
             (templateResolver, destinationResolver) ->
                     new CustomDLPR(templateResolver, destinationResolver));

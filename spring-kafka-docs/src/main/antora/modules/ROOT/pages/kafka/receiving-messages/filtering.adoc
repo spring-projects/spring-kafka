@@ -29,7 +29,7 @@ public void listen(Thing thing) {
 
 Starting with version 3.3, Ignoring empty batches that result from filtering by `RecordFilterStrategy` is supported.
 When implementing `RecordFilterStrategy`, it can be configured through `ignoreEmptyBatch()`.
-The default setting is `false`, indicating `KafkaListener` will be invoked even if all `ConsumerRecord` s are filtered out.
+The default setting is `false`, indicating `KafkaListener` will be invoked even if all ``ConsumerRecord``s are filtered out.
 
 If `true` is returned, the `KafkaListener` [underline]#will not be invoked# when all `ConsumerRecord` are filtered out.
 However, commit to broker, will still be executed.
