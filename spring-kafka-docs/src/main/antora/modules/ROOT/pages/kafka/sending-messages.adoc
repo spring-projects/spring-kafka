@@ -556,7 +556,7 @@ Previously, the listener had to echo custom correlation headers.
 [[exchanging-messages]]
 === Request/Reply with `Message<?>`+++s+++
 
-Version 2.7 added methods to the `ReplyingKafkaTemplate` to send and receive `spring-messaging` 's `Message<?>` abstraction:
+Version 2.7 added methods to the `ReplyingKafkaTemplate` to send and receive ``spring-messaging``'s `Message<?>` abstraction:
 
 [source, java]
 ----
