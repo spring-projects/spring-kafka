@@ -3841,7 +3841,7 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setMessageListener(messageListener);
 		containerProps.setClientId("clientId");
 
-		CountDownLatch afterLatch = new CountDownLatch(1);
+		CountDownLatch afterLatch = new CountDownLatch(2);
 		RecordInterceptor<Integer, String> recordInterceptor1 = spy(new RecordInterceptor<Integer, String>() {
 
 			@Override
