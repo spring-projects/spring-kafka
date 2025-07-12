@@ -73,6 +73,7 @@ import org.springframework.util.Assert;
  * @author Artem Bilan
  * @author Borahm Lee
  * @author Francois Rosiere
+ * @author Mikhail Polivakha
  *
  * @since 2.1.3
  *
@@ -422,12 +423,13 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		CorrelationKey correlationId = this.correlationStrategy.apply(record);
 		Assert.notNull(correlationId, "the created 'correlationId' cannot be null");
 		Headers headers = record.headers();
-		boolean hasReplyTopic = headers.lastHeader(KafkaHeaders.REPLY_TOPIC) != null;
+		boolean hasReplyTopic = headers.lastHeader(this.replyTopicHeaderName) != null;
 		if (!hasReplyTopic && this.replyTopic != null) {
 			headers.add(new RecordHeader(this.replyTopicHeaderName, this.replyTopic));
-			if (this.replyPartition != null) {
-				headers.add(new RecordHeader(this.replyPartitionHeaderName, this.replyPartition));
-			}
+		}
+		boolean hasReplyPartition = headers.lastHeader(this.replyPartitionHeaderName) != null;
+		if (!hasReplyPartition && this.replyPartition != null) {
+			headers.add(new RecordHeader(this.replyPartitionHeaderName, this.replyPartition));
 		}
 		Object correlation = this.binaryCorrelation ? correlationId : correlationId.toString();
 		byte[] correlationValue = this.binaryCorrelation
