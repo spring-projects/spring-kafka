@@ -35,8 +35,14 @@ public final class CorrelationKey {
 
 	private final byte[] correlationId;
 
+	/**
+	 * Cached hex representation of the {@link #correlationId}.
+	 */
 	private @Nullable String asString;
 
+	/**
+	 * Cached hash code.
+	 */
 	private volatile @Nullable Integer hashCode;
 
 	public CorrelationKey(byte[] correlationId) { // NOSONAR array reference
