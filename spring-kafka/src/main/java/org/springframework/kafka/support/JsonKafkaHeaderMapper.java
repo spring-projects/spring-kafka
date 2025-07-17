@@ -27,19 +27,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 
 /**
- * Default header mapper for Apache Kafka.
+ * Default header mapper for Apache Kafka. Based on Jackson 3.
  * Most headers in {@link KafkaHeaders} are not mapped on outbound messages.
  * The exceptions are correlation and reply headers for request/reply
  * messaging.
@@ -49,36 +48,35 @@ import org.springframework.util.ClassUtils;
  * @author Artem Bilan
  * @author Soby Chacko
  * @author Sanghyoek An
+ * @author Soby Chacko
  *
- * @since 1.3
+ * @since 4.0
  *
- * @deprecated since 4.0 in favor of {@link JsonKafkaHeaderMapper} for Jackson 3.
  */
-@Deprecated(forRemoval = true, since = "4.0")
-public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
+public class JsonKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 
 	private static final String JAVA_LANG_STRING = "java.lang.String";
 
 	private static final Set<String> TRUSTED_ARRAY_TYPES = Set.of(
-					"[B",
-					"[I",
-					"[J",
-					"[F",
-					"[D",
-					"[C"
-			);
+			"[B",
+			"[I",
+			"[J",
+			"[F",
+			"[D",
+			"[C"
+	);
 
 	private static final List<String> DEFAULT_TRUSTED_PACKAGES = List.of(
-					"java.lang",
-					"java.net",
-					"java.util",
-					"org.springframework.util"
-			);
+			"java.lang",
+			"java.net",
+			"java.util",
+			"org.springframework.util"
+	);
 
 	private static final List<String> DEFAULT_TO_STRING_CLASSES = List.of(
-					"org.springframework.util.MimeType",
-					"org.springframework.http.MediaType"
-			);
+			"org.springframework.util.MimeType",
+			"org.springframework.http.MediaType"
+	);
 
 	/**
 	 * Header name for java types of other headers.
@@ -99,10 +97,10 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * {@code "!id", "!timestamp" and "*"}. In addition, most of the headers in
 	 * {@link KafkaHeaders} are never mapped as headers since they represent data in
 	 * consumer/producer records.
-	 * @see #DefaultKafkaHeaderMapper(ObjectMapper)
+	 * @see #JsonKafkaHeaderMapper(ObjectMapper)
 	 */
-	public DefaultKafkaHeaderMapper() {
-		this(JacksonUtils.enhancedObjectMapper());
+	public JsonKafkaHeaderMapper() {
+		this(Jackson3Utils.enhancedObjectMapper());
 	}
 
 	/**
@@ -116,7 +114,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * @param objectMapper the object mapper.
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
 	 */
-	public DefaultKafkaHeaderMapper(ObjectMapper objectMapper) {
+	public JsonKafkaHeaderMapper(ObjectMapper objectMapper) {
 		this(objectMapper,
 				"!" + MessageHeaders.ID,
 				"!" + MessageHeaders.TIMESTAMP,
@@ -134,8 +132,8 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * @param patterns the patterns.
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
 	 */
-	public DefaultKafkaHeaderMapper(String... patterns) {
-		this(JacksonUtils.enhancedObjectMapper(), patterns);
+	public JsonKafkaHeaderMapper(String... patterns) {
+		this(Jackson3Utils.enhancedObjectMapper(), patterns);
 	}
 
 	/**
@@ -150,11 +148,11 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * @param patterns the patterns.
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
 	 */
-	public DefaultKafkaHeaderMapper(ObjectMapper objectMapper, String... patterns) {
+	public JsonKafkaHeaderMapper(ObjectMapper objectMapper, String... patterns) {
 		this(true, objectMapper, patterns);
 	}
 
-	private DefaultKafkaHeaderMapper(boolean outbound, ObjectMapper objectMapper, String... patterns) {
+	private JsonKafkaHeaderMapper(boolean outbound, ObjectMapper objectMapper, String... patterns) {
 		super(outbound, patterns);
 		Assert.notNull(objectMapper, "'objectMapper' must not be null");
 		Assert.noNullElements(patterns, "'patterns' must not have null elements");
@@ -165,10 +163,9 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * Create an instance for inbound mapping only with pattern matching.
 	 * @param patterns the patterns to match.
 	 * @return the header mapper.
-	 * @since 2.8.8
 	 */
-	public static DefaultKafkaHeaderMapper forInboundOnlyWithMatchers(String... patterns) {
-		return new DefaultKafkaHeaderMapper(false, JacksonUtils.enhancedObjectMapper(), patterns);
+	public static JsonKafkaHeaderMapper forInboundOnlyWithMatchers(String... patterns) {
+		return new JsonKafkaHeaderMapper(false, Jackson3Utils.enhancedObjectMapper(), patterns);
 	}
 
 	/**
@@ -176,10 +173,9 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * @param objectMapper the object mapper.
 	 * @param patterns the patterns to match.
 	 * @return the header mapper.
-	 * @since 2.8.8
 	 */
-	public static DefaultKafkaHeaderMapper forInboundOnlyWithMatchers(ObjectMapper objectMapper, String... patterns) {
-		return new DefaultKafkaHeaderMapper(false, objectMapper, patterns);
+	public static JsonKafkaHeaderMapper forInboundOnlyWithMatchers(ObjectMapper objectMapper, String... patterns) {
+		return new JsonKafkaHeaderMapper(false, objectMapper, patterns);
 	}
 
 	/**
@@ -193,7 +189,6 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	/**
 	 * Provide direct access to the trusted packages set for subclasses.
 	 * @return the trusted packages.
-	 * @since 2.2
 	 */
 	protected Set<String> getTrustedPackages() {
 		return this.trustedPackages;
@@ -202,7 +197,6 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	/**
 	 * Provide direct access to the toString() classes by subclasses.
 	 * @return the toString() classes.
-	 * @since 2.2
 	 */
 	protected Set<String> getToStringClasses() {
 		return this.toStringClasses;
@@ -218,7 +212,6 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * true if a consumer of the outbound record is using Spring for Apache Kafka version
 	 * less than 2.3
 	 * @param encodeStrings true to encode (default false).
-	 * @since 2.3
 	 */
 	public void setEncodeStrings(boolean encodeStrings) {
 		this.encodeStrings = encodeStrings;
@@ -257,7 +250,6 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * Add class names that the outbound mapper should perform toString() operations on
 	 * before mapping.
 	 * @param classNames the class names.
-	 * @since 2.2
 	 */
 	public void addToStringClasses(String... classNames) {
 		this.toStringClasses.addAll(Arrays.asList(classNames));
@@ -286,7 +278,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 			try {
 				target.add(new RecordHeader(JSON_TYPES, headerObjectMapper.writeValueAsBytes(jsonHeaders)));
 			}
-			catch (IllegalStateException | JsonProcessingException e) {
+			catch (IllegalStateException e) {
 				logger.error(e, "Could not add json types header");
 			}
 		}
@@ -320,7 +312,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	}
 
 	private void fromHeader(String key, Object rawValue, Map<String, String> jsonHeaders,
-							ObjectMapper headerObjectMapper, Headers target) {
+			ObjectMapper headerObjectMapper, Headers target) {
 
 		Object valueToAdd = headerValueToAddOut(key, rawValue);
 		if (valueToAdd instanceof byte[]) {
@@ -372,7 +364,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 					Object value = decodeValue(header, type);
 					headers.put(header.key(), value);
 				}
-				catch (IOException e) {
+				catch (Exception e) {
 					logger.error(e, () ->
 							"Could not decode json type: " + requestedType + " for key: " + header.key());
 					headers.put(header.key(), header.value());
@@ -411,7 +403,7 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 			try {
 				types = headerObjectMapper.readValue(jsonTypes.value(), new TypeReference<>() { });
 			}
-			catch (IOException e) {
+			catch (Exception e) {
 				logger.error(e, () -> "Could not decode json types: " + new String(jsonTypes.value(), StandardCharsets.UTF_8));
 			}
 		}

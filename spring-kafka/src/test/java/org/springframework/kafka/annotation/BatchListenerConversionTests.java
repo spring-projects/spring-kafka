@@ -53,7 +53,7 @@ import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
-import org.springframework.kafka.support.converter.BytesJsonMessageConverter;
+import org.springframework.kafka.support.converter.BytesJacksonJsonMessageConverter;
 import org.springframework.kafka.support.converter.ConversionException;
 import org.springframework.kafka.support.serializer.DelegatingByTypeSerializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -214,8 +214,8 @@ public class BatchListenerConversionTests {
 		}
 
 		@Bean
-		public BytesJsonMessageConverter converter() {
-			return new BytesJsonMessageConverter();
+		public BytesJacksonJsonMessageConverter converter() {
+			return new BytesJacksonJsonMessageConverter();
 		}
 
 		@Bean

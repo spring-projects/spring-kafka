@@ -16,45 +16,40 @@
 
 package org.springframework.kafka.support.converter;
 
-import java.io.IOException;
 import java.lang.reflect.Type;
 
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.utils.Bytes;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.type.TypeFactory;
 
 import org.springframework.kafka.support.KafkaHeaders;
-import org.springframework.kafka.support.mapping.DefaultJackson2JavaTypeMapper;
-import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper;
-import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper.TypePrecedence;
+import org.springframework.kafka.support.mapping.DefaultJacksonJavaTypeMapper;
+import org.springframework.kafka.support.mapping.JacksonJavaTypeMapper;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.converter.MappingJackson2MessageConverter;
+import org.springframework.messaging.converter.JacksonJsonMessageConverter;
 import org.springframework.util.Assert;
 import org.springframework.util.MimeType;
 
 /**
- * Subclass of {@link MappingJackson2MessageConverter} that can handle parameterized
- * (generic) types.
+ * Subclass of {@link JacksonJsonMessageConverter} that can handle parameterized
+ * (generic) types. Based on Jackson 3.
  *
- * @author Gary Russell
- * @since 2.7.1
- *
- * @deprecated since 4.0 in favor of {@link MappingJacksonJsonParameterizedConverter} for Jackson 3.
+ * @author Soby Chacko
+ * @since 4.0
  */
-@Deprecated(forRemoval = true, since = "4.0")
-public class MappingJacksonParameterizedConverter extends MappingJackson2MessageConverter {
+public class MappingJacksonJsonParameterizedConverter extends JacksonJsonMessageConverter {
 
-	private static final JavaType OBJECT = TypeFactory.defaultInstance().constructType(Object.class);
+	private static final JavaType OBJECT = TypeFactory.createDefaultInstance().constructType(Object.class);
 
-	private Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
+	private JacksonJavaTypeMapper typeMapper = new DefaultJacksonJavaTypeMapper();
 
 	/**
 	 * Construct a {@code MappingJacksonParameterizedConverter} supporting
 	 * the {@code application/json} MIME type with {@code UTF-8} character set.
 	 */
-	public MappingJacksonParameterizedConverter() {
+	public MappingJacksonJsonParameterizedConverter() {
 	}
 
 	/**
@@ -62,7 +57,7 @@ public class MappingJacksonParameterizedConverter extends MappingJackson2Message
 	 * one or more custom MIME types.
 	 * @param supportedMimeTypes the supported MIME types
 	 */
-	public MappingJacksonParameterizedConverter(MimeType... supportedMimeTypes) {
+	public MappingJacksonJsonParameterizedConverter(MimeType... supportedMimeTypes) {
 		super(supportedMimeTypes);
 	}
 
@@ -70,7 +65,7 @@ public class MappingJacksonParameterizedConverter extends MappingJackson2Message
 	 * Return the type mapper.
 	 * @return the mapper.
 	 */
-	public Jackson2JavaTypeMapper getTypeMapper() {
+	public JacksonJavaTypeMapper getTypeMapper() {
 		return this.typeMapper;
 	}
 
@@ -78,7 +73,7 @@ public class MappingJacksonParameterizedConverter extends MappingJackson2Message
 	 * Set a customized type mapper.
 	 * @param typeMapper the type mapper.
 	 */
-	public void setTypeMapper(Jackson2JavaTypeMapper typeMapper) {
+	public void setTypeMapper(JacksonJavaTypeMapper typeMapper) {
 		Assert.notNull(typeMapper, "'typeMapper' cannot be null");
 		this.typeMapper = typeMapper;
 	}
@@ -95,7 +90,7 @@ public class MappingJacksonParameterizedConverter extends MappingJackson2Message
 			try {
 				return getObjectMapper().readValue((String) value, javaType);
 			}
-			catch (IOException e) {
+			catch (Exception e) {
 				throw new ConversionException("Failed to convert from JSON", message, e);
 			}
 		}
@@ -103,7 +98,7 @@ public class MappingJacksonParameterizedConverter extends MappingJackson2Message
 			try {
 				return getObjectMapper().readValue((byte[]) value, javaType);
 			}
-			catch (IOException e) {
+			catch (Exception e) {
 				throw new ConversionException("Failed to convert from JSON", message, e);
 			}
 		}
@@ -119,14 +114,14 @@ public class MappingJacksonParameterizedConverter extends MappingJackson2Message
 			type = (Type) hint;
 			Headers nativeHeaders = message.getHeaders().get(KafkaHeaders.NATIVE_HEADERS, Headers.class);
 			if (nativeHeaders != null) {
-				javaType = this.typeMapper.getTypePrecedence().equals(TypePrecedence.INFERRED)
-						? TypeFactory.defaultInstance().constructType(type)
+				javaType = this.typeMapper.getTypePrecedence().equals(JacksonJavaTypeMapper.TypePrecedence.INFERRED)
+						? TypeFactory.createDefaultInstance().constructType(type)
 						: this.typeMapper.toJavaType(nativeHeaders);
 			}
 		}
 		if (javaType == null) { // no headers
 			if (type != null) {
-				javaType = TypeFactory.defaultInstance().constructType(type);
+				javaType = TypeFactory.createDefaultInstance().constructType(type);
 			}
 			else {
 				javaType = OBJECT;

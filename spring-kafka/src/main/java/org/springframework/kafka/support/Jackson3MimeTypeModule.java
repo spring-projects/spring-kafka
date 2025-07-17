@@ -1,5 +1,5 @@
 /*
- * Copyright 2019-present the original author or authors.
+ * Copyright 2025-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,10 @@
 
 package org.springframework.kafka.support;
 
-import java.io.IOException;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.module.SimpleModule;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.databind.SerializationContext;
+import tools.jackson.databind.ValueSerializer;
+import tools.jackson.databind.module.SimpleModule;
 
 import org.springframework.util.MimeType;
 
@@ -29,32 +27,29 @@ import org.springframework.util.MimeType;
  * A {@link SimpleModule} extension for {@link MimeType} serialization.
  *
  * @author Artem Bilan
+ * @author Soby Chacko
  *
- * @since 2.3
- *
- * @deprecated since 4.0 in favor of {@link Jackson3Utils}.
+ * @since 4.0
  */
-public final class JacksonMimeTypeModule extends SimpleModule {
+public final class Jackson3MimeTypeModule extends SimpleModule {
 
 	private static final long serialVersionUID = 1L;
 
-	public JacksonMimeTypeModule() {
+	public Jackson3MimeTypeModule() {
 		addSerializer(MimeType.class, new MimeTypeSerializer());
 	}
 
 	/**
-	 * Simple {@link JsonSerializer} extension to represent a {@link MimeType} object in the
+	 * Simple {@link ValueSerializer} extension to represent a {@link MimeType} object in the
 	 * target JSON as a plain string.
 	 */
-	private static final class MimeTypeSerializer extends JsonSerializer<MimeType> {
+	private static final class MimeTypeSerializer extends ValueSerializer<MimeType> {
 
 		MimeTypeSerializer() {
 		}
 
 		@Override
-		public void serialize(MimeType value, JsonGenerator generator, SerializerProvider serializers)
-				throws IOException {
-
+		public void serialize(MimeType value, JsonGenerator generator, SerializationContext serializers) {
 			generator.writeString(value.toString());
 		}
 

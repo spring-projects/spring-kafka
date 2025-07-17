@@ -29,7 +29,10 @@ import org.springframework.util.ClassUtils;
  * @author Artem Bilan
  *
  * @since 2.3
+ *
+ * @deprecated since 4.0 in favor of native Jackson 3 {@link tools.jackson.databind.json.JsonMapper#builder()} API.
  */
+@Deprecated(forRemoval = true, since = "4.0")
 public final class JacksonUtils {
 
 	private static final boolean JDK8_MODULE_PRESENT =

@@ -16,12 +16,11 @@
 
 package org.springframework.kafka.listener.adapter;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
 
 import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.MessageListener;
@@ -29,7 +28,7 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
-import org.springframework.messaging.converter.MappingJackson2MessageConverter;
+import org.springframework.messaging.converter.JacksonJsonMessageConverter;
 import org.springframework.messaging.converter.MessageConversionException;
 import org.springframework.messaging.converter.MessageConverter;
 
@@ -63,7 +62,7 @@ class ConvertingMessageListenerTests {
 	}
 
 	@Test
-	public void testMessageListenerIsInvokedWithRecordConvertedByCustomConverter() throws JsonProcessingException {
+	public void testMessageListenerIsInvokedWithRecordConvertedByCustomConverter() {
 		var toBeConverted = new ToBeConverted("foo");
 		var toBeConvertedJson = mapper.writeValueAsString(toBeConverted);
 		var consumerRecord = new ConsumerRecord<>("foo", 0, 0, "key", toBeConvertedJson);
@@ -76,7 +75,7 @@ class ConvertingMessageListenerTests {
 				delegateListener,
 				ToBeConverted.class
 		);
-		convertingMessageListener.setMessageConverter(new MappingJackson2MessageConverter());
+		convertingMessageListener.setMessageConverter(new JacksonJsonMessageConverter());
 
 		convertingMessageListener.onMessage(consumerRecord, null, null);
 	}
@@ -91,7 +90,7 @@ class ConvertingMessageListenerTests {
 			delegateListener,
 			Long.class
 		);
-		convertingMessageListener.setMessageConverter(new MappingJackson2MessageConverter());
+		convertingMessageListener.setMessageConverter(new JacksonJsonMessageConverter());
 
 		convertingMessageListener.onMessage(consumerRecord, null, null);
 
@@ -102,7 +101,7 @@ class ConvertingMessageListenerTests {
 	}
 
 	@Test
-	public void testConversionFailsWhileUsingDefaultConverterForComplexObject() throws JsonProcessingException {
+	public void testConversionFailsWhileUsingDefaultConverterForComplexObject() {
 		var toBeConverted = new ToBeConverted("foo");
 		var toBeConvertedJson = mapper.writeValueAsString(toBeConverted);
 		var consumerRecord = new ConsumerRecord<>("foo", 0, 0, "key", toBeConvertedJson);

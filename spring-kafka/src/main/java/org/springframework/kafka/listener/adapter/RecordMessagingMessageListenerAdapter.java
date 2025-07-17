@@ -25,7 +25,9 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.converter.JacksonProjectingMessageConverter;
 import org.springframework.kafka.support.converter.ProjectingMessageConverter;
+import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
 
 /**
@@ -79,8 +81,12 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 		else {
 			message = NULL_MESSAGE;
 		}
-		if (logger.isDebugEnabled() && !(getMessageConverter() instanceof ProjectingMessageConverter)) {
-			this.logger.debug("Processing [" + message + "]");
+		if (logger.isDebugEnabled()) {
+			RecordMessageConverter messageConverter = getMessageConverter();
+			if (!(messageConverter instanceof JacksonProjectingMessageConverter
+					|| messageConverter instanceof ProjectingMessageConverter)) {
+				this.logger.debug("Processing [" + message + "]");
+			}
 		}
 		invoke(record, acknowledgment, consumer, message);
 	}

@@ -70,12 +70,12 @@ import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.GenericMessageListenerContainer;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.listener.adapter.ReplyHeadersConfigurer;
-import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
+import org.springframework.kafka.support.JsonKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
-import org.springframework.kafka.support.converter.StringJsonMessageConverter;
+import org.springframework.kafka.support.converter.StringJacksonJsonMessageConverter;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -217,7 +217,7 @@ public class ReplyingKafkaTemplateTests {
 			assertThat(consumerRecord.value()).isEqualTo("FOO");
 			assertThat(consumerRecord.key()).isEqualTo(1);
 			Map<String, Object> receivedHeaders = new HashMap<>();
-			new DefaultKafkaHeaderMapper().toHeaders(consumerRecord.headers(), receivedHeaders);
+			new JsonKafkaHeaderMapper().toHeaders(consumerRecord.headers(), receivedHeaders);
 			assertThat(receivedHeaders).containsKey("baz");
 			assertThat(receivedHeaders).hasSize(2);
 			assertThat(this.registry.getListenerContainer(A_REQUEST).getContainerProperties().isMissingTopicsFatal())
@@ -238,7 +238,7 @@ public class ReplyingKafkaTemplateTests {
 	public void testGoodWithMessage() throws Exception {
 		ReplyingKafkaTemplate<Integer, String, String> template = createTemplate(A_REPLY);
 		try {
-			template.setMessageConverter(new StringJsonMessageConverter());
+			template.setMessageConverter(new StringJacksonJsonMessageConverter());
 			template.setDefaultReplyTimeout(Duration.ofSeconds(30));
 			RequestReplyMessageFuture<Integer, String> fut = template
 					.sendAndReceive(MessageBuilder.withPayload("foo")
@@ -526,7 +526,7 @@ public class ReplyingKafkaTemplateTests {
 			ConsumerRecord<Integer, String> consumerRecord = future.get(30, TimeUnit.SECONDS);
 			assertThat(consumerRecord.value()).isEqualTo("qUX");
 			Map<String, Object> receivedHeaders = new HashMap<>();
-			new DefaultKafkaHeaderMapper().toHeaders(consumerRecord.headers(), receivedHeaders);
+			new JsonKafkaHeaderMapper().toHeaders(consumerRecord.headers(), receivedHeaders);
 			assertThat(receivedHeaders).containsKey("qux");
 			assertThat(receivedHeaders).doesNotContainKey("baz");
 			assertThat(receivedHeaders).hasSize(2);
