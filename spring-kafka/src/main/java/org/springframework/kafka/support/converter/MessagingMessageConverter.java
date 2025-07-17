@@ -34,6 +34,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.support.AbstractKafkaHeaderMapper;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.DefaultJacksonKafkaHeaderMapper;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.JacksonPresent;
 import org.springframework.kafka.support.KafkaHeaderMapper;
@@ -58,6 +59,7 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  * @author Dariusz Szablinski
  * @author Biju Kunjummen
+ * @author Soby Chacko
  */
 public class MessagingMessageConverter implements RecordMessageConverter {
 
@@ -93,6 +95,9 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 		Assert.notNull(partitionProvider, "'partitionProvider' cannot be null");
 		if (JacksonPresent.isJackson2Present()) {
 			this.headerMapper = new DefaultKafkaHeaderMapper();
+		}
+		else if (JacksonPresent.isJackson3Present()) {
+			this.headerMapper = new DefaultJacksonKafkaHeaderMapper();
 		}
 		else {
 			this.headerMapper = new SimpleKafkaHeaderMapper();

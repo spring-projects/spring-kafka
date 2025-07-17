@@ -16,32 +16,33 @@
 
 package org.springframework.kafka.support.serializer;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Serializer;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.MapperFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectWriter;
+import tools.jackson.databind.json.JsonMapper;
 
-import org.springframework.kafka.support.JacksonUtils;
-import org.springframework.kafka.support.mapping.AbstractJavaTypeMapper;
-import org.springframework.kafka.support.mapping.DefaultJackson2JavaTypeMapper;
-import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper;
+import org.springframework.kafka.support.converter.JacksonJsonMessageConverter;
+import org.springframework.kafka.support.mapping.DefaultJacksonJavaTypeMapper;
+import org.springframework.kafka.support.mapping.JacksonJavaTypeMapper;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
 /**
  * Generic {@link org.apache.kafka.common.serialization.Serializer Serializer} for sending
- * Java objects to Kafka as JSON.
+ * Java objects to Kafka as JSON. Based on Jackson 3.
  * <p>
  * IMPORTANT: Configuration must be done completely with property setters or via
  * {@link #configure(Map, boolean)}, not a mixture. If any setters have been called,
@@ -49,17 +50,9 @@ import org.springframework.util.StringUtils;
  *
  * @param <T> class of the entity, representing messages
  *
- * @author Igor Stepanov
- * @author Artem Bilan
- * @author Gary Russell
- * @author Elliot Kennedy
- * @author Wang Zhiyang
- * @author Omer Celik
- *
- * @deprecated since 4.0 in favor of {@link JacksonJsonSerializer} for Jackson 3.
+ * @author Soby Chacko
  */
-@Deprecated(forRemoval = true, since = "4.0")
-public class JsonSerializer<T> implements Serializer<T> {
+public class JacksonJsonSerializer<T> implements Serializer<T> {
 
 	/**
 	 * Kafka config property for disabling adding type headers.
@@ -78,7 +71,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 
 	private ObjectWriter writer;
 
-	protected Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper(); // NOSONAR
+	protected JacksonJavaTypeMapper typeMapper = new DefaultJacksonJavaTypeMapper(); // NOSONAR
 
 	private boolean typeMapperExplicitlySet = false;
 
@@ -88,23 +81,31 @@ public class JsonSerializer<T> implements Serializer<T> {
 
 	private final Lock globalLock = new ReentrantLock();
 
-	public JsonSerializer() {
-		this((JavaType) null, JacksonUtils.enhancedObjectMapper());
+	public JacksonJsonSerializer() {
+		this((JavaType) null, JsonMapper.builder()
+				.findAndAddModules(JacksonJsonMessageConverter.class.getClassLoader())
+				.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+				.disable(MapperFeature.DEFAULT_VIEW_INCLUSION)
+				.build());
 	}
 
-	public JsonSerializer(TypeReference<? super T> targetType) {
-		this(targetType, JacksonUtils.enhancedObjectMapper());
+	public JacksonJsonSerializer(TypeReference<? super T> targetType) {
+		this(targetType, JsonMapper.builder()
+				.findAndAddModules(JacksonJsonMessageConverter.class.getClassLoader())
+				.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+				.disable(MapperFeature.DEFAULT_VIEW_INCLUSION)
+				.build());
 	}
 
-	public JsonSerializer(ObjectMapper objectMapper) {
+	public JacksonJsonSerializer(ObjectMapper objectMapper) {
 		this((JavaType) null, objectMapper);
 	}
 
-	public JsonSerializer(TypeReference<? super T> targetType, ObjectMapper objectMapper) {
+	public JacksonJsonSerializer(TypeReference<? super T> targetType, ObjectMapper objectMapper) {
 		this(targetType == null ? null : objectMapper.constructType(targetType.getType()), objectMapper);
 	}
 
-	public JsonSerializer(@Nullable JavaType targetType, ObjectMapper objectMapper) {
+	public JacksonJsonSerializer(@Nullable JavaType targetType, ObjectMapper objectMapper) {
 		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
 		this.objectMapper = objectMapper;
 		this.writer = objectMapper.writerFor(targetType);
@@ -124,7 +125,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 		this.setterCalled = true;
 	}
 
-	public Jackson2JavaTypeMapper getTypeMapper() {
+	public JacksonJavaTypeMapper getTypeMapper() {
 		return this.typeMapper;
 	}
 
@@ -133,7 +134,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 	 * @param typeMapper the type mapper.
 	 * @since 2.1
 	 */
-	public void setTypeMapper(Jackson2JavaTypeMapper typeMapper) {
+	public void setTypeMapper(JacksonJavaTypeMapper typeMapper) {
 		Assert.notNull(typeMapper, "'typeMapper' cannot be null");
 		this.typeMapper = typeMapper;
 		this.typeMapperExplicitlySet = true;
@@ -146,8 +147,8 @@ public class JsonSerializer<T> implements Serializer<T> {
 	 * @since 2.1.3
 	 */
 	public void setUseTypeMapperForKey(boolean isKey) {
-		if (!this.typeMapperExplicitlySet && getTypeMapper() instanceof AbstractJavaTypeMapper) {
-			((AbstractJavaTypeMapper) getTypeMapper())
+		if (!this.typeMapperExplicitlySet && getTypeMapper() instanceof DefaultJacksonJavaTypeMapper) {
+			((DefaultJacksonJavaTypeMapper) getTypeMapper())
 					.setUseForKey(isKey);
 		}
 		this.setterCalled = true;
@@ -161,7 +162,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 				return;
 			}
 			Assert.state(!this.setterCalled
-					|| (!configs.containsKey(ADD_TYPE_INFO_HEADERS) && !configs.containsKey(TYPE_MAPPINGS)),
+							|| (!configs.containsKey(ADD_TYPE_INFO_HEADERS) && !configs.containsKey(TYPE_MAPPINGS)),
 					"JsonSerializer must be configured with property setters, or via configuration properties; not both");
 			setUseTypeMapperForKey(isKey);
 			if (configs.containsKey(ADD_TYPE_INFO_HEADERS)) {
@@ -177,7 +178,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 				}
 			}
 			if (configs.containsKey(TYPE_MAPPINGS) && !this.typeMapperExplicitlySet
-					&& this.typeMapper instanceof AbstractJavaTypeMapper abstractJavaTypeMapper) {
+					&& this.typeMapper instanceof DefaultJacksonJavaTypeMapper abstractJavaTypeMapper) {
 				abstractJavaTypeMapper.setIdClassMapping(createMappings((String) configs.get(TYPE_MAPPINGS)));
 			}
 			this.configured = true;
@@ -225,7 +226,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 		try {
 			return this.writer.writeValueAsBytes(data);
 		}
-		catch (IOException ex) {
+		catch (Exception ex) {
 			throw new SerializationException("Can't serialize data [" + data + "] for topic [" + topic + "]", ex);
 		}
 	}
@@ -242,7 +243,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 	 * @return new instance of serializer with type changes
 	 * @since 2.6
 	 */
-	public <X> JsonSerializer<X> copyWithType(Class<? super X> newTargetType) {
+	public <X> JacksonJsonSerializer<X> copyWithType(Class<? super X> newTargetType) {
 		return copyWithType(this.objectMapper.constructType(newTargetType));
 	}
 
@@ -253,7 +254,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 	 * @return new instance of serializer with type changes
 	 * @since 2.6
 	 */
-	public <X> JsonSerializer<X> copyWithType(TypeReference<? super X> newTargetType) {
+	public <X> JacksonJsonSerializer<X> copyWithType(TypeReference<? super X> newTargetType) {
 		return copyWithType(this.objectMapper.constructType(newTargetType.getType()));
 	}
 
@@ -264,8 +265,8 @@ public class JsonSerializer<T> implements Serializer<T> {
 	 * @return new instance of serializer with type changes
 	 * @since 2.6
 	 */
-	public <X> JsonSerializer<X> copyWithType(JavaType newTargetType) {
-		JsonSerializer<X> result = new JsonSerializer<>(newTargetType, this.objectMapper);
+	public <X> JacksonJsonSerializer<X> copyWithType(JavaType newTargetType) {
+		JacksonJsonSerializer<X> result = new JacksonJsonSerializer<>(newTargetType, this.objectMapper);
 		result.addTypeInfo = this.addTypeInfo;
 		result.typeMapper = this.typeMapper;
 		result.typeMapperExplicitlySet = this.typeMapperExplicitlySet;
@@ -281,7 +282,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 	 * @since 2.3
 	 * @see #setUseTypeMapperForKey(boolean)
 	 */
-	public JsonSerializer<T> forKeys() {
+	public JacksonJsonSerializer<T> forKeys() {
 		setUseTypeMapperForKey(true);
 		return this;
 	}
@@ -292,19 +293,19 @@ public class JsonSerializer<T> implements Serializer<T> {
 	 * @since 2.3
 	 * @see #setAddTypeInfo(boolean)
 	 */
-	public JsonSerializer<T> noTypeInfo() {
+	public JacksonJsonSerializer<T> noTypeInfo() {
 		setAddTypeInfo(false);
 		return this;
 	}
 
 	/**
-	 * Use the supplied {@link Jackson2JavaTypeMapper}.
+	 * Use the supplied {@link JacksonJavaTypeMapper}.
 	 * @param mapper the mapper.
 	 * @return the serializer.
 	 * @since 2.3
-	 * @see #setTypeMapper(Jackson2JavaTypeMapper)
+	 * @see #setTypeMapper(JacksonJavaTypeMapper)
 	 */
-	public JsonSerializer<T> typeMapper(Jackson2JavaTypeMapper mapper) {
+	public JacksonJsonSerializer<T> typeMapper(JacksonJavaTypeMapper mapper) {
 		setTypeMapper(mapper);
 		return this;
 	}

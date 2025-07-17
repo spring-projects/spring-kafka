@@ -21,78 +21,86 @@ import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
+import com.jayway.jsonpath.Configuration;
+import com.jayway.jsonpath.TypeRef;
+import com.jayway.jsonpath.spi.mapper.MappingException;
+import com.jayway.jsonpath.spi.mapper.MappingProvider;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.utils.Bytes;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.MapperFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import org.springframework.core.ResolvableType;
 import org.springframework.data.projection.MethodInterceptorFactory;
 import org.springframework.data.projection.ProjectionFactory;
 import org.springframework.data.projection.SpelAwareProxyProjectionFactory;
 import org.springframework.data.web.JsonProjectingMethodInterceptorFactory;
-import org.springframework.kafka.support.JacksonUtils;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
 
 /**
- * A {@link MessageConverter} implementation that uses a Spring Data
+ * A {@link MessageConverter} implementation based on Jacthat uses a Spring Data
  * {@link ProjectionFactory} to bind incoming messages to projection interfaces.
  *
- * @author Oliver Gierke
- * @author Artem Bilan
- * @author Gary Russell
- *
- * @since 2.1.1
- *
- * @deprecated since 4.0 in favor of {@link JacksonProjectingMessageConverter} for Jackson 3.
+ * @author Soby Chacko
+ * @since 4.0
  */
-@Deprecated(forRemoval = true, since = "4.0")
-public class ProjectingMessageConverter extends MessagingMessageConverter {
+public class JacksonProjectingMessageConverter extends MessagingMessageConverter {
 
 	private final ProjectionFactory projectionFactory;
 
 	private final MessagingMessageConverter delegate;
 
 	/**
-	 * Create a new {@link ProjectingMessageConverter} using a
-	 * {@link JacksonUtils#enhancedObjectMapper()} by default.
+	 * Create a new {@link JacksonProjectingMessageConverter} using a
+	 * {@link ObjectMapper} by default.
 	 * @since 2.3
 	 */
-	public ProjectingMessageConverter() {
-		this(JacksonUtils.enhancedObjectMapper());
+	public JacksonProjectingMessageConverter() {
+		this(JsonMapper.builder()
+				.findAndAddModules(JacksonJsonMessageConverter.class.getClassLoader())
+				.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+				.disable(MapperFeature.DEFAULT_VIEW_INCLUSION)
+				.build());
 	}
 
 	/**
-	 * Create a new {@link ProjectingMessageConverter} using the given {@link ObjectMapper}.
+	 * Create a new {@link JacksonProjectingMessageConverter} using the given {@link ObjectMapper}.
 	 * @param mapper must not be {@literal null}.
 	 */
-	public ProjectingMessageConverter(ObjectMapper mapper) {
-		this(mapper, new StringJsonMessageConverter());
+	public JacksonProjectingMessageConverter(ObjectMapper mapper) {
+		this(mapper, new StringJacksonJsonMessageConverter());
 	}
 
 	/**
-	 * Create a new {@link ProjectingMessageConverter} using the given {@link ObjectMapper}.
+	 * Create a new {@link JacksonProjectingMessageConverter} using the given {@link ObjectMapper}.
 	 * @param delegate the delegate converter for outbound and non-interfaces.
 	 * @since 2.3
 	 */
-	public ProjectingMessageConverter(MessagingMessageConverter delegate) {
-		this(JacksonUtils.enhancedObjectMapper(), delegate);
+	public JacksonProjectingMessageConverter(MessagingMessageConverter delegate) {
+		this(JsonMapper.builder()
+				.findAndAddModules(JacksonJsonMessageConverter.class.getClassLoader())
+				.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+				.disable(MapperFeature.DEFAULT_VIEW_INCLUSION)
+				.build(), delegate);
 	}
 
 	/**
-	 * Create a new {@link ProjectingMessageConverter} using the given {@link ObjectMapper}.
+	 * Create a new {@link JacksonProjectingMessageConverter} using the given {@link ObjectMapper}.
 	 * @param mapper must not be {@literal null}.
 	 * @param delegate the delegate converter for outbound and non-interfaces.
 	 * @since 2.3
 	 */
-	public ProjectingMessageConverter(ObjectMapper mapper, MessagingMessageConverter delegate) {
+	public JacksonProjectingMessageConverter(ObjectMapper mapper, MessagingMessageConverter delegate) {
 		Assert.notNull(mapper, "ObjectMapper must not be null");
 		Assert.notNull(delegate, "'delegate' cannot be null");
 
-		JacksonMappingProvider provider = new JacksonMappingProvider(mapper);
+		MappingProvider provider = new Jackson3MappingProvider(mapper);
 		MethodInterceptorFactory interceptorFactory = new JsonProjectingMethodInterceptorFactory(provider);
 
 		SpelAwareProxyProjectionFactory factory = new SpelAwareProxyProjectionFactory();
@@ -150,6 +158,43 @@ public class ProjectingMessageConverter extends MessagingMessageConverter {
 		throw new ConversionException(String.format(
 				"Unsupported payload type '%s'. Expected 'String', 'Bytes', or 'byte[]'",
 				source.getClass()), null);
+	}
+
+	/**
+	 * A {@link MappingProvider} implementation for Jackson 3.
+	 * Until respective implementation is there in json-path library.
+	 * @param objectMapper Jackson 3 {@link ObjectMapper}
+	 */
+	private record Jackson3MappingProvider(ObjectMapper objectMapper) implements MappingProvider {
+
+		@Override
+		public <T> @Nullable T map(@Nullable Object source, Class<T> targetType, Configuration configuration) {
+			if (source == null) {
+				return null;
+			}
+			try {
+				return this.objectMapper.convertValue(source, targetType);
+			}
+			catch (Exception ex) {
+				throw new MappingException(ex);
+			}
+		}
+
+		@Override
+		public <T> @Nullable T map(@Nullable Object source, final TypeRef<T> targetType, Configuration configuration) {
+			if (source == null) {
+				return null;
+			}
+			JavaType type = this.objectMapper.constructType(targetType.getType());
+
+			try {
+				return this.objectMapper.convertValue(source, type);
+			}
+			catch (Exception ex) {
+				throw new MappingException(ex);
+			}
+		}
+
 	}
 
 }

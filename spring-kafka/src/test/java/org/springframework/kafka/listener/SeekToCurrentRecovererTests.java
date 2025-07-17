@@ -47,7 +47,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
-import org.springframework.kafka.support.serializer.JsonDeserializer;
+import org.springframework.kafka.support.serializer.JacksonJsonDeserializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 import org.springframework.kafka.test.context.EmbeddedKafka;
@@ -92,7 +92,7 @@ public class SeekToCurrentRecovererTests {
 		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "seekTestMaxFailures", false);
 		props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props, null,
-				new ErrorHandlingDeserializer<>(new JsonDeserializer<>(String.class)));
+				new ErrorHandlingDeserializer<>(new JacksonJsonDeserializer<>(String.class)));
 		ContainerProperties containerProps = new ContainerProperties(topic1);
 		containerProps.setPollTimeout(10_000);
 
