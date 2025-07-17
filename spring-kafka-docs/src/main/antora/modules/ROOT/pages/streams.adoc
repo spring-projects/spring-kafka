@@ -151,13 +151,13 @@ streamsBuilderFactoryBean.addListener(new KafkaStreamsMicrometerListener(meterRe
 [[serde]]
 == Streams JSON Serialization and Deserialization
 
-For serializing and deserializing data when reading or writing to topics or state stores in JSON format, Spring for Apache Kafka provides a `JsonSerde` implementation that uses JSON, delegating to the `JsonSerializer` and `JsonDeserializer` described in xref:kafka/serdes.adoc[Serialization, Deserialization, and Message Conversion].
-The `JsonSerde` implementation provides the same configuration options through its constructor (target type or `ObjectMapper`).
-In the following example, we use the `JsonSerde` to serialize and deserialize the `Cat` payload of a Kafka stream (the `JsonSerde` can be used in a similar fashion wherever an instance is required):
+For serializing and deserializing data when reading or writing to topics or state stores in JSON format, Spring for Apache Kafka provides a `JacksonJsonSerde` implementation that uses JSON, delegating to the `JacksonJsonSerializer` and `JacksonJsonDeserializer` described in xref:kafka/serdes.adoc[Serialization, Deserialization, and Message Conversion].
+The `JacksonJsonSerde` implementation provides the same configuration options through its constructor (target type or `ObjectMapper`).
+In the following example, we use the `JacksonJsonSerde` to serialize and deserialize the `Cat` payload of a Kafka stream (the `JacksonJsonSerde` can be used in a similar fashion wherever an instance is required):
 
 [source,java]
 ----
-stream.through(Serdes.Integer(), new JsonSerde<>(Cat.class), "cats");
+stream.through(Serdes.Integer(), new JacksonJsonSerde<>(Cat.class), "cats");
 ----
 
 When constructing the serializer/deserializer programmatically for use in the producer/consumer factory, since version 2.3, you can use the fluent API, which simplifies configuration.
@@ -165,10 +165,10 @@ When constructing the serializer/deserializer programmatically for use in the pr
 [source, java]
 ----
 stream.through(
-    new JsonSerde<>(MyKeyType.class)
+    new JackonJsonSerde<>(MyKeyType.class)
         .forKeys()
         .noTypeInfo(),
-    new JsonSerde<>(MyValueType.class)
+    new JacksonJsonSerde<>(MyValueType.class)
         .noTypeInfo(),
     "myTypes");
 ----

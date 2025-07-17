@@ -32,7 +32,7 @@ import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory
 import org.springframework.kafka.core.*
 import org.springframework.kafka.listener.*
-import org.springframework.kafka.support.converter.JsonMessageConverter
+import org.springframework.kafka.support.converter.JacksonJsonMessageConverter
 import org.springframework.kafka.test.EmbeddedKafkaBroker
 import org.springframework.kafka.test.context.EmbeddedKafka
 import org.springframework.test.annotation.DirtiesContext
@@ -170,7 +170,7 @@ class EnableKafkaKotlinTests {
 				= ConcurrentKafkaListenerContainerFactory()
 			factory.setConsumerFactory(kcf())
 			factory.setCommonErrorHandler(eh)
-			factory.setRecordMessageConverter(JsonMessageConverter())
+			factory.setRecordMessageConverter(JacksonJsonMessageConverter())
 			return factory
 		}
 

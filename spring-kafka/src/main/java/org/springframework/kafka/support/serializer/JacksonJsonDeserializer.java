@@ -16,7 +16,6 @@
 
 package org.springframework.kafka.support.serializer;
 
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -29,22 +28,22 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.MapperFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectReader;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.type.TypeFactory;
 
 import org.springframework.core.ResolvableType;
-import org.springframework.kafka.support.JacksonUtils;
-import org.springframework.kafka.support.mapping.AbstractJavaTypeMapper;
-import org.springframework.kafka.support.mapping.DefaultJackson2JavaTypeMapper;
-import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper;
-import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper.TypePrecedence;
+import org.springframework.kafka.support.converter.JacksonJsonMessageConverter;
+import org.springframework.kafka.support.mapping.DefaultJacksonJavaTypeMapper;
 import org.springframework.kafka.support.mapping.JacksonJavaTypeMapper;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
@@ -52,7 +51,7 @@ import org.springframework.util.StringUtils;
 
 /**
  * Generic {@link org.apache.kafka.common.serialization.Deserializer Deserializer} for
- * receiving JSON from Kafka and return Java objects.
+ * receiving JSON from Kafka and return Java objects. Based on Jackson 3.
  * <p>
  * IMPORTANT: Configuration must be done completely with property setters or via
  * {@link #configure(Map, boolean)}, not a mixture. If any setters have been called,
@@ -60,18 +59,11 @@ import org.springframework.util.StringUtils;
  *
  * @param <T> class of the entity, representing messages
  *
- * @author Igor Stepanov
- * @author Artem Bilan
- * @author Gary Russell
- * @author Yanming Zhou
- * @author Elliot Kennedy
- * @author Torsten Schleede
- * @author Ivan Ponomarev
- * @author Omer Celik
- * @deprecated since 4.0 in favor of {@link JacksonJavaTypeMapper} for Jackson 3.
+ * @author Soby Chacko
+ *
+ * @since 4.0
  */
-@Deprecated(forRemoval = true, since = "4.0")
-public class JsonDeserializer<T> implements Deserializer<T> {
+public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 
 	/**
 	 * Kafka config property for the default key type if no header.
@@ -107,13 +99,13 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 
 	/**
 	 * A method name to determine the {@link JavaType} to deserialize the key to:
-	 * 'com.Foo.deserialize'. See {@link JsonTypeResolver#resolveType} for the signature.
+	 * 'com.Foo.deserialize'. See {@link JacksonJsonTypeResolver#resolveType} for the signature.
 	 */
 	public static final String KEY_TYPE_METHOD = "spring.json.key.type.method";
 
 	/**
 	 * A method name to determine the {@link JavaType} to deserialize the value to:
-	 * 'com.Foo.deserialize'. See {@link JsonTypeResolver#resolveType} for the signature.
+	 * 'com.Foo.deserialize'. See {@link JacksonJsonTypeResolver#resolveType} for the signature.
 	 */
 	public static final String VALUE_TYPE_METHOD = "spring.json.value.type.method";
 
@@ -134,7 +126,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 
 	protected @Nullable JavaType targetType; // NOSONAR
 
-	protected Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper(); // NOSONAR
+	protected JacksonJavaTypeMapper typeMapper = new DefaultJacksonJavaTypeMapper(); // NOSONAR
 
 	private @Nullable ObjectReader reader;
 
@@ -144,7 +136,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 
 	private boolean useTypeHeaders = true;
 
-	private @Nullable JsonTypeResolver typeResolver;
+	private @Nullable JacksonJsonTypeResolver typeResolver;
 
 	private boolean setterCalled;
 
@@ -152,10 +144,12 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 
 	private final Lock trustedPackagesLock = new ReentrantLock();
 
+	private final TypeFactory typeFactory = TypeFactory.createDefaultInstance();
+
 	/**
 	 * Construct an instance with a default {@link ObjectMapper}.
 	 */
-	public JsonDeserializer() {
+	public JacksonJsonDeserializer() {
 		this((Class<T>) null, true);
 	}
 
@@ -163,7 +157,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * Construct an instance with the provided {@link ObjectMapper}.
 	 * @param objectMapper a custom object mapper.
 	 */
-	public JsonDeserializer(ObjectMapper objectMapper) {
+	public JacksonJsonDeserializer(ObjectMapper objectMapper) {
 		this((Class<T>) null, objectMapper, true);
 	}
 
@@ -172,7 +166,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * {@link ObjectMapper}.
 	 * @param targetType the target type to use if no type info headers are present.
 	 */
-	public JsonDeserializer(@Nullable Class<? super T> targetType) {
+	public JacksonJsonDeserializer(@Nullable Class<? super T> targetType) {
 		this(targetType, true);
 	}
 
@@ -181,7 +175,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @param targetType the target type reference to use if no type info headers are present.
 	 * @since 2.3
 	 */
-	public JsonDeserializer(@Nullable TypeReference<? super T> targetType) {
+	public JacksonJsonDeserializer(@Nullable TypeReference<? super T> targetType) {
 		this(targetType, true);
 	}
 
@@ -190,7 +184,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @param targetType the target java type to use if no type info headers are present.
 	 * @since 2.3
 	 */
-	public JsonDeserializer(@Nullable JavaType targetType) {
+	public JacksonJsonDeserializer(@Nullable JavaType targetType) {
 		this(targetType, true);
 	}
 
@@ -202,8 +196,12 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * type if not.
 	 * @since 2.2
 	 */
-	public JsonDeserializer(@Nullable Class<? super T> targetType, boolean useHeadersIfPresent) {
-		this(targetType, JacksonUtils.enhancedObjectMapper(), useHeadersIfPresent);
+	public JacksonJsonDeserializer(@Nullable Class<? super T> targetType, boolean useHeadersIfPresent) {
+		this(targetType, JsonMapper.builder()
+				.findAndAddModules(JacksonJsonMessageConverter.class.getClassLoader())
+				.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+				.disable(MapperFeature.DEFAULT_VIEW_INCLUSION)
+				.build(), useHeadersIfPresent);
 	}
 
 	/**
@@ -214,8 +212,12 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * type if not.
 	 * @since 2.3
 	 */
-	public JsonDeserializer(@Nullable TypeReference<? super T> targetType, boolean useHeadersIfPresent) {
-		this(targetType, JacksonUtils.enhancedObjectMapper(), useHeadersIfPresent);
+	public JacksonJsonDeserializer(@Nullable TypeReference<? super T> targetType, boolean useHeadersIfPresent) {
+		this(targetType, JsonMapper.builder()
+				.findAndAddModules(JacksonJsonMessageConverter.class.getClassLoader())
+				.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+				.disable(MapperFeature.DEFAULT_VIEW_INCLUSION)
+				.build(), useHeadersIfPresent);
 	}
 
 	/**
@@ -226,8 +228,12 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * type if not.
 	 * @since 2.3
 	 */
-	public JsonDeserializer(@Nullable JavaType targetType, boolean useHeadersIfPresent) {
-		this(targetType, JacksonUtils.enhancedObjectMapper(), useHeadersIfPresent);
+	public JacksonJsonDeserializer(@Nullable JavaType targetType, boolean useHeadersIfPresent) {
+		this(targetType, JsonMapper.builder()
+				.findAndAddModules(JacksonJsonMessageConverter.class.getClassLoader())
+				.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+				.disable(MapperFeature.DEFAULT_VIEW_INCLUSION)
+				.build(), useHeadersIfPresent);
 	}
 
 	/**
@@ -235,7 +241,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @param targetType the target type to use if no type info headers are present.
 	 * @param objectMapper the mapper. type if not.
 	 */
-	public JsonDeserializer(Class<? super T> targetType, ObjectMapper objectMapper) {
+	public JacksonJsonDeserializer(Class<? super T> targetType, ObjectMapper objectMapper) {
 		this(targetType, objectMapper, true);
 	}
 
@@ -244,7 +250,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @param targetType the target type reference to use if no type info headers are present.
 	 * @param objectMapper the mapper. type if not.
 	 */
-	public JsonDeserializer(TypeReference<? super T> targetType, ObjectMapper objectMapper) {
+	public JacksonJsonDeserializer(TypeReference<? super T> targetType, ObjectMapper objectMapper) {
 		this(targetType, objectMapper, true);
 	}
 
@@ -253,7 +259,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @param targetType the target java type to use if no type info headers are present.
 	 * @param objectMapper the mapper. type if not.
 	 */
-	public JsonDeserializer(@Nullable JavaType targetType, ObjectMapper objectMapper) {
+	public JacksonJsonDeserializer(@Nullable JavaType targetType, ObjectMapper objectMapper) {
 		this(targetType, objectMapper, true);
 	}
 
@@ -266,7 +272,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * type if not.
 	 * @since 2.2
 	 */
-	public JsonDeserializer(@Nullable Class<? super T> targetType, ObjectMapper objectMapper,
+	public JacksonJsonDeserializer(@Nullable Class<? super T> targetType, ObjectMapper objectMapper,
 			boolean useHeadersIfPresent) {
 
 		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
@@ -275,11 +281,11 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		if (targetType == null) {
 			Class<?> genericType = ResolvableType.forClass(getClass()).getSuperType().resolveGeneric(0);
 			if (genericType != null) {
-				javaType = TypeFactory.defaultInstance().constructType(genericType);
+				javaType = this.typeFactory.constructType(genericType);
 			}
 		}
 		else {
-			javaType = TypeFactory.defaultInstance().constructType(targetType);
+			javaType = this.typeFactory.constructType(targetType);
 		}
 
 		initialize(javaType, useHeadersIfPresent);
@@ -294,10 +300,10 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * type if not.
 	 * @since 2.3
 	 */
-	public JsonDeserializer(@Nullable TypeReference<? super T> targetType, ObjectMapper objectMapper,
+	public JacksonJsonDeserializer(@Nullable TypeReference<? super T> targetType, ObjectMapper objectMapper,
 			boolean useHeadersIfPresent) {
 
-		this(targetType != null ? TypeFactory.defaultInstance().constructType(targetType) : null,
+		this(targetType != null ? TypeFactory.createDefaultInstance().constructType(targetType) : null,
 				objectMapper, useHeadersIfPresent);
 	}
 
@@ -310,7 +316,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * type if not.
 	 * @since 2.3
 	 */
-	public JsonDeserializer(@Nullable JavaType targetType, ObjectMapper objectMapper,
+	public JacksonJsonDeserializer(@Nullable JavaType targetType, ObjectMapper objectMapper,
 			boolean useHeadersIfPresent) {
 
 		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
@@ -318,28 +324,28 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		initialize(targetType, useHeadersIfPresent);
 	}
 
-	public Jackson2JavaTypeMapper getTypeMapper() {
+	public JacksonJavaTypeMapper getTypeMapper() {
 		return this.typeMapper;
 	}
 
 	/**
-	 * Set a customized type mapper. If the mapper is an {@link AbstractJavaTypeMapper},
+	 * Set a customized type mapper. If the mapper is a {@link JacksonJavaTypeMapper},
 	 * any class mappings configured in the mapper will be added to the trusted packages.
 	 * @param typeMapper the type mapper.
 	 * @since 2.1
 	 */
-	public void setTypeMapper(Jackson2JavaTypeMapper typeMapper) {
+	public void setTypeMapper(JacksonJavaTypeMapper typeMapper) {
 		Assert.notNull(typeMapper, "'typeMapper' cannot be null");
 		this.typeMapper = typeMapper;
 		this.typeMapperExplicitlySet = true;
-		if (typeMapper instanceof AbstractJavaTypeMapper) {
-			addMappingsToTrusted(((AbstractJavaTypeMapper) typeMapper).getIdClassMapping());
+		if (typeMapper instanceof DefaultJacksonJavaTypeMapper) {
+			addMappingsToTrusted(((DefaultJacksonJavaTypeMapper) typeMapper).getIdClassMapping());
 		}
 		this.setterCalled = true;
 	}
 
 	/**
-	 * Configure the default Jackson2JavaTypeMapper to use key type headers.
+	 * Configure the default JacksonJavaTypeMapper to use key type headers.
 	 * @param isKey Use key type headers if true
 	 * @since 2.1.3
 	 */
@@ -350,8 +356,8 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 
 	private void doSetUseTypeMapperForKey(boolean isKey) {
 		if (!this.typeMapperExplicitlySet
-				&& this.getTypeMapper() instanceof AbstractJavaTypeMapper) {
-			((AbstractJavaTypeMapper) this.getTypeMapper()).setUseForKey(isKey);
+				&& this.getTypeMapper() instanceof DefaultJacksonJavaTypeMapper) {
+			((DefaultJacksonJavaTypeMapper) this.getTypeMapper()).setUseForKey(isKey);
 		}
 	}
 
@@ -394,12 +400,12 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	}
 
 	/**
-	 * Set a {@link JsonTypeResolver} that receives the data to be deserialized and the headers
+	 * Set a {@link JacksonJsonTypeResolver} that receives the data to be deserialized and the headers
 	 * and returns a JavaType.
 	 * @param typeResolver the resolver.
 	 * @since 2.5.3
 	 */
-	public void setTypeResolver(JsonTypeResolver typeResolver) {
+	public void setTypeResolver(JacksonJsonTypeResolver typeResolver) {
 		this.typeResolver = typeResolver;
 		this.setterCalled = true;
 	}
@@ -422,8 +428,8 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 						StringUtils.delimitedListToStringArray((String) configs.get(TRUSTED_PACKAGES), ",", " \r\n\f\t"));
 			}
 			if (configs.containsKey(TYPE_MAPPINGS) && !this.typeMapperExplicitlySet
-					&& this.typeMapper instanceof AbstractJavaTypeMapper) {
-				((AbstractJavaTypeMapper) this.typeMapper).setIdClassMapping(createMappings(configs));
+					&& this.typeMapper instanceof DefaultJacksonJavaTypeMapper) {
+				((DefaultJacksonJavaTypeMapper) this.typeMapper).setIdClassMapping(createMappings(configs));
 			}
 			if (configs.containsKey(REMOVE_TYPE_INFO_HEADERS)) {
 				this.removeTypeHeaders = Boolean.parseBoolean(configs.get(REMOVE_TYPE_INFO_HEADERS).toString());
@@ -469,8 +475,8 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		catch (IllegalStateException e) {
 			if (e.getCause() instanceof NoSuchMethodException) {
 				this.typeResolver = (topic, data, headers) ->
-					(JavaType) SerializationUtils.propertyToMethodInvokingFunction(
-							method, byte[].class, getClass().getClassLoader()).apply(data, headers);
+						(JavaType) SerializationUtils.propertyToMethodInvokingFunction(
+								method, byte[].class, getClass().getClassLoader()).apply(data, headers);
 				return;
 			}
 			throw e;
@@ -482,7 +488,8 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 			if (configs.containsKey(USE_TYPE_INFO_HEADERS)) {
 				this.useTypeHeaders = Boolean.parseBoolean(configs.get(USE_TYPE_INFO_HEADERS).toString());
 			}
-			this.typeMapper.setTypePrecedence(this.useTypeHeaders ? TypePrecedence.TYPE_ID : TypePrecedence.INFERRED);
+			this.typeMapper.setTypePrecedence(this.useTypeHeaders ? JacksonJavaTypeMapper.TypePrecedence.TYPE_ID
+					: JacksonJavaTypeMapper.TypePrecedence.INFERRED);
 		}
 	}
 
@@ -497,7 +504,8 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 			}
 
 			if (javaType != null) {
-				initialize(javaType, TypePrecedence.TYPE_ID.equals(this.typeMapper.getTypePrecedence()));
+				initialize(javaType, JacksonJavaTypeMapper.TypePrecedence.TYPE_ID.equals(
+						this.typeMapper.getTypePrecedence()));
 			}
 		}
 		catch (ClassNotFoundException | LinkageError e) {
@@ -516,16 +524,17 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		}
 
 		addTargetPackageToTrusted();
-		this.typeMapper.setTypePrecedence(useHeadersIfPresent ? TypePrecedence.TYPE_ID : TypePrecedence.INFERRED);
+		this.typeMapper.setTypePrecedence(useHeadersIfPresent ? JacksonJavaTypeMapper.TypePrecedence.TYPE_ID
+				: JacksonJavaTypeMapper.TypePrecedence.INFERRED);
 	}
 
 	private JavaType setupTargetType(Map<String, ?> configs, String key) throws ClassNotFoundException, LinkageError {
 		if (configs.get(key) instanceof Class) {
-			return TypeFactory.defaultInstance().constructType((Class<?>) configs.get(key));
+			return this.typeFactory.constructType((Class<?>) configs.get(key));
 		}
 		else if (configs.get(key) instanceof String) {
-			return TypeFactory.defaultInstance()
-							.constructType(ClassUtils.forName((String) configs.get(key), null));
+			return this.typeFactory
+					.constructType(ClassUtils.forName((String) configs.get(key), null));
 		}
 		else {
 			throw new IllegalStateException(key + " must be Class or String");
@@ -587,7 +596,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		if (this.typeResolver != null) {
 			javaType = this.typeResolver.resolveType(topic, data, headers);
 		}
-		if (javaType == null && this.typeMapper.getTypePrecedence().equals(TypePrecedence.TYPE_ID)) {
+		if (javaType == null && this.typeMapper.getTypePrecedence().equals(JacksonJavaTypeMapper.TypePrecedence.TYPE_ID)) {
 			javaType = this.typeMapper.toJavaType(headers);
 		}
 		if (javaType != null) {
@@ -603,7 +612,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		try {
 			return deserReader.readValue(data);
 		}
-		catch (IOException ex) {
+		catch (Exception ex) {
 			throw new SerializationException("Can't deserialize data  from topic [" + topic + "]", ex);
 		}
 	}
@@ -624,7 +633,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 		try {
 			return localReader.readValue(data);
 		}
-		catch (IOException e) {
+		catch (Exception e) {
 			throw new SerializationException("Can't deserialize data [" + Arrays.toString(data) +
 					"] from topic [" + topic + "]", e);
 		}
@@ -642,7 +651,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @return new instance of deserializer with type changes
 	 * @since 2.6
 	 */
-	public <X> JsonDeserializer<X> copyWithType(Class<? super X> newTargetType) {
+	public <X> JacksonJsonDeserializer<X> copyWithType(Class<? super X> newTargetType) {
 		return copyWithType(this.objectMapper.constructType(newTargetType));
 	}
 
@@ -653,7 +662,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @return new instance of deserializer with type changes
 	 * @since 2.6
 	 */
-	public <X> JsonDeserializer<X> copyWithType(TypeReference<? super X> newTargetType) {
+	public <X> JacksonJsonDeserializer<X> copyWithType(TypeReference<? super X> newTargetType) {
 		return copyWithType(this.objectMapper.constructType(newTargetType.getType()));
 	}
 
@@ -664,8 +673,8 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @return new instance of deserializer with type changes
 	 * @since 2.6
 	 */
-	public <X> JsonDeserializer<X> copyWithType(JavaType newTargetType) {
-		JsonDeserializer<X> result = new JsonDeserializer<>(newTargetType, this.objectMapper, this.useTypeHeaders);
+	public <X> JacksonJsonDeserializer<X> copyWithType(JavaType newTargetType) {
+		JacksonJsonDeserializer<X> result = new JacksonJsonDeserializer<>(newTargetType, this.objectMapper, this.useTypeHeaders);
 		result.removeTypeHeaders = this.removeTypeHeaders;
 		result.typeMapper = this.typeMapper;
 		result.typeMapperExplicitlySet = this.typeMapperExplicitlySet;
@@ -680,7 +689,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @return the deserializer.
 	 * @since 2.3
 	 */
-	public JsonDeserializer<T> forKeys() {
+	public JacksonJsonDeserializer<T> forKeys() {
 		setUseTypeMapperForKey(true);
 		return this;
 	}
@@ -691,7 +700,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @since 2.3
 	 * @see #setRemoveTypeHeaders(boolean)
 	 */
-	public JsonDeserializer<T> dontRemoveTypeHeaders() {
+	public JacksonJsonDeserializer<T> dontRemoveTypeHeaders() {
 		setRemoveTypeHeaders(false);
 		return this;
 	}
@@ -702,19 +711,19 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @since 2.3
 	 * @see #setUseTypeHeaders(boolean)
 	 */
-	public JsonDeserializer<T> ignoreTypeHeaders() {
+	public JacksonJsonDeserializer<T> ignoreTypeHeaders() {
 		setUseTypeHeaders(false);
 		return this;
 	}
 
 	/**
-	 * Use the supplied {@link Jackson2JavaTypeMapper}.
+	 * Use the supplied {@link JacksonJavaTypeMapper}.
 	 * @param mapper the mapper.
 	 * @return the deserializer.
 	 * @since 2.3
-	 * @see #setTypeMapper(Jackson2JavaTypeMapper)
+	 * @see #setTypeMapper(JacksonJavaTypeMapper)
 	 */
-	public JsonDeserializer<T> typeMapper(Jackson2JavaTypeMapper mapper) {
+	public JacksonJsonDeserializer<T> typeMapper(JacksonJavaTypeMapper mapper) {
 		setTypeMapper(mapper);
 		return this;
 	}
@@ -725,7 +734,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @return the deserializer.
 	 * @since 2,5
 	 */
-	public JsonDeserializer<T> trustedPackages(String... packages) {
+	public JacksonJsonDeserializer<T> trustedPackages(String... packages) {
 		try {
 			this.trustedPackagesLock.lock();
 			Assert.isTrue(!this.typeMapperExplicitlySet, "When using a custom type mapper, set the trusted packages there");
@@ -744,7 +753,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @return the deserializer.
 	 * @since 2.5
 	 */
-	public JsonDeserializer<T> typeFunction(BiFunction<byte[], Headers, JavaType> typeFunction) {
+	public JacksonJsonDeserializer<T> typeFunction(BiFunction<byte[], Headers, JavaType> typeFunction) {
 		setTypeFunction(typeFunction);
 		return this;
 	}
@@ -756,12 +765,12 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @return the deserializer.
 	 * @since 2.5.3
 	 */
-	public JsonDeserializer<T> typeResolver(JsonTypeResolver resolver) {
+	public JacksonJsonDeserializer<T> typeResolver(JacksonJsonTypeResolver resolver) {
 		setTypeResolver(resolver);
 		return this;
 	}
 
-	private JsonTypeResolver buildTypeResolver(String methodProperty) {
+	private JacksonJsonTypeResolver buildTypeResolver(String methodProperty) {
 		int lastDotPosn = methodProperty.lastIndexOf('.');
 		Assert.state(lastDotPosn > 1,
 				"the method property needs to be a class name followed by the method name, separated by '.'");

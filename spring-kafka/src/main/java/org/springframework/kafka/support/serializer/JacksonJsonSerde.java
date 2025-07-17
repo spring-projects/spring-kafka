@@ -18,71 +18,89 @@ package org.springframework.kafka.support.serializer;
 
 import java.util.Map;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.common.serialization.Serde;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.MapperFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import org.springframework.core.ResolvableType;
-import org.springframework.kafka.support.JacksonUtils;
-import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper;
+import org.springframework.kafka.support.converter.JacksonJsonMessageConverter;
+import org.springframework.kafka.support.mapping.JacksonJavaTypeMapper;
 import org.springframework.util.Assert;
 
 /**
  * A {@link org.apache.kafka.common.serialization.Serde} that provides serialization and
- * deserialization in JSON format.
+ * deserialization in JSON format. Based on Jackson 3.
  * <p>
- * The implementation delegates to underlying {@link JsonSerializer} and
- * {@link JsonDeserializer} implementations.
+ * The implementation delegates to underlying {@link JacksonJsonSerializer} and
+ * {@link JacksonJsonDeserializer} implementations.
  *
  * @param <T> target class for serialization/deserialization
  *
- * @author Marius Bogoevici
- * @author Elliot Kennedy
- * @author Gary Russell
- * @author Ivan Ponomarev
+ * @author Soby Chacko
  *
- * @since 1.1.5
- * @deprecated since 4.0 in favor of {@link JacksonJsonSerde} for Jackson 3.
+ * @since 4.0
  */
-@Deprecated(forRemoval = true, since = "4.0")
-public class JsonSerde<T> implements Serde<T> {
+public class JacksonJsonSerde<T> implements Serde<T> {
 
-	private final JsonSerializer<T> jsonSerializer;
+	private final JacksonJsonSerializer<T> jsonSerializer;
 
-	private final JsonDeserializer<T> jsonDeserializer;
+	private final JacksonJsonDeserializer<T> jsonDeserializer;
 
-	public JsonSerde() {
-		this((JavaType) null, JacksonUtils.enhancedObjectMapper());
+	public JacksonJsonSerde() {
+		this((JavaType) null, JsonMapper.builder()
+				.findAndAddModules(JacksonJsonMessageConverter.class.getClassLoader())
+				.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+				.disable(MapperFeature.DEFAULT_VIEW_INCLUSION)
+				.build());
 	}
 
-	public JsonSerde(@Nullable Class<? super T> targetType) {
-		this(targetType, JacksonUtils.enhancedObjectMapper());
+	public JacksonJsonSerde(@Nullable Class<? super T> targetType) {
+		this(targetType, JsonMapper.builder()
+				.findAndAddModules(JacksonJsonMessageConverter.class.getClassLoader())
+				.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+				.disable(MapperFeature.DEFAULT_VIEW_INCLUSION)
+				.build());
 	}
 
-	public JsonSerde(@Nullable TypeReference<? super T> targetType) {
-		this(targetType, JacksonUtils.enhancedObjectMapper());
+	public JacksonJsonSerde(@Nullable TypeReference<? super T> targetType) {
+		this(targetType, JsonMapper.builder()
+				.findAndAddModules(JacksonJsonMessageConverter.class.getClassLoader())
+				.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+				.disable(MapperFeature.DEFAULT_VIEW_INCLUSION)
+				.build());
 	}
 
-	public JsonSerde(@Nullable JavaType targetType) {
-		this(targetType, JacksonUtils.enhancedObjectMapper());
+	public JacksonJsonSerde(@Nullable JavaType targetType) {
+		this(targetType, JsonMapper.builder()
+				.findAndAddModules(JacksonJsonMessageConverter.class.getClassLoader())
+				.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+				.disable(MapperFeature.DEFAULT_VIEW_INCLUSION)
+				.build());
 	}
 
-	public JsonSerde(ObjectMapper objectMapper) {
+	public JacksonJsonSerde(ObjectMapper objectMapper) {
 		this((JavaType) null, objectMapper);
 	}
 
-	public JsonSerde(@Nullable TypeReference<? super T> targetType, ObjectMapper objectMapper) {
+	public JacksonJsonSerde(@Nullable TypeReference<? super T> targetType, ObjectMapper objectMapper) {
 		this(targetType == null ? null : objectMapper.constructType(targetType.getType()), objectMapper);
 	}
 
-	public JsonSerde(@Nullable Class<? super T> targetType, ObjectMapper objectMapper) {
+	public JacksonJsonSerde(@Nullable Class<? super T> targetType, ObjectMapper objectMapper) {
 		this(targetType == null ? null : objectMapper.constructType(targetType), objectMapper);
 	}
 
-	public JsonSerde(@Nullable JavaType targetTypeArg, @Nullable ObjectMapper objectMapperArg) {
-		ObjectMapper objectMapper = objectMapperArg == null ? JacksonUtils.enhancedObjectMapper() : objectMapperArg;
+	public JacksonJsonSerde(@Nullable JavaType targetTypeArg, @Nullable ObjectMapper objectMapperArg) {
+		ObjectMapper objectMapper = objectMapperArg == null ? JsonMapper.builder()
+				.findAndAddModules(JacksonJsonMessageConverter.class.getClassLoader())
+				.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+				.disable(MapperFeature.DEFAULT_VIEW_INCLUSION)
+				.build() : objectMapperArg;
 		JavaType actualJavaType;
 		if (targetTypeArg != null) {
 			actualJavaType = targetTypeArg;
@@ -91,11 +109,11 @@ public class JsonSerde<T> implements Serde<T> {
 			Class<?> resolvedGeneric = ResolvableType.forClass(getClass()).getSuperType().resolveGeneric(0);
 			actualJavaType = resolvedGeneric != null ? objectMapper.constructType(resolvedGeneric) : null;
 		}
-		this.jsonSerializer = new JsonSerializer<>(actualJavaType, objectMapper);
-		this.jsonDeserializer = new JsonDeserializer<>(actualJavaType, objectMapper);
+		this.jsonSerializer = new JacksonJsonSerializer<>(actualJavaType, objectMapper);
+		this.jsonDeserializer = new JacksonJsonDeserializer<>(actualJavaType, objectMapper);
 	}
 
-	public JsonSerde(JsonSerializer<T> jsonSerializer, JsonDeserializer<T> jsonDeserializer) {
+	public JacksonJsonSerde(JacksonJsonSerializer<T> jsonSerializer, JacksonJsonDeserializer<T> jsonDeserializer) {
 		Assert.notNull(jsonSerializer, "'jsonSerializer' must not be null.");
 		Assert.notNull(jsonDeserializer, "'jsonDeserializer' must not be null.");
 		this.jsonSerializer = jsonSerializer;
@@ -115,12 +133,12 @@ public class JsonSerde<T> implements Serde<T> {
 	}
 
 	@Override
-	public JsonSerializer<T> serializer() {
+	public JacksonJsonSerializer<T> serializer() {
 		return this.jsonSerializer;
 	}
 
 	@Override
-	public JsonDeserializer<T> deserializer() {
+	public JacksonJsonDeserializer<T> deserializer() {
 		return this.jsonDeserializer;
 	}
 
@@ -131,9 +149,9 @@ public class JsonSerde<T> implements Serde<T> {
 	 * @return new instance of serde with type changes
 	 * @since 2.6
 	 */
-	public <X> JsonSerde<X> copyWithType(Class<? super X> newTargetType) {
-		return new JsonSerde<>(this.jsonSerializer.copyWithType(newTargetType),
-			this.jsonDeserializer.copyWithType(newTargetType));
+	public <X> JacksonJsonSerde<X> copyWithType(Class<? super X> newTargetType) {
+		return new JacksonJsonSerde<>(this.jsonSerializer.copyWithType(newTargetType),
+				this.jsonDeserializer.copyWithType(newTargetType));
 	}
 
 	/**
@@ -143,9 +161,9 @@ public class JsonSerde<T> implements Serde<T> {
 	 * @return new instance of serde with type changes
 	 * @since 2.6
 	 */
-	public <X> JsonSerde<X> copyWithType(TypeReference<? super X> newTargetType) {
-		return new JsonSerde<>(this.jsonSerializer.copyWithType(newTargetType),
-			this.jsonDeserializer.copyWithType(newTargetType));
+	public <X> JacksonJsonSerde<X> copyWithType(TypeReference<? super X> newTargetType) {
+		return new JacksonJsonSerde<>(this.jsonSerializer.copyWithType(newTargetType),
+				this.jsonDeserializer.copyWithType(newTargetType));
 	}
 
 	/**
@@ -155,9 +173,9 @@ public class JsonSerde<T> implements Serde<T> {
 	 * @return new instance of serde with type changes
 	 * @since 2.6
 	 */
-	public <X> JsonSerde<X> copyWithType(JavaType newTargetType) {
-		return new JsonSerde<>(this.jsonSerializer.copyWithType(newTargetType),
-			this.jsonDeserializer.copyWithType(newTargetType));
+	public <X> JacksonJsonSerde<X> copyWithType(JavaType newTargetType) {
+		return new JacksonJsonSerde<>(this.jsonSerializer.copyWithType(newTargetType),
+				this.jsonDeserializer.copyWithType(newTargetType));
 	}
 
 	// Fluent API
@@ -167,7 +185,7 @@ public class JsonSerde<T> implements Serde<T> {
 	 * @return the serde.
 	 * @since 2.3
 	 */
-	public JsonSerde<T> forKeys() {
+	public JacksonJsonSerde<T> forKeys() {
 		this.jsonSerializer.forKeys();
 		this.jsonDeserializer.forKeys();
 		return this;
@@ -178,7 +196,7 @@ public class JsonSerde<T> implements Serde<T> {
 	 * @return the serde.
 	 * @since 2.3
 	 */
-	public JsonSerde<T> noTypeInfo() {
+	public JacksonJsonSerde<T> noTypeInfo() {
 		this.jsonSerializer.noTypeInfo();
 		return this;
 	}
@@ -188,7 +206,7 @@ public class JsonSerde<T> implements Serde<T> {
 	 * @return the serde.
 	 * @since 2.3
 	 */
-	public JsonSerde<T> dontRemoveTypeHeaders() {
+	public JacksonJsonSerde<T> dontRemoveTypeHeaders() {
 		this.jsonDeserializer.dontRemoveTypeHeaders();
 		return this;
 	}
@@ -198,18 +216,18 @@ public class JsonSerde<T> implements Serde<T> {
 	 * @return the serde.
 	 * @since 2.3
 	 */
-	public JsonSerde<T> ignoreTypeHeaders() {
+	public JacksonJsonSerde<T> ignoreTypeHeaders() {
 		this.jsonDeserializer.ignoreTypeHeaders();
 		return this;
 	}
 
 	/**
-	 * Use the supplied {@link Jackson2JavaTypeMapper}.
+	 * Use the supplied {@link JacksonJavaTypeMapper}.
 	 * @param mapper the mapper.
 	 * @return the serde.
 	 * @since 2.3
 	 */
-	public JsonSerde<T> typeMapper(Jackson2JavaTypeMapper mapper) {
+	public JacksonJsonSerde<T> typeMapper(JacksonJavaTypeMapper mapper) {
 		this.jsonSerializer.setTypeMapper(mapper);
 		this.jsonDeserializer.setTypeMapper(mapper);
 		return this;

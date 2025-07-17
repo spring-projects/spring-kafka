@@ -124,13 +124,13 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.TopicPartitionOffset;
-import org.springframework.kafka.support.converter.JsonMessageConverter;
-import org.springframework.kafka.support.converter.ProjectingMessageConverter;
+import org.springframework.kafka.support.converter.JacksonJsonMessageConverter;
+import org.springframework.kafka.support.converter.JacksonProjectingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
-import org.springframework.kafka.support.converter.StringJsonMessageConverter;
-import org.springframework.kafka.support.mapping.DefaultJackson2JavaTypeMapper;
-import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper;
-import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper.TypePrecedence;
+import org.springframework.kafka.support.converter.StringJacksonJsonMessageConverter;
+import org.springframework.kafka.support.mapping.DefaultJacksonJavaTypeMapper;
+import org.springframework.kafka.support.mapping.JacksonJavaTypeMapper;
+import org.springframework.kafka.support.mapping.JacksonJavaTypeMapper.TypePrecedence;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -681,10 +681,10 @@ public class EnableKafkaIntegrationTests {
 		ConcurrentMessageListenerContainer<?, ?> container =
 				(ConcurrentMessageListenerContainer<?, ?>) registry.getListenerContainer("jsonHeaders");
 		Object messageListener = container.getContainerProperties().getMessageListener();
-		DefaultJackson2JavaTypeMapper typeMapper = KafkaTestUtils.getPropertyValue(messageListener,
-				"messageConverter.typeMapper", DefaultJackson2JavaTypeMapper.class);
+		DefaultJacksonJavaTypeMapper typeMapper = KafkaTestUtils.getPropertyValue(messageListener,
+				"messageConverter.typeMapper", DefaultJacksonJavaTypeMapper.class);
 		try {
-			typeMapper.setTypePrecedence(Jackson2JavaTypeMapper.TypePrecedence.TYPE_ID);
+			typeMapper.setTypePrecedence(JacksonJavaTypeMapper.TypePrecedence.TYPE_ID);
 			assertThat(container).isNotNull();
 			Foo foo = new Foo("bar");
 			this.kafkaJsonTemplate.send(MessageBuilder.withPayload(foo)
@@ -696,7 +696,7 @@ public class EnableKafkaIntegrationTests {
 			assertThat(this.listener.foo.getBar()).isEqualTo("bar");
 		}
 		finally {
-			typeMapper.setTypePrecedence(Jackson2JavaTypeMapper.TypePrecedence.INFERRED);
+			typeMapper.setTypePrecedence(JacksonJavaTypeMapper.TypePrecedence.INFERRED);
 		}
 	}
 
@@ -1338,8 +1338,8 @@ public class EnableKafkaIntegrationTests {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
-			JsonMessageConverter converter = new JsonMessageConverter();
-			DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
+			JacksonJsonMessageConverter converter = new JacksonJsonMessageConverter();
+			DefaultJacksonJavaTypeMapper typeMapper = new DefaultJacksonJavaTypeMapper();
 			typeMapper.addTrustedPackages("*");
 			converter.setTypeMapper(typeMapper);
 			factory.setRecordMessageConverter(converter);
@@ -1354,8 +1354,8 @@ public class EnableKafkaIntegrationTests {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
-			JsonMessageConverter converter = new JsonMessageConverter();
-			DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
+			JacksonJsonMessageConverter converter = new JacksonJsonMessageConverter();
+			DefaultJacksonJavaTypeMapper typeMapper = new DefaultJacksonJavaTypeMapper();
 			typeMapper.addTrustedPackages("*");
 			typeMapper.setTypePrecedence(TypePrecedence.TYPE_ID);
 			converter.setTypeMapper(typeMapper);
@@ -1368,11 +1368,11 @@ public class EnableKafkaIntegrationTests {
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory());
-			JsonMessageConverter converter = new JsonMessageConverter();
-			DefaultJackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
+			JacksonJsonMessageConverter converter = new JacksonJsonMessageConverter();
+			DefaultJacksonJavaTypeMapper typeMapper = new DefaultJacksonJavaTypeMapper();
 			typeMapper.addTrustedPackages("*");
 			converter.setTypeMapper(typeMapper);
-			factory.setRecordMessageConverter(new ProjectingMessageConverter(converter));
+			factory.setRecordMessageConverter(new JacksonProjectingMessageConverter(converter));
 			factory.setChangeConsumerThreadName(true);
 			factory.setThreadNameSupplier(container -> "foo." + container.getListenerId());
 			return factory;
@@ -1687,7 +1687,7 @@ public class EnableKafkaIntegrationTests {
 		@Bean
 		public KafkaTemplate<Integer, String> kafkaJsonTemplate() {
 			KafkaTemplate<Integer, String> kafkaTemplate = new KafkaTemplate<>(producerFactory());
-			kafkaTemplate.setMessageConverter(new StringJsonMessageConverter());
+			kafkaTemplate.setMessageConverter(new StringJacksonJsonMessageConverter());
 			kafkaTemplate.setMicrometerTags(Collections.singletonMap("extraTag", "bar"));
 			kafkaTemplate.setMicrometerTagsProvider(pr -> Map.of("topic", pr.topic()));
 			return kafkaTemplate;

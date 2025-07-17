@@ -35,6 +35,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.core.log.LogMessage;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.DefaultJacksonKafkaHeaderMapper;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.JacksonPresent;
 import org.springframework.kafka.support.KafkaHeaderMapper;
@@ -65,6 +66,7 @@ import org.springframework.messaging.support.MessageBuilder;
  * @author Hope Kim
  * @author Borahm Lee
  * @author Artem Bilan
+ * @author Soby Chacko
  *
  * @since 1.1
  */
@@ -100,6 +102,9 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 		this.recordConverter = recordConverter;
 		if (JacksonPresent.isJackson2Present()) {
 			this.headerMapper = new DefaultKafkaHeaderMapper();
+		}
+		else if (JacksonPresent.isJackson3Present()) {
+			this.headerMapper = new DefaultJacksonKafkaHeaderMapper();
 		}
 	}
 

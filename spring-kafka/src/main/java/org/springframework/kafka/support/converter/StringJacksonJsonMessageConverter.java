@@ -16,34 +16,28 @@
 
 package org.springframework.kafka.support.converter;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.databind.ObjectMapper;
 
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.Message;
 
 /**
- * JSON Message converter - String on output, String, Bytes, or byte[] on input. Used in
+ * JSON Message converter based on Jackson 3 - String on output, String, Bytes, or byte[] on input. Used in
  * conjunction with Kafka
  * {@code StringSerializer/(StringDeserializer, BytesDeserializer, or ByteArrayDeserializer)}.
  * Consider using the ByteArrayJsonMessageConverter instead to avoid unnecessary
  * {@code String->byte[]} conversion.
  *
- * @author Gary Russell
- * @author Artem Bilan
- * @author Dariusz Szablinski
- * @author Vladimir Loginov
- *
- * @deprecated since 4.0 in favor of {@link StringJacksonJsonMessageConverter} for Jackson 3.
+ * @author Soby Chacko
+ * @since 4.0
  */
-@Deprecated(forRemoval = true, since = "4.0")
-public class StringJsonMessageConverter extends JsonMessageConverter {
+public class StringJacksonJsonMessageConverter extends JacksonJsonMessageConverter {
 
-	public StringJsonMessageConverter() {
+	public StringJacksonJsonMessageConverter() {
 	}
 
-	public StringJsonMessageConverter(ObjectMapper objectMapper) {
+	public StringJacksonJsonMessageConverter(ObjectMapper objectMapper) {
 		super(objectMapper);
 	}
 
@@ -54,7 +48,7 @@ public class StringJsonMessageConverter extends JsonMessageConverter {
 					? null
 					: getObjectMapper().writeValueAsString(message.getPayload());
 		}
-		catch (JsonProcessingException e) {
+		catch (Exception e) {
 			throw new ConversionException("Failed to convert to JSON", message, e);
 		}
 	}

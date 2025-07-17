@@ -103,6 +103,7 @@ import org.springframework.kafka.support.LogIfLevelEnabled.Level;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.TopicPartitionOffset.SeekPosition;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
+import org.springframework.kafka.support.serializer.JacksonJsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -2121,7 +2122,7 @@ public class KafkaMessageListenerContainerTests {
 		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "testJson", false);
 		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
 		props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, consumerConfigValueDefaultType);
-		DefaultKafkaConsumerFactory<Integer, Foo> cf = new DefaultKafkaConsumerFactory<>(props, null, new JsonDeserializer<>(Foo.class));
+		DefaultKafkaConsumerFactory<Integer, Foo> cf = new DefaultKafkaConsumerFactory<>(props, null, new JacksonJsonDeserializer<>(Foo.class));
 		ContainerProperties containerProps = new ContainerProperties(topic24);
 
 		final CountDownLatch latch = new CountDownLatch(1);
@@ -2245,7 +2246,7 @@ public class KafkaMessageListenerContainerTests {
 		props.put("spring.deserializer.value.delegate.class",
 				"org.apache.kafka.common.serialization.StringDeserializer");
 		ErrorHandlingDeserializer<Foo1> errorHandlingDeserializer =
-				new ErrorHandlingDeserializer<>(new JsonDeserializer<>(Foo1.class, false));
+				new ErrorHandlingDeserializer<>(new JacksonJsonDeserializer<>(Foo1.class, false));
 
 		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props,
 				new IntegerDeserializer(), errorHandlingDeserializer);

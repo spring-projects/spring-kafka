@@ -34,7 +34,9 @@ import org.springframework.messaging.Message;
  * @author Vladimir Loginov
  * @since 2.3
  *
+ * @deprecated since 4.0 in favor of {@link ByteArrayJacksonJsonMessageConverter} for Jackson 3.
  */
+@Deprecated(forRemoval = true, since = "4.0")
 public class ByteArrayJsonMessageConverter extends JsonMessageConverter {
 
 	public ByteArrayJsonMessageConverter() {
