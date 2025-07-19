@@ -82,3 +82,9 @@ More details are available in xref:kafka/headers.adoc#multi-value-header[Support
 
 Listener containers now support interceptor customization via `getRecordInterceptor()`.
 See the xref:kafka/receiving-messages/message-listener-container.adoc#message-listener-container[Message Listener Containers] section for details.
+
+[[x40-batch-observability]]
+=== Per-Record Observation in Batch Listeners
+
+It is now possible to get an observation for each record when using a batch listener.
+See xref:kafka/micrometer.adoc#batch-listener-obs[Observability for Batch Listeners] for more information.
