@@ -35,8 +35,16 @@ public final class CorrelationKey {
 
 	private final byte[] correlationId;
 
+	/**
+	 * Cached hex representation of the {@link #correlationId}.
+	 * TODO: Migrate to stable values JEP 502
+	 */
 	private @Nullable String asString;
 
+	/**
+	 * Cached hash code.
+	 * TODO: Migrate to stable values JEP 502
+	 */
 	private volatile @Nullable Integer hashCode;
 
 	public CorrelationKey(byte[] correlationId) { // NOSONAR array reference
