@@ -21,7 +21,7 @@ plugins {
 	id 'io.spring.nohttp' version '0.0.11'
 	id 'io.spring.dependency-management' version '1.1.7' apply false
 	id 'io.freefair.aggregate-javadoc' version '8.11'
-	id 'io.spring.nullability' version '0.0.1' apply false
+	id 'io.spring.nullability' version '0.0.2' apply false
 }
 
 apply plugin: 'io.spring.nohttp'
