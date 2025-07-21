@@ -4313,14 +4313,14 @@ public class KafkaMessageListenerContainerTests {
 		TopicPartitionOffset[] topicPartition = new TopicPartitionOffset[] {
 				new TopicPartitionOffset("test-topic", 0) };
 
-		CountDownLatch latch = new CountDownLatch(4); // 3 failures, 1 success
+		AtomicInteger attempts = new AtomicInteger(3); // 3 failures, 1 success
+		// Cannot be lambda: Mockito doesn't mock final classes
 		BatchMessageListener<Integer, String> batchMessageListener = spy(
 				new BatchMessageListener<Integer, String>() { // Cannot be lambda: Mockito doesn't mock final classes
 
 					@Override
 					public void onMessage(List<ConsumerRecord<Integer, String>> data) {
-						latch.countDown();
-						if (latch.getCount() > 0) {
+						if (attempts.getAndDecrement() > 0) {
 							throw new IllegalArgumentException("Failed record");
 						}
 					}
@@ -4334,12 +4334,19 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setMessageListener(batchMessageListener);
 		containerProps.setClientId("clientId");
 
+		CountDownLatch successLatch = new CountDownLatch(1);
+
 		BatchInterceptor<Integer, String> batchInterceptor = spy(new BatchInterceptor<Integer, String>() {
 
 			@Override
 			public ConsumerRecords<Integer, String> intercept(ConsumerRecords<Integer, String> records,
 															Consumer<Integer, String> consumer) {
 				return records;
+			}
+
+			@Override
+			public void success(ConsumerRecords<Integer, String> records, Consumer<Integer, String> consumer) {
+				successLatch.countDown();
 			}
 
 		});
@@ -4349,7 +4356,8 @@ public class KafkaMessageListenerContainerTests {
 		container.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(0, 3)));
 		container.setBatchInterceptor(batchInterceptor);
 		container.start();
-		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+
+		assertThat(successLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
 		InOrder inOrder = inOrder(batchInterceptor, batchMessageListener, consumer);
 		for (int i = 0; i < 3; i++) {
