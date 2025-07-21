@@ -142,7 +142,7 @@ Share containers support a subset of the container properties available for regu
 * `clientId`: The client ID for the consumer
 * `kafkaConsumerProperties`: Additional consumer properties
 
-[NOTE]
+[IMPORTANT]
 ====
 Share consumers do not support:
 

@@ -94,4 +94,4 @@ See xref:kafka/micrometer.adoc#batch-listener-obs[Observability for Batch Listen
 
 Spring for Apache Kafka now provides early access support for Kafka Queues through share consumers, which are part of Apache Kafka 4.0.0 and implement KIP-932.
 This enables cooperative consumption where multiple consumers can consume from the same partitions simultaneously, providing better load distribution compared to traditional consumer groups.
-See xref:kafka/kafka-queues.adoc[Kafka Queues (Share Consumer)] for more information.
+See xref:kafka/kafka-queues.adoc[] for more information.
