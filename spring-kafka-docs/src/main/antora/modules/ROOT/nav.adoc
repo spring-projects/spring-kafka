@@ -46,6 +46,7 @@
 *** xref:kafka/tombstones.adoc[]
 *** xref:kafka/annotation-error-handling.adoc[]
 *** xref:kafka/kerberos.adoc[]
+*** xref:kafka/kafka-queues.adoc[]
 ** xref:retrytopic.adoc[]
 *** xref:retrytopic/how-the-pattern-works.adoc[]
 *** xref:retrytopic/back-off-delay-precision.adoc[]
