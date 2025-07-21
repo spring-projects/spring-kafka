@@ -43,7 +43,8 @@ public final class MicrometerHolder {
 
 	private final Map<String, Timer> meters = new ConcurrentHashMap<>();
 
-	private final @Nullable MeterRegistry registry;
+	@SuppressWarnings("NullAway.Init")
+	private final MeterRegistry registry;
 
 	private final String timerName;
 
@@ -69,13 +70,15 @@ public final class MicrometerHolder {
 		if (context == null) {
 			throw new IllegalStateException("No micrometer registry present");
 		}
+		MeterRegistry meterRegistry;
 		try {
-			this.registry = context.getBeanProvider(MeterRegistry.class).getIfUnique();
+			meterRegistry = context.getBeanProvider(MeterRegistry.class).getIfUnique();
 		}
 		catch (NoUniqueBeanDefinitionException ex) {
 			throw new IllegalStateException(ex);
 		}
-		if (this.registry != null) {
+		if (meterRegistry != null) {
+			this.registry = meterRegistry;
 			this.timerName = timerName;
 			this.timerDesc = timerDesc;
 			this.name = name;
