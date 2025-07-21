@@ -1,0 +1,274 @@
+[[kafka-queues]]
+= Kafka Queues (Share Consumer)
+
+Starting with version 4.0, Spring for Apache Kafka provides support for Kafka Queues through share consumers, which are part of Apache Kafka 4.0.0 and implement https://cwiki.apache.org/confluence/display/KAFKA/KIP-932%3A+Queues+for+Kafka[KIP-932 (Queues for Kafka)].
+This feature is currently in early access.
+
+Kafka Queues enable a different consumption model compared to traditional consumer groups.
+Instead of the partition-based assignment model where each partition is exclusively assigned to one consumer, share consumers can cooperatively consume from the same partitions, with records being distributed among the consumers in the share group.
+
+[[share-consumer-factory]]
+== Share Consumer Factory
+
+The `ShareConsumerFactory` is responsible for creating share consumer instances.
+Spring Kafka provides the `DefaultShareConsumerFactory` implementation.
+
+[[share-consumer-factory-configuration]]
+=== Configuration
+
+You can configure a `DefaultShareConsumerFactory` similar to how you configure a regular `ConsumerFactory`:
+
+[source,java]
+----
+@Bean
+public ShareConsumerFactory<String, String> shareConsumerFactory() {
+    Map<String, Object> props = new HashMap<>();
+    props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    props.put(ConsumerConfig.GROUP_ID_CONFIG, "my-share-group");
+    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+    return new DefaultShareConsumerFactory<>(props);
+}
+----
+
+[[share-consumer-factory-constructors]]
+=== Constructor Options
+
+The `DefaultShareConsumerFactory` provides several constructor options:
+
+[source,java]
+----
+// Basic configuration
+new DefaultShareConsumerFactory<>(configs);
+
+// With deserializer suppliers
+new DefaultShareConsumerFactory<>(configs, keyDeserializerSupplier, valueDeserializerSupplier);
+
+// With deserializer instances
+new DefaultShareConsumerFactory<>(configs, keyDeserializer, valueDeserializer, configureDeserializers);
+----
+
+[[share-consumer-factory-deserializers]]
+=== Deserializer Configuration
+
+You can configure deserializers in several ways:
+
+1. **Via Configuration Properties** (recommended for simple cases):
++
+[source,java]
+----
+props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+----
+
+2. **Via Setters**:
++
+[source,java]
+----
+factory.setKeyDeserializer(new StringDeserializer());
+factory.setValueDeserializer(new StringDeserializer());
+----
+
+3. **Via Suppliers** (for cases where deserializers need to be created per consumer):
++
+[source,java]
+----
+factory.setKeyDeserializerSupplier(() -> new StringDeserializer());
+factory.setValueDeserializerSupplier(() -> new StringDeserializer());
+----
+
+Set `configureDeserializers` to `false` if your deserializers are already fully configured and should not be reconfigured by the factory.
+
+[[share-consumer-factory-listeners]]
+=== Lifecycle Listeners
+
+You can add listeners to monitor the lifecycle of share consumers:
+
+[source,java]
+----
+factory.addListener(new ShareConsumerFactory.Listener<String, String>() {
+    @Override
+    public void consumerAdded(String id, ShareConsumer<String, String> consumer) {
+        // Called when a new consumer is created
+        System.out.println("Consumer added: " + id);
+    }
+
+    @Override
+    public void consumerRemoved(String id, ShareConsumer<String, String> consumer) {
+        // Called when a consumer is closed
+        System.out.println("Consumer removed: " + id);
+    }
+});
+----
+
+[[share-message-listener-containers]]
+== Share Message Listener Containers
+
+[[share-kafka-message-listener-container]]
+=== ShareKafkaMessageListenerContainer
+
+The `ShareKafkaMessageListenerContainer` provides a simple, single-threaded container for share consumers:
+
+[source,java]
+----
+@Bean
+public ShareKafkaMessageListenerContainer<String, String> container(
+        ShareConsumerFactory<String, String> shareConsumerFactory) {
+
+    ContainerProperties containerProps = new ContainerProperties("my-topic");
+    containerProps.setGroupId("my-share-group");
+
+    ShareKafkaMessageListenerContainer<String, String> container =
+        new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProps);
+
+    container.setupMessageListener(new MessageListener<String, String>() {
+        @Override
+        public void onMessage(ConsumerRecord<String, String> record) {
+            System.out.println("Received: " + record.value());
+        }
+    });
+
+    return container;
+}
+----
+
+[[share-container-properties]]
+=== Container Properties
+
+Share containers support a subset of the container properties available for regular consumers:
+
+* `topics`: Array of topic names to subscribe to
+* `groupId`: The share group ID
+* `clientId`: The client ID for the consumer
+* `kafkaConsumerProperties`: Additional consumer properties
+
+[NOTE]
+====
+Share consumers do not support:
+
+* Explicit partition assignment (`TopicPartitionOffset`)
+* Topic patterns
+* Manual offset management
+====
+
+[[share-annotation-driven-listeners]]
+== Annotation-Driven Listeners
+
+[[share-kafka-listener]]
+=== @KafkaListener with Share Consumers
+
+You can use `@KafkaListener` with share consumers by configuring a `ShareKafkaListenerContainerFactory`:
+
+[source,java]
+----
+@Configuration
+@EnableKafka
+public class ShareConsumerConfig {
+
+    @Bean
+    public ShareConsumerFactory<String, String> shareConsumerFactory() {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        return new DefaultShareConsumerFactory<>(props);
+    }
+
+    @Bean
+    public ShareKafkaListenerContainerFactory<String, String> shareKafkaListenerContainerFactory(
+            ShareConsumerFactory<String, String> shareConsumerFactory) {
+        return new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
+    }
+}
+----
+
+Then use it in your listener:
+
+[source,java]
+----
+@Component
+public class ShareMessageListener {
+
+    @KafkaListener(
+        topics = "my-queue-topic",
+        containerFactory = "shareKafkaListenerContainerFactory",
+        groupId = "my-share-group"
+    )
+    public void listen(ConsumerRecord<String, String> record) {
+        System.out.println("Received from queue: " + record.value());
+        // Record is automatically acknowledged with ACCEPT
+    }
+}
+----
+
+[[share-group-configuration]]
+== Share Group Configuration
+
+Share groups require specific broker configuration to function properly.
+For testing with embedded Kafka, use:
+
+[source,java]
+----
+@EmbeddedKafka(
+    topics = {"my-queue-topic"},
+    brokerProperties = {
+        "unstable.api.versions.enable=true",
+        "group.coordinator.rebalance.protocols=classic,share",
+        "share.coordinator.state.topic.replication.factor=1",
+        "share.coordinator.state.topic.min.isr=1"
+    }
+)
+----
+
+[[share-group-offset-reset]]
+=== Share Group Offset Reset
+
+Unlike regular consumer groups, share groups use a different configuration for offset reset behavior.
+You can configure this programmatically:
+
+[source,java]
+----
+private void configureShareGroup(String bootstrapServers, String groupId) throws Exception {
+    Map<String, Object> adminProps = new HashMap<>();
+    adminProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+
+    try (Admin admin = Admin.create(adminProps)) {
+        ConfigResource configResource = new ConfigResource(ConfigResource.Type.GROUP, groupId);
+        ConfigEntry configEntry = new ConfigEntry("share.auto.offset.reset", "earliest");
+
+        Map<ConfigResource, Collection<AlterConfigOp>> configs = Map.of(
+            configResource, List.of(new AlterConfigOp(configEntry, AlterConfigOp.OpType.SET))
+        );
+
+        admin.incrementalAlterConfigs(configs).all().get();
+    }
+}
+----
+
+[[share-record-acknowledgment]]
+== Record Acknowledgment
+
+Currently, share consumers automatically acknowledge records with `AcknowledgeType.ACCEPT` after successful processing.
+More sophisticated acknowledgment patterns will be added in future versions.
+
+[[share-differences-from-regular-consumers]]
+== Differences from Regular Consumers
+
+Share consumers differ from regular consumers in several key ways:
+
+1. **No Partition Assignment**: Share consumers cannot be assigned specific partitions
+2. **No Topic Patterns**: Share consumers do not support subscribing to topic patterns
+3. **Cooperative Consumption**: Multiple consumers in the same share group can consume from the same partitions simultaneously
+4. **Automatic Acknowledgment**: Records are automatically acknowledged after processing
+5. **Different Group Management**: Share groups use different coordinator protocols
+
+[[share-limitations-and-considerations]]
+== Limitations and Considerations
+
+[[share-current-limitations]]
+=== Current Limitations
+
+* **Early Access**: This feature is in early access and may change in future versions
+* **Limited Acknowledgment Options**: Only automatic `ACCEPT` acknowledgment is currently supported
+* **No Message Converters**: Message converters are not yet supported for share consumers
+* **Single-Threaded**: Share consumer containers currently run in single-threaded mode
