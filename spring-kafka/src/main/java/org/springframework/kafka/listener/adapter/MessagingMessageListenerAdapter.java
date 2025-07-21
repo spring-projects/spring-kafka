@@ -559,6 +559,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				}
 				else {
 					Throwable cause = t instanceof CompletionException ? t.getCause() : t;
+					cause = cause == null ? t : cause;
 					observation.error(cause);
 					asyncFailure(request, acknowledgment, consumer, cause, source);
 				}

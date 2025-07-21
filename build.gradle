@@ -1,5 +1,5 @@
 buildscript {
-	ext.kotlinVersion = '2.1.21'
+	ext.kotlinVersion = '2.2.0'
 	ext.isCI = System.getenv('GITHUB_ACTION')
 	repositories {
 		gradlePluginPortal()
@@ -54,7 +54,7 @@ ext {
 	assertjVersion = '3.27.3'
 	awaitilityVersion = '4.3.0'
 	hamcrestVersion = '3.0'
-	hibernateValidationVersion = '8.0.2.Final'
+	hibernateValidationVersion = '9.0.1.Final'
 	jacksonBomVersion = '2.19.2'
 	jaywayJsonPathVersion = '2.9.0'
 	junit4Version = '4.13.2'
@@ -63,15 +63,15 @@ ext {
 	kotlinCoroutinesVersion = '1.10.2'
 	log4jVersion = '2.24.3'
 	micrometerDocsVersion = '1.0.4'
-	micrometerVersion = '1.15.2'
-	micrometerTracingVersion = '1.5.2'
+	micrometerVersion = '1.16.0-M1'
+	micrometerTracingVersion = '1.6.0-M1'
 	mockitoVersion = '5.18.0'
-	reactorVersion = '2025.0.0-SNAPSHOT'
+	reactorVersion = '2025.0.0-M5'
 	scalaVersion = '2.13'
 	springBootVersion = '3.5.0' // docs module
-	springDataVersion = '2025.1.0-SNAPSHOT'
+	springDataVersion = '2025.1.0-M4'
 	springRetryVersion = '2.0.12'
-	springVersion = '7.0.0-SNAPSHOT'
+	springVersion = '7.0.0-M7'
 
 	idPrefix = 'kafka'
 
