@@ -63,6 +63,8 @@ import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.kafka.support.serializer.ParseStringDeserializer;
 import org.springframework.kafka.support.serializer.StringOrBytesSerializer;
 import org.springframework.kafka.support.serializer.ToStringSerializer;
+import org.springframework.kafka.support.serializer.JsonTypeResolver;
+import org.springframework.kafka.support.mapping.DefaultJackson2JavaTypeMapper;
 
 /**
  * {@link RuntimeHintsRegistrar} for Spring for Apache Kafka.
@@ -132,6 +134,8 @@ public class KafkaRuntimeHints implements RuntimeHintsRegistrar {
 				.forEach(type -> reflectionHints.registerType(type, builder ->
 						builder.withMembers(MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS)));
 
+		registerJsonDeserializerDynamicHints(reflectionHints, classLoader);
+
 		hints.proxies().registerJdkProxy(AopProxyUtils.completeJdkProxyInterfaces(Consumer.class));
 		hints.proxies().registerJdkProxy(AopProxyUtils.completeJdkProxyInterfaces(Producer.class));
 
@@ -142,6 +146,88 @@ public class KafkaRuntimeHints implements RuntimeHintsRegistrar {
 				"org.apache.kafka.streams.errors.LogAndFailProcessingExceptionHandler")
 			.forEach(type -> reflectionHints.registerTypeIfPresent(classLoader, type, builder ->
 					builder.withMembers(MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS)));
+	}
+
+	/**
+	 * Register enhanced runtime hints for JsonDeserializer dynamic class loading and reflection.
+	 * This method addresses GraalVM native image issues with:
+	 * - ClassUtils.forName() calls in buildTypeResolver()
+	 * - Dynamic method invocation for type resolution
+	 * - JsonTypeResolver implementations
+	 * 
+	 * @param reflectionHints the reflection hints to register
+	 * @param classLoader the class loader to use for type resolution
+	 */
+	private void registerJsonDeserializerDynamicHints(ReflectionHints reflectionHints, @Nullable ClassLoader classLoader) {
+		// JsonTypeResolver interface and implementations need full reflection access
+		reflectionHints.registerType(JsonTypeResolver.class, builder ->
+				builder.withMembers(MemberCategory.INVOKE_DECLARED_METHODS,
+							MemberCategory.INVOKE_PUBLIC_METHODS));
+
+		// DefaultJackson2JavaTypeMapper for dynamic type mapping
+		reflectionHints.registerType(DefaultJackson2JavaTypeMapper.class, builder ->
+				builder.withMembers(MemberCategory.INVOKE_DECLARED_CONSTRUCTORS,
+							MemberCategory.INVOKE_DECLARED_METHODS));
+
+		// Jackson JavaType for dynamic type resolution
+		reflectionHints.registerTypeIfPresent(classLoader, "com.fasterxml.jackson.databind.JavaType", builder ->
+				builder.withMembers(MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS,
+							MemberCategory.INVOKE_PUBLIC_METHODS,
+							MemberCategory.INVOKE_DECLARED_METHODS));
+
+		// TypeFactory for dynamic type construction in buildTypeResolver
+		reflectionHints.registerTypeIfPresent(classLoader, "com.fasterxml.jackson.databind.type.TypeFactory", builder ->
+				builder.withMembers(MemberCategory.INVOKE_PUBLIC_METHODS,
+							MemberCategory.INVOKE_DECLARED_METHODS));
+
+		// Method class for reflection-based invocation in buildTypeResolver
+		reflectionHints.registerType(java.lang.reflect.Method.class, builder ->
+				builder.withMembers(MemberCategory.INVOKE_PUBLIC_METHODS));
+
+		// Class.forName and related reflection utilities
+		reflectionHints.registerType(Class.class, builder ->
+				builder.withMembers(MemberCategory.INVOKE_PUBLIC_METHODS));
+
+		// SerializationUtils for propertyToMethodInvokingFunction fallback
+		reflectionHints.registerTypeIfPresent(classLoader, 
+				"org.springframework.kafka.support.serializer.SerializationUtils", builder ->
+				builder.withMembers(MemberCategory.INVOKE_PUBLIC_METHODS,
+							MemberCategory.INVOKE_DECLARED_METHODS));
+
+		// Common Jackson types that might be dynamically loaded
+		Stream.of(
+				"com.fasterxml.jackson.core.type.TypeReference",
+				"com.fasterxml.jackson.databind.ObjectMapper",
+				"com.fasterxml.jackson.databind.ObjectReader")
+			.forEach(type -> reflectionHints.registerTypeIfPresent(classLoader, type, builder ->
+					builder.withMembers(MemberCategory.INVOKE_PUBLIC_CONSTRUCTORS,
+								MemberCategory.INVOKE_PUBLIC_METHODS)));
+
+		// Register common pattern for user-defined type resolver methods
+		// These are typically static methods that return JavaType
+		registerCommonTypeResolverPatterns(reflectionHints, classLoader);
+	}
+
+	/**
+	 * Register hints for common type resolver patterns used in JsonDeserializer.
+	 * This helps with VALUE_TYPE_METHOD and KEY_TYPE_METHOD configurations.
+	 */
+	private void registerCommonTypeResolverPatterns(ReflectionHints reflectionHints, @Nullable ClassLoader classLoader) {
+		// Register pattern for static methods that return JavaType
+		// This is a preventive measure for common type resolver patterns
+		
+		// If there are known type resolver classes in the classpath, register them
+		// This is where users can extend to add their specific type resolvers
+		
+		// Example pattern: register classes that contain "TypeResolver" in their name
+		// This is a common naming convention for type resolver classes
+		Stream.of(
+				"org.springframework.kafka.support.mapping.AbstractJavaTypeMapper",
+				"org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper",
+				"org.springframework.kafka.support.mapping.ClassMapper")
+			.forEach(type -> reflectionHints.registerTypeIfPresent(classLoader, type, builder ->
+					builder.withMembers(MemberCategory.INVOKE_DECLARED_METHODS,
+								MemberCategory.INVOKE_PUBLIC_METHODS)));
 	}
 
 }
