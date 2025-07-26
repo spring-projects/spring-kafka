@@ -36,6 +36,7 @@ import org.springframework.util.StringUtils;
  *
  * @author Gary Russell
  * @author Sagnhyeok An
+ * @author Choi Wang Gyu
  * @since 2.3
  *
  */
@@ -510,29 +511,52 @@ public class ConsumerProperties {
 	}
 
 	protected final String renderProperties() {
-		return renderTopics()
-				+ "\n pollTimeout=" + this.pollTimeout
-				+ (this.groupId != null ? "\n groupId=" + this.groupId : "")
-				+ (StringUtils.hasText(this.clientId) ? "\n clientId=" + this.clientId : "")
-				+ (this.consumerRebalanceListener != null
-						? "\n consumerRebalanceListener=" + this.consumerRebalanceListener
-						: "")
-				+ (this.commitCallback != null ? "\n commitCallback=" + this.commitCallback : "")
-				+ (this.offsetAndMetadataProvider != null ? "\n offsetAndMetadataProvider=" + this.offsetAndMetadataProvider : "")
-				+ "\n syncCommits=" + this.syncCommits
-				+ (this.syncCommitTimeout != null ? "\n syncCommitTimeout=" + this.syncCommitTimeout : "")
-				+ (!this.kafkaConsumerProperties.isEmpty() ? "\n properties=" + this.kafkaConsumerProperties : "")
-				+ "\n authExceptionRetryInterval=" + this.authExceptionRetryInterval
-				+ "\n commitRetries=" + this.commitRetries
-				+ "\n fixTxOffsets" + this.fixTxOffsets;
+		StringBuilder sb = new StringBuilder();
+		renderTopics(sb);
+		sb.append("\n pollTimeout=").append(this.pollTimeout);
+		
+		if (this.groupId != null) {
+			sb.append("\n groupId=").append(this.groupId);
+		}
+		if (StringUtils.hasText(this.clientId)) {
+			sb.append("\n clientId=").append(this.clientId);
+		}
+		if (this.consumerRebalanceListener != null) {
+			sb.append("\n consumerRebalanceListener=").append(this.consumerRebalanceListener);
+		}
+		if (this.commitCallback != null) {
+			sb.append("\n commitCallback=").append(this.commitCallback);
+		}
+		if (this.offsetAndMetadataProvider != null) {
+			sb.append("\n offsetAndMetadataProvider=").append(this.offsetAndMetadataProvider);
+		}
+		
+		sb.append("\n syncCommits=").append(this.syncCommits);
+		
+		if (this.syncCommitTimeout != null) {
+			sb.append("\n syncCommitTimeout=").append(this.syncCommitTimeout);
+		}
+		if (!this.kafkaConsumerProperties.isEmpty()) {
+			sb.append("\n properties=").append(this.kafkaConsumerProperties);
+		}
+		
+		sb.append("\n authExceptionRetryInterval=").append(this.authExceptionRetryInterval);
+		sb.append("\n commitRetries=").append(this.commitRetries);
+		sb.append("\n fixTxOffsets=").append(this.fixTxOffsets);
+		
+		return sb.toString();
 	}
 
-	private String renderTopics() {
-		return (this.topics != null ? "\n topics=" + Arrays.toString(this.topics) : "")
-				+ (this.topicPattern != null ? "\n topicPattern=" + this.topicPattern : "")
-				+ (this.topicPartitions != null
-						? "\n topicPartitions=" + Arrays.toString(this.topicPartitions)
-						: "");
+	private void renderTopics(StringBuilder sb) {
+		if (this.topics != null) {
+			sb.append("\n topics=").append(Arrays.toString(this.topics));
+		}
+		if (this.topicPattern != null) {
+			sb.append("\n topicPattern=").append(this.topicPattern);
+		}
+		if (this.topicPartitions != null) {
+			sb.append("\n topicPartitions=").append(Arrays.toString(this.topicPartitions));
+		}
 	}
 
 }
