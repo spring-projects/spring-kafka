@@ -332,31 +332,25 @@ public class KafkaAdmin extends KafkaResourceFactory
 		Map<String, NewTopic> topicsForRetry = newTopicsMap.entrySet().stream()
 				.filter(entry -> entry.getValue() instanceof TopicForRetryable)
 				.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
-		for (Entry<String, NewTopic> entry : topicsForRetry.entrySet()) {
-			Iterator<Entry<String, NewTopic>> iterator = newTopicsMap.entrySet().iterator();
-			boolean remove = false;
-			while (iterator.hasNext()) {
-				Entry<String, NewTopic> nt = iterator.next();
-				// if we have a NewTopic and TopicForRetry with the same name, remove the latter
-				if (nt.getValue().name().equals(entry.getValue().name())
-						&& !(nt.getValue() instanceof TopicForRetryable)) {
+		Map<String, String> topicNameToMapKey = new HashMap<>();
+		for (Entry<String, NewTopic> entry : newTopicsMap.entrySet()) {
+			topicNameToMapKey.put(entry.getValue().name(), entry.getKey());
+		}
 
-					remove = true;
-					break;
+		for (Entry<String, NewTopic> entry : topicsForRetry.entrySet()) {
+			String retryTopicName = entry.getValue().name();
+			String keyInNewTopicsMap = topicNameToMapKey.get(retryTopicName);
+			if (keyInNewTopicsMap != null) {
+				NewTopic existing = newTopicsMap.get(keyInNewTopicsMap);
+				if (!(existing instanceof TopicForRetryable)) {
+					newTopicsMap.remove(keyInNewTopicsMap);
 				}
 			}
-			if (remove) {
-				newTopicsMap.remove(entry.getKey());
-			}
 		}
-		Iterator<Entry<String, NewTopic>> iterator = newTopicsMap.entrySet().iterator();
-		while (iterator.hasNext()) {
-			Entry<String, NewTopic> next = iterator.next();
-			if (!this.createOrModifyTopic.test(next.getValue())) {
-				iterator.remove();
-			}
-		}
-		return new ArrayList<>(newTopicsMap.values());
+		Map<String, NewTopic> filteredMap = newTopicsMap.entrySet().stream()
+				.filter(entry -> this.createOrModifyTopic.test(entry.getValue()))
+				.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+		return new ArrayList<>(filteredMap.values());
 	}
 
 	@Override
