@@ -1192,11 +1192,10 @@ public class ContainerProperties extends ConsumerProperties {
 	 * @param value the property value
 	 */
 	private void appendProperty(StringBuilder sb, String name, @Nullable Object value) {
-		if(value != null){
+		if (value != null) {
 			sb.append("\n ").append(name).append("=").append(value);
 		}
 	}
-
 
 	/**
 	 * Append a property with "enabled/not enabled" formatting for nullable values.
