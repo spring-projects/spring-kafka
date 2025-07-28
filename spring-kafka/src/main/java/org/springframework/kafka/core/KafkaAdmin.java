@@ -81,6 +81,7 @@ import org.springframework.util.Assert;
  * @author Valentina Armenise
  * @author Anders Swanson
  * @author Omer Celik
+ * @author Choi Wang Gyu
  *
  * @since 1.3
  */
@@ -300,7 +301,7 @@ public class KafkaAdmin extends KafkaResourceFactory
 	private void updateClusterId(Admin adminClient) throws InterruptedException, ExecutionException, TimeoutException {
 		try {
 			this.clusterIdLock.lock();
-			if (this.clusterId != null) {
+			if (this.clusterId == null) {
 				this.clusterId = adminClient.describeCluster().clusterId().get(this.operationTimeout,
 						TimeUnit.SECONDS);
 			}
