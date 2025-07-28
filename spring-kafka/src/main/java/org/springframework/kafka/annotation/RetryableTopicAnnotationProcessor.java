@@ -19,6 +19,7 @@ package org.springframework.kafka.annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -131,10 +132,15 @@ public class RetryableTopicAnnotationProcessor {
 		if (resolvedTimeout != null) {
 			timeout = resolvedTimeout;
 		}
-		List<Class<? extends Throwable>> includes = resolveClasses(annotation.include(), annotation.includeNames(),
+
+		String[] resolvedIncludeNames = resolveToStringArray(annotation.includeNames());
+		List<Class<? extends Throwable>> includes = resolveClasses(annotation.include(), resolvedIncludeNames,
 				"include");
-		List<Class<? extends Throwable>> excludes = resolveClasses(annotation.exclude(), annotation.excludeNames(),
+
+		String[] resolvedExcludeNames = resolveToStringArray(annotation.excludeNames());
+		List<Class<? extends Throwable>> excludes = resolveClasses(annotation.exclude(), resolvedExcludeNames,
 				"exclude");
+
 		boolean traverse = false;
 		if (StringUtils.hasText(annotation.traversingCauses())) {
 			Boolean traverseResolved = resolveExpressionAsBoolean(annotation.traversingCauses(), "traversingCauses");
@@ -422,4 +428,25 @@ public class RetryableTopicAnnotationProcessor {
 		return value;
 	}
 
+	private String[] resolveToStringArray(String[] values) {
+		List<String> result = new ArrayList<>();
+		for (String value : values) {
+			Object resolved = resolveExpression(value);
+			if (resolved instanceof String[] strings) {
+				Collections.addAll(result, strings);
+			}
+			else if (resolved instanceof Collection<?> coll) {
+				for (Object item : coll) {
+					result.add(item.toString());
+				}
+			}
+			else if (resolved instanceof String str) {
+				result.addAll(Arrays.asList(StringUtils.commaDelimitedListToStringArray(str)));
+			}
+			else if (resolved != null) {
+				result.add(resolved.toString());
+			}
+		}
+		return result.toArray(new String[0]);
+	}
 }
