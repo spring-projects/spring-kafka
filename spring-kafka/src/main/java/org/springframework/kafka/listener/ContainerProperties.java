@@ -1131,7 +1131,6 @@ public class ContainerProperties extends ConsumerProperties {
 
 		// Listener configuration
 		appendProperty(sb, "messageListener", this.messageListener);
-		appendProperty(sb, "messageListener", this.messageListener);
 		appendProperty(sb, "listenerTaskExecutor", this.listenerTaskExecutor);
 
 		// Idle event configuration
@@ -1193,7 +1192,9 @@ public class ContainerProperties extends ConsumerProperties {
 	 * @param value the property value
 	 */
 	private void appendProperty(StringBuilder sb, String name, @Nullable Object value) {
-		sb.append("\n ").append(name).append("=").append(value);
+		if(value != null){
+			sb.append("\n ").append(name).append("=").append(value);
+		}
 	}
 
 
