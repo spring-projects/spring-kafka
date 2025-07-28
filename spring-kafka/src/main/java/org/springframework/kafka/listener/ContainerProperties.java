@@ -54,6 +54,7 @@ import org.springframework.util.CollectionUtils;
  * @author Lukasz Kaminski
  * @author Kyuhyeok Park
  * @author Wang Zhiyang
+ * @author Choi Wang Gyu
  */
 public class ContainerProperties extends ConsumerProperties {
 
@@ -1091,55 +1092,94 @@ public class ContainerProperties extends ConsumerProperties {
 
 	@Override
 	public String toString() {
-		return "ContainerProperties ["
-				+ renderProperties()
-				+ "\n ackMode=" + this.ackMode
-				+ "\n ackCount=" + this.ackCount
-				+ "\n ackTime=" + this.ackTime
-				+ "\n consumerStartTimeout=" + this.consumerStartTimeout
-				+ "\n messageListener=" + this.messageListener
-				+ (this.listenerTaskExecutor != null
-						? "\n listenerTaskExecutor=" + this.listenerTaskExecutor
-						: "")
-				+ "\n shutdownTimeout=" + this.shutdownTimeout
-				+ "\n idleEventInterval="
-				+ (this.idleEventInterval == null ? "not enabled" : this.idleEventInterval)
-				+ "\n idlePartitionEventInterval="
-				+ (this.idlePartitionEventInterval == null ? "not enabled" : this.idlePartitionEventInterval)
-				+ (this.transactionManager != null
-						? "\n transactionManager=" + this.transactionManager
-						: "")
-				+ (this.kafkaAwareTransactionManager != null
-						? "\n kafkaAwareTransactionManager=" + this.kafkaAwareTransactionManager
-						: "")
-				+ "\n monitorInterval=" + this.monitorInterval
-				+ (this.scheduler != null ? "\n scheduler=" + this.scheduler : "")
-				+ "\n noPollThreshold=" + this.noPollThreshold
-				+ "\n pauseImmediate=" + this.pauseImmediate
-				+ "\n pollTimeoutWhilePaused=" + this.pollTimeoutWhilePaused
-				+ "\n subBatchPerPartition=" + this.subBatchPerPartition
-				+ "\n assignmentCommitOption=" + this.assignmentCommitOption
-				+ "\n deliveryAttemptHeader=" + this.deliveryAttemptHeader
-				+ "\n batchRecoverAfterRollback=" + this.batchRecoverAfterRollback
-				+ "\n eosMode=" + this.eosMode
-				+ "\n transactionDefinition=" + this.transactionDefinition
-				+ "\n stopContainerWhenFenced=" + this.stopContainerWhenFenced
-				+ "\n stopImmediate=" + this.stopImmediate
-				+ "\n asyncAcks=" + this.asyncAcks
-				+ "\n logContainerConfig=" + this.logContainerConfig
-				+ "\n missingTopicsFatal=" + this.missingTopicsFatal
-				+ "\n idleBeforeDataMultiplier=" + this.idleBeforeDataMultiplier
-				+ "\n idleBetweenPolls=" + this.idleBetweenPolls
-				+ "\n micrometerEnabled=" + this.micrometerEnabled
-				+ "\n observationEnabled=" + this.observationEnabled
-				+ (this.observationConvention != null
-						? "\n observationConvention=" + this.observationConvention
-						: "")
-				+ (this.observationRegistry != null
-						? "\n observationRegistry=" + this.observationRegistry
-						: "")
-				+ "\n restartAfterAuthExceptions=" + this.restartAfterAuthExceptions
-				+ "\n]";
+		StringBuilder sb = new StringBuilder("ContainerProperties [");
+		sb.append(renderProperties());
+
+		// Core acknowledgment properties
+		appendProperty(sb, "ackMode", this.ackMode);
+		appendProperty(sb, "ackCount", this.ackCount);
+		appendProperty(sb, "ackTime", this.ackTime);
+
+		// Timeout and startup properties
+		appendProperty(sb, "consumerStartTimeout", this.consumerStartTimeout);
+		appendProperty(sb, "shutdownTimeout", this.shutdownTimeout);
+
+		// Listener configuration
+		appendProperty(sb, "messageListener", this.messageListener);
+		appendProperty(sb, "listenerTaskExecutor", this.listenerTaskExecutor);
+
+		// Idle event configuration
+		appendEnabledProperty(sb, "idleEventInterval", this.idleEventInterval);
+		appendEnabledProperty(sb, "idlePartitionEventInterval", this.idlePartitionEventInterval);
+
+		// Transaction management
+		appendProperty(sb, "transactionManager", this.transactionManager);
+		appendProperty(sb, "kafkaAwareTransactionManager", this.kafkaAwareTransactionManager);
+		appendProperty(sb, "transactionDefinition", this.transactionDefinition);
+
+		// Monitoring and scheduling
+		appendProperty(sb, "monitorInterval", this.monitorInterval);
+		appendProperty(sb, "scheduler", this.scheduler);
+		appendProperty(sb, "noPollThreshold", this.noPollThreshold);
+
+		// Container behavior flags
+		appendProperty(sb, "pauseImmediate", this.pauseImmediate);
+		appendProperty(sb, "stopImmediate", this.stopImmediate);
+		appendProperty(sb, "stopContainerWhenFenced", this.stopContainerWhenFenced);
+		appendProperty(sb, "asyncAcks", this.asyncAcks);
+
+		// Polling and partition configuration
+		appendProperty(sb, "pollTimeoutWhilePaused", this.pollTimeoutWhilePaused);
+		appendProperty(sb, "subBatchPerPartition", this.subBatchPerPartition);
+		appendProperty(sb, "assignmentCommitOption", this.assignmentCommitOption);
+		appendProperty(sb, "idleBetweenPolls", this.idleBetweenPolls);
+
+		// Header and recovery configuration
+		appendProperty(sb, "deliveryAttemptHeader", this.deliveryAttemptHeader);
+		appendProperty(sb, "batchRecoverAfterRollback", this.batchRecoverAfterRollback);
+
+		// Exactly-once semantics
+		appendProperty(sb, "eosMode", this.eosMode);
+
+		// Logging and error handling
+		appendProperty(sb, "logContainerConfig", this.logContainerConfig);
+		appendProperty(sb, "missingTopicsFatal", this.missingTopicsFatal);
+		appendProperty(sb, "restartAfterAuthExceptions", this.restartAfterAuthExceptions);
+
+		// Metrics and observation
+		appendProperty(sb, "micrometerEnabled", this.micrometerEnabled);
+		appendProperty(sb, "observationEnabled", this.observationEnabled);
+		appendProperty(sb, "observationConvention", this.observationConvention);
+		appendProperty(sb, "observationRegistry", this.observationRegistry);
+
+		// Data multiplier
+		appendProperty(sb, "idleBeforeDataMultiplier", this.idleBeforeDataMultiplier);
+
+		sb.append("\n]");
+		return sb.toString();
+	}
+
+	/**
+	 * Append a property to the StringBuilder with consistent formatting.
+	 * @param sb    the StringBuilder
+	 * @param name  the property name
+	 * @param value the property value
+	 */
+	private void appendProperty(StringBuilder sb, String name, @Nullable Object value) {
+		if (value != null) {
+			sb.append("\n ").append(name).append("=").append(value);
+		}
+	}
+
+	/**
+	 * Append a property with "enabled/not enabled" formatting for nullable values.
+	 * @param sb    the StringBuilder
+	 * @param name  the property name
+	 * @param value the property value (nullable)
+	 */
+	private void appendEnabledProperty(StringBuilder sb, String name, @Nullable Object value) {
+		sb.append("\n ").append(name).append("=")
+				.append(value == null ? "not enabled" : value);
 	}
 
 }
