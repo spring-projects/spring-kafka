@@ -514,7 +514,7 @@ public class ConsumerProperties {
 		StringBuilder sb = new StringBuilder();
 		renderTopics(sb);
 		sb.append("\n pollTimeout=").append(this.pollTimeout);
-		
+
 		if (this.groupId != null) {
 			sb.append("\n groupId=").append(this.groupId);
 		}
@@ -530,20 +530,20 @@ public class ConsumerProperties {
 		if (this.offsetAndMetadataProvider != null) {
 			sb.append("\n offsetAndMetadataProvider=").append(this.offsetAndMetadataProvider);
 		}
-		
+
 		sb.append("\n syncCommits=").append(this.syncCommits);
-		
+
 		if (this.syncCommitTimeout != null) {
 			sb.append("\n syncCommitTimeout=").append(this.syncCommitTimeout);
 		}
 		if (!this.kafkaConsumerProperties.isEmpty()) {
 			sb.append("\n properties=").append(this.kafkaConsumerProperties);
 		}
-		
+
 		sb.append("\n authExceptionRetryInterval=").append(this.authExceptionRetryInterval);
 		sb.append("\n commitRetries=").append(this.commitRetries);
 		sb.append("\n fixTxOffsets=").append(this.fixTxOffsets);
-		
+
 		return sb.toString();
 	}
 
