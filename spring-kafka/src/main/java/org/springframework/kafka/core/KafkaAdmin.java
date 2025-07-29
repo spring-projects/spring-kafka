@@ -347,10 +347,8 @@ public class KafkaAdmin extends KafkaResourceFactory
 				}
 			}
 		}
-		Map<String, NewTopic> filteredMap = newTopicsMap.entrySet().stream()
-				.filter(entry -> this.createOrModifyTopic.test(entry.getValue()))
-				.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
-		return new ArrayList<>(filteredMap.values());
+		newTopicsMap.entrySet().removeIf(entry -> !this.createOrModifyTopic.test(entry.getValue()));
+		return new ArrayList<>(newTopicsMap.values());
 	}
 
 	@Override
