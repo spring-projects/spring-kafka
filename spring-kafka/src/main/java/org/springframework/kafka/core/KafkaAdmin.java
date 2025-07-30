@@ -331,17 +331,16 @@ public class KafkaAdmin extends KafkaResourceFactory
 		this.applicationContext.getBeansOfType(NewTopics.class, false, false).values()
 				.forEach(wrapper -> newTopicsList.addAll(wrapper.getNewTopics()));
 
-		// Collect normal topic names to check against TopicForRetryable
-		Set<String> normalNames = newTopicsList.stream()
+		// Collect regular topic names to check against TopicForRetryable
+		Set<String> regularTopicNames = newTopicsList.stream()
 				.filter(nt -> !(nt instanceof TopicForRetryable))
 				.map(NewTopic::name)
 				.collect(Collectors.toSet());
 
-		// Remove TopicForRetryable if there's a regular NewTopic with same name
-		newTopicsList.removeIf(nt -> nt instanceof TopicForRetryable && normalNames.contains(nt.name()));
-
-		// Apply predicate filter
-		newTopicsList.removeIf(nt -> !this.createOrModifyTopic.test(nt));
+		// Apply combined filter: remove TopicForRetryable with same name as regular topic OR topics that don't pass predicate
+		newTopicsList.removeIf(nt ->
+				(nt instanceof TopicForRetryable && regularTopicNames.contains(nt.name())) ||
+				!this.createOrModifyTopic.test(nt));
 
 		return newTopicsList;
 	}
