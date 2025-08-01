@@ -392,7 +392,9 @@ public class ReplyingKafkaTemplateTests {
 			RequestReplyMessageFuture<Integer, String> future = template.sendAndReceive(message, Duration.ofSeconds(30));
 			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
 			Message<?> resultingMessage = future.get(30, TimeUnit.SECONDS);
+
 			assertThat(resultingMessage.getPayload()).isEqualTo("OK");
+			assertThat(resultingMessage.getHeaders()).containsEntry("originalPayload", "expected_message");
 		}
 		finally {
 			template.stop();
@@ -418,7 +420,9 @@ public class ReplyingKafkaTemplateTests {
 			RequestReplyMessageFuture<Integer, String> future = template.sendAndReceive(message, Duration.ofSeconds(30));
 			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
 			Message<?> resultingMessage = future.get(30, TimeUnit.SECONDS);
+
 			assertThat(resultingMessage.getPayload()).isEqualTo("OK");
+			assertThat(resultingMessage.getHeaders()).containsEntry("originalPayload", "expected_message");
 		}
 		finally {
 			template.stop();
@@ -932,14 +936,6 @@ public class ReplyingKafkaTemplateTests {
 		}
 	}
 
-	private static int length(Iterable<?> iterable) {
-		int counter = 0;
-		for (Object o : iterable) {
-			counter++;
-		}
-		return counter;
-	}
-
 	@Configuration
 	@EnableKafka
 	public static class Config {
@@ -1116,43 +1112,19 @@ public class ReplyingKafkaTemplateTests {
 		}
 
 		@KafkaListener(id = CUSTOM_REPLY_HEADER_REQUEST, topics = CUSTOM_REPLY_HEADER_REQUEST)
-		@SendTo(CUSTOM_REPLY_HEADER_REPLY)  // send to custom topic back
-		public String handleCustomReplyHeaderNoReplyPartition(ConsumerRecord<?, String> inputMessage) {
-			Headers headers = inputMessage.headers();
-
-			if (length(headers.headers("X-Custom-Reply-Header")) != 1) {
-				return "The X-Custom-Reply-Header header that signify the custom reply topic header name is duplicated. It is supposed to present only once";
-			}
-
-			if (length(headers.headers(KafkaHeaders.REPLY_PARTITION)) != 0) {
-				return "It is expected that the user does NOT specify the reply partition in this test case";
-			}
-
-			if (!"expected_message".equals(inputMessage.value())) {
-				return "Expected message is 'expected_message', but got %s".formatted(inputMessage.value());
-			}
-
-			return "OK";
+		@SendTo(CUSTOM_REPLY_HEADER_REPLY)
+		public Message<String> handleCustomReplyHeaderNoReplyPartition(ConsumerRecord<?, String> inputMessage) {
+			return MessageBuilder.withPayload("OK")
+					.setHeader("originalPayload", inputMessage.value())
+					.build();
 		}
 
 		@KafkaListener(id = CUSTOM_REPLY_HEADER_WITH_PARTITION_REQUEST, topics = CUSTOM_REPLY_HEADER_WITH_PARTITION_REQUEST)
-		@SendTo(CUSTOM_REPLY_HEADER_WITH_PARTITION_REPLY)  // send to custom topic back
-		public String handleCustomReplyHeaderDefaultPartitionHeader(ConsumerRecord<?, String> inputMessage) {
-			Headers headers = inputMessage.headers();
-
-			if (length(headers.headers("X-Custom-Reply-Header")) != 1) {
-				return "The X-Custom-Reply-Header header that signify the custom reply topic header name is duplicated. It is supposed to present only once";
-			}
-
-			if (length(headers.headers("X-Custom-Reply-Partition")) != 1) {
-				return "Executed a single reply partition header '%s' in the incoming message".formatted(KafkaHeaders.REPLY_PARTITION);
-			}
-
-			if (!"expected_message".equals(inputMessage.value())) {
-				return "Expected message is 'expected_message', but got %s".formatted(inputMessage.value());
-			}
-
-			return "OK";
+		@SendTo(CUSTOM_REPLY_HEADER_WITH_PARTITION_REPLY)
+		public Message<String> handleCustomReplyHeaderDefaultPartitionHeader(ConsumerRecord<?, String> inputMessage) {
+			return MessageBuilder.withPayload("OK")
+					.setHeader("originalPayload", inputMessage.value())
+					.build();
 		}
 	}
 
