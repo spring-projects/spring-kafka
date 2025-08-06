@@ -29,7 +29,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -103,6 +102,7 @@ import static org.mockito.Mockito.verify;
  * @author Nathan Xu
  * @author Soby Chacko
  * @author Mikhail Polivakha
+ * @author Ngoc Nhan
  * @since 2.1.3
  *
  */
@@ -903,19 +903,8 @@ public class ReplyingKafkaTemplateTests {
 		CompletableFuture future = template.sendAndReceive(msg, Duration.ofMillis(10),
 				new ParameterizedTypeReference<Foo>() {
 				});
-		try {
-			future.get(10, TimeUnit.SECONDS);
-		}
-		catch (TimeoutException ex) {
-			fail("get timed out");
-		}
-		catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-			fail("Interrupted");
-		}
-		catch (ExecutionException e) {
-			assertThat(System.currentTimeMillis() - t1).isLessThan(3000L);
-		}
+		assertThatExceptionOfType(ExecutionException.class).isThrownBy(() -> future.get(10, TimeUnit.SECONDS));
+		assertThat(System.currentTimeMillis() - t1).isLessThan(3000L);
 	}
 
 	@Test
