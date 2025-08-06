@@ -52,7 +52,7 @@ public class IgnoreEmptyBatchRecordFilterStrategy implements RecordFilterStrateg
     public boolean ignoreEmptyBatch() {
         return true;
     }
-};
+}
 
 // NOTE: ignoreEmptyBatchRecordFilterStrategy is bean name of IgnoreEmptyBatchRecordFilterStrategy instance.
 @KafkaListener(id = "filtered", topics = "topic", filter = "ignoreEmptyBatchRecordFilterStrategy")
@@ -77,7 +77,7 @@ public class NotIgnoreEmptyBatchRecordFilterStrategy implements RecordFilterStra
     public boolean ignoreEmptyBatch() {
         return false;
     }
-};
+}
 
 // NOTE: notIgnoreEmptyBatchRecordFilterStrategy is bean name of NotIgnoreEmptyBatchRecordFilterStrategy instance.
 @KafkaListener(id = "filtered", topics = "topic", filter = "notIgnoreEmptyBatchRecordFilterStrategy")
