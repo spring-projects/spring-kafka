@@ -53,19 +53,19 @@ public class JacksonJsonSerde<T> implements Serde<T> {
 	private final JacksonJsonDeserializer<T> jsonDeserializer;
 
 	public JacksonJsonSerde() {
-		this((JavaType) null, JacksonMapperUtils.jsonMapper());
+		this((JavaType) null, JacksonMapperUtils.enhancedJsonMapper());
 	}
 
 	public JacksonJsonSerde(@Nullable Class<? super T> targetType) {
-		this(targetType, JacksonMapperUtils.jsonMapper());
+		this(targetType, JacksonMapperUtils.enhancedJsonMapper());
 	}
 
 	public JacksonJsonSerde(@Nullable TypeReference<? super T> targetType) {
-		this(targetType, JacksonMapperUtils.jsonMapper());
+		this(targetType, JacksonMapperUtils.enhancedJsonMapper());
 	}
 
 	public JacksonJsonSerde(@Nullable JavaType targetType) {
-		this(targetType, JacksonMapperUtils.jsonMapper());
+		this(targetType, JacksonMapperUtils.enhancedJsonMapper());
 	}
 
 	public JacksonJsonSerde(JsonMapper jsonMapper) {
@@ -81,7 +81,7 @@ public class JacksonJsonSerde<T> implements Serde<T> {
 	}
 
 	public JacksonJsonSerde(@Nullable JavaType targetTypeArg, @Nullable JsonMapper jsonMapperArg) {
-		JsonMapper jsonMapper = jsonMapperArg == null ? JacksonMapperUtils.jsonMapper() : jsonMapperArg;
+		JsonMapper jsonMapper = jsonMapperArg == null ? JacksonMapperUtils.enhancedJsonMapper() : jsonMapperArg;
 		JavaType actualJavaType;
 		if (targetTypeArg != null) {
 			actualJavaType = targetTypeArg;

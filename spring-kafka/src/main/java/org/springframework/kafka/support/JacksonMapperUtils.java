@@ -38,7 +38,7 @@ public final class JacksonMapperUtils {
 	 * {@link DeserializationFeature#FAIL_ON_UNKNOWN_PROPERTIES} features.
 	 * @return the {@link JsonMapper} instance.
 	 */
-	public static JsonMapper jsonMapper() {
+	public static JsonMapper enhancedJsonMapper() {
 		return JsonMapper.builder()
 				.findAndAddModules(JsonKafkaHeaderMapper.class.getClassLoader())
 				.disable(tools.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)

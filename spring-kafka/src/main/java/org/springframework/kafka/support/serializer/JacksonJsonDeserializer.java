@@ -199,7 +199,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 	 * type if not.
 	 */
 	public JacksonJsonDeserializer(@Nullable Class<? super T> targetType, boolean useHeadersIfPresent) {
-		this(targetType, JacksonMapperUtils.jsonMapper(), useHeadersIfPresent);
+		this(targetType, JacksonMapperUtils.enhancedJsonMapper(), useHeadersIfPresent);
 	}
 
 	/**
@@ -210,7 +210,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 	 * type if not.
 	 */
 	public JacksonJsonDeserializer(@Nullable TypeReference<? super T> targetType, boolean useHeadersIfPresent) {
-		this(targetType, JacksonMapperUtils.jsonMapper(), useHeadersIfPresent);
+		this(targetType, JacksonMapperUtils.enhancedJsonMapper(), useHeadersIfPresent);
 	}
 
 	/**
@@ -221,7 +221,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 	 * type if not.
 	 */
 	public JacksonJsonDeserializer(@Nullable JavaType targetType, boolean useHeadersIfPresent) {
-		this(targetType, JacksonMapperUtils.jsonMapper(), useHeadersIfPresent);
+		this(targetType, JacksonMapperUtils.enhancedJsonMapper(), useHeadersIfPresent);
 	}
 
 	/**

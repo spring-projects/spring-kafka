@@ -87,11 +87,11 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 	private final Lock globalLock = new ReentrantLock();
 
 	public JacksonJsonSerializer() {
-		this((JavaType) null, JacksonMapperUtils.jsonMapper());
+		this((JavaType) null, JacksonMapperUtils.enhancedJsonMapper());
 	}
 
 	public JacksonJsonSerializer(TypeReference<? super T> targetType) {
-		this(targetType, JacksonMapperUtils.jsonMapper());
+		this(targetType, JacksonMapperUtils.enhancedJsonMapper());
 	}
 
 	public JacksonJsonSerializer(JsonMapper jsonMapper) {

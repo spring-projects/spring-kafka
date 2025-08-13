@@ -100,7 +100,7 @@ public class JsonKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * @see #JsonKafkaHeaderMapper(JsonMapper)
 	 */
 	public JsonKafkaHeaderMapper() {
-		this(JacksonMapperUtils.jsonMapper());
+		this(JacksonMapperUtils.enhancedJsonMapper());
 	}
 
 	/**
@@ -133,7 +133,7 @@ public class JsonKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * @see org.springframework.util.PatternMatchUtils#simpleMatch(String, String)
 	 */
 	public JsonKafkaHeaderMapper(String... patterns) {
-		this(JacksonMapperUtils.jsonMapper(), patterns);
+		this(JacksonMapperUtils.enhancedJsonMapper(), patterns);
 	}
 
 	/**
@@ -165,7 +165,7 @@ public class JsonKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * @return the header mapper.
 	 */
 	public static JsonKafkaHeaderMapper forInboundOnlyWithMatchers(String... patterns) {
-		return new JsonKafkaHeaderMapper(false, JacksonMapperUtils.jsonMapper(), patterns);
+		return new JsonKafkaHeaderMapper(false, JacksonMapperUtils.enhancedJsonMapper(), patterns);
 	}
 
 	/**

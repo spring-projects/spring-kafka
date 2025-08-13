@@ -54,7 +54,7 @@ public class JacksonJsonMessageConverter extends MessagingMessageConverter {
 	private final TypeFactory typeFactory;
 
 	public JacksonJsonMessageConverter() {
-		this(JacksonMapperUtils.jsonMapper());
+		this(JacksonMapperUtils.enhancedJsonMapper());
 	}
 
 	public JacksonJsonMessageConverter(JsonMapper jsonMapper) {

@@ -60,10 +60,10 @@ public class JacksonProjectingMessageConverter extends MessagingMessageConverter
 
 	/**
 	 * Create a new {@link JacksonProjectingMessageConverter} using a
-	 * {@link JacksonMapperUtils#jsonMapper()} by default.
+	 * {@link JacksonMapperUtils#enhancedJsonMapper()} by default.
 	 */
 	public JacksonProjectingMessageConverter() {
-		this(JacksonMapperUtils.jsonMapper());
+		this(JacksonMapperUtils.enhancedJsonMapper());
 	}
 
 	/**
@@ -79,7 +79,7 @@ public class JacksonProjectingMessageConverter extends MessagingMessageConverter
 	 * @param delegate the delegate converter for outbound and non-interfaces.
 	 */
 	public JacksonProjectingMessageConverter(MessagingMessageConverter delegate) {
-		this(JacksonMapperUtils.jsonMapper(), delegate);
+		this(JacksonMapperUtils.enhancedJsonMapper(), delegate);
 	}
 
 	/**
