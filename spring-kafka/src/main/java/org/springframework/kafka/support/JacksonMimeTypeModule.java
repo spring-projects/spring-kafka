@@ -32,8 +32,9 @@ import org.springframework.util.MimeType;
  *
  * @since 2.3
  *
- * @deprecated since 4.0 in favor of {@link Jackson3Utils}.
+ * @deprecated since 4.0 in favor of {@link MimeTypeJacksonModule}.
  */
+@Deprecated(forRemoval = true, since = "4.0")
 public final class JacksonMimeTypeModule extends SimpleModule {
 
 	private static final long serialVersionUID = 1L;

@@ -29,14 +29,14 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.utils.Bytes;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.JavaType;
-import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import org.springframework.core.ResolvableType;
 import org.springframework.data.projection.MethodInterceptorFactory;
 import org.springframework.data.projection.ProjectionFactory;
 import org.springframework.data.projection.SpelAwareProxyProjectionFactory;
 import org.springframework.data.web.JsonProjectingMethodInterceptorFactory;
-import org.springframework.kafka.support.Jackson3Utils;
+import org.springframework.kafka.support.JacksonMapperUtils;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.Message;
 import org.springframework.util.Assert;
@@ -60,35 +60,35 @@ public class JacksonProjectingMessageConverter extends MessagingMessageConverter
 
 	/**
 	 * Create a new {@link JacksonProjectingMessageConverter} using a
-	 * {@link Jackson3Utils#enhancedObjectMapper()} by default.
+	 * {@link JacksonMapperUtils#jsonMapper()} by default.
 	 */
 	public JacksonProjectingMessageConverter() {
-		this(Jackson3Utils.enhancedObjectMapper());
+		this(JacksonMapperUtils.jsonMapper());
 	}
 
 	/**
-	 * Create a new {@link JacksonProjectingMessageConverter} using the given {@link ObjectMapper}.
+	 * Create a new {@link JacksonProjectingMessageConverter} using the given {@link JsonMapper}.
 	 * @param mapper must not be {@literal null}.
 	 */
-	public JacksonProjectingMessageConverter(ObjectMapper mapper) {
+	public JacksonProjectingMessageConverter(JsonMapper mapper) {
 		this(mapper, new StringJacksonJsonMessageConverter());
 	}
 
 	/**
-	 * Create a new {@link JacksonProjectingMessageConverter} using the given {@link ObjectMapper}.
+	 * Create a new {@link JacksonProjectingMessageConverter} using the given {@link JsonMapper}.
 	 * @param delegate the delegate converter for outbound and non-interfaces.
 	 */
 	public JacksonProjectingMessageConverter(MessagingMessageConverter delegate) {
-		this(Jackson3Utils.enhancedObjectMapper(), delegate);
+		this(JacksonMapperUtils.jsonMapper(), delegate);
 	}
 
 	/**
-	 * Create a new {@link JacksonProjectingMessageConverter} using the given {@link ObjectMapper}.
+	 * Create a new {@link JacksonProjectingMessageConverter} using the given {@link JsonMapper}.
 	 * @param mapper must not be {@literal null}.
 	 * @param delegate the delegate converter for outbound and non-interfaces.
 	 */
-	public JacksonProjectingMessageConverter(ObjectMapper mapper, MessagingMessageConverter delegate) {
-		Assert.notNull(mapper, "ObjectMapper must not be null");
+	public JacksonProjectingMessageConverter(JsonMapper mapper, MessagingMessageConverter delegate) {
+		Assert.notNull(mapper, "JsonMapper must not be null");
 		Assert.notNull(delegate, "'delegate' cannot be null");
 
 		MappingProvider provider = new Jackson3MappingProvider(mapper);
@@ -122,7 +122,7 @@ public class JacksonProjectingMessageConverter extends MessagingMessageConverter
 
 		InputStream inputStream = new ByteArrayInputStream(getAsByteArray(value));
 
-		// The inputStream is closed underneath by the ObjectMapper#_readTreeAndClose()
+		// The inputStream is closed underneath by the JsonMapper#_readTreeAndClose()
 		return this.projectionFactory.createProjection(rawType, inputStream);
 	}
 
@@ -154,9 +154,9 @@ public class JacksonProjectingMessageConverter extends MessagingMessageConverter
 	/**
 	 * A {@link MappingProvider} implementation for Jackson 3.
 	 * Until respective implementation is there in json-path library.
-	 * @param objectMapper Jackson 3 {@link ObjectMapper}
+	 * @param jsonMapper Jackson 3 {@link JsonMapper}.
 	 */
-	private record Jackson3MappingProvider(ObjectMapper objectMapper) implements MappingProvider {
+	private record Jackson3MappingProvider(JsonMapper jsonMapper) implements MappingProvider {
 
 		@Override
 		public <T> @Nullable T map(@Nullable Object source, Class<T> targetType, Configuration configuration) {
@@ -164,7 +164,7 @@ public class JacksonProjectingMessageConverter extends MessagingMessageConverter
 				return null;
 			}
 			try {
-				return this.objectMapper.convertValue(source, targetType);
+				return this.jsonMapper.convertValue(source, targetType);
 			}
 			catch (Exception ex) {
 				throw new MappingException(ex);
@@ -176,10 +176,10 @@ public class JacksonProjectingMessageConverter extends MessagingMessageConverter
 			if (source == null) {
 				return null;
 			}
-			JavaType type = this.objectMapper.constructType(targetType.getType());
+			JavaType type = this.jsonMapper.constructType(targetType.getType());
 
 			try {
-				return this.objectMapper.convertValue(source, type);
+				return this.jsonMapper.convertValue(source, type);
 			}
 			catch (Exception ex) {
 				throw new MappingException(ex);

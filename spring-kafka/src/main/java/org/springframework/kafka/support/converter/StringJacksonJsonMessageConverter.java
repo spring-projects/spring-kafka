@@ -17,7 +17,7 @@
 package org.springframework.kafka.support.converter;
 
 import org.jspecify.annotations.Nullable;
-import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.messaging.Message;
@@ -37,7 +37,7 @@ public class StringJacksonJsonMessageConverter extends JacksonJsonMessageConvert
 	public StringJacksonJsonMessageConverter() {
 	}
 
-	public StringJacksonJsonMessageConverter(ObjectMapper objectMapper) {
+	public StringJacksonJsonMessageConverter(JsonMapper objectMapper) {
 		super(objectMapper);
 	}
 
@@ -46,7 +46,7 @@ public class StringJacksonJsonMessageConverter extends JacksonJsonMessageConvert
 		try {
 			return message.getPayload() instanceof KafkaNull
 					? null
-					: getObjectMapper().writeValueAsString(message.getPayload());
+					: getJsonMapper().writeValueAsString(message.getPayload());
 		}
 		catch (Exception e) {
 			throw new ConversionException("Failed to convert to JSON", message, e);

@@ -31,11 +31,11 @@ import org.springframework.util.MimeType;
  *
  * @since 4.0
  */
-public final class Jackson3MimeTypeModule extends SimpleModule {
+public final class MimeTypeJacksonModule extends SimpleModule {
 
 	private static final long serialVersionUID = 1L;
 
-	public Jackson3MimeTypeModule() {
+	public MimeTypeJacksonModule() {
 		addSerializer(MimeType.class, new MimeTypeSerializer());
 	}
 

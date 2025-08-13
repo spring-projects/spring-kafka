@@ -93,11 +93,11 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	 */
 	public MessagingMessageConverter(Function<Message<?>, @Nullable Integer> partitionProvider) {
 		Assert.notNull(partitionProvider, "'partitionProvider' cannot be null");
-		if (JacksonPresent.isJackson2Present()) {
-			this.headerMapper = new DefaultKafkaHeaderMapper();
-		}
-		else if (JacksonPresent.isJackson3Present()) {
+		if (JacksonPresent.isJackson3Present()) {
 			this.headerMapper = new JsonKafkaHeaderMapper();
+		}
+		else if (JacksonPresent.isJackson2Present()) {
+			this.headerMapper = new DefaultKafkaHeaderMapper();
 		}
 		else {
 			this.headerMapper = new SimpleKafkaHeaderMapper();

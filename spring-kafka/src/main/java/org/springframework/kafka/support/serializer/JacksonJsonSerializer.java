@@ -27,10 +27,10 @@ import org.apache.kafka.common.serialization.Serializer;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JavaType;
-import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.ObjectWriter;
+import tools.jackson.databind.json.JsonMapper;
 
-import org.springframework.kafka.support.Jackson3Utils;
+import org.springframework.kafka.support.JacksonMapperUtils;
 import org.springframework.kafka.support.mapping.DefaultJacksonJavaTypeMapper;
 import org.springframework.kafka.support.mapping.JacksonJavaTypeMapper;
 import org.springframework.util.Assert;
@@ -70,7 +70,7 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 	 */
 	public static final String TYPE_MAPPINGS = "spring.json.type.mapping";
 
-	protected final ObjectMapper objectMapper; // NOSONAR
+	protected final JsonMapper jsonMapper; // NOSONAR
 
 	protected boolean addTypeInfo = true; // NOSONAR
 
@@ -87,25 +87,25 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 	private final Lock globalLock = new ReentrantLock();
 
 	public JacksonJsonSerializer() {
-		this((JavaType) null, Jackson3Utils.enhancedObjectMapper());
+		this((JavaType) null, JacksonMapperUtils.jsonMapper());
 	}
 
 	public JacksonJsonSerializer(TypeReference<? super T> targetType) {
-		this(targetType, Jackson3Utils.enhancedObjectMapper());
+		this(targetType, JacksonMapperUtils.jsonMapper());
 	}
 
-	public JacksonJsonSerializer(ObjectMapper objectMapper) {
-		this((JavaType) null, objectMapper);
+	public JacksonJsonSerializer(JsonMapper jsonMapper) {
+		this((JavaType) null, jsonMapper);
 	}
 
-	public JacksonJsonSerializer(TypeReference<? super T> targetType, ObjectMapper objectMapper) {
-		this(targetType == null ? null : objectMapper.constructType(targetType.getType()), objectMapper);
+	public JacksonJsonSerializer(TypeReference<? super T> targetType, JsonMapper jsonMapper) {
+		this(targetType == null ? null : jsonMapper.constructType(targetType.getType()), jsonMapper);
 	}
 
-	public JacksonJsonSerializer(@Nullable JavaType targetType, ObjectMapper objectMapper) {
-		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
-		this.objectMapper = objectMapper;
-		this.writer = objectMapper.writerFor(targetType);
+	public JacksonJsonSerializer(@Nullable JavaType targetType, JsonMapper jsonMapper) {
+		Assert.notNull(jsonMapper, "'jsonMapper' must not be null.");
+		this.jsonMapper = jsonMapper;
+		this.writer = jsonMapper.writerFor(targetType);
 	}
 
 	public boolean isAddTypeInfo() {
@@ -209,7 +209,7 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 			return null;
 		}
 		if (this.addTypeInfo && headers != null) {
-			this.typeMapper.fromJavaType(this.objectMapper.constructType(data.getClass()), headers);
+			this.typeMapper.fromJavaType(this.jsonMapper.constructType(data.getClass()), headers);
 		}
 		return serialize(topic, data);
 	}
@@ -241,7 +241,7 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 	 * @since 2.6
 	 */
 	public <X> JacksonJsonSerializer<X> copyWithType(Class<? super X> newTargetType) {
-		return copyWithType(this.objectMapper.constructType(newTargetType));
+		return copyWithType(this.jsonMapper.constructType(newTargetType));
 	}
 
 	/**
@@ -252,7 +252,7 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 	 * @since 2.6
 	 */
 	public <X> JacksonJsonSerializer<X> copyWithType(TypeReference<? super X> newTargetType) {
-		return copyWithType(this.objectMapper.constructType(newTargetType.getType()));
+		return copyWithType(this.jsonMapper.constructType(newTargetType.getType()));
 	}
 
 	/**
@@ -263,7 +263,7 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 	 * @since 2.6
 	 */
 	public <X> JacksonJsonSerializer<X> copyWithType(JavaType newTargetType) {
-		JacksonJsonSerializer<X> result = new JacksonJsonSerializer<>(newTargetType, this.objectMapper);
+		JacksonJsonSerializer<X> result = new JacksonJsonSerializer<>(newTargetType, this.jsonMapper);
 		result.addTypeInfo = this.addTypeInfo;
 		result.typeMapper = this.typeMapper;
 		result.typeMapperExplicitlySet = this.typeMapperExplicitlySet;

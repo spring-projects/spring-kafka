@@ -30,26 +30,25 @@ import tools.jackson.databind.json.JsonMapper;
  *
  * @since 4.0
  */
-public final class Jackson3Utils {
+public final class JacksonMapperUtils {
 
 	/**
 	 * Factory for {@link ObjectMapper} instances with registered well-known modules
 	 * and disabled {@link MapperFeature#DEFAULT_VIEW_INCLUSION} and
 	 * {@link DeserializationFeature#FAIL_ON_UNKNOWN_PROPERTIES} features.
-	 * @return the {@link ObjectMapper} instance.
+	 * @return the {@link JsonMapper} instance.
 	 */
-	public static ObjectMapper enhancedObjectMapper() {
-		ObjectMapper objectMapper = JsonMapper.builder()
+	public static JsonMapper jsonMapper() {
+		return JsonMapper.builder()
 				.findAndAddModules(JsonKafkaHeaderMapper.class.getClassLoader())
 				.disable(tools.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
 				.disable(tools.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSION)
 				.enable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
-				.addModule(new Jackson3MimeTypeModule())
+				.addModule(new MimeTypeJacksonModule())
 				.build();
-		return objectMapper;
 	}
 
-	private Jackson3Utils() {
+	private JacksonMapperUtils() {
 	}
 
 }

@@ -34,12 +34,12 @@ import org.apache.kafka.common.serialization.Deserializer;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JavaType;
-import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.ObjectReader;
+import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.type.TypeFactory;
 
 import org.springframework.core.ResolvableType;
-import org.springframework.kafka.support.Jackson3Utils;
+import org.springframework.kafka.support.JacksonMapperUtils;
 import org.springframework.kafka.support.mapping.DefaultJacksonJavaTypeMapper;
 import org.springframework.kafka.support.mapping.JacksonJavaTypeMapper;
 import org.springframework.util.Assert;
@@ -127,7 +127,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 		OUR_KEYS.add(VALUE_TYPE_METHOD);
 	}
 
-	protected final ObjectMapper objectMapper; // NOSONAR
+	protected final JsonMapper jsonMapper; // NOSONAR
 
 	protected @Nullable JavaType targetType; // NOSONAR
 
@@ -152,23 +152,23 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 	private final TypeFactory typeFactory = TypeFactory.createDefaultInstance();
 
 	/**
-	 * Construct an instance with a default {@link ObjectMapper}.
+	 * Construct an instance with a default {@link JsonMapper}.
 	 */
 	public JacksonJsonDeserializer() {
 		this((Class<T>) null, true);
 	}
 
 	/**
-	 * Construct an instance with the provided {@link ObjectMapper}.
-	 * @param objectMapper a custom object mapper.
+	 * Construct an instance with the provided {@link JsonMapper}.
+	 * @param jsonMapper a custom object mapper.
 	 */
-	public JacksonJsonDeserializer(ObjectMapper objectMapper) {
-		this((Class<T>) null, objectMapper, true);
+	public JacksonJsonDeserializer(JsonMapper jsonMapper) {
+		this((Class<T>) null, jsonMapper, true);
 	}
 
 	/**
 	 * Construct an instance with the provided target type, and a default
-	 * {@link ObjectMapper}.
+	 * {@link JsonMapper}.
 	 * @param targetType the target type to use if no type info headers are present.
 	 */
 	public JacksonJsonDeserializer(@Nullable Class<? super T> targetType) {
@@ -176,7 +176,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 	}
 
 	/**
-	 * Construct an instance with the provided target type, and a default {@link ObjectMapper}.
+	 * Construct an instance with the provided target type, and a default {@link JsonMapper}.
 	 * @param targetType the target type reference to use if no type info headers are present.
 	 */
 	public JacksonJsonDeserializer(@Nullable TypeReference<? super T> targetType) {
@@ -184,7 +184,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 	}
 
 	/**
-	 * Construct an instance with the provided target type, and a default {@link ObjectMapper}.
+	 * Construct an instance with the provided target type, and a default {@link JsonMapper}.
 	 * @param targetType the target java type to use if no type info headers are present.
 	 */
 	public JacksonJsonDeserializer(@Nullable JavaType targetType) {
@@ -193,77 +193,77 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 
 	/**
 	 * Construct an instance with the provided target type, and
-	 * useHeadersIfPresent with a default {@link ObjectMapper}.
+	 * useHeadersIfPresent with a default {@link JsonMapper}.
 	 * @param targetType the target type.
 	 * @param useHeadersIfPresent true to use headers if present and fall back to target
 	 * type if not.
 	 */
 	public JacksonJsonDeserializer(@Nullable Class<? super T> targetType, boolean useHeadersIfPresent) {
-		this(targetType, Jackson3Utils.enhancedObjectMapper(), useHeadersIfPresent);
+		this(targetType, JacksonMapperUtils.jsonMapper(), useHeadersIfPresent);
 	}
 
 	/**
 	 * Construct an instance with the provided target type, and
-	 * useHeadersIfPresent with a default {@link ObjectMapper}.
+	 * useHeadersIfPresent with a default {@link JsonMapper}.
 	 * @param targetType the target type reference.
 	 * @param useHeadersIfPresent true to use headers if present and fall back to target
 	 * type if not.
 	 */
 	public JacksonJsonDeserializer(@Nullable TypeReference<? super T> targetType, boolean useHeadersIfPresent) {
-		this(targetType, Jackson3Utils.enhancedObjectMapper(), useHeadersIfPresent);
+		this(targetType, JacksonMapperUtils.jsonMapper(), useHeadersIfPresent);
 	}
 
 	/**
 	 * Construct an instance with the provided target type, and
-	 * useHeadersIfPresent with a default {@link ObjectMapper}.
+	 * useHeadersIfPresent with a default {@link JsonMapper}.
 	 * @param targetType the target java type.
 	 * @param useHeadersIfPresent true to use headers if present and fall back to target
 	 * type if not.
 	 */
 	public JacksonJsonDeserializer(@Nullable JavaType targetType, boolean useHeadersIfPresent) {
-		this(targetType, Jackson3Utils.enhancedObjectMapper(), useHeadersIfPresent);
+		this(targetType, JacksonMapperUtils.jsonMapper(), useHeadersIfPresent);
 	}
 
 	/**
-	 * Construct an instance with the provided target type, and {@link ObjectMapper}.
+	 * Construct an instance with the provided target type, and {@link JsonMapper}.
 	 * @param targetType the target type to use if no type info headers are present.
-	 * @param objectMapper the mapper. type if not.
+	 * @param jsonMapper the mapper. type if not.
 	 */
-	public JacksonJsonDeserializer(Class<? super T> targetType, ObjectMapper objectMapper) {
-		this(targetType, objectMapper, true);
+	public JacksonJsonDeserializer(Class<? super T> targetType, JsonMapper jsonMapper) {
+		this(targetType, jsonMapper, true);
 	}
 
 	/**
-	 * Construct an instance with the provided target type, and {@link ObjectMapper}.
+	 * Construct an instance with the provided target type, and {@link JsonMapper}.
 	 * @param targetType the target type reference to use if no type info headers are present.
-	 * @param objectMapper the mapper. type if not.
+	 * @param jsonMapper the mapper. type if not.
 	 */
-	public JacksonJsonDeserializer(TypeReference<? super T> targetType, ObjectMapper objectMapper) {
-		this(targetType, objectMapper, true);
+	public JacksonJsonDeserializer(TypeReference<? super T> targetType, JsonMapper jsonMapper) {
+		this(targetType, jsonMapper, true);
 	}
 
 	/**
-	 * Construct an instance with the provided target type, and {@link ObjectMapper}.
+	 * Construct an instance with the provided target type, and {@link JsonMapper}.
 	 * @param targetType the target java type to use if no type info headers are present.
-	 * @param objectMapper the mapper. type if not.
+	 * @param jsonMapper the mapper. type if not.
 	 */
-	public JacksonJsonDeserializer(@Nullable JavaType targetType, ObjectMapper objectMapper) {
-		this(targetType, objectMapper, true);
+	public JacksonJsonDeserializer(@Nullable JavaType targetType, JsonMapper jsonMapper) {
+		this(targetType, jsonMapper, true);
 	}
 
 	/**
-	 * Construct an instance with the provided target type, {@link ObjectMapper} and
+	 * Construct an instance with the provided target type, {@link JsonMapper} and
 	 * useHeadersIfPresent.
 	 * @param targetType the target type.
-	 * @param objectMapper the mapper.
+	 * @param jsonMapper the mapper.
 	 * @param useHeadersIfPresent true to use headers if present and fall back to target
 	 * type if not.
 	 */
-	public JacksonJsonDeserializer(@Nullable Class<? super T> targetType, ObjectMapper objectMapper,
+	public JacksonJsonDeserializer(@Nullable Class<? super T> targetType, JsonMapper jsonMapper,
 			boolean useHeadersIfPresent) {
 
-		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
-		this.objectMapper = objectMapper;
+		Assert.notNull(jsonMapper, "'jsonMapper' must not be null.");
+		this.jsonMapper = jsonMapper;
 		JavaType javaType = null;
 		if (targetType == null) {
 			Class<?> genericType = ResolvableType.forClass(getClass()).getSuperType().resolveGeneric(0);
@@ -279,33 +279,33 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 	}
 
 	/**
-	 * Construct an instance with the provided target type, {@link ObjectMapper} and
+	 * Construct an instance with the provided target type, {@link JsonMapper} and
 	 * useHeadersIfPresent.
 	 * @param targetType the target type reference.
-	 * @param objectMapper the mapper.
+	 * @param jsonMapper the mapper.
 	 * @param useHeadersIfPresent true to use headers if present and fall back to target
 	 * type if not.
 	 */
-	public JacksonJsonDeserializer(@Nullable TypeReference<? super T> targetType, ObjectMapper objectMapper,
+	public JacksonJsonDeserializer(@Nullable TypeReference<? super T> targetType, JsonMapper jsonMapper,
 			boolean useHeadersIfPresent) {
 
 		this(targetType != null ? TypeFactory.createDefaultInstance().constructType(targetType) : null,
-				objectMapper, useHeadersIfPresent);
+				jsonMapper, useHeadersIfPresent);
 	}
 
 	/**
-	 * Construct an instance with the provided target type, {@link ObjectMapper} and
+	 * Construct an instance with the provided target type, {@link JsonMapper} and
 	 * useHeadersIfPresent.
 	 * @param targetType the target type reference.
-	 * @param objectMapper the mapper.
+	 * @param jsonMapper the mapper.
 	 * @param useHeadersIfPresent true to use headers if present and fall back to target
 	 * type if not.
 	 */
-	public JacksonJsonDeserializer(@Nullable JavaType targetType, ObjectMapper objectMapper,
+	public JacksonJsonDeserializer(@Nullable JavaType targetType, JsonMapper jsonMapper,
 			boolean useHeadersIfPresent) {
 
-		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
-		this.objectMapper = objectMapper;
+		Assert.notNull(jsonMapper, "'jsonMapper' must not be null.");
+		this.jsonMapper = jsonMapper;
 		initialize(targetType, useHeadersIfPresent);
 	}
 
@@ -433,7 +433,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	private Map<String, Class<?>> createMappings(Map<String, ?> configs) {
 		Map<String, Class<?>> mappings =
-				JsonSerializer.createMappings(configs.get(JsonSerializer.TYPE_MAPPINGS).toString());
+				JacksonJsonSerializer.createMappings(configs.get(JacksonJsonSerializer.TYPE_MAPPINGS).toString());
 		addMappingsToTrusted(mappings);
 		return mappings;
 	}
@@ -499,7 +499,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 				"'targetType' cannot be null if 'useHeadersIfPresent' is false");
 
 		if (this.targetType != null) {
-			this.reader = this.objectMapper.readerFor(this.targetType);
+			this.reader = this.jsonMapper.readerFor(this.targetType);
 		}
 
 		addTargetPackageToTrusted();
@@ -578,7 +578,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 			javaType = this.typeMapper.toJavaType(headers);
 		}
 		if (javaType != null) {
-			deserReader = this.objectMapper.readerFor(javaType);
+			deserReader = this.jsonMapper.readerFor(javaType);
 		}
 		if (this.removeTypeHeaders) {
 			this.typeMapper.removeHeaders(headers);
@@ -604,7 +604,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 		if (this.typeResolver != null) {
 			JavaType javaType = this.typeResolver.resolveType(topic, data, null);
 			if (javaType != null) {
-				localReader = this.objectMapper.readerFor(javaType);
+				localReader = this.jsonMapper.readerFor(javaType);
 			}
 		}
 		Assert.state(localReader != null, "No headers available and no default type provided");
@@ -629,7 +629,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 	 * @return new instance of deserializer with type changes
 	 */
 	public <X> JacksonJsonDeserializer<X> copyWithType(Class<? super X> newTargetType) {
-		return copyWithType(this.objectMapper.constructType(newTargetType));
+		return copyWithType(this.jsonMapper.constructType(newTargetType));
 	}
 
 	/**
@@ -639,7 +639,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 	 * @return new instance of deserializer with type changes
 	 */
 	public <X> JacksonJsonDeserializer<X> copyWithType(TypeReference<? super X> newTargetType) {
-		return copyWithType(this.objectMapper.constructType(newTargetType.getType()));
+		return copyWithType(this.jsonMapper.constructType(newTargetType.getType()));
 	}
 
 	/**
@@ -649,7 +649,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 	 * @return new instance of deserializer with type changes
 	 */
 	public <X> JacksonJsonDeserializer<X> copyWithType(JavaType newTargetType) {
-		JacksonJsonDeserializer<X> result = new JacksonJsonDeserializer<>(newTargetType, this.objectMapper, this.useTypeHeaders);
+		JacksonJsonDeserializer<X> result = new JacksonJsonDeserializer<>(newTargetType, this.jsonMapper, this.useTypeHeaders);
 		result.removeTypeHeaders = this.removeTypeHeaders;
 		result.typeMapper = this.typeMapper;
 		result.typeMapperExplicitlySet = this.typeMapperExplicitlySet;

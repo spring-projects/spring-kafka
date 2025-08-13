@@ -95,3 +95,29 @@ See xref:kafka/micrometer.adoc#batch-listener-obs[Observability for Batch Listen
 Spring for Apache Kafka now provides early access support for Kafka Queues through share consumers, which are part of Apache Kafka 4.0.0 and implement KIP-932.
 This enables cooperative consumption where multiple consumers can consume from the same partitions simultaneously, providing better load distribution compared to traditional consumer groups.
 See xref:kafka/kafka-queues.adoc[] for more information.
+
+[[x40-jackson3-support]]
+=== Jackson 3 Support
+
+Spring for Apache Kafka now provides comprehensive support for Jackson 3 alongside existing Jackson 2 support.
+Jackson 3 is automatically detected and preferred when available, providing enhanced performance and modern JSON processing capabilities.
+
+All Jackson 2 classes now have Jackson 3 counterparts with consistent naming and improved type safety:
+
+* `JsonKafkaHeaderMapper` replaces `DefaultKafkaHeaderMapper`
+* `JacksonJsonSerializer/Deserializer` replaces `JsonSerializer/Deserializer`
+* `JacksonJsonSerde` replaces `JsonSerde`
+* `JacksonJsonMessageConverter` family replaces `JsonMessageConverter` family
+* `JacksonProjectingMessageConverter` replaces `ProjectingMessageConverter`
+* `DefaultJacksonJavaTypeMapper` replaces `DefaultJackson2JavaTypeMapper`
+
+The new Jackson 3 classes use `JsonMapper` instead of generic `ObjectMapper` for enhanced type safety and leverage Jackson 3's improved module system and performance optimizations.
+
+**Migration Path**: Existing applications continue to work unchanged with Jackson 2.
+To migrate to Jackson 3, simply add Jackson 3 to your classpath and update class references to use the new Jackson 3 equivalents.
+The framework automatically detects and prefers Jackson 3 when both versions are present.
+
+**Backward Compatibility**: All Jackson 2 classes are deprecated but remain fully functional.
+They will be removed in a future major version.
+
+See xref:kafka/serdes.adoc[Serialization, Deserialization, and Message Conversion] for configuration examples.
