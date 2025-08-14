@@ -65,7 +65,7 @@ import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.listener.ContainerProperties.EOSMode;
-import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
+import org.springframework.kafka.support.JsonKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -724,7 +724,7 @@ public class TransactionalContainerTests {
 		embeddedKafka.consumeFromAnEmbeddedTopic(consumer, topic3DLT);
 		ConsumerRecord<Integer, String> dltRecord = KafkaTestUtils.getSingleRecord(consumer, topic3DLT);
 		assertThat(dltRecord.value()).isEqualTo("foo");
-		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
 		Map<String, Object> map = new HashMap<>();
 		mapper.toHeaders(dltRecord.headers(), map);
 		MessageHeaders headers = new MessageHeaders(map);
@@ -838,7 +838,7 @@ public class TransactionalContainerTests {
 		assertThat(dltRecord0.value()).isEqualTo("foo");
 		ConsumerRecord<Integer, String> dltRecord1 = recordList.get(1);
 		assertThat(dltRecord1.value()).isEqualTo("bar");
-		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
 		Map<String, Object> map = new HashMap<>();
 		mapper.toHeaders(dltRecord1.headers(), map);
 		MessageHeaders headers = new MessageHeaders(map);

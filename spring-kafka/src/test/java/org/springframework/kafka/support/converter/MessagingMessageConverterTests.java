@@ -100,7 +100,7 @@ public class MessagingMessageConverterTests {
 	@Test
 	void delegate() {
 		MessagingMessageConverter converter = new MessagingMessageConverter();
-		converter.setMessagingConverter(new MappingJacksonParameterizedConverter());
+		converter.setMessagingConverter(new MappingJacksonJsonParameterizedConverter());
 		Headers headers = new RecordHeaders();
 		headers.add(new RecordHeader(MessageHeaders.CONTENT_TYPE, "application/json".getBytes()));
 		ConsumerRecord<String, String> record =
@@ -114,7 +114,7 @@ public class MessagingMessageConverterTests {
 	void delegateNoContentType() {
 		// this works because of the type hint
 		MessagingMessageConverter converter = new MessagingMessageConverter();
-		converter.setMessagingConverter(new MappingJacksonParameterizedConverter());
+		converter.setMessagingConverter(new MappingJacksonJsonParameterizedConverter());
 		ConsumerRecord<String, String> record =
 				new ConsumerRecord<>("foo", 1, 42, -1L, null, 0, 0, "bar", "{ \"foo\":\"bar\"}",
 						new RecordHeaders(), Optional.empty());

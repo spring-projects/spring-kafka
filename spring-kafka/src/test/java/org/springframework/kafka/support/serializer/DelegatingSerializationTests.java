@@ -37,7 +37,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.utils.Bytes;
 import org.junit.jupiter.api.Test;
 
-import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
+import org.springframework.kafka.support.JsonKafkaHeaderMapper;
 import org.springframework.messaging.MessageHeaders;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -179,7 +179,7 @@ public class DelegatingSerializationTests {
 		// The DKHM will jsonize the value; test that we ignore the quotes
 		MessageHeaders messageHeaders = new MessageHeaders(
 				Collections.singletonMap(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR, "string"));
-		new DefaultKafkaHeaderMapper().fromHeaders(messageHeaders, headers);
+		new JsonKafkaHeaderMapper().fromHeaders(messageHeaders, headers);
 		assertThat(headers.lastHeader(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR).value())
 				.isEqualTo(new byte[]{ 's', 't', 'r', 'i', 'n', 'g' });
 		serialized = serializer.serialize("foo", headers, "bar");
@@ -218,7 +218,7 @@ public class DelegatingSerializationTests {
 		// The DKHM will jsonize the value; test that we ignore the quotes
 		MessageHeaders messageHeaders = new MessageHeaders(
 				Collections.singletonMap(DelegatingSerializer.KEY_SERIALIZATION_SELECTOR, "string"));
-		new DefaultKafkaHeaderMapper().fromHeaders(messageHeaders, headers);
+		new JsonKafkaHeaderMapper().fromHeaders(messageHeaders, headers);
 		assertThat(headers.lastHeader(DelegatingSerializer.KEY_SERIALIZATION_SELECTOR).value())
 				.isEqualTo(new byte[]{ 's', 't', 'r', 'i', 'n', 'g' });
 		serialized = serializer.serialize("foo", headers, "bar");

@@ -31,7 +31,7 @@ import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.core.ProducerFactory
 import org.springframework.kafka.requestreply.ReplyingKafkaTemplate
 import org.springframework.kafka.requestreply.RequestReplyTypedMessageFuture
-import org.springframework.kafka.support.converter.ByteArrayJsonMessageConverter
+import org.springframework.kafka.support.converter.ByteArrayJacksonJsonMessageConverter
 import org.springframework.messaging.handler.annotation.SendTo
 import org.springframework.messaging.support.MessageBuilder
 import java.util.concurrent.TimeUnit
@@ -76,7 +76,7 @@ class Application {
         val replyContainer = factory.createContainer("replies")
         replyContainer.containerProperties.setGroupId("request.replies")
         val template = ReplyingKafkaTemplate<String, String, String>(pf, replyContainer)
-        template.messageConverter = ByteArrayJsonMessageConverter()
+        template.messageConverter = ByteArrayJacksonJsonMessageConverter()
         template.setDefaultTopic("requests")
         return template
     }

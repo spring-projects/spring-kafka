@@ -18,34 +18,44 @@ package org.springframework.kafka.support.mapping;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.type.TypeFactory;
 
 import org.springframework.beans.factory.BeanClassLoaderAware;
 import org.springframework.messaging.converter.MessageConversionException;
+import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.PatternMatchUtils;
 
 /**
- * Abstract type mapper.
+ * Jackson 3 type mapper.
  *
  * @author Mark Pollack
  * @author Sam Nelson
  * @author Andreas Asplund
+ * @author Artem Bilan
  * @author Gary Russell
- * @author Elliot Kennedy
  * @author Soby Chacko
  *
- * @since 2.1
- *
- * @deprecated since 4.0 in favor of {@link DefaultJacksonJavaTypeMapper} for Jackson 3.
+ * @since 4.0
  */
-@Deprecated(forRemoval = true, since = "4.0")
-public abstract class AbstractJavaTypeMapper implements BeanClassLoaderAware {
+public class DefaultJacksonJavaTypeMapper implements JacksonJavaTypeMapper, BeanClassLoaderAware {
+
+	private static final List<String> TRUSTED_PACKAGES = List.of("java.util", "java.lang");
+
+	private final Set<String> trustedPackages = new LinkedHashSet<>(TRUSTED_PACKAGES);
+
+	private volatile TypePrecedence typePrecedence = TypePrecedence.INFERRED;
 
 	/**
 	 * Default header name for type information.
@@ -89,6 +99,8 @@ public abstract class AbstractJavaTypeMapper implements BeanClassLoaderAware {
 
 	private @Nullable ClassLoader classLoader = ClassUtils.getDefaultClassLoader();
 
+	private TypeFactory typeFactory = TypeFactory.createDefaultInstance();
+
 	public String getClassIdFieldName() {
 		return this.classIdFieldName;
 	}
@@ -96,7 +108,6 @@ public abstract class AbstractJavaTypeMapper implements BeanClassLoaderAware {
 	/**
 	 * Configure header name for type information.
 	 * @param classIdFieldName the header name.
-	 * @since 2.1.3
 	 */
 	public void setClassIdFieldName(String classIdFieldName) {
 		this.classIdFieldName = classIdFieldName;
@@ -109,7 +120,6 @@ public abstract class AbstractJavaTypeMapper implements BeanClassLoaderAware {
 	/**
 	 * Configure header name for container object contents type information.
 	 * @param contentClassIdFieldName the header name.
-	 * @since 2.1.3
 	 */
 	public void setContentClassIdFieldName(String contentClassIdFieldName) {
 		this.contentClassIdFieldName = contentClassIdFieldName;
@@ -122,7 +132,6 @@ public abstract class AbstractJavaTypeMapper implements BeanClassLoaderAware {
 	/**
 	 * Configure header name for map key type information.
 	 * @param keyClassIdFieldName the header name.
-	 * @since 2.1.3
 	 */
 	public void setKeyClassIdFieldName(String keyClassIdFieldName) {
 		this.keyClassIdFieldName = keyClassIdFieldName;
@@ -136,6 +145,7 @@ public abstract class AbstractJavaTypeMapper implements BeanClassLoaderAware {
 	@Override
 	public void setBeanClassLoader(ClassLoader classLoader) {
 		this.classLoader = classLoader;
+		this.typeFactory = this.typeFactory.withClassLoader(classLoader);
 	}
 
 	protected @Nullable ClassLoader getClassLoader() {
@@ -188,14 +198,158 @@ public abstract class AbstractJavaTypeMapper implements BeanClassLoaderAware {
 	/**
 	 * Configure the TypeMapper to use default key type class.
 	 * @param isKey Use key type headers if true
-	 * @since 2.1.3
 	 */
 	public void setUseForKey(boolean isKey) {
 		if (isKey) {
-			setClassIdFieldName(AbstractJavaTypeMapper.KEY_DEFAULT_CLASSID_FIELD_NAME);
-			setContentClassIdFieldName(AbstractJavaTypeMapper.KEY_DEFAULT_CONTENT_CLASSID_FIELD_NAME);
-			setKeyClassIdFieldName(AbstractJavaTypeMapper.KEY_DEFAULT_KEY_CLASSID_FIELD_NAME);
+			setClassIdFieldName(KEY_DEFAULT_CLASSID_FIELD_NAME);
+			setContentClassIdFieldName(KEY_DEFAULT_CONTENT_CLASSID_FIELD_NAME);
+			setKeyClassIdFieldName(KEY_DEFAULT_KEY_CLASSID_FIELD_NAME);
 		}
 	}
 
+	/**
+	 * Return the precedence.
+	 * @return the precedence.
+	 */
+	@Override
+	public TypePrecedence getTypePrecedence() {
+		return this.typePrecedence;
+	}
+
+	@Override
+	public void setTypePrecedence(TypePrecedence typePrecedence) {
+		Assert.notNull(typePrecedence, "'typePrecedence' cannot be null");
+		this.typePrecedence = typePrecedence;
+	}
+
+	/**
+	 * Specify a set of packages to trust during deserialization.
+	 * The asterisk ({@code *}) means trust all.
+	 * @param packagesToTrust the trusted Java packages for deserialization
+	 */
+	@Override
+	public void addTrustedPackages(String... packagesToTrust) {
+		if (this.trustedPackages.isEmpty()) {
+			return;
+		}
+		if (packagesToTrust != null) {
+			for (String trusted : packagesToTrust) {
+				if ("*".equals(trusted)) {
+					this.trustedPackages.clear();
+					break;
+				}
+				else {
+					this.trustedPackages.add(trusted);
+				}
+			}
+		}
+	}
+
+	@Override
+	public @Nullable JavaType toJavaType(Headers headers) {
+		String typeIdHeader = retrieveHeaderAsString(headers, getClassIdFieldName());
+
+		if (typeIdHeader != null) {
+
+			JavaType classType = getClassIdType(typeIdHeader);
+			if (!classType.isContainerType() || classType.isArrayType()) {
+				return classType;
+			}
+
+			JavaType contentClassType = getClassIdType(retrieveHeader(headers, getContentClassIdFieldName()));
+			if (classType.getKeyType() == null) {
+				return this.typeFactory.constructCollectionLikeType(classType.getRawClass(), contentClassType);
+			}
+
+			JavaType keyClassType = getClassIdType(retrieveHeader(headers, getKeyClassIdFieldName()));
+			return this.typeFactory.constructMapLikeType(classType.getRawClass(), keyClassType, contentClassType);
+		}
+
+		return null;
+	}
+
+	private JavaType getClassIdType(String classId) {
+		if (getIdClassMapping().containsKey(classId)) {
+			return this.typeFactory.constructType(getIdClassMapping().get(classId));
+		}
+		else {
+			try {
+				if (!isTrustedPackage(classId)) {
+					throw new IllegalArgumentException("The class '" + classId
+							+ "' is not in the trusted packages: "
+							+ this.trustedPackages + ". "
+							+ "If you believe this class is safe to deserialize, please provide its name. "
+							+ "If the serialization is only done by a trusted source, you can also enable "
+							+ "trust all (*).");
+				}
+				else {
+					return this.typeFactory
+							.constructType(ClassUtils.forName(classId, getClassLoader()));
+				}
+			}
+			catch (ClassNotFoundException e) {
+				throw new MessageConversionException("failed to resolve class name. Class not found ["
+						+ classId + "]", e);
+			}
+			catch (LinkageError e) {
+				throw new MessageConversionException("failed to resolve class name. Linkage error ["
+						+ classId + "]", e);
+			}
+		}
+	}
+
+	private boolean isTrustedPackage(String requestedType) {
+		if (!this.trustedPackages.isEmpty()) {
+			String packageName = ClassUtils.getPackageName(requestedType).replaceFirst("\\[L", "");
+			for (String trustedPackage : this.trustedPackages) {
+				if (PatternMatchUtils.simpleMatch(trustedPackage, packageName)) {
+					return true;
+				}
+			}
+			return false;
+		}
+		return true;
+	}
+
+	@Override
+	public void fromJavaType(JavaType javaType, Headers headers) {
+		String classIdFieldName = getClassIdFieldName();
+		if (headers.lastHeader(classIdFieldName) != null) {
+			removeHeaders(headers);
+		}
+
+		addHeader(headers, classIdFieldName, javaType.getRawClass());
+
+		if (javaType.isContainerType() && !javaType.isArrayType()) {
+			addHeader(headers, getContentClassIdFieldName(), javaType.getContentType().getRawClass());
+		}
+
+		if (javaType.getKeyType() != null) {
+			addHeader(headers, getKeyClassIdFieldName(), javaType.getKeyType().getRawClass());
+		}
+	}
+
+	@Override
+	public void fromClass(Class<?> clazz, Headers headers) {
+		fromJavaType(this.typeFactory.constructType(clazz), headers);
+
+	}
+
+	@Override
+	public @Nullable Class<?> toClass(Headers headers) {
+		JavaType javaType = toJavaType(headers);
+		return javaType == null ? null : javaType.getRawClass();
+	}
+
+	@Override
+	public void removeHeaders(Headers headers) {
+		try {
+			headers.remove(getClassIdFieldName());
+			headers.remove(getContentClassIdFieldName());
+			headers.remove(getKeyClassIdFieldName());
+		}
+		catch (Exception e) { // NOSONAR
+			// NOSONAR
+		}
+	}
 }

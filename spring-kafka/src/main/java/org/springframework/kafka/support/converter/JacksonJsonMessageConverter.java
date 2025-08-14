@@ -16,57 +16,54 @@
 
 package org.springframework.kafka.support.converter;
 
-import java.io.IOException;
 import java.lang.reflect.Type;
 
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.utils.Bytes;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.type.TypeFactory;
 
-import org.springframework.kafka.support.JacksonUtils;
+import org.springframework.kafka.support.JacksonMapperUtils;
 import org.springframework.kafka.support.KafkaNull;
-import org.springframework.kafka.support.mapping.DefaultJackson2JavaTypeMapper;
-import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper;
-import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper.TypePrecedence;
+import org.springframework.kafka.support.mapping.DefaultJacksonJavaTypeMapper;
+import org.springframework.kafka.support.mapping.JacksonJavaTypeMapper;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.converter.JacksonJsonMessageConverter;
 import org.springframework.util.Assert;
 
 /**
- * Base class for JSON message converters; on the consumer side, it can
+ * Base class for JSON message converters that use Jackson 3; on the consumer side, it can
  * handle {@code byte[]}, {@link Bytes} and {@link String} record values.
  * On the producer side, select a subclass that matches the corresponding
  * Kafka Serializer.
  *
  * @author Gary Russell
- * @since 2.3
+ * @author Soby Chacko
  *
- * @deprecated since 4.0 in favor of {@link JacksonJsonMessageConverter} for Jackson 3.
+ * @since 4.0
  */
-@Deprecated(forRemoval = true, since = "4.0")
-public class JsonMessageConverter extends MessagingMessageConverter {
+public class JacksonJsonMessageConverter extends MessagingMessageConverter {
 
-	private static final JavaType OBJECT = TypeFactory.defaultInstance().constructType(Object.class);
+	private final JsonMapper jsonMapper;
 
-	private final ObjectMapper objectMapper;
+	private JacksonJavaTypeMapper typeMapper = new DefaultJacksonJavaTypeMapper();
 
-	private Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
+	private final TypeFactory typeFactory;
 
-	public JsonMessageConverter() {
-		this(JacksonUtils.enhancedObjectMapper());
+	public JacksonJsonMessageConverter() {
+		this(JacksonMapperUtils.enhancedJsonMapper());
 	}
 
-	public JsonMessageConverter(ObjectMapper objectMapper) {
-		Assert.notNull(objectMapper, "'objectMapper' must not be null.");
-		this.objectMapper = objectMapper;
+	public JacksonJsonMessageConverter(JsonMapper jsonMapper) {
+		Assert.notNull(jsonMapper, "'jsonMapper' must not be null.");
+		this.jsonMapper = jsonMapper;
+		this.typeFactory = jsonMapper.getTypeFactory();
 	}
 
-	public Jackson2JavaTypeMapper getTypeMapper() {
+	public JacksonJavaTypeMapper getTypeMapper() {
 		return this.typeMapper;
 	}
 
@@ -74,7 +71,7 @@ public class JsonMessageConverter extends MessagingMessageConverter {
 	 * Set a customized type mapper.
 	 * @param typeMapper the type mapper.
 	 */
-	public void setTypeMapper(Jackson2JavaTypeMapper typeMapper) {
+	public void setTypeMapper(JacksonJavaTypeMapper typeMapper) {
 		Assert.notNull(typeMapper, "'typeMapper' cannot be null");
 		this.typeMapper = typeMapper;
 	}
@@ -83,8 +80,8 @@ public class JsonMessageConverter extends MessagingMessageConverter {
 	 * Return the object mapper.
 	 * @return the mapper.
 	 */
-	protected ObjectMapper getObjectMapper() {
-		return this.objectMapper;
+	protected JsonMapper getJsonMapper() {
+		return this.jsonMapper;
 	}
 
 	@Override
@@ -113,17 +110,17 @@ public class JsonMessageConverter extends MessagingMessageConverter {
 		}
 		if (value instanceof String) {
 			try {
-				return this.objectMapper.readValue((String) value, javaType);
+				return this.jsonMapper.readValue((String) value, javaType);
 			}
-			catch (IOException e) {
+			catch (Exception e) {
 				throw new ConversionException("Failed to convert from JSON", record, e);
 			}
 		}
 		else if (value instanceof byte[]) {
 			try {
-				return this.objectMapper.readValue((byte[]) value, javaType);
+				return this.jsonMapper.readValue((byte[]) value, javaType);
 			}
-			catch (IOException e) {
+			catch (Exception e) {
 				throw new ConversionException("Failed to convert from JSON", record, e);
 			}
 		}
@@ -133,15 +130,15 @@ public class JsonMessageConverter extends MessagingMessageConverter {
 	}
 
 	private JavaType determineJavaType(ConsumerRecord<?, ?> record, @Nullable Type type) {
-		JavaType javaType = this.typeMapper.getTypePrecedence().equals(TypePrecedence.INFERRED) && type != null
-				? TypeFactory.defaultInstance().constructType(type)
+		JavaType javaType = this.typeMapper.getTypePrecedence().equals(JacksonJavaTypeMapper.TypePrecedence.INFERRED) && type != null
+				? this.typeFactory.constructType(type)
 				: this.typeMapper.toJavaType(record.headers());
 		if (javaType == null) { // no headers
 			if (type != null) {
-				javaType = TypeFactory.defaultInstance().constructType(type);
+				javaType = this.typeFactory.constructType(type);
 			}
 			else {
-				javaType = OBJECT;
+				javaType = this.typeFactory.constructType(Object.class);
 			}
 		}
 		return javaType;

@@ -563,7 +563,7 @@ int delivery = ByteBuffer.wrap(record.headers()
     .getInt();
 ----
 
-When using `@KafkaListener` with the `DefaultKafkaHeaderMapper` or `SimpleKafkaHeaderMapper`, it can be obtained by adding `@Header(KafkaHeaders.DELIVERY_ATTEMPT) int delivery` as a parameter to the listener method.
+When using `@KafkaListener` with the `JsonKafkaHeaderMapper` or `SimpleKafkaHeaderMapper`, it can be obtained by adding `@Header(KafkaHeaders.DELIVERY_ATTEMPT) int delivery` as a parameter to the listener method.
 
 To enable population of this header, set the container property `deliveryAttemptHeader` to `true`.
 It is disabled by default to avoid the (small) overhead of looking up the state for each record and adding the header.

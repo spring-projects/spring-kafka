@@ -538,7 +538,7 @@ The `Header` contains a four-byte int (big-endian).
 The server must use this header to route the reply to the correct partition (`@KafkaListener` does this).
 In this case, though, the reply container must not use Kafka's group management feature and must be configured to listen on a fixed partition (by using a `TopicPartitionOffset` in its `ContainerProperties` constructor).
 
-NOTE: The `DefaultKafkaHeaderMapper` requires Jackson to be on the classpath (for the `@KafkaListener`).
+NOTE: The `JsonKafkaHeaderMapper` requires Jackson to be on the classpath (for the `@KafkaListener`).
 If it is not available, the message converter has no header mapper, so you must configure a `MessagingMessageConverter` with a `SimpleKafkaHeaderMapper`, as shown earlier.
 
 By default, 3 headers are used:

@@ -18,7 +18,7 @@ package org.springframework.kafka.support.serializer;
 
 import org.junit.jupiter.api.Test;
 
-import org.springframework.kafka.support.mapping.AbstractJavaTypeMapper;
+import org.springframework.kafka.support.mapping.DefaultJacksonJavaTypeMapper;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,15 +32,15 @@ public class JsonSerdeTests {
 
 	@Test
 	void noTypeInfo() {
-		JsonSerde<String> serde = new JsonSerde<>(String.class)
+		JacksonJsonSerde<String> serde = new JacksonJsonSerde<>(String.class)
 				.forKeys()
 				.noTypeInfo()
 				.ignoreTypeHeaders()
 				.dontRemoveTypeHeaders();
 		assertThat(KafkaTestUtils.getPropertyValue(serde, "jsonSerializer.typeMapper.classIdFieldName"))
-				.isEqualTo(AbstractJavaTypeMapper.KEY_DEFAULT_CLASSID_FIELD_NAME);
+				.isEqualTo(DefaultJacksonJavaTypeMapper.KEY_DEFAULT_CLASSID_FIELD_NAME);
 		assertThat(KafkaTestUtils.getPropertyValue(serde, "jsonDeserializer.typeMapper.classIdFieldName"))
-				.isEqualTo(AbstractJavaTypeMapper.KEY_DEFAULT_CLASSID_FIELD_NAME);
+				.isEqualTo(DefaultJacksonJavaTypeMapper.KEY_DEFAULT_CLASSID_FIELD_NAME);
 		assertThat(KafkaTestUtils.getPropertyValue(serde, "jsonSerializer.addTypeInfo", Boolean.class)).isFalse();
 		assertThat(KafkaTestUtils.getPropertyValue(serde, "jsonDeserializer.useTypeHeaders", Boolean.class)).isFalse();
 		assertThat(KafkaTestUtils.getPropertyValue(serde, "jsonDeserializer.removeTypeHeaders", Boolean.class))

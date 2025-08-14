@@ -16,26 +16,24 @@
 
 package org.springframework.kafka.support.mapping;
 
-import com.fasterxml.jackson.databind.JavaType;
 import org.apache.kafka.common.header.Headers;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.databind.JavaType;
 
 /**
  * Strategy for setting metadata on messages such that one can create the class that needs
- * to be instantiated when receiving a message.
+ * to be instantiated when receiving a message. Basedon on Jackson 3.
  *
  * @author Mark Pollack
  * @author James Carr
  * @author Sam Nelson
  * @author Andreas Asplund
  * @author Gary Russell
+ * @author Soby Chacko
  *
- * @since 2.1
- *
- * @deprecated since 4.0 in favor of {@link JacksonJavaTypeMapper} for Jackson 3.
+ * @since 4.0
  */
-@Deprecated(forRemoval = true, since = "4.0")
-public interface Jackson2JavaTypeMapper extends ClassMapper {
+public interface JacksonJavaTypeMapper extends ClassMapper {
 
 	/**
 	 * The precedence for type conversion - inferred from the method parameter or message
@@ -71,9 +69,8 @@ public interface Jackson2JavaTypeMapper extends ClassMapper {
 	 * associated headers provided by the sender.
 	 * <p> If you wish to force the use of the  {@code __TypeId__} and associated headers
 	 * (such as when the actual type is a subclass of the method argument type),
-	 * set the precedence to {@link Jackson2JavaTypeMapper.TypePrecedence#TYPE_ID}.
+	 * set the precedence to {@link TypePrecedence#TYPE_ID}.
 	 * @param typePrecedence the precedence.
-	 * @since 2.2
 	 */
 	default void setTypePrecedence(TypePrecedence typePrecedence) {
 		throw new UnsupportedOperationException("This mapper does not support this method");
@@ -84,7 +81,6 @@ public interface Jackson2JavaTypeMapper extends ClassMapper {
 	/**
 	 * Remove the type information headers.
 	 * @param headers the headers.
-	 * @since 2.2
 	 */
 	default void removeHeaders(Headers headers) {
 		// NOSONAR

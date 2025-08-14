@@ -56,6 +56,7 @@ ext {
 	hamcrestVersion = '3.0'
 	hibernateValidationVersion = '9.0.1.Final'
 	jacksonBomVersion = '2.19.2'
+	jackson3Version = '3.0.0-rc5'
 	jaywayJsonPathVersion = '2.9.0'
 	junit4Version = '4.13.2'
 	junitJupiterVersion = '5.13.4'
@@ -110,6 +111,7 @@ allprojects {
 
 		imports {
 			mavenBom "com.fasterxml.jackson:jackson-bom:$jacksonBomVersion"
+			mavenBom "tools.jackson:jackson-bom:$jackson3Version"
 			mavenBom "org.junit:junit-bom:$junitJupiterVersion"
 			mavenBom "io.micrometer:micrometer-bom:$micrometerVersion"
 			mavenBom "io.micrometer:micrometer-tracing-bom:$micrometerTracingVersion"
@@ -260,6 +262,12 @@ project ('spring-kafka') {
 		optionalApi 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 		optionalApi 'com.fasterxml.jackson.datatype:jackson-datatype-joda'
 		optionalApi ('com.fasterxml.jackson.module:jackson-module-kotlin') {
+			exclude group: 'org.jetbrains.kotlin'
+		}
+
+		optionalApi 'tools.jackson.core:jackson-databind'
+		optionalApi 'tools.jackson.datatype:jackson-datatype-joda'
+		optionalApi('tools.jackson.module:jackson-module-kotlin') {
 			exclude group: 'org.jetbrains.kotlin'
 		}
 

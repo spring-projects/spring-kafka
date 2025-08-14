@@ -28,12 +28,6 @@ import java.util.Set;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -41,11 +35,16 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.exc.StreamReadException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.type.TypeFactory;
 
 import org.springframework.beans.DirectFieldAccessor;
-import org.springframework.kafka.support.mapping.AbstractJavaTypeMapper;
-import org.springframework.kafka.support.mapping.DefaultJackson2JavaTypeMapper;
-import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper.TypePrecedence;
+import org.springframework.kafka.support.mapping.DefaultJacksonJavaTypeMapper;
+import org.springframework.kafka.support.mapping.JacksonJavaTypeMapper;
 import org.springframework.kafka.support.serializer.testentities.DummyEntity;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
@@ -68,15 +67,15 @@ public class JsonSerializationTests {
 
 	private StringDeserializer stringReader;
 
-	private JsonSerializer<Object> jsonWriter;
+	private JacksonJsonSerializer<Object> jsonWriter;
 
-	private JsonDeserializer<DummyEntity> jsonReader;
+	private JacksonJsonDeserializer<DummyEntity> jsonReader;
 
-	private JsonDeserializer<DummyEntity[]> jsonArrayReader;
+	private JacksonJsonDeserializer<DummyEntity[]> jsonArrayReader;
 
-	private JsonDeserializer<DummyEntity> dummyEntityJsonDeserializer;
+	private JacksonJsonDeserializer<DummyEntity> dummyEntityJsonDeserializer;
 
-	private JsonDeserializer<DummyEntity[]> dummyEntityArrayJsonDeserializer;
+	private JacksonJsonDeserializer<DummyEntity[]> dummyEntityArrayJsonDeserializer;
 
 	private DummyEntity entity;
 
@@ -97,12 +96,12 @@ public class JsonSerializationTests {
 
 		topic = "topic-name";
 
-		jsonReader = new JsonDeserializer<DummyEntity>() { };
+		jsonReader = new JacksonJsonDeserializer<DummyEntity>() { };
 		jsonReader.close(); // does nothing, so may be called any time, or not called at all
-		jsonArrayReader = new JsonDeserializer<DummyEntity[]>() { };
+		jsonArrayReader = new JacksonJsonDeserializer<DummyEntity[]>() { };
 		jsonArrayReader.configure(new HashMap<>(), false);
 		jsonArrayReader.close(); // does nothing, so may be called any time, or not called at all
-		jsonWriter = new JsonSerializer<>();
+		jsonWriter = new JacksonJsonSerializer<>();
 		jsonWriter.close(); // does nothing, so may be called any time, or not called at all
 		stringReader = new StringDeserializer();
 		stringReader.configure(new HashMap<>(), false);
@@ -121,7 +120,7 @@ public class JsonSerializationTests {
 	void testDeserializeSerializedEntityEquals() {
 		assertThat(jsonReader.deserialize(topic, jsonWriter.serialize(topic, entity))).isEqualTo(entity);
 		Headers headers = new RecordHeaders();
-		headers.add(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME, DummyEntity.class.getName().getBytes());
+		headers.add(DefaultJacksonJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME, DummyEntity.class.getName().getBytes());
 		assertThat(dummyEntityJsonDeserializer.deserialize(topic, headers, jsonWriter.serialize(topic, entity))).isEqualTo(entity);
 	}
 
@@ -134,7 +133,7 @@ public class JsonSerializationTests {
 	void testDeserializeSerializedEntityArrayEquals() {
 		assertThat(jsonArrayReader.deserialize(topic, jsonWriter.serialize(topic, entityArray))).isEqualTo(entityArray);
 		Headers headers = new RecordHeaders();
-		headers.add(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME, DummyEntity[].class.getName().getBytes());
+		headers.add(DefaultJacksonJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME, DummyEntity[].class.getName().getBytes());
 		assertThat(dummyEntityArrayJsonDeserializer.deserialize(topic, headers, jsonWriter.serialize(topic, entityArray))).isEqualTo(entityArray);
 	}
 
@@ -148,10 +147,10 @@ public class JsonSerializationTests {
 		assertThatExceptionOfType(SerializationException.class)
 				.isThrownBy(() -> jsonReader.deserialize(topic, stringWriter.serialize(topic, "dummy")))
 				.withMessageStartingWith("Can't deserialize data [")
-				.withCauseInstanceOf(JsonParseException.class);
+				.withCauseInstanceOf(StreamReadException.class);
 
 		Headers headers = new RecordHeaders();
-		headers.add(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME, "com.malware.DummyEntity".getBytes());
+		headers.add(DefaultJacksonJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME, "com.malware.DummyEntity".getBytes());
 		assertThatIllegalArgumentException()
 				.isThrownBy(() -> dummyEntityJsonDeserializer
 						.deserialize(topic, headers, jsonWriter.serialize(topic, entity)))
@@ -180,7 +179,7 @@ public class JsonSerializationTests {
 
 	@Test
 	void testExtraFieldIgnored() {
-		JsonDeserializer<DummyEntity> deser = new JsonDeserializer<>(DummyEntity.class);
+		JacksonJsonDeserializer<DummyEntity> deser = new JacksonJsonDeserializer<>(DummyEntity.class);
 		assertThat(deser.deserialize(topic, "{\"intValue\":1,\"extra\":2}".getBytes()))
 				.isInstanceOf(DummyEntity.class);
 		deser.close();
@@ -190,27 +189,27 @@ public class JsonSerializationTests {
 	void testDeserTypeHeadersConfig() {
 		this.jsonReader.configure(Collections.singletonMap(JsonDeserializer.USE_TYPE_INFO_HEADERS, false), false);
 		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
-			.isEqualTo(TypePrecedence.INFERRED);
+			.isEqualTo(JacksonJavaTypeMapper.TypePrecedence.INFERRED);
 		DirectFieldAccessor dfa = new DirectFieldAccessor(this.jsonReader);
 		dfa.setPropertyValue("configured", false);
 		this.jsonReader.configure(Collections.singletonMap(JsonDeserializer.USE_TYPE_INFO_HEADERS, true), false);
 		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
-			.isEqualTo(TypePrecedence.TYPE_ID);
+			.isEqualTo(JacksonJavaTypeMapper.TypePrecedence.TYPE_ID);
 		dfa.setPropertyValue("configured", false);
 		this.jsonReader.configure(Collections.singletonMap(JsonDeserializer.USE_TYPE_INFO_HEADERS, false), false);
 		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
-			.isEqualTo(TypePrecedence.INFERRED);
+			.isEqualTo(JacksonJavaTypeMapper.TypePrecedence.INFERRED);
 		this.jsonReader.setUseTypeHeaders(true);
 		dfa.setPropertyValue("configured", false);
 		this.jsonReader.configure(Collections.emptyMap(), false);
 		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
-			.isEqualTo(TypePrecedence.TYPE_ID);
-		this.jsonReader.setTypeMapper(new DefaultJackson2JavaTypeMapper());
+			.isEqualTo(JacksonJavaTypeMapper.TypePrecedence.TYPE_ID);
+		this.jsonReader.setTypeMapper(new DefaultJacksonJavaTypeMapper());
 		dfa.setPropertyValue("configured", false);
 		dfa.setPropertyValue("setterCalled", false);
 		this.jsonReader.configure(Collections.singletonMap(JsonDeserializer.USE_TYPE_INFO_HEADERS, true), false);
 		assertThat(KafkaTestUtils.getPropertyValue(this.jsonReader, "typeMapper.typePrecedence"))
-			.isEqualTo(TypePrecedence.INFERRED);
+			.isEqualTo(JacksonJavaTypeMapper.TypePrecedence.INFERRED);
 	}
 
 	@Test
@@ -225,8 +224,10 @@ public class JsonSerializationTests {
 
 	@Test
 	void testDeserializerTypeReference() {
-		JsonSerializer<List<DummyEntity>> ser = new JsonSerializer<>();
-		JsonDeserializer<List<DummyEntity>> de = new JsonDeserializer<>(new TypeReference<List<DummyEntity>>() { });
+		JacksonJsonSerializer<List<DummyEntity>> ser = new JacksonJsonSerializer<>();
+		JacksonJsonDeserializer<List<DummyEntity>> de = new JacksonJsonDeserializer<>(new TypeReference<>() {
+
+		});
 		List<DummyEntity> dummy = Arrays.asList(this.entityArray);
 		assertThat(de.deserialize(this.topic, ser.serialize(this.topic, dummy))).isEqualTo(dummy);
 		ser.close();
@@ -235,8 +236,8 @@ public class JsonSerializationTests {
 
 	@Test
 	void testDeserializerTypeForcedType() {
-		JsonSerializer<List<Parent>> ser = new JsonSerializer<>(new TypeReference<List<Parent>>() { });
-		JsonDeserializer<List<Parent>> de = new JsonDeserializer<>(new TypeReference<List<Parent>>() { });
+		JacksonJsonSerializer<List<Parent>> ser = new JacksonJsonSerializer<>(new TypeReference<List<Parent>>() { });
+		JacksonJsonDeserializer<List<Parent>> de = new JacksonJsonDeserializer<>(new TypeReference<List<Parent>>() { });
 		List<Parent> dummy = Arrays.asList(new Child(1), new Parent(2));
 		assertThat(de.deserialize(this.topic, ser.serialize(this.topic, dummy))).isEqualTo(dummy);
 		ser.close();
@@ -245,8 +246,8 @@ public class JsonSerializationTests {
 
 	@Test
 	void jsonNode() throws IOException {
-		JsonSerializer<Object> ser = new JsonSerializer<>();
-		JsonDeserializer<JsonNode> de = new JsonDeserializer<>();
+		JacksonJsonSerializer<Object> ser = new JacksonJsonSerializer<>();
+		JacksonJsonDeserializer<JsonNode> de = new JacksonJsonDeserializer<>();
 		de.configure(Collections.singletonMap(JsonDeserializer.VALUE_DEFAULT_TYPE, JsonNode.class), false);
 		DummyEntity dummy = new DummyEntity();
 		byte[] serialized = ser.serialize("foo", dummy);
@@ -258,30 +259,30 @@ public class JsonSerializationTests {
 
 	@Test
 	void testPreExistingHeaders() {
-		JsonSerializer<? super Foo> ser = new JsonSerializer<>();
+		JacksonJsonSerializer<? super Foo> ser = new JacksonJsonSerializer<>();
 		Headers headers = new RecordHeaders();
 		ser.serialize("", headers, new Foo());
 		byte[] data = ser.serialize("", headers, new Bar());
-		JsonDeserializer<? super Foo> deser = new JsonDeserializer<>();
+		JacksonJsonDeserializer<? super Foo> deser = new JacksonJsonDeserializer<>();
 		deser.setRemoveTypeHeaders(false);
 		deser.addTrustedPackages(this.getClass().getPackage().getName());
 		assertThat(deser.deserialize("", headers, data)).isInstanceOf(Bar.class);
-		assertThat(headers.headers(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME)).hasSize(1);
+		assertThat(headers.headers(DefaultJacksonJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME)).hasSize(1);
 		ser.close();
 		deser.close();
 	}
 
 	@Test
 	void testDontUseTypeHeaders() {
-		JsonSerializer<? super Foo> ser = new JsonSerializer<>();
+		JacksonJsonSerializer<? super Foo> ser = new JacksonJsonSerializer<>();
 		Headers headers = new RecordHeaders();
 		byte[] data = ser.serialize("", headers, new Bar());
-		JsonDeserializer<? super Foo> deser = new JsonDeserializer<>(Foo.class);
+		JacksonJsonDeserializer<? super Foo> deser = new JacksonJsonDeserializer<>(Foo.class);
 		deser.setRemoveTypeHeaders(false);
 		deser.setUseTypeHeaders(false);
 		deser.addTrustedPackages(this.getClass().getPackage().getName());
 		assertThat(deser.deserialize("", headers, data)).isExactlyInstanceOf(Foo.class);
-		assertThat(headers.headers(AbstractJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME)).hasSize(1);
+		assertThat(headers.headers(DefaultJacksonJavaTypeMapper.DEFAULT_CLASSID_FIELD_NAME)).hasSize(1);
 		ser.close();
 		deser.close();
 	}
@@ -289,7 +290,7 @@ public class JsonSerializationTests {
 	@SuppressWarnings("unchecked")
 	@Test
 	void testParseTrustedPackages() {
-		JsonDeserializer<Object> deser = new JsonDeserializer<>();
+		JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>();
 		Map<String, Object> props = Collections.singletonMap(JsonDeserializer.TRUSTED_PACKAGES, "foo, bar, \tbaz");
 		deser.configure(props, false);
 		assertThat(KafkaTestUtils.getPropertyValue(deser, "typeMapper.trustedPackages", Set.class))
@@ -299,7 +300,7 @@ public class JsonSerializationTests {
 	@SuppressWarnings("unchecked")
 	@Test
 	void testTrustMappingPackages() {
-		JsonDeserializer<Object> deser = new JsonDeserializer<>();
+		JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>();
 		Map<String, Object> props = Collections.singletonMap(JsonDeserializer.TYPE_MAPPINGS,
 				"foo:" + Foo.class.getName());
 		deser.configure(props, false);
@@ -312,7 +313,7 @@ public class JsonSerializationTests {
 	@SuppressWarnings("unchecked")
 	@Test
 	void testTrustMappingPackagesForArray() {
-		JsonDeserializer<Object> deser = new JsonDeserializer<>();
+		JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>();
 		Map<String, Object> props = Collections.singletonMap(JsonDeserializer.TYPE_MAPPINGS,
 				"foo:" + Foo[].class.getName());
 		deser.configure(props, false);
@@ -325,7 +326,7 @@ public class JsonSerializationTests {
 	@SuppressWarnings("unchecked")
 	@Test
 	void testTrustMappingPackagesWithAll() {
-		JsonDeserializer<Object> deser = new JsonDeserializer<>();
+		JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>();
 		Map<String, Object> props = Map.of(
 				JsonDeserializer.TRUSTED_PACKAGES, "*",
 				JsonDeserializer.TYPE_MAPPINGS, "foo:" + Foo.class.getName());
@@ -336,8 +337,8 @@ public class JsonSerializationTests {
 	@SuppressWarnings("unchecked")
 	@Test
 	void testTrustMappingPackagesMapper() {
-		JsonDeserializer<Object> deser = new JsonDeserializer<>();
-		DefaultJackson2JavaTypeMapper mapper = new DefaultJackson2JavaTypeMapper();
+		JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>();
+		DefaultJacksonJavaTypeMapper mapper = new DefaultJacksonJavaTypeMapper();
 		mapper.setIdClassMapping(Collections.singletonMap("foo", Foo.class));
 		deser.setTypeMapper(mapper);
 		assertThat(KafkaTestUtils.getPropertyValue(deser, "typeMapper.trustedPackages", Set.class))
@@ -348,7 +349,7 @@ public class JsonSerializationTests {
 
 	@Test
 	void testTypeFunctionViaProperties() {
-		JsonDeserializer<Object> deser = new JsonDeserializer<>();
+		JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>();
 		Map<String, Object> props = new HashMap<>();
 		props.put(JsonDeserializer.KEY_TYPE_METHOD, getClass().getName() + ".stringType");
 		props.put(JsonDeserializer.VALUE_TYPE_METHOD, getClass().getName() + ".fooBarJavaType");
@@ -367,7 +368,7 @@ public class JsonSerializationTests {
 
 	@Test
 	void testTypeResolverViaProperties() {
-		JsonDeserializer<Object> deser = new JsonDeserializer<>();
+		JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>();
 		Map<String, Object> props = new HashMap<>();
 		props.put(JsonDeserializer.KEY_TYPE_METHOD, getClass().getName() + ".stringTypeForTopic");
 		props.put(JsonDeserializer.VALUE_TYPE_METHOD, getClass().getName() + ".fooBarJavaTypeForTopic");
@@ -386,7 +387,7 @@ public class JsonSerializationTests {
 
 	@Test
 	void testTypeFunctionDirect() {
-		JsonDeserializer<Object> deser = new JsonDeserializer<>()
+		JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>()
 				.trustedPackages("*")
 				.typeFunction(JsonSerializationTests::fooBarJavaType);
 		assertThat(deser.deserialize("", "{\"foo\":\"bar\"}".getBytes())).isInstanceOf(Foo.class);
@@ -397,7 +398,7 @@ public class JsonSerializationTests {
 
 	@Test
 	void testTypeResolverDirect() {
-		JsonDeserializer<Object> deser = new JsonDeserializer<>()
+		JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>()
 				.trustedPackages("*")
 				.typeResolver(JsonSerializationTests::fooBarJavaTypeForTopic);
 		assertThat(deser.deserialize("", "{\"foo\":\"bar\"}".getBytes())).isInstanceOf(Foo.class);
@@ -408,10 +409,10 @@ public class JsonSerializationTests {
 
 	@Test
 	void testCopyWithType() {
-		JsonDeserializer<Object> deser = new JsonDeserializer<>();
-		JsonSerializer<Object> ser = new JsonSerializer<>();
-		JsonDeserializer<Parent> typedDeser = deser.copyWithType(Parent.class);
-		JsonSerializer<Parent> typedSer = ser.copyWithType(Parent.class);
+		JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>();
+		JacksonJsonSerializer<Object> ser = new JacksonJsonSerializer<>();
+		JacksonJsonDeserializer<Parent> typedDeser = deser.copyWithType(Parent.class);
+		JacksonJsonSerializer<Parent> typedSer = ser.copyWithType(Parent.class);
 		Child serializedValue = new Child(1);
 		assertThat(typedDeser.deserialize("", typedSer.serialize("", serializedValue))).isEqualTo(serializedValue);
 		deser.close();
@@ -422,7 +423,7 @@ public class JsonSerializationTests {
 
 	@Test
 	void configRejectedIgnoredAfterPropertiesSet() {
-		JsonDeserializer<Object> deser = new JsonDeserializer<>();
+		JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>();
 		deser.setUseTypeHeaders(false);
 		Map<String, Object> configs = Map.of(JsonDeserializer.USE_TYPE_INFO_HEADERS, true);
 		assertThatIllegalStateException().isThrownBy(() -> deser.configure(configs, false));
@@ -435,35 +436,35 @@ public class JsonSerializationTests {
 
 	public static JavaType fooBarJavaType(byte[] data, Headers headers) {
 		if (data[0] == '{' && data[1] == 'f') {
-			return TypeFactory.defaultInstance().constructType(Foo.class);
+			return TypeFactory.createDefaultInstance().constructType(Foo.class);
 		}
 		else {
-			return TypeFactory.defaultInstance().constructType(Bar.class);
+			return TypeFactory.createDefaultInstance().constructType(Bar.class);
 		}
 	}
 
 	public static JavaType fooBarJavaTypeForTopic(String topic, byte[] data, Headers headers) {
 		if (data[0] == '{' && data[1] == 'f') {
-			return TypeFactory.defaultInstance().constructType(Foo.class);
+			return TypeFactory.createDefaultInstance().constructType(Foo.class);
 		}
 		else {
-			return TypeFactory.defaultInstance().constructType(Bar.class);
+			return TypeFactory.createDefaultInstance().constructType(Bar.class);
 		}
 	}
 
 	public static JavaType stringType(byte[] data, Headers headers) {
-		return TypeFactory.defaultInstance().constructType(String.class);
+		return TypeFactory.createDefaultInstance().constructType(String.class);
 	}
 
 	public static JavaType stringTypeForTopic(String topic, byte[] data, Headers headers) {
-		return TypeFactory.defaultInstance().constructType(String.class);
+		return TypeFactory.createDefaultInstance().constructType(String.class);
 	}
 
-	static class DummyEntityJsonDeserializer extends JsonDeserializer<DummyEntity> {
+	static class DummyEntityJsonDeserializer extends JacksonJsonDeserializer<DummyEntity> {
 
 	}
 
-	static class DummyEntityArrayJsonDeserializer extends JsonDeserializer<DummyEntity[]> {
+	static class DummyEntityArrayJsonDeserializer extends JacksonJsonDeserializer<DummyEntity[]> {
 
 	}
 

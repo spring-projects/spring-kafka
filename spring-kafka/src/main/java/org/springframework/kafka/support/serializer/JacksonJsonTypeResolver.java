@@ -16,21 +16,20 @@
 
 package org.springframework.kafka.support.serializer;
 
-import com.fasterxml.jackson.databind.JavaType;
 import org.apache.kafka.common.header.Headers;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.databind.JavaType;
 
 /**
  * Determine the {@link JavaType} from the topic/data/headers.
  *
  * @author Gary Russell
- * @since 2.5.3
+ * @author Soby Chacko
  *
- * @deprecated since 4.0 in favor of {@link JacksonJsonTypeResolver} for Jackson 3.
+ * @since 4.0
  */
-@Deprecated(forRemoval = true, since = "4.0")
 @FunctionalInterface
-public interface JsonTypeResolver {
+public interface JacksonJsonTypeResolver {
 
 	/**
 	 * Determine the type.

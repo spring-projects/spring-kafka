@@ -1083,7 +1083,7 @@ Previously, they were mapped as JSON and only `MimeType` was decoded.
 `MediaType` could not be decoded.
 They are now simple strings for interoperability.
 
-Also, the `DefaultKafkaHeaderMapper` has a new `addToStringClasses` method, allowing the specification of types that should be mapped by using `toString()` instead of JSON.
+Also, the `JsonKafkaHeaderMapper` has a new `addToStringClasses` method, allowing the specification of types that should be mapped by using `toString()` instead of JSON.
 See xref:kafka/headers.adoc[Message Headers] for more information.
 
 [[cb-2-1-and-2-2-embedded-kafka-changes]]

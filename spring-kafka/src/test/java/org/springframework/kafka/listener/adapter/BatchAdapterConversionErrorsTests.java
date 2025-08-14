@@ -36,7 +36,7 @@ import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
 import org.springframework.kafka.support.converter.ConversionException;
-import org.springframework.kafka.support.converter.JsonMessageConverter;
+import org.springframework.kafka.support.converter.JacksonJsonMessageConverter;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.SerializationUtils;
 import org.springframework.messaging.handler.annotation.Header;
@@ -164,7 +164,7 @@ public class BatchAdapterConversionErrorsTests {
 		public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
-			factory.setBatchMessageConverter(new BatchMessagingMessageConverter(new JsonMessageConverter()));
+			factory.setBatchMessageConverter(new BatchMessagingMessageConverter(new JacksonJsonMessageConverter()));
 			factory.setBatchListener(true);
 			return factory;
 		}

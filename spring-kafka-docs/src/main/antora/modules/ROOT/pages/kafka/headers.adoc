@@ -36,7 +36,7 @@ public interface KafkaHeaderMapper {
 
 The `SimpleKafkaHeaderMapper` maps raw headers as `byte[]`, with configuration options for conversion to `String` values.
 
-The `DefaultKafkaHeaderMapper` maps the key to the `MessageHeaders` header name and, in order to support rich header types for outbound messages, JSON conversion is performed.
+The `JsonKafkaHeaderMapper` maps the key to the `MessageHeaders` header name and, in order to support rich header types for outbound messages, JSON conversion is performed.
 A +++"+++`special`+++"+++ header (with a key of `spring_json_header_types`) contains a JSON map of `<key>:<type>`.
 This header is used on the inbound side to provide appropriate conversion of each header value to the original type.
 
@@ -48,19 +48,19 @@ The following listing shows a number of example mappings:
 
 [source, java]
 ----
-public DefaultKafkaHeaderMapper() { <1>
+public JsonKafkaHeaderMapper() { <1>
     ...
 }
 
-public DefaultKafkaHeaderMapper(ObjectMapper objectMapper) { <2>
+public JsonKafkaHeaderMapper(ObjectMapper objectMapper) { <2>
     ...
 }
 
-public DefaultKafkaHeaderMapper(String... patterns) { <3>
+public JsonKafkaHeaderMapper(String... patterns) { <3>
     ...
 }
 
-public DefaultKafkaHeaderMapper(ObjectMapper objectMapper, String... patterns) { <4>
+public JsonKafkaHeaderMapper(ObjectMapper objectMapper, String... patterns) { <4>
     ...
 }
 ----
@@ -95,7 +95,7 @@ The following test case illustrates this mechanism.
 ----
 @Test
 public void testSpecificStringConvert() {
-    DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+    JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
     Map<String, Boolean> rawMappedHeaders = new HashMap<>();
     rawMappedHeaders.put("thisOnesAString", true);
     rawMappedHeaders.put("thisOnesBytes", false);
@@ -126,10 +126,10 @@ To create a mapper for inbound mapping, use one of the static methods on the res
 
 [source, java]
 ----
-public static DefaultKafkaHeaderMapper forInboundOnlyWithMatchers(String... patterns) {
+public static JsonKafkaHeaderMapper forInboundOnlyWithMatchers(String... patterns) {
 }
 
-public static DefaultKafkaHeaderMapper forInboundOnlyWithMatchers(ObjectMapper objectMapper, String... patterns) {
+public static JsonKafkaHeaderMapper forInboundOnlyWithMatchers(ObjectMapper objectMapper, String... patterns) {
 }
 
 public static SimpleKafkaHeaderMapper forInboundOnlyWithMatchers(String... patterns) {
@@ -140,12 +140,12 @@ For example:
 
 [source, java]
 ----
-DefaultKafkaHeaderMapper inboundMapper = DefaultKafkaHeaderMapper.forInboundOnlyWithMatchers("!abc*", "*");
+JsonKafkaHeaderMapper inboundMapper = JsonKafkaHeaderMapper.forInboundOnlyWithMatchers("!abc*", "*");
 ----
 
 This will exclude all headers beginning with `abc` and include all others.
 
-By default, the `DefaultKafkaHeaderMapper` is used in the `MessagingMessageConverter` and `BatchMessagingMessageConverter`, as long as Jackson is on the classpath.
+By default, the `JsonKafkaHeaderMapper` is used in the `MessagingMessageConverter` and `BatchMessagingMessageConverter`, as long as Jackson is on the classpath.
 
 With the batch converter, the converted headers are available in the `KafkaHeaders.BATCH_CONVERTED_HEADERS` as a `List<Map<String, Object>>` where the map in a position of the list corresponds to the data position in the payload.
 
@@ -153,7 +153,7 @@ If there is no converter (either because Jackson is not present or it is explici
 This header is a `Headers` object (or a `List<Headers>` in the case of the batch converter), where the position in the list corresponds to the data position in the payload.
 
 IMPORTANT: Certain types are not suitable for JSON serialization, and a simple `toString()` serialization might be preferred for these types.
-The `DefaultKafkaHeaderMapper` has a method called `addToStringClasses()` that lets you supply the names of classes that should be treated this way for outbound mapping.
+The `JsonKafkaHeaderMapper` has a method called `addToStringClasses()` that lets you supply the names of classes that should be treated this way for outbound mapping.
 During inbound mapping, they are mapped as `String`.
 By default, only `org.springframework.util.MimeType` and `org.springframework.http.MediaType` are mapped this way.
 
@@ -170,7 +170,7 @@ When all applications are using 2.3 or higher, you can leave the property at its
 @Bean
 MessagingMessageConverter converter() {
     MessagingMessageConverter converter = new MessagingMessageConverter();
-    DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+    JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
     mapper.setEncodeStrings(true);
     converter.setHeaderMapper(mapper);
     return converter;
@@ -187,16 +187,16 @@ Starting with 4.0, multi-value header mapping is supported, where the same logic
 By default, the `HeaderMapper` does **not** create multiple Kafka headers with the same name.
 Instead, when it encounters a collection value (e.g., a `List<byte[]>`), it serializes the entire collection into **one** Kafka header whose value is a JSON array.
 
-* **Producer side:** `DefaultKafkaHeaderMapper` writes the JSON bytes, while `SimpleKafkaHeaderMapper` ignore it.
+* **Producer side:** `JsonKafkaHeaderMapper` writes the JSON bytes, while `SimpleKafkaHeaderMapper` ignore it.
 * **Consumer side:** the mapper exposes the header as a single value—the **last occurrence wins**; earlier duplicates are silently discarded.
 
 Preserving each individual header requires explicit registration of patterns that designate the header as multi‑valued.
 
-`DefaultKafkaHeaderMapper#setMultiValueHeaderPatterns(String... patterns)` accepts a list of patterns, which can be either wildcard expressions or exact header names.
+`JsonKafkaHeaderMapper#setMultiValueHeaderPatterns(String... patterns)` accepts a list of patterns, which can be either wildcard expressions or exact header names.
 
 [source, java]
 ----
-DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
 
 // Explicit header names
 mapper.setMultiValueHeaderPatterns("test-multi-value1", "test-multi-value2");
@@ -214,5 +214,5 @@ NOTE: Regular expressions are *not* supported; only the +*+ wildcard is allowed 
 
 [IMPORTANT]
 ====
-On the *Producer Side*, When `DefaultKafkaHeaderMapper` serializes a multi-value header, every element in that collection must be of a single Java type—mixing, for example, `String` and `byte[]` values under a single header key will lead to a conversion error.
+On the *Producer Side*, When `JsonKafkaHeaderMapper` serializes a multi-value header, every element in that collection must be of a single Java type—mixing, for example, `String` and `byte[]` values under a single header key will lead to a conversion error.
 ====
