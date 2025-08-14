@@ -26,16 +26,12 @@ import org.apache.kafka.common.utils.Bytes;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.kafka.support.KafkaHeaders;
-import org.springframework.kafka.support.mapping.DefaultJackson2JavaTypeMapper;
-import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper;
-import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper.TypePrecedence;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.util.Assert;
 import org.springframework.util.MimeType;
 
 /**
- * Subclass of {@link MappingJackson2MessageConverter} that can handle parameterized
+ * Subclass of {@link org.springframework.messaging.converter.MappingJackson2MessageConverter} that can handle parameterized
  * (generic) types.
  *
  * @author Gary Russell
@@ -44,11 +40,14 @@ import org.springframework.util.MimeType;
  * @deprecated since 4.0 in favor of {@link MappingJacksonJsonParameterizedConverter} for Jackson 3.
  */
 @Deprecated(forRemoval = true, since = "4.0")
-public class MappingJacksonParameterizedConverter extends MappingJackson2MessageConverter {
+@SuppressWarnings("removal")
+public class MappingJacksonParameterizedConverter
+		extends org.springframework.messaging.converter.MappingJackson2MessageConverter {
 
 	private static final JavaType OBJECT = TypeFactory.defaultInstance().constructType(Object.class);
 
-	private Jackson2JavaTypeMapper typeMapper = new DefaultJackson2JavaTypeMapper();
+	private org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper typeMapper =
+			new org.springframework.kafka.support.mapping.DefaultJackson2JavaTypeMapper();
 
 	/**
 	 * Construct a {@code MappingJacksonParameterizedConverter} supporting
@@ -70,7 +69,7 @@ public class MappingJacksonParameterizedConverter extends MappingJackson2Message
 	 * Return the type mapper.
 	 * @return the mapper.
 	 */
-	public Jackson2JavaTypeMapper getTypeMapper() {
+	public org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper getTypeMapper() {
 		return this.typeMapper;
 	}
 
@@ -78,7 +77,7 @@ public class MappingJacksonParameterizedConverter extends MappingJackson2Message
 	 * Set a customized type mapper.
 	 * @param typeMapper the type mapper.
 	 */
-	public void setTypeMapper(Jackson2JavaTypeMapper typeMapper) {
+	public void setTypeMapper(org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper typeMapper) {
 		Assert.notNull(typeMapper, "'typeMapper' cannot be null");
 		this.typeMapper = typeMapper;
 	}
@@ -119,7 +118,8 @@ public class MappingJacksonParameterizedConverter extends MappingJackson2Message
 			type = (Type) hint;
 			Headers nativeHeaders = message.getHeaders().get(KafkaHeaders.NATIVE_HEADERS, Headers.class);
 			if (nativeHeaders != null) {
-				javaType = this.typeMapper.getTypePrecedence().equals(TypePrecedence.INFERRED)
+				javaType = this.typeMapper.getTypePrecedence()
+						.equals(org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper.TypePrecedence.INFERRED)
 						? TypeFactory.defaultInstance().constructType(type)
 						: this.typeMapper.toJavaType(nativeHeaders);
 			}

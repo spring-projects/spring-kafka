@@ -25,8 +25,6 @@ import org.apache.kafka.common.serialization.Serde;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.ResolvableType;
-import org.springframework.kafka.support.JacksonUtils;
-import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper;
 import org.springframework.util.Assert;
 
 /**
@@ -47,6 +45,7 @@ import org.springframework.util.Assert;
  * @deprecated since 4.0 in favor of {@link JacksonJsonSerde} for Jackson 3.
  */
 @Deprecated(forRemoval = true, since = "4.0")
+@SuppressWarnings("removal")
 public class JsonSerde<T> implements Serde<T> {
 
 	private final JsonSerializer<T> jsonSerializer;
@@ -54,19 +53,19 @@ public class JsonSerde<T> implements Serde<T> {
 	private final JsonDeserializer<T> jsonDeserializer;
 
 	public JsonSerde() {
-		this((JavaType) null, JacksonUtils.enhancedObjectMapper());
+		this((JavaType) null, org.springframework.kafka.support.JacksonUtils.enhancedObjectMapper());
 	}
 
 	public JsonSerde(@Nullable Class<? super T> targetType) {
-		this(targetType, JacksonUtils.enhancedObjectMapper());
+		this(targetType, org.springframework.kafka.support.JacksonUtils.enhancedObjectMapper());
 	}
 
 	public JsonSerde(@Nullable TypeReference<? super T> targetType) {
-		this(targetType, JacksonUtils.enhancedObjectMapper());
+		this(targetType, org.springframework.kafka.support.JacksonUtils.enhancedObjectMapper());
 	}
 
 	public JsonSerde(@Nullable JavaType targetType) {
-		this(targetType, JacksonUtils.enhancedObjectMapper());
+		this(targetType, org.springframework.kafka.support.JacksonUtils.enhancedObjectMapper());
 	}
 
 	public JsonSerde(ObjectMapper objectMapper) {
@@ -82,7 +81,10 @@ public class JsonSerde<T> implements Serde<T> {
 	}
 
 	public JsonSerde(@Nullable JavaType targetTypeArg, @Nullable ObjectMapper objectMapperArg) {
-		ObjectMapper objectMapper = objectMapperArg == null ? JacksonUtils.enhancedObjectMapper() : objectMapperArg;
+		ObjectMapper objectMapper =
+				objectMapperArg == null
+						? org.springframework.kafka.support.JacksonUtils.enhancedObjectMapper()
+						: objectMapperArg;
 		JavaType actualJavaType;
 		if (targetTypeArg != null) {
 			actualJavaType = targetTypeArg;
@@ -204,12 +206,12 @@ public class JsonSerde<T> implements Serde<T> {
 	}
 
 	/**
-	 * Use the supplied {@link Jackson2JavaTypeMapper}.
+	 * Use the supplied {@link org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper}.
 	 * @param mapper the mapper.
 	 * @return the serde.
 	 * @since 2.3
 	 */
-	public JsonSerde<T> typeMapper(Jackson2JavaTypeMapper mapper) {
+	public JsonSerde<T> typeMapper(org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper mapper) {
 		this.jsonSerializer.setTypeMapper(mapper);
 		this.jsonDeserializer.setTypeMapper(mapper);
 		return this;
