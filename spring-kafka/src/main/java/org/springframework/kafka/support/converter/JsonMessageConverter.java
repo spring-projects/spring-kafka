@@ -32,7 +32,6 @@ import org.springframework.kafka.support.JacksonUtils;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.mapping.DefaultJackson2JavaTypeMapper;
 import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper;
-import org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper.TypePrecedence;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.converter.JacksonJsonMessageConverter;
 import org.springframework.util.Assert;
@@ -49,6 +48,7 @@ import org.springframework.util.Assert;
  * @deprecated since 4.0 in favor of {@link JacksonJsonMessageConverter} for Jackson 3.
  */
 @Deprecated(forRemoval = true, since = "4.0")
+@SuppressWarnings("removal")
 public class JsonMessageConverter extends MessagingMessageConverter {
 
 	private static final JavaType OBJECT = TypeFactory.defaultInstance().constructType(Object.class);
@@ -133,7 +133,8 @@ public class JsonMessageConverter extends MessagingMessageConverter {
 	}
 
 	private JavaType determineJavaType(ConsumerRecord<?, ?> record, @Nullable Type type) {
-		JavaType javaType = this.typeMapper.getTypePrecedence().equals(TypePrecedence.INFERRED) && type != null
+		JavaType javaType = this.typeMapper.getTypePrecedence()
+				.equals(org.springframework.kafka.support.mapping.Jackson2JavaTypeMapper.TypePrecedence.INFERRED) && type != null
 				? TypeFactory.defaultInstance().constructType(type)
 				: this.typeMapper.toJavaType(record.headers());
 		if (javaType == null) { // no headers
