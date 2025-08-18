@@ -45,7 +45,7 @@ jobs:
           sed -i "1,/springKafkaVersion.*/s/springKafkaVersion.*/springKafkaVersion='${{ inputs.releaseVersion }}'/" build.gradle  
 
       - name: Verify Spring Integration Kafka module against staged release
-        run: gradle :spring-integration-kafka:check --init-script staging-repo-init.gradle
+        run: ./gradlew :spring-integration-kafka:check --init-script staging-repo-init.gradle
 
       - name: Capture Test Results
         if: failure()
