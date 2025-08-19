@@ -39,7 +39,7 @@ import org.springframework.kafka.retrytopic.RetryTopicConfigurationSupport;
  * &#064;Component
  * public class MyListener {
  *
- *     &#064;RetryableTopic(sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC, backoff = @Backoff(4000))
+ *     &#064;RetryableTopic(sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC, backOff = @BackOff(4000))
  *     &#064;KafkaListener(topics =  "myTopic")
  * 	   public void listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
  *	       logger.info("Message {} received in topic {} ", message, receivedTopic);

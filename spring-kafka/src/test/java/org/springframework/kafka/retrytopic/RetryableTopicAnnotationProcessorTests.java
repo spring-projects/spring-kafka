@@ -33,6 +33,7 @@ import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.kafka.annotation.BackOff;
 import org.springframework.kafka.annotation.DltHandler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
@@ -40,7 +41,6 @@ import org.springframework.kafka.annotation.RetryableTopicAnnotationProcessor;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.support.EndpointHandlerMethod;
 import org.springframework.kafka.support.serializer.DeserializationException;
-import org.springframework.retry.annotation.Backoff;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.ReflectionUtils;
 
@@ -279,7 +279,7 @@ class RetryableTopicAnnotationProcessorTests {
 
 	@ParameterizedTest(name = "{index} shouldCreateExponentialBackoff is method {0}")
 	@MethodSource("paramsForRetryTopic")
-	void shouldCreateExponentialBackoff(boolean isMethod) {
+	void shouldCreateExponentialBackOff(boolean isMethod) {
 
 		// setup
 		given(this.beanFactory.getBean(RetryTopicBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME, KafkaOperations.class))
@@ -333,7 +333,7 @@ class RetryableTopicAnnotationProcessorTests {
 
 	@ParameterizedTest(name = "{index} shouldCreateFixedBackoff is method {0}")
 	@MethodSource("paramsForRetryTopic")
-	void shouldCreateFixedBackoff(boolean isMethod) {
+	void shouldCreateFixedBackOff(boolean isMethod) {
 
 		// setup
 		given(this.beanFactory.getBean(kafkaTemplateName, KafkaOperations.class))
@@ -395,7 +395,7 @@ class RetryableTopicAnnotationProcessorTests {
 	static class RetryableTopicAnnotationFactoryWithDlt {
 
 		@KafkaListener
-		@RetryableTopic(attempts = "3", backoff = @Backoff(multiplier = 2, value = 1000),
+		@RetryableTopic(attempts = "3", backOff = @BackOff(multiplier = 2, value = 1000),
 			dltStrategy = DltStrategy.FAIL_ON_ERROR, excludeNames = "java.lang.IllegalStateException")
 		void listenWithRetry() {
 			// NoOps
@@ -408,7 +408,7 @@ class RetryableTopicAnnotationProcessorTests {
 	}
 
 	@KafkaListener
-	@RetryableTopic(attempts = "3", backoff = @Backoff(multiplier = 2, value = 1000),
+	@RetryableTopic(attempts = "3", backOff = @BackOff(multiplier = 2, value = 1000),
 			dltStrategy = DltStrategy.FAIL_ON_ERROR, excludeNames = "java.lang.IllegalStateException")
 	static class RetryableTopicClassLevelAnnotationFactoryWithDlt {
 

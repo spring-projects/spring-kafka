@@ -22,7 +22,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.jspecify.annotations.Nullable;
 
 /**
- * A {@link BackOffHandler} that pauses the container for the backoff.
+ * A {@link BackOffHandler} that pauses the container for the requested back off period.
  *
  * @author Gary Russell
  * @since 2.9

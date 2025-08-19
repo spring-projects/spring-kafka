@@ -26,7 +26,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
-import org.springframework.retry.annotation.Backoff;
+import org.springframework.kafka.annotation.BackOff;
 
 /**
  * Sample shows use of topic-based retry.
@@ -44,7 +44,7 @@ public class Application {
 		SpringApplication.run(Application.class, args);
 	}
 
-	@RetryableTopic(attempts = "5", backoff = @Backoff(delay = 2_000, maxDelay = 10_000, multiplier = 2))
+	@RetryableTopic(attempts = "5", backOff = @BackOff(delay = 2_000, maxDelay = 10_000, multiplier = 2))
 	@KafkaListener(id = "fooGroup", topics = "topic4")
 	public void listen(String in, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
 			@Header(KafkaHeaders.OFFSET) long offset) {

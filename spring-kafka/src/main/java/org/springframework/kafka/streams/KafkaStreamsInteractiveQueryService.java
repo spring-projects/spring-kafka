@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.streams;
 
+import java.util.Objects;
 import java.util.Properties;
 
 import org.apache.kafka.common.serialization.Serializer;
@@ -26,8 +27,9 @@ import org.apache.kafka.streams.state.HostInfo;
 import org.apache.kafka.streams.state.QueryableStoreType;
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.core.retry.RetryException;
+import org.springframework.core.retry.RetryTemplate;
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
-import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -37,6 +39,8 @@ import org.springframework.util.StringUtils;
  * {@link KafkaStreams} under consideration.
  *
  * @author Soby Chacko
+ * @author Stephane Nicoll
+ *
  * @since 3.2
  */
 public class KafkaStreamsInteractiveQueryService {
@@ -54,7 +58,8 @@ public class KafkaStreamsInteractiveQueryService {
 	/**
 	 * Underlying {@link KafkaStreams} from {@link StreamsBuilderFactoryBean}.
 	 */
-	private volatile @Nullable KafkaStreams kafkaStreams;
+	@SuppressWarnings("NullAway.Init")
+	private volatile KafkaStreams kafkaStreams;
 
 	/**
 	 * Construct an instance for querying state stores from the KafkaStreams in the {@link StreamsBuilderFactoryBean}.
@@ -85,28 +90,27 @@ public class KafkaStreamsInteractiveQueryService {
 		populateKafkaStreams();
 		StoreQueryParameters<T> storeQueryParams = StoreQueryParameters.fromNameAndType(storeName, storeType);
 
-		return this.retryTemplate.execute(context -> {
-			try {
-				Assert.state(this.kafkaStreams != null, "KafkaStreams cannot be null.");
-				return this.kafkaStreams.store(storeQueryParams);
-			}
-			catch (Exception e) {
-				throw new IllegalStateException("Error retrieving state store: " + storeName, e);
-			}
-		});
+		try {
+			return Objects.requireNonNull(this.retryTemplate.execute(() -> this.kafkaStreams.store(storeQueryParams)));
+		}
+		catch (RetryException ex) {
+			throw new IllegalStateException("Error retrieving state store: " + storeName, ex.getCause());
+		}
 	}
 
 	private void populateKafkaStreams() {
-		if (this.kafkaStreams == null) {
-			this.kafkaStreams = this.streamsBuilderFactoryBean.getKafkaStreams();
+		KafkaStreams kafkaStreamsToUse = this.kafkaStreams;
+		if (kafkaStreamsToUse == null) {
+			kafkaStreamsToUse = this.streamsBuilderFactoryBean.getKafkaStreams();
+			Assert.notNull(kafkaStreamsToUse, "KafkaStreams cannot be null. " +
+					"Make sure that the corresponding StreamsBuilderFactoryBean has started properly.");
+			this.kafkaStreams = kafkaStreamsToUse;
 		}
-		Assert.notNull(this.kafkaStreams, "KafkaStreams cannot be null. " +
-				"Make sure that the corresponding StreamsBuilderFactoryBean has started properly.");
 	}
 
 	/**
 	 * Retrieve the current {@link HostInfo} where this Kafka Streams application is running on.
-	 * This {link @HostInfo} is different from the Kafka `bootstrap.server` property, and is based on
+	 * This {link @HostInfo} is different from the Kafka `bootstrap.server` property and is based on
 	 * the Kafka Streams configuration property `application.server` where user-defined REST
 	 * endpoints can be invoked per each Kafka Streams application instance.
 	 * If this property - `application.server` - is not available from the end-user application, then null is returned.
@@ -129,7 +133,7 @@ public class KafkaStreamsInteractiveQueryService {
 	/**
 	 * Retrieve the {@link HostInfo} where the provided store and key are hosted on. This may
 	 * not be the current host that is running the application. Kafka Streams will look
-	 * through all the consumer instances under the same application id and retrieves the
+	 * through all the consumer instances under the same application id and retrieve the
 	 * proper host. Note that the end user applications must provide `application.server` as a
 	 * configuration property for all the application instances when calling this method.
 	 * If this is not available, then null maybe returned.
@@ -141,24 +145,22 @@ public class KafkaStreamsInteractiveQueryService {
 	 */
 	public <K> HostInfo getKafkaStreamsApplicationHostInfo(String store, K key, Serializer<K> serializer) {
 		populateKafkaStreams();
-		return this.retryTemplate.execute(context -> {
-			Throwable throwable = null;
-			try {
-				Assert.state(this.kafkaStreams != null, "KafkaStreams cannot be null.");
-				KeyQueryMetadata keyQueryMetadata = this.kafkaStreams.queryMetadataForKey(store, key, serializer);
-				if (keyQueryMetadata != null) {
-					return keyQueryMetadata.activeHost();
-				}
+		try {
+			return getActiveHost(store, key, serializer);
+		}
+		catch (RetryException ex) {
+			throw new IllegalStateException("Error when retrieving state store.", ex.getCause());
+		}
+	}
+
+	private <K> HostInfo getActiveHost(String store, K key, Serializer<K> serializer) throws RetryException {
+		return Objects.requireNonNull(this.retryTemplate.execute(() -> {
+			KeyQueryMetadata keyQueryMetadata = this.kafkaStreams.queryMetadataForKey(store, key, serializer);
+			if (keyQueryMetadata != null) {
+				return keyQueryMetadata.activeHost();
 			}
-			catch (Exception e) {
-				throwable = e;
-			}
-			// In addition to the obvious case of a valid exception above, if keyQueryMetadata was null for any
-			// transient reasons, let the retry kick in by forcing an exception below.
-			throw new IllegalStateException(
-					"Error when retrieving state store.", throwable != null ? throwable :
-					new Throwable("KeyQueryMetadata is not yet available."));
-		});
+			throw new IllegalStateException("KeyQueryMetadata is not yet available.");
+		}));
 	}
 
 }

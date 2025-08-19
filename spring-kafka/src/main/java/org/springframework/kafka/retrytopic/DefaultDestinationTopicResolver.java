@@ -109,7 +109,7 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 	}
 
 	private Boolean isNotFatalException(Exception e) {
-		return getClassifier().classify(e);
+		return getExceptionMatcher().match(e);
 	}
 
 	private Throwable maybeUnwrapException(@Nullable Throwable e) {

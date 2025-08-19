@@ -79,7 +79,7 @@ NOTE: The previous `FixedDelayStrategy` is now deprecated, and can be replaced b
 
 [source, java]
 ----
-@RetryableTopic(backoff = @Backoff(2_000), sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC)
+@RetryableTopic(backOff = @BackOff(2_000), sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC)
 @KafkaListener(topics = "my-annotated-topic")
 public void processMessage(MyPojo message) {
     // ... message processing
@@ -138,7 +138,7 @@ If multiple topics are required, then that can be done using the following confi
 [source, java]
 ----
 @RetryableTopic(attempts = 230,
-    backoff = @Backoff(delay = 1_000, multiplier = 2, maxDelay = 16_000),
+    backOff = @BackOff(delay = 1_000, multiplier = 2, maxDelay = 16_000),
     sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS)
 @KafkaListener(topics = "my-annotated-topic")
 public void processMessage(MyPojo message) {

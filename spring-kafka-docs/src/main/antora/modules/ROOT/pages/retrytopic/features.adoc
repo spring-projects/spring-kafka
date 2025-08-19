@@ -20,7 +20,7 @@ It includes:
 [source, java]
 ----
 @RetryableTopic(attempts = 5,
-    backoff = @Backoff(delay = 1000, multiplier = 2, maxDelay = 5000))
+    backOff = @BackOff(delay = 1000, multiplier = 2, maxDelay = 5000))
 @KafkaListener(topics = "my-annotated-topic")
 public void processMessage(MyPojo message) {
     // ... message processing
@@ -68,7 +68,7 @@ If that time is reached, the next time the consumer throws an exception the mess
 
 [source, java]
 ----
-@RetryableTopic(backoff = @Backoff(2_000), timeout = 5_000)
+@RetryableTopic(backOff = @BackOff(2_000), timeout = 5_000)
 @KafkaListener(topics = "my-annotated-topic")
 public void processMessage(MyPojo message) {
     // ... message processing

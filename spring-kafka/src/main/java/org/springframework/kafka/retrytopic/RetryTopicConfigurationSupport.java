@@ -373,12 +373,12 @@ public class RetryTopicConfigurationSupport implements ApplicationContextAware, 
 		 * is configured. Note that this only has any effect for exceptions specified
 		 * with the {@link #retryOn} method - by default blocking retries are disabled
 		 * when using the non-blocking retries feature.
-		 * @param backoff the {@link BackOff} instance.
+		 * @param backOff the {@link BackOff} instance.
 		 * @return the configurer.
 		 * @see DefaultErrorHandler
 		 */
-		public BlockingRetriesConfigurer backOff(BackOff backoff) {
-			this.backOff = backoff;
+		public BlockingRetriesConfigurer backOff(BackOff backOff) {
+			this.backOff = backOff;
 			return this;
 		}
 

@@ -35,6 +35,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.kafka.annotation.BackOff;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -52,7 +53,6 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.handler.annotation.Header;
-import org.springframework.retry.annotation.Backoff;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
@@ -152,7 +152,7 @@ class ExistingRetryTopicClassLevelIntegrationTests {
 	}
 
 	@RetryableTopic(autoCreateTopics = "false", dltStrategy = DltStrategy.NO_DLT,
-			attempts = "${two.attempts}", backoff = @Backoff(0), kafkaTemplate = "kafkaTemplate")
+			attempts = "${two.attempts}", backOff = @BackOff(0), kafkaTemplate = "kafkaTemplate")
 	@KafkaListener(id = "firstTopicId", topics = MAIN_TOPIC_WITH_NO_PARTITION_INFO, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 	static class MainTopicListenerWithoutPartition {
 
@@ -178,7 +178,7 @@ class ExistingRetryTopicClassLevelIntegrationTests {
 	}
 
 	@RetryableTopic(autoCreateTopics = "false", numPartitions = "4", dltStrategy = DltStrategy.NO_DLT,
-			attempts = "${two.attempts}", backoff = @Backoff(0), kafkaTemplate = "kafkaTemplate")
+			attempts = "${two.attempts}", backOff = @BackOff(0), kafkaTemplate = "kafkaTemplate")
 	@KafkaListener(id = "secondTopicId", topics = MAIN_TOPIC_WITH_PARTITION_INFO, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 	static class MainTopicListenerWithPartition {
 

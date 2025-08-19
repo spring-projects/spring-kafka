@@ -150,7 +150,7 @@ class FallbackBatchErrorHandler extends ExceptionClassifier implements CommonErr
 		this.retrying.put(Thread.currentThread(), true);
 		try {
 			ErrorHandlingUtils.retryBatch(thrownException, records, consumer, container, invokeListener, this.backOff,
-					this.seeker, this.recoverer, this.logger, getLogLevel(), this.retryListeners, getClassifier(),
+					this.seeker, this.recoverer, this.logger, getLogLevel(), this.retryListeners, getExceptionMatcher(),
 					this.reclassifyOnExceptionChange);
 		}
 		finally {

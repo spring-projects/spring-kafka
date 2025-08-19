@@ -30,6 +30,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.kafka.annotation.BackOff;
 import org.springframework.kafka.annotation.DltHandler;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaHandler;
@@ -48,7 +49,6 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.handler.annotation.Header;
-import org.springframework.retry.annotation.Backoff;
 import org.springframework.stereotype.Component;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
@@ -141,7 +141,7 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 
 		@RetryableTopic(
 				attempts = "4",
-				backoff = @Backoff(delay = 1000, multiplier = 2.0),
+				backOff = @BackOff(delay = 1000, multiplier = 2.0),
 				autoCreateTopics = "false",
 				topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
 				sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS)
@@ -160,7 +160,7 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 	@Component
 	@RetryableTopic(
 			attempts = "4",
-			backoff = @Backoff(delay = 1000, multiplier = 2.0),
+			backOff = @BackOff(delay = 1000, multiplier = 2.0),
 			autoCreateTopics = "false",
 			topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
 			sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS)

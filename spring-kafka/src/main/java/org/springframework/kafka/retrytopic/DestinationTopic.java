@@ -332,7 +332,7 @@ public class DestinationTopic {
 
 		/**
 		 * A retry topic reused along sequential retries
-		 * with the same backoff interval.
+		 * with the same back off interval.
 		 *
 		 * @since 3.0.4
 		 */

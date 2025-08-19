@@ -22,11 +22,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.BiPredicate;
 
-import org.springframework.classify.BinaryExceptionClassifier;
-import org.springframework.classify.BinaryExceptionClassifierBuilder;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.ExceptionMatcher;
 import org.springframework.kafka.support.serializer.DeserializationException;
 
 /**
@@ -286,20 +285,18 @@ public class DestinationTopicTests {
 	protected List<DestinationTopic> allFifthDestinationTopics = Arrays
 			.asList(mainDestinationTopic5, reusableRetryDestinationTopic5, dltDestinationTopic5);
 
-	// Classifiers
+	// Exception matchers
 
-	private final BinaryExceptionClassifier allowListClassifier = new BinaryExceptionClassifierBuilder()
-			.retryOn(IllegalArgumentException.class).build();
+	private final ExceptionMatcher allowListExceptionMatcher = ExceptionMatcher.forAllowList().add(IllegalArgumentException.class).build();
 
-	private final BinaryExceptionClassifier denyListClassifier = new BinaryExceptionClassifierBuilder()
-			.notRetryOn(IllegalArgumentException.class).build();
+	private final ExceptionMatcher denyListExceptionMatcher = ExceptionMatcher.forDenyList().add(IllegalArgumentException.class).build();
 
 	private BiPredicate<Integer, Throwable> getShouldRetryOn() {
-		return (a, e) -> a < maxAttempts && allowListClassifier.classify(e);
+		return (a, e) -> a < maxAttempts && allowListExceptionMatcher.match(e);
 	}
 
 	private BiPredicate<Integer, Throwable> getShouldRetryOnDenyList() {
-		return (a, e) -> a < maxAttempts && denyListClassifier.classify(e);
+		return (a, e) -> a < maxAttempts && denyListExceptionMatcher.match(e);
 	}
 
 	class PropsHolder {
