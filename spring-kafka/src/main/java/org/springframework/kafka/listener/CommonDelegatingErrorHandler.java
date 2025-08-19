@@ -16,19 +16,18 @@
 
 package org.springframework.kafka.listener;
 
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.jspecify.annotations.Nullable;
 
-import org.springframework.classify.BinaryExceptionClassifier;
+import org.springframework.kafka.support.ExceptionMatcher;
 import org.springframework.util.Assert;
 
 /**
@@ -51,7 +50,7 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 
 	private boolean causeChainTraversing = false;
 
-	private BinaryExceptionClassifier classifier = new BinaryExceptionClassifier(new HashMap<>());
+	private ExceptionMatcher exceptionMatcher = new ExceptionMatcher(Collections.emptyList(), true);
 
 	/**
 	 * Construct an instance with a default error handler that will be invoked if the
@@ -78,8 +77,8 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 
 	/**
 	 * Set the flag enabling deep exception's cause chain traversing. If true, the
-	 * delegate for the first exception classified by {@link BinaryExceptionClassifier}
-	 * will be retrieved.
+	 * delegate for the first exception match by the {@link ExceptionMatcher} will
+	 * be retrieved.
 	 * @param causeChainTraversing the causeChainTraversing flag.
 	 * @since 2.8.8
 	 */
@@ -137,10 +136,8 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 	}
 
 	private void updateClassifier(Map<Class<? extends Throwable>, CommonErrorHandler> delegates) {
-		Map<Class<? extends Throwable>, Boolean> classifications = delegates.keySet().stream()
-			.map(commonErrorHandler -> Map.entry(commonErrorHandler, true))
-			.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
-		this.classifier = new BinaryExceptionClassifier(classifications);
+		this.exceptionMatcher = ExceptionMatcher.forAllowList()
+				.addAll(delegates.keySet().stream().toList()).build();
 	}
 
 	@Override
@@ -230,7 +227,7 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 	private Throwable traverseCauseChain(Throwable thrownException) {
 		Throwable cause = thrownException;
 		while (cause != null && cause.getCause() != null) {
-			if (this.classifier.classify(cause)) { // NOSONAR using Boolean here is not dangerous
+			if (this.exceptionMatcher.match(cause)) {
 				return cause;
 			}
 			cause = cause.getCause();

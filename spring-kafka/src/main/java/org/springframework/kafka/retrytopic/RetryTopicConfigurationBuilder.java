@@ -18,26 +18,23 @@ package org.springframework.kafka.retrytopic;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 
-import org.springframework.classify.BinaryExceptionClassifier;
-import org.springframework.classify.BinaryExceptionClassifierBuilder;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.support.AllowDenyCollectionManager;
 import org.springframework.kafka.support.EndpointHandlerMethod;
-import org.springframework.retry.backoff.BackOffPolicy;
-import org.springframework.retry.backoff.ExponentialBackOffPolicy;
-import org.springframework.retry.backoff.ExponentialRandomBackOffPolicy;
-import org.springframework.retry.backoff.FixedBackOffPolicy;
-import org.springframework.retry.backoff.NoBackOffPolicy;
-import org.springframework.retry.backoff.SleepingBackOffPolicy;
-import org.springframework.retry.backoff.UniformRandomBackOffPolicy;
+import org.springframework.kafka.support.ExceptionMatcher;
 import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
+import org.springframework.util.backoff.BackOff;
+import org.springframework.util.backoff.ExponentialBackOff;
+import org.springframework.util.backoff.FixedBackOff;
 
 /**
  *
@@ -47,13 +44,14 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  * @author Adrian Chlebosz
  * @author Wang Zhiyang
+ * @author Stephane Nicoll
  *
  * @since 2.7
  *
  */
 public class RetryTopicConfigurationBuilder {
 
-	private static final String ALREADY_SELECTED = "You have already selected backoff policy";
+	private static final String ALREADY_CONFIGURED = "A custom backOff has already been configured";
 
 	private final List<String> includeTopicNames = new ArrayList<>();
 
@@ -62,7 +60,7 @@ public class RetryTopicConfigurationBuilder {
 	private int maxAttempts = RetryTopicConstants.NOT_SET;
 
 	@Nullable
-	private BackOffPolicy backOffPolicy;
+	private BackOff backOff;
 
 	@Nullable
 	private EndpointHandlerMethod dltHandlerMethod;
@@ -82,7 +80,10 @@ public class RetryTopicConfigurationBuilder {
 	private String listenerContainerFactoryName;
 
 	@Nullable
-	private BinaryExceptionClassifierBuilder classifierBuilder;
+	private ExceptionEntriesConfigurer exceptionEntriesConfigurer;
+
+	@Nullable
+	private Boolean traversingCauses;
 
 	private final Map<String, Set<Class<? extends Throwable>>> dltRoutingRules = new HashMap<>();
 
@@ -315,105 +316,103 @@ public class RetryTopicConfigurationBuilder {
 	}
 
 	/**
-	 * Configure an {@link ExponentialBackOffPolicy}.
+	 * Configure an {@link ExponentialBackOff}.
 	 * @param initialInterval the initial delay interval.
 	 * @param multiplier the multiplier.
 	 * @param maxInterval the maximum delay interval.
 	 * @return the builder.
 	 */
 	public RetryTopicConfigurationBuilder exponentialBackoff(long initialInterval, double multiplier, long maxInterval) {
-		return exponentialBackoff(initialInterval, multiplier, maxInterval, false);
+		return exponentialBackoff(initialInterval, multiplier, maxInterval, 0);
 	}
 
 	/**
-	 * Configure an {@link ExponentialBackOffPolicy} or
-	 * {@link ExponentialRandomBackOffPolicy} depending on the random parameter.
+	 * Configure an {@link ExponentialBackOff} with a {@linkplain ExponentialBackOff#setJitter(long) jitter value}.
 	 * @param initialInterval the initial delay interval.
 	 * @param multiplier the multiplier.
 	 * @param maxInterval the maximum delay interval.
-	 * @param withRandom true for an {@link ExponentialRandomBackOffPolicy}.
+	 * @param jitter the jitter value.
 	 * @return the builder.
 	 */
 	public RetryTopicConfigurationBuilder exponentialBackoff(long initialInterval, double multiplier, long maxInterval,
-			boolean withRandom) {
+			long jitter) {
 
-		Assert.isNull(this.backOffPolicy, ALREADY_SELECTED);
+		Assert.isNull(this.backOff, ALREADY_CONFIGURED);
 		Assert.isTrue(initialInterval >= 1, "Initial interval should be >= 1");
 		Assert.isTrue(multiplier > 1, "Multiplier should be > 1");
 		Assert.isTrue(maxInterval > initialInterval, "Max interval should be > than initial interval");
-		ExponentialBackOffPolicy policy = withRandom ? new ExponentialRandomBackOffPolicy()
-				: new ExponentialBackOffPolicy();
-		policy.setInitialInterval(initialInterval);
-		policy.setMultiplier(multiplier);
-		policy.setMaxInterval(maxInterval);
-		this.backOffPolicy = policy;
+		ExponentialBackOff exponentialBackOff = new ExponentialBackOff(initialInterval, multiplier);
+		exponentialBackOff.setMaxInterval(maxInterval);
+		exponentialBackOff.setJitter(jitter);
+		this.backOff = exponentialBackOff;
 		return this;
 	}
 
 	/**
-	 * Configure a {@link FixedBackOffPolicy}.
+	 * Configure a {@link FixedBackOff}.
 	 * @param interval the interval.
 	 * @return the builder.
 	 */
 	public RetryTopicConfigurationBuilder fixedBackOff(long interval) {
-		Assert.isNull(this.backOffPolicy, ALREADY_SELECTED);
+		Assert.isNull(this.backOff, ALREADY_CONFIGURED);
 		Assert.isTrue(interval >= 1, "Interval should be >= 1");
-		FixedBackOffPolicy policy = new FixedBackOffPolicy();
-		policy.setBackOffPeriod(interval);
-		this.backOffPolicy = policy;
+		this.backOff = new FixedBackOff(interval);
 		return this;
 	}
 
 	/**
-	 * Configure a {@link UniformRandomBackOffPolicy}.
+	 * Configure a {@link BackOff} that applies  random delay between the specified
+	 * minimum interval and maximum interval.
 	 * @param minInterval the minimum interval.
 	 * @param maxInterval the maximum interval.
 	 * @return the builder.
+	 * @deprecated as of 4.0 with no replacement
 	 */
+	@Deprecated(since = "4.0", forRemoval = true)
 	public RetryTopicConfigurationBuilder uniformRandomBackoff(long minInterval, long maxInterval) {
-		Assert.isNull(this.backOffPolicy, ALREADY_SELECTED);
+		Assert.isNull(this.backOff, ALREADY_CONFIGURED);
 		Assert.isTrue(minInterval >= 1, "Min interval should be >= 1");
 		Assert.isTrue(maxInterval >= 1, "Max interval should be >= 1");
 		Assert.isTrue(maxInterval > minInterval, "Max interval should be > than min interval");
-		UniformRandomBackOffPolicy policy = new UniformRandomBackOffPolicy();
-		policy.setMinBackOffPeriod(minInterval);
-		policy.setMaxBackOffPeriod(maxInterval);
-		this.backOffPolicy = policy;
+		long jitter = (maxInterval - minInterval) / 2;
+		ExponentialBackOff backOff = new ExponentialBackOff();
+		backOff.setInitialInterval(minInterval + jitter);
+		backOff.setMaxInterval(maxInterval);
+		backOff.setJitter(jitter);
+		this.backOff = backOff;
 		return this;
 	}
 
 	/**
-	 * Configure a {@link NoBackOffPolicy}.
+	 * Configure a {@link BackOff} that does not apply any delay.
 	 * @return the builder.
 	 */
 	public RetryTopicConfigurationBuilder noBackoff() {
-		Assert.isNull(this.backOffPolicy, ALREADY_SELECTED);
-		this.backOffPolicy = new NoBackOffPolicy();
+		Assert.isNull(this.backOff, ALREADY_CONFIGURED);
+		this.backOff = new FixedBackOff(0);
 		return this;
 	}
 
 	/**
-	 * Configure a custom {@link SleepingBackOffPolicy}.
-	 * @param backOffPolicy the policy.
+	 * Configure a custom {@link BackOff}.
+	 * @param backOff the backOff
 	 * @return the builder.
 	 */
-	public RetryTopicConfigurationBuilder customBackoff(SleepingBackOffPolicy<?> backOffPolicy) {
-		Assert.isNull(this.backOffPolicy, ALREADY_SELECTED);
-		Assert.notNull(backOffPolicy, "You should provide non null custom policy");
-		this.backOffPolicy = backOffPolicy;
+	public RetryTopicConfigurationBuilder customBackoff(BackOff backOff) {
+		Assert.isNull(this.backOff, ALREADY_CONFIGURED);
+		Assert.notNull(backOff, "You should provide non null custom BackOff");
+		this.backOff = backOff;
 		return this;
 	}
 
 	/**
-	 * Configure a {@link FixedBackOffPolicy}.
+	 * Configure a {@link FixedBackOff}.
 	 * @param interval the interval.
 	 * @return the builder.
 	 */
 	public RetryTopicConfigurationBuilder fixedBackOff(int interval) {
-		Assert.isNull(this.backOffPolicy, ALREADY_SELECTED);
-		FixedBackOffPolicy policy = new FixedBackOffPolicy();
-		policy.setBackOffPeriod(interval);
-		this.backOffPolicy = policy;
+		Assert.isNull(this.backOff, ALREADY_CONFIGURED);
+		this.backOff = new FixedBackOff(interval);
 		return this;
 	}
 
@@ -467,7 +466,7 @@ public class RetryTopicConfigurationBuilder {
 	 * @return the builder.
 	 */
 	public RetryTopicConfigurationBuilder retryOn(Class<? extends Throwable> throwable) {
-		classifierBuilder().retryOn(throwable);
+		exceptionEntriesConfigurer(true).entries.add(throwable);
 		return this;
 	}
 
@@ -477,7 +476,7 @@ public class RetryTopicConfigurationBuilder {
 	 * @return the builder.
 	 */
 	public RetryTopicConfigurationBuilder notRetryOn(Class<? extends Throwable> throwable) {
-		classifierBuilder().notRetryOn(throwable);
+		exceptionEntriesConfigurer(false).entries.add(throwable);
 		return this;
 	}
 
@@ -487,9 +486,9 @@ public class RetryTopicConfigurationBuilder {
 	 * @return the builder.
 	 */
 	public RetryTopicConfigurationBuilder retryOn(List<Class<? extends Throwable>> throwables) {
-		throwables
-				.stream()
-				.forEach(throwable -> classifierBuilder().retryOn(throwable));
+		if (!CollectionUtils.isEmpty(throwables)) {
+			exceptionEntriesConfigurer(true).entries.addAll(throwables);
+		}
 		return this;
 	}
 
@@ -499,9 +498,9 @@ public class RetryTopicConfigurationBuilder {
 	 * @return the builder.
 	 */
 	public RetryTopicConfigurationBuilder notRetryOn(List<Class<? extends Throwable>> throwables) {
-		throwables
-				.stream()
-				.forEach(throwable -> classifierBuilder().notRetryOn(throwable));
+		if (!CollectionUtils.isEmpty(throwables)) {
+			exceptionEntriesConfigurer(false).entries.addAll(throwables);
+		}
 		return this;
 	}
 
@@ -510,8 +509,7 @@ public class RetryTopicConfigurationBuilder {
 	 * @return the builder.
 	 */
 	public RetryTopicConfigurationBuilder traversingCauses() {
-		classifierBuilder().traversingCauses();
-		return this;
+		return traversingCauses(true);
 	}
 
 	/**
@@ -520,17 +518,18 @@ public class RetryTopicConfigurationBuilder {
 	 * @return the builder.
 	 */
 	public RetryTopicConfigurationBuilder traversingCauses(boolean traversing) {
-		if (traversing) {
-			classifierBuilder().traversingCauses();
-		}
+		this.traversingCauses = traversing;
 		return this;
 	}
 
-	private BinaryExceptionClassifierBuilder classifierBuilder() {
-		if (this.classifierBuilder == null) {
-			this.classifierBuilder = new BinaryExceptionClassifierBuilder();
+	private ExceptionEntriesConfigurer exceptionEntriesConfigurer(boolean matchIfFound) {
+		if (this.exceptionEntriesConfigurer == null) {
+			this.exceptionEntriesConfigurer = new ExceptionEntriesConfigurer(matchIfFound);
 		}
-		return this.classifierBuilder;
+		if (this.exceptionEntriesConfigurer.matchIfFound != matchIfFound) {
+			throw new IllegalStateException("RetryOn and NotRetryOn cannot be combined");
+		}
+		return this.exceptionEntriesConfigurer;
 	}
 
 	/**
@@ -583,11 +582,11 @@ public class RetryTopicConfigurationBuilder {
 		AllowDenyCollectionManager<String> allowListManager =
 				new AllowDenyCollectionManager<>(this.includeTopicNames, this.excludeTopicNames);
 
-		List<Long> backOffValues = new BackOffValuesGenerator(this.maxAttempts, this.backOffPolicy).generateValues();
+		List<Long> backOffValues = new BackOffValuesGenerator(this.maxAttempts, this.backOff).generateValues();
 
 		List<DestinationTopic.Properties> destinationTopicProperties =
 				new DestinationTopicPropertiesFactory(this.retryTopicSuffix, this.dltSuffix, backOffValues,
-						buildClassifier(), this.topicCreationConfiguration.getNumPartitions(),
+						buildExceptionMatcher(), this.topicCreationConfiguration.getNumPartitions(),
 						sendToTopicKafkaTemplate, this.dltStrategy,
 					this.topicSuffixingStrategy, this.sameIntervalTopicReuseStrategy, this.timeout, this.dltRoutingRules)
 								.autoStartDltHandler(this.autoStartDltHandler)
@@ -597,10 +596,17 @@ public class RetryTopicConfigurationBuilder {
 				factoryResolverConfig, this.concurrency);
 	}
 
-	private BinaryExceptionClassifier buildClassifier() {
-		return this.classifierBuilder != null
-				? this.classifierBuilder.build()
-				: new BinaryExceptionClassifierBuilder().retryOn(Throwable.class).build();
+	private ExceptionMatcher buildExceptionMatcher() {
+		if (this.exceptionEntriesConfigurer == null) {
+			return ExceptionMatcher.forAllowList().add(Throwable.class).build();
+		}
+		ExceptionMatcher.Builder builder = (this.exceptionEntriesConfigurer.matchIfFound)
+				? ExceptionMatcher.forAllowList() : ExceptionMatcher.forDenyList();
+		builder.addAll(this.exceptionEntriesConfigurer.entries);
+		if (this.traversingCauses != null) {
+			builder.traverseCauses(this.traversingCauses);
+		}
+		return builder.build();
 	}
 
 	/**
@@ -609,6 +615,18 @@ public class RetryTopicConfigurationBuilder {
 	 */
 	public static RetryTopicConfigurationBuilder newInstance() {
 		return new RetryTopicConfigurationBuilder();
+	}
+
+	private static final class ExceptionEntriesConfigurer {
+
+		private final boolean matchIfFound;
+
+		private final Set<Class<? extends Throwable>> entries = new LinkedHashSet<>();
+
+		private ExceptionEntriesConfigurer(boolean matchIfFound) {
+			this.matchIfFound = matchIfFound;
+		}
+
 	}
 
 }

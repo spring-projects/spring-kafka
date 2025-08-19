@@ -22,19 +22,17 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.IntStream;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import org.springframework.classify.BinaryExceptionClassifier;
-import org.springframework.classify.BinaryExceptionClassifierBuilder;
 import org.springframework.kafka.core.KafkaOperations;
+import org.springframework.kafka.support.ExceptionMatcher;
 import org.springframework.kafka.support.serializer.DeserializationException;
-import org.springframework.retry.backoff.BackOffPolicy;
-import org.springframework.retry.backoff.ExponentialBackOffPolicy;
-import org.springframework.retry.backoff.FixedBackOffPolicy;
+import org.springframework.util.backoff.BackOff;
+import org.springframework.util.backoff.ExponentialBackOff;
+import org.springframework.util.backoff.FixedBackOff;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -73,28 +71,23 @@ class DestinationTopicPropertiesFactoryTests {
 	private final DltStrategy noDltStrategy =
 			DltStrategy.NO_DLT;
 
-	private final BackOffPolicy backOffPolicy = new FixedBackOffPolicy();
+	private final BackOff backOff = new FixedBackOff();
 
-	private final BinaryExceptionClassifier classifier = new BinaryExceptionClassifierBuilder()
-			.retryOn(IllegalArgumentException.class).build();
+	private final ExceptionMatcher exceptionMatcher = ExceptionMatcher.forAllowList()
+			.add(IllegalArgumentException.class).build();
 
 	@Mock
 	private KafkaOperations<?, ?> kafkaOperations;
-
-	@BeforeEach
-	void setup() {
-		((FixedBackOffPolicy) backOffPolicy).setBackOffPeriod(1000);
-	}
 
 	@Test
 	void shouldCreateMainAndDltProperties() {
 		// when
 
-		List<Long> backOffValues = new BackOffValuesGenerator(1, backOffPolicy).generateValues();
+		List<Long> backOffValues = new BackOffValuesGenerator(1, backOff).generateValues();
 
 		List<DestinationTopic.Properties> propertiesList =
 			new DestinationTopicPropertiesFactory(retryTopicSuffix, dltSuffix, backOffValues,
-						classifier, numPartitions, kafkaOperations,
+					exceptionMatcher, numPartitions, kafkaOperations,
 						dltStrategy, suffixWithDelayValueSuffixingStrategy, multipleTopicsSameIntervalReuseStrategy,
 				RetryTopicConstants.NOT_SET, Collections.emptyMap()).createProperties();
 
@@ -134,16 +127,14 @@ class DestinationTopicPropertiesFactoryTests {
 	@Test
 	void shouldCreateTwoRetryPropertiesForMultipleBackoffValues() {
 		// when
-		ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
-		backOffPolicy.setInitialInterval(1000);
-		backOffPolicy.setMultiplier(2);
+		ExponentialBackOff backOff = new ExponentialBackOff(1000, 2);
 		int maxAttempts = 3;
 
-		List<Long> backOffValues = new BackOffValuesGenerator(maxAttempts, backOffPolicy).generateValues();
+		List<Long> backOffValues = new BackOffValuesGenerator(maxAttempts, backOff).generateValues();
 
 		List<DestinationTopic.Properties> propertiesList =
 			new DestinationTopicPropertiesFactory(retryTopicSuffix, dltSuffix, backOffValues,
-						classifier, numPartitions, kafkaOperations,
+					exceptionMatcher, numPartitions, kafkaOperations,
 						dltStrategy, TopicSuffixingStrategy.SUFFIX_WITH_DELAY_VALUE,
 				multipleTopicsSameIntervalReuseStrategy, RetryTopicConstants.NOT_SET, Collections.emptyMap()).createProperties();
 
@@ -185,15 +176,13 @@ class DestinationTopicPropertiesFactoryTests {
 	void shouldNotCreateDltProperties() {
 
 		// when
-		ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
-		backOffPolicy.setInitialInterval(1000);
-		backOffPolicy.setMultiplier(2);
+		ExponentialBackOff backOff = new ExponentialBackOff(1000, 2);
 		int maxAttempts = 3;
 
-		List<Long> backOffValues = new BackOffValuesGenerator(maxAttempts, backOffPolicy).generateValues();
+		List<Long> backOffValues = new BackOffValuesGenerator(maxAttempts, backOff).generateValues();
 
 		List<DestinationTopic.Properties> propertiesList =
-			new DestinationTopicPropertiesFactory(retryTopicSuffix, dltSuffix, backOffValues, classifier,
+			new DestinationTopicPropertiesFactory(retryTopicSuffix, dltSuffix, backOffValues, exceptionMatcher,
 						numPartitions, kafkaOperations, noDltStrategy,
 						TopicSuffixingStrategy.SUFFIX_WITH_DELAY_VALUE, multipleTopicsSameIntervalReuseStrategy,
 				RetryTopicConstants.NOT_SET, Collections.emptyMap()).createProperties();
@@ -206,12 +195,12 @@ class DestinationTopicPropertiesFactoryTests {
 	@Test
 	void shouldCreateDltPropertiesForCustomExceptionBasedRouting() {
 		// when
-		List<Long> backOffValues = new BackOffValuesGenerator(1, backOffPolicy).generateValues();
+		List<Long> backOffValues = new BackOffValuesGenerator(1, backOff).generateValues();
 
 		String desExcDltSuffix = "deserialization";
 		List<DestinationTopic.Properties> propertiesList =
 			new DestinationTopicPropertiesFactory(retryTopicSuffix, dltSuffix, backOffValues,
-				classifier, numPartitions, kafkaOperations,
+				exceptionMatcher, numPartitions, kafkaOperations,
 				dltStrategy, suffixWithDelayValueSuffixingStrategy, multipleTopicsSameIntervalReuseStrategy,
 				RetryTopicConstants.NOT_SET, Map.of(desExcDltSuffix, Set.of(DeserializationException.class))).createProperties();
 
@@ -226,15 +215,14 @@ class DestinationTopicPropertiesFactoryTests {
 	void shouldCreateOneRetryPropertyForFixedBackoffWithSingleTopicSameIntervalReuseStrategy() {
 
 		// when
-		FixedBackOffPolicy backOffPolicy = new FixedBackOffPolicy();
-		backOffPolicy.setBackOffPeriod(1000);
+		FixedBackOff backOff = new FixedBackOff(1000);
 		int maxAttempts = 5;
 
-		List<Long> backOffValues = new BackOffValuesGenerator(maxAttempts, backOffPolicy).generateValues();
+		List<Long> backOffValues = new BackOffValuesGenerator(maxAttempts, backOff).generateValues();
 
 		List<DestinationTopic.Properties> propertiesList =
 			new DestinationTopicPropertiesFactory(retryTopicSuffix, dltSuffix, backOffValues,
-						classifier, numPartitions, kafkaOperations,
+						exceptionMatcher, numPartitions, kafkaOperations,
 						dltStrategy, suffixWithDelayValueSuffixingStrategy, singleTopicSameIntervalReuseStrategy,
 				-1, Collections.emptyMap()).createProperties();
 
@@ -267,15 +255,14 @@ class DestinationTopicPropertiesFactoryTests {
 	void shouldCreateRetryPropertiesForFixedBackoffWithMultiTopicStrategy() {
 
 		// when
-		FixedBackOffPolicy backOffPolicy = new FixedBackOffPolicy();
-		backOffPolicy.setBackOffPeriod(5000);
+		FixedBackOff backOff = new FixedBackOff(5000);
 		int maxAttempts = 3;
 
-		List<Long> backOffValues = new BackOffValuesGenerator(maxAttempts, backOffPolicy).generateValues();
+		List<Long> backOffValues = new BackOffValuesGenerator(maxAttempts, backOff).generateValues();
 
 		List<DestinationTopic.Properties> propertiesList =
 			new DestinationTopicPropertiesFactory(retryTopicSuffix, dltSuffix, backOffValues,
-						classifier, numPartitions, kafkaOperations,
+						exceptionMatcher, numPartitions, kafkaOperations,
 						dltStrategy, suffixWithDelayValueSuffixingStrategy, multipleTopicsSameIntervalReuseStrategy,
 				-1, Collections.emptyMap()).createProperties();
 
@@ -315,14 +302,14 @@ class DestinationTopicPropertiesFactoryTests {
 	void shouldSuffixRetryTopicsWithIndexIfSuffixWithIndexStrategy() {
 
 		// setup
-		ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
+		ExponentialBackOff backOff = new ExponentialBackOff();
 		int maxAttempts = 3;
-		List<Long> backOffValues = new BackOffValuesGenerator(maxAttempts, backOffPolicy).generateValues();
+		List<Long> backOffValues = new BackOffValuesGenerator(maxAttempts, backOff).generateValues();
 
 		// when
 		List<DestinationTopic.Properties> propertiesList =
 			new DestinationTopicPropertiesFactory(retryTopicSuffix, dltSuffix, backOffValues,
-						classifier, numPartitions, kafkaOperations,
+						exceptionMatcher, numPartitions, kafkaOperations,
 						dltStrategy, suffixWithIndexTopicSuffixingStrategy,
 				multipleTopicsSameIntervalReuseStrategy, -1, Collections.emptyMap()).createProperties();
 
@@ -335,15 +322,14 @@ class DestinationTopicPropertiesFactoryTests {
 	void shouldSuffixRetryTopicsWithIndexIfFixedDelayWithMultipleTopics() {
 
 		// setup
-		FixedBackOffPolicy backOffPolicy = new FixedBackOffPolicy();
-		backOffPolicy.setBackOffPeriod(1000);
+		FixedBackOff backOff = new FixedBackOff(1000);
 		int maxAttempts = 3;
-		List<Long> backOffValues = new BackOffValuesGenerator(maxAttempts, backOffPolicy).generateValues();
+		List<Long> backOffValues = new BackOffValuesGenerator(maxAttempts, backOff).generateValues();
 
 		// when
 		List<DestinationTopic.Properties> propertiesList =
 			new DestinationTopicPropertiesFactory(retryTopicSuffix, dltSuffix, backOffValues,
-						classifier, numPartitions, kafkaOperations,
+						exceptionMatcher, numPartitions, kafkaOperations,
 						dltStrategy, suffixWithIndexTopicSuffixingStrategy, multipleTopicsSameIntervalReuseStrategy,
 				-1, Collections.emptyMap()).createProperties();
 
@@ -357,16 +343,14 @@ class DestinationTopicPropertiesFactoryTests {
 	void shouldSuffixRetryTopicsWithMixedIfMaxDelayReached() {
 
 		// setup
-		ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
-		backOffPolicy.setInitialInterval(1000);
-		backOffPolicy.setMultiplier(2);
-		backOffPolicy.setMaxInterval(3000);
+		ExponentialBackOff backOff = new ExponentialBackOff(1000, 2);
+		backOff.setMaxInterval(3000);
 		int maxAttempts = 5;
-		List<Long> backOffValues = new BackOffValuesGenerator(maxAttempts, backOffPolicy).generateValues();
+		List<Long> backOffValues = new BackOffValuesGenerator(maxAttempts, backOff).generateValues();
 
 		// when
 		DestinationTopicPropertiesFactory factory = new DestinationTopicPropertiesFactory(retryTopicSuffix, dltSuffix,
-				backOffValues, classifier, numPartitions, kafkaOperations,
+				backOffValues, exceptionMatcher, numPartitions, kafkaOperations,
 			dltStrategy, suffixWithDelayValueSuffixingStrategy, multipleTopicsSameIntervalReuseStrategy, -1, Collections.emptyMap());
 
 		List<DestinationTopic.Properties> propertiesList = factory.createProperties();
@@ -385,16 +369,14 @@ class DestinationTopicPropertiesFactoryTests {
 	void shouldReuseRetryTopicsIfMaxDelayReachedWithDelayValueSuffixingStrategy() {
 
 		// setup
-		ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
-		backOffPolicy.setInitialInterval(1000);
-		backOffPolicy.setMultiplier(2);
-		backOffPolicy.setMaxInterval(3000);
+		ExponentialBackOff backOff = new ExponentialBackOff(1000, 2);
+		backOff.setMaxInterval(3000);
 		int maxAttempts = 5;
-		List<Long> backOffValues = new BackOffValuesGenerator(maxAttempts, backOffPolicy).generateValues();
+		List<Long> backOffValues = new BackOffValuesGenerator(maxAttempts, backOff).generateValues();
 
 		// when
 		DestinationTopicPropertiesFactory factory = new DestinationTopicPropertiesFactory(retryTopicSuffix, dltSuffix,
-				backOffValues, classifier, numPartitions, kafkaOperations,
+				backOffValues, exceptionMatcher, numPartitions, kafkaOperations,
 			dltStrategy, suffixWithDelayValueSuffixingStrategy, singleTopicSameIntervalReuseStrategy, -1, Collections.emptyMap());
 
 		List<DestinationTopic.Properties> propertiesList = factory.createProperties();
@@ -412,16 +394,14 @@ class DestinationTopicPropertiesFactoryTests {
 	void shouldReuseRetryTopicsIfMaxDelayReachedWithIndexValueSuffixingStrategy() {
 
 		// setup
-		ExponentialBackOffPolicy backOffPolicy = new ExponentialBackOffPolicy();
-		backOffPolicy.setInitialInterval(1000);
-		backOffPolicy.setMultiplier(2);
-		backOffPolicy.setMaxInterval(3000);
+		ExponentialBackOff backOff = new ExponentialBackOff(1000, 2);
+		backOff.setMaxInterval(3000);
 		int maxAttempts = 5;
-		List<Long> backOffValues = new BackOffValuesGenerator(maxAttempts, backOffPolicy).generateValues();
+		List<Long> backOffValues = new BackOffValuesGenerator(maxAttempts, backOff).generateValues();
 
 		// when
 		DestinationTopicPropertiesFactory factory = new DestinationTopicPropertiesFactory(retryTopicSuffix, dltSuffix,
-				backOffValues, classifier, numPartitions, kafkaOperations,
+				backOffValues, exceptionMatcher, numPartitions, kafkaOperations,
 			dltStrategy, suffixWithIndexTopicSuffixingStrategy, singleTopicSameIntervalReuseStrategy, -1, Collections.emptyMap());
 
 		List<DestinationTopic.Properties> propertiesList = factory.createProperties();
@@ -444,7 +424,7 @@ class DestinationTopicPropertiesFactoryTests {
 
 		// when
 		DestinationTopicPropertiesFactory factory = new DestinationTopicPropertiesFactory(retryTopicSuffix, dltSuffix,
-				backOffValues, classifier, numPartitions, kafkaOperations,
+				backOffValues, exceptionMatcher, numPartitions, kafkaOperations,
 			dltStrategy, suffixWithDelayValueSuffixingStrategy, multipleTopicsSameIntervalReuseStrategy, -1, Collections.emptyMap());
 
 		List<DestinationTopic.Properties> propertiesList = factory.createProperties();
