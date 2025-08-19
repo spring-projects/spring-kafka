@@ -34,10 +34,10 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.jspecify.annotations.Nullable;
 
-import org.springframework.classify.BinaryExceptionClassifier;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.support.ExceptionMatcher;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.util.ClassUtils;
@@ -78,7 +78,7 @@ public final class ErrorHandlingUtils {
 	 * @param logger the logger.
 	 * @param logLevel the log level.
 	 * @param retryListeners the retry listeners.
-	 * @param classifier the exception classifier.
+	 * @param exceptionMatcher the exception matcher.
 	 * @param reClassifyOnExceptionChange true to reset the state if a different exception
 	 * is thrown during retry.
 	 * @since 2.9.7
@@ -86,7 +86,7 @@ public final class ErrorHandlingUtils {
 	public static void retryBatch(Exception thrownException, ConsumerRecords<?, ?> records, Consumer<?, ?> consumer,
 			MessageListenerContainer container, Runnable invokeListener, BackOff backOff,
 			CommonErrorHandler seeker, BiConsumer<ConsumerRecords<?, ?>, Exception> recoverer, LogAccessor logger,
-			KafkaException.Level logLevel, List<RetryListener> retryListeners, BinaryExceptionClassifier classifier,
+			KafkaException.Level logLevel, List<RetryListener> retryListeners, ExceptionMatcher exceptionMatcher,
 			boolean reClassifyOnExceptionChange) {
 
 		BackOffExecution execution = backOff.start();
@@ -104,8 +104,8 @@ public final class ErrorHandlingUtils {
 		try {
 			Exception recoveryException = thrownException;
 			Exception lastException = unwrapIfNeeded(thrownException);
-			Boolean retryable = classifier.classify(lastException);
-			while (Boolean.TRUE.equals(retryable) && nextBackOff != BackOffExecution.STOP) {
+			boolean retryable = exceptionMatcher.match(lastException);
+			while (retryable && nextBackOff != BackOffExecution.STOP) {
 				try {
 					consumer.poll(Duration.ZERO);
 				}
@@ -161,7 +161,7 @@ public final class ErrorHandlingUtils {
 					Exception newException = unwrapIfNeeded(ex);
 					if (reClassifyOnExceptionChange && !Objects.requireNonNull(newException).getClass()
 							.equals(Objects.requireNonNull(lastException).getClass())
-							&& !classifier.classify(newException)) {
+							&& !exceptionMatcher.match(newException)) {
 
 						break;
 					}

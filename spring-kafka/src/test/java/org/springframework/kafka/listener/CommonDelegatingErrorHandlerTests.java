@@ -204,7 +204,7 @@ public class CommonDelegatingErrorHandlerTests {
 			KafkaException.class, directCauseErrorHandler
 		));
 		delegatingErrorHandler.addDelegate(IllegalStateException.class, mock(CommonErrorHandler.class));
-		assertThat(KafkaTestUtils.getPropertyValue(delegatingErrorHandler, "classifier.classified", Map.class).keySet())
+		assertThat(KafkaTestUtils.getPropertyValue(delegatingErrorHandler, "exceptionMatcher.entries", Map.class).keySet())
 				.contains(IllegalStateException.class);
 
 

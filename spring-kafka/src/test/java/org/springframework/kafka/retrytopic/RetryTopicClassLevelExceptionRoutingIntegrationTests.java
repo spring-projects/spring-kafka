@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.annotation.BackOff;
 import org.springframework.kafka.annotation.DltHandler;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaHandler;
@@ -52,7 +53,6 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.handler.annotation.Header;
-import org.springframework.retry.annotation.Backoff;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.annotation.DirtiesContext;
@@ -195,7 +195,7 @@ class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 	}
 
 	@RetryableTopic(exclude = ShouldRetryOnlyBlockingException.class, traversingCauses = "true",
-			backoff = @Backoff(50), kafkaTemplate = "kafkaTemplate")
+			backoff = @BackOff(50), kafkaTemplate = "kafkaTemplate")
 	@KafkaListener(topics = ONLY_RETRY_VIA_BLOCKING)
 	static class OnlyRetryBlockingListener {
 
@@ -216,7 +216,7 @@ class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 		}
 	}
 
-	@RetryableTopic(backoff = @Backoff(50), kafkaTemplate = "kafkaTemplate")
+	@RetryableTopic(backoff = @BackOff(50), kafkaTemplate = "kafkaTemplate")
 	@KafkaListener(topics = USER_FATAL_EXCEPTION_TOPIC)
 	static class UserFatalTopicListener {
 
@@ -237,7 +237,7 @@ class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 		}
 	}
 
-	@RetryableTopic(backoff = @Backoff(50))
+	@RetryableTopic(backoff = @BackOff(50))
 	@KafkaListener(topics = FRAMEWORK_FATAL_EXCEPTION_TOPIC)
 	static class FrameworkFatalTopicListener {
 

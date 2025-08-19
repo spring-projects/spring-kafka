@@ -135,7 +135,7 @@ import org.springframework.kafka.support.TopicForRetryable;
  *         }</code>
  * </pre>
  * <p>Some other options include: auto-creation of topics, backoff,
- * retryOn / notRetryOn / transversing as in {@link org.springframework.retry.support.RetryTemplate},
+ * retryOn / notRetryOn / transversing as in {@link org.springframework.core.retry.RetryTemplate},
  * single-topic fixed backoff processing, custom dlt listener beans, custom topic
  * suffixes and providing specific listenerContainerFactories.
  *
@@ -245,7 +245,7 @@ import org.springframework.kafka.support.TopicForRetryable;
  * @see RetryTopicConfigurationBuilder
  * @see org.springframework.kafka.annotation.RetryableTopic
  * @see org.springframework.kafka.annotation.KafkaListener
- * @see org.springframework.retry.annotation.Backoff
+ * @see org.springframework.kafka.annotation.BackOff
  * @see org.springframework.kafka.listener.DefaultErrorHandler
  * @see org.springframework.kafka.listener.DeadLetterPublishingRecoverer
  *

@@ -19,6 +19,7 @@ package org.springframework.kafka.support.serializer;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.function.Function;
 
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
@@ -26,9 +27,8 @@ import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.utils.Utils;
 import org.junit.jupiter.api.Test;
 
-import org.springframework.retry.RecoveryCallback;
-import org.springframework.retry.RetryContext;
-import org.springframework.retry.support.RetryTemplate;
+import org.springframework.core.retry.RetryException;
+import org.springframework.core.retry.RetryTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.any;
@@ -63,10 +63,10 @@ class RetryingDeserializerTests {
 		RetryingDeserializer<String> rdes = new RetryingDeserializer<>((s, b) -> {
 			throw new RuntimeException();
 		}, new RetryTemplate());
-		RecoveryCallback<String> recoveryCallback = mock();
+		Function<RetryException, String> recoveryCallback = mock();
 		rdes.setRecoveryCallback(recoveryCallback);
 		rdes.deserialize("my-topic", "my-data".getBytes());
-		verify(recoveryCallback).recover(any(RetryContext.class));
+		verify(recoveryCallback).apply(any(RetryException.class));
 	}
 
 	public static class Deser implements Deserializer<String> {

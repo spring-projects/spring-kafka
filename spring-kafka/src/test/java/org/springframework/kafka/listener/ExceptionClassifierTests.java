@@ -31,27 +31,27 @@ public class ExceptionClassifierTests {
 	void testDefault() {
 		ExceptionClassifier ec = new ExceptionClassifier() {
 		};
-		assertThat(ec.getClassifier().classify(new Exception())).isTrue();
-		assertThat(ec.getClassifier().classify(new ClassCastException())).isFalse();
+		assertThat(ec.getExceptionMatcher().match(new Exception())).isTrue();
+		assertThat(ec.getExceptionMatcher().match(new ClassCastException())).isFalse();
 		ec.removeClassification(ClassCastException.class);
-		assertThat(ec.getClassifier().classify(new ClassCastException())).isTrue();
-		assertThat(ec.getClassifier().classify(new IllegalStateException())).isTrue();
+		assertThat(ec.getExceptionMatcher().match(new ClassCastException())).isTrue();
+		assertThat(ec.getExceptionMatcher().match(new IllegalStateException())).isTrue();
 		ec.addNotRetryableExceptions(IllegalStateException.class);
-		assertThat(ec.getClassifier().classify(new IllegalStateException())).isFalse();
+		assertThat(ec.getExceptionMatcher().match(new IllegalStateException())).isFalse();
 	}
 
 	@Test
 	void testDefaultFalse() {
 		ExceptionClassifier ec = new ExceptionClassifier() {
 		};
-		assertThat(ec.getClassifier().classify(new Exception())).isTrue();
+		assertThat(ec.getExceptionMatcher().match(new Exception())).isTrue();
 		ec.defaultFalse();
-		assertThat(ec.getClassifier().classify(new Exception())).isFalse();
-		assertThat(ec.getClassifier().classify(new IllegalStateException())).isFalse();
+		assertThat(ec.getExceptionMatcher().match(new Exception())).isFalse();
+		assertThat(ec.getExceptionMatcher().match(new IllegalStateException())).isFalse();
 		ec.addRetryableExceptions(IllegalStateException.class);
-		assertThat(ec.getClassifier().classify(new IllegalStateException())).isTrue();
+		assertThat(ec.getExceptionMatcher().match(new IllegalStateException())).isTrue();
 		ec.removeClassification(IllegalStateException.class);
-		assertThat(ec.getClassifier().classify(new IllegalStateException())).isFalse();
+		assertThat(ec.getExceptionMatcher().match(new IllegalStateException())).isFalse();
 	}
 
 }

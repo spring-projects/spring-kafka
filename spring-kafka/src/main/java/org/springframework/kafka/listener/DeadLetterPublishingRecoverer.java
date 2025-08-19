@@ -511,7 +511,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		}
 		if (this.skipSameTopicFatalExceptions
 				&& tp.topic().equals(record.topic())
-				&& !getClassifier().classify(exception)) {
+				&& !getExceptionMatcher().match(exception)) {
 			this.logger.error("Recovery of " + KafkaUtils.format(record)
 					+ " skipped because not retryable exception " + exception.toString()
 					+ " and the destination resolver routed back to the same topic");

@@ -44,6 +44,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.retry.RetryPolicy;
+import org.springframework.core.retry.RetryTemplate;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.EnableKafkaStreams;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -61,10 +63,6 @@ import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
-import org.springframework.retry.RetryPolicy;
-import org.springframework.retry.backoff.FixedBackOffPolicy;
-import org.springframework.retry.policy.SimpleRetryPolicy;
-import org.springframework.retry.support.RetryTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
@@ -193,7 +191,8 @@ class KafkaStreamsInteractiveQueryServiceTests {
 					this.interactiveQueryService.getKafkaStreamsApplicationHostInfo(NON_EXISTENT_STORE, 12345,
 							serializer);
 				})
-				.withMessageContaining("Error when retrieving state store.");
+				.withMessage("Error when retrieving state store.")
+				.havingCause().withMessage("KeyQueryMetadata is not yet available.");
 
 		verify(kafkaStreams, times(3)).queryMetadataForKey(NON_EXISTENT_STORE, 12345,
 				serializer);
@@ -275,9 +274,7 @@ class KafkaStreamsInteractiveQueryServiceTests {
 			final KafkaStreamsInteractiveQueryService kafkaStreamsInteractiveQueryService =
 					new KafkaStreamsInteractiveQueryService(streamsBuilderFactoryBean);
 			RetryTemplate retryTemplate = new RetryTemplate();
-			retryTemplate.setBackOffPolicy(new FixedBackOffPolicy());
-			RetryPolicy retryPolicy = new SimpleRetryPolicy(3);
-			retryTemplate.setRetryPolicy(retryPolicy);
+			retryTemplate.setRetryPolicy(RetryPolicy.builder().maxAttempts(2).build());
 			kafkaStreamsInteractiveQueryService.setRetryTemplate(retryTemplate);
 			return kafkaStreamsInteractiveQueryService;
 		}
