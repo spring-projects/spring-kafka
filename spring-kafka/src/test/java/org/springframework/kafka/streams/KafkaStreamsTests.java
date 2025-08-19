@@ -64,7 +64,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
-import org.springframework.kafka.support.serializer.JsonSerde;
+import org.springframework.kafka.support.serializer.JacksonJsonSerde;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
@@ -225,7 +225,7 @@ public class KafkaStreamsTests {
 			headers.put("spel", parser.parseExpression("context.timestamp() + key + value"));
 			stream.mapValues((ValueMapper<String, String>) String::toUpperCase)
 					.mapValues(Foo::new)
-					.repartition(Repartitioned.with(Serdes.Integer(), new JsonSerde<Foo>() { }))
+					.repartition(Repartitioned.with(Serdes.Integer(), new JacksonJsonSerde<Foo>() { }))
 					.mapValues(Foo::getName)
 					.groupByKey()
 					.windowedBy(TimeWindows.ofSizeWithNoGrace(Duration.ofMillis(1000)))

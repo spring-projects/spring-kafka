@@ -71,6 +71,7 @@ public class RecordMessagingMessageListenerAdapter<K, V> extends MessagingMessag
 	 * @param consumer the consumer.
 	 */
 	@Override
+	@SuppressWarnings("removal")
 	public void onMessage(ConsumerRecord<K, V> record, @Nullable Acknowledgment acknowledgment,
 			@Nullable Consumer<?, ?> consumer) {
 

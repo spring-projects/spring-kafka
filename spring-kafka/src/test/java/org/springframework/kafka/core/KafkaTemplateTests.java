@@ -65,7 +65,7 @@ import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.CompositeProducerInterceptor;
 import org.springframework.kafka.support.CompositeProducerListener;
-import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
+import org.springframework.kafka.support.JsonKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.ProducerListener;
@@ -284,7 +284,7 @@ public class KafkaTemplateTests {
 		assertThat(new String(next.value())).isEqualTo("bar");
 		assertThat(iterator.hasNext()).isTrue();
 		next = iterator.next();
-		assertThat(next.key()).isEqualTo(DefaultKafkaHeaderMapper.JSON_TYPES);
+		assertThat(next.key()).isEqualTo(JsonKafkaHeaderMapper.JSON_TYPES);
 		assertThat(iterator.hasNext()).as("Expected no more headers").isFalse();
 
 		Message<String> message2 = MessageBuilder.withPayload("foo-message-2")

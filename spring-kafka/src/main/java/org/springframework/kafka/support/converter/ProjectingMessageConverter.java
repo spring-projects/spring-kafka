@@ -50,6 +50,7 @@ import org.springframework.util.Assert;
  * @deprecated since 4.0 in favor of {@link JacksonProjectingMessageConverter} for Jackson 3.
  */
 @Deprecated(forRemoval = true, since = "4.0")
+@SuppressWarnings("removal")
 public class ProjectingMessageConverter extends MessagingMessageConverter {
 
 	private final ProjectionFactory projectionFactory;

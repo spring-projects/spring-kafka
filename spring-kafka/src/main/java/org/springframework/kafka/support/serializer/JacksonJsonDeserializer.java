@@ -68,6 +68,7 @@ import org.springframework.util.StringUtils;
  *
  * @since 4.0
  */
+@SuppressWarnings("removal")
 public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 
 	/**

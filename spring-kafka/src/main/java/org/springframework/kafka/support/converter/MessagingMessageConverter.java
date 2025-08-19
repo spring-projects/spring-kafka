@@ -91,6 +91,7 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	 * @param partitionProvider the provider.
 	 * @since 3.0.8
 	 */
+	@SuppressWarnings("removal")
 	public MessagingMessageConverter(Function<Message<?>, @Nullable Integer> partitionProvider) {
 		Assert.notNull(partitionProvider, "'partitionProvider' cannot be null");
 		if (JacksonPresent.isJackson3Present()) {

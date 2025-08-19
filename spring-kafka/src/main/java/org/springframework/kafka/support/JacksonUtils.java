@@ -33,6 +33,7 @@ import org.springframework.util.ClassUtils;
  * @deprecated since 4.0 in favor of {@link JacksonMapperUtils} API.
  */
 @Deprecated(forRemoval = true, since = "4.0")
+@SuppressWarnings("removal")
 public final class JacksonUtils {
 
 	private static final boolean JDK8_MODULE_PRESENT =

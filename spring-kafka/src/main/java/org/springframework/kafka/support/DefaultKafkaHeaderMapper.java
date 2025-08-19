@@ -55,6 +55,7 @@ import org.springframework.util.ClassUtils;
  * @deprecated since 4.0 in favor of {@link JsonKafkaHeaderMapper} for Jackson 3.
  */
 @Deprecated(forRemoval = true, since = "4.0")
+@SuppressWarnings("removal")
 public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 
 	private static final String JAVA_LANG_STRING = "java.lang.String";

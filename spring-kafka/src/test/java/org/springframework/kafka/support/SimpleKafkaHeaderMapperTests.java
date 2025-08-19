@@ -212,7 +212,7 @@ public class SimpleKafkaHeaderMapperTests {
 		byte[] originalOffset = { 0, 0, 0, 1 };
 		byte[] defaultHeaderAttempts = { 0, 0, 0, 5 };
 
-		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
 		mapper.setMultiValueHeaderPatterns(multiValueHeader1, multiValueHeader2);
 
 		Headers rawHeaders = new RecordHeaders();

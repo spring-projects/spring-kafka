@@ -104,8 +104,7 @@ import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.TopicPartitionOffset.SeekPosition;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JacksonJsonDeserializer;
-import org.springframework.kafka.support.serializer.JsonDeserializer;
-import org.springframework.kafka.support.serializer.JsonSerializer;
+import org.springframework.kafka.support.serializer.JacksonJsonSerializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
 import org.springframework.kafka.test.context.EmbeddedKafka;
@@ -2080,8 +2079,8 @@ public class KafkaMessageListenerContainerTests {
 	public void testJsonSerDeConfiguredType() throws Exception {
 		this.logger.info("Start JSON1");
 		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "testJson", false);
-		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-		props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, Foo.class);
+		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JacksonJsonDeserializer.class);
+		props.put(JacksonJsonDeserializer.VALUE_DEFAULT_TYPE, Foo.class);
 		DefaultKafkaConsumerFactory<Integer, Foo> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic1);
 
@@ -2101,8 +2100,8 @@ public class KafkaMessageListenerContainerTests {
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-		senderProps.put(JsonSerializer.ADD_TYPE_INFO_HEADERS, false);
+		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JacksonJsonSerializer.class);
+		senderProps.put(JacksonJsonSerializer.ADD_TYPE_INFO_HEADERS, false);
 		DefaultKafkaProducerFactory<Integer, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, Foo> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic1);
@@ -2120,8 +2119,8 @@ public class KafkaMessageListenerContainerTests {
 		this.logger.info("Start JSON1a");
 		Class<Foo1> consumerConfigValueDefaultType = Foo1.class;
 		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "testJson", false);
-		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-		props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, consumerConfigValueDefaultType);
+		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JacksonJsonDeserializer.class);
+		props.put(JacksonJsonDeserializer.VALUE_DEFAULT_TYPE, consumerConfigValueDefaultType);
 		DefaultKafkaConsumerFactory<Integer, Foo> cf = new DefaultKafkaConsumerFactory<>(props, null, new JacksonJsonDeserializer<>(Foo.class));
 		ContainerProperties containerProps = new ContainerProperties(topic24);
 
@@ -2141,7 +2140,7 @@ public class KafkaMessageListenerContainerTests {
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JacksonJsonSerializer.class);
 		DefaultKafkaProducerFactory<Integer, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, Foo> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic24);
@@ -2160,9 +2159,9 @@ public class KafkaMessageListenerContainerTests {
 	public void testJsonSerDeHeaderSimpleType() throws Exception {
 		this.logger.info("Start JSON2");
 		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "testJson", false);
-		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-		props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, JacksonJsonDeserializer.class);
+		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JacksonJsonDeserializer.class);
+		props.put(JacksonJsonDeserializer.TRUSTED_PACKAGES, "*");
 		DefaultKafkaConsumerFactory<Bar, Foo> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic2);
 
@@ -2182,8 +2181,8 @@ public class KafkaMessageListenerContainerTests {
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		senderProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+		senderProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, JacksonJsonSerializer.class);
+		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JacksonJsonSerializer.class);
 		DefaultKafkaProducerFactory<Bar, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Bar, Foo> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic2);
@@ -2202,9 +2201,9 @@ public class KafkaMessageListenerContainerTests {
 	public void testJsonSerDeTypeMappings() throws Exception {
 		this.logger.info("Start JSON3");
 		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "testJson", false);
-		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
-		props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
-		props.put(JsonDeserializer.TYPE_MAPPINGS, "foo:" + Foo1.class.getName() + " , bar:" + Bar1.class.getName());
+		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JacksonJsonDeserializer.class);
+		props.put(JacksonJsonDeserializer.TRUSTED_PACKAGES, "*");
+		props.put(JacksonJsonDeserializer.TYPE_MAPPINGS, "foo:" + Foo1.class.getName() + " , bar:" + Bar1.class.getName());
 		DefaultKafkaConsumerFactory<Integer, Foo1> cf = new DefaultKafkaConsumerFactory<>(props);
 		ContainerProperties containerProps = new ContainerProperties(topic20);
 
@@ -2224,8 +2223,8 @@ public class KafkaMessageListenerContainerTests {
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
-		senderProps.put(JsonSerializer.TYPE_MAPPINGS, "foo:" + Foo.class.getName() + ",bar:" + Bar.class.getName());
+		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JacksonJsonSerializer.class);
+		senderProps.put(JacksonJsonSerializer.TYPE_MAPPINGS, "foo:" + Foo.class.getName() + ",bar:" + Bar.class.getName());
 		DefaultKafkaProducerFactory<Integer, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, Foo> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic20);
@@ -2268,7 +2267,7 @@ public class KafkaMessageListenerContainerTests {
 		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
 
 		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
-		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+		senderProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JacksonJsonSerializer.class);
 		DefaultKafkaProducerFactory<Integer, Foo> pf = new DefaultKafkaProducerFactory<>(senderProps);
 		KafkaTemplate<Integer, Foo> template = new KafkaTemplate<>(pf);
 		template.setDefaultTopic(topic21);

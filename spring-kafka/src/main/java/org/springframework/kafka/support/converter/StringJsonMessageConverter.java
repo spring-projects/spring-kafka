@@ -38,6 +38,7 @@ import org.springframework.messaging.Message;
  * @deprecated since 4.0 in favor of {@link StringJacksonJsonMessageConverter} for Jackson 3.
  */
 @Deprecated(forRemoval = true, since = "4.0")
+@SuppressWarnings("removal")
 public class StringJsonMessageConverter extends JsonMessageConverter {
 
 	public StringJsonMessageConverter() {

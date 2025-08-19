@@ -131,8 +131,8 @@ import org.springframework.kafka.support.converter.StringJacksonJsonMessageConve
 import org.springframework.kafka.support.mapping.DefaultJacksonJavaTypeMapper;
 import org.springframework.kafka.support.mapping.JacksonJavaTypeMapper;
 import org.springframework.kafka.support.mapping.JacksonJavaTypeMapper.TypePrecedence;
-import org.springframework.kafka.support.serializer.JsonDeserializer;
-import org.springframework.kafka.support.serializer.JsonSerializer;
+import org.springframework.kafka.support.serializer.JacksonJsonDeserializer;
+import org.springframework.kafka.support.serializer.JacksonJsonSerializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.EmbeddedKafkaKraftBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
@@ -1140,7 +1140,7 @@ public class EnableKafkaIntegrationTests {
 	public void testReplyingBatchListenerReturnCollection() {
 		Map<String, Object> consumerProps = new HashMap<>(this.consumerFactory.getConfigurationProperties());
 		consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "testReplyingBatchListenerReturnCollection");
-		consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+		consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JacksonJsonDeserializer.class);
 		ConsumerFactory<Integer, Object> cf = new DefaultKafkaConsumerFactory<>(consumerProps);
 		Consumer<Integer, Object> consumer = cf.createConsumer();
 		this.embeddedKafka.consumeFromAnEmbeddedTopic(consumer, "annotated38reply");
@@ -1618,7 +1618,7 @@ public class EnableKafkaIntegrationTests {
 		@Bean
 		public ProducerFactory<Integer, Object> jsonProducerFactory() {
 			Map<String, Object> producerConfigs = producerConfigs();
-			producerConfigs.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+			producerConfigs.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JacksonJsonSerializer.class);
 			return new DefaultKafkaProducerFactory<>(producerConfigs);
 		}
 

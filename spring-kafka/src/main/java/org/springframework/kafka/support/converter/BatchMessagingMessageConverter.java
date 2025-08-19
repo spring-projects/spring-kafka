@@ -70,6 +70,7 @@ import org.springframework.messaging.support.MessageBuilder;
  *
  * @since 1.1
  */
+@SuppressWarnings("removal")
 public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
 	protected final LogAccessor logger = new LogAccessor(getClass()); // NOSONAR
