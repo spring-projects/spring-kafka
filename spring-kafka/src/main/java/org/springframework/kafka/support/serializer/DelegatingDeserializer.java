@@ -167,13 +167,13 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 	}
 
 	@Override
-	public Object deserialize(String topic, Headers headers, byte[] data) {
+	public @Nullable Object deserialize(String topic, Headers headers, byte[] data) {
 		Deserializer<?> deserializer = getDeserializerByHeaders(headers);
 		return deserializer == null ? data : deserializer.deserialize(topic, headers, data);
 	}
 
 	@Override
-	public Object deserialize(String topic, Headers headers, ByteBuffer data) {
+	public @Nullable Object deserialize(String topic, Headers headers, ByteBuffer data) {
 		Deserializer<?> deserializer = getDeserializerByHeaders(headers);
 		return deserializer == null ? data : deserializer.deserialize(topic, headers, data);
 	}

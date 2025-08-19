@@ -68,17 +68,17 @@ public class RetryingDeserializer<T> implements Deserializer<T> {
 	}
 
 	@Override
-	public T deserialize(String topic, byte[] data) {
+	public @Nullable T deserialize(String topic, byte[] data) {
 		return this.retryOperations.execute(context -> this.delegate.deserialize(topic, data), this.recoveryCallback);
 	}
 
 	@Override
-	public T deserialize(String topic, Headers headers, byte[] data) {
+	public @Nullable T deserialize(String topic, Headers headers, byte[] data) {
 		return this.retryOperations.execute(context -> this.delegate.deserialize(topic, headers, data), this.recoveryCallback);
 	}
 
 	@Override
-	public T deserialize(String topic, Headers headers, ByteBuffer data) {
+	public @Nullable T deserialize(String topic, Headers headers, ByteBuffer data) {
 		return this.retryOperations.execute(context -> this.delegate.deserialize(topic, headers, data), this.recoveryCallback);
 	}
 
