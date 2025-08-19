@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Deserializer;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A {@link Deserializer} that delegates to other deserializers based on the topic name.
@@ -74,12 +75,12 @@ public class DelegatingByTopicDeserializer extends DelegatingByTopicSerializatio
 	}
 
 	@Override
-	public Object deserialize(String topic, Headers headers, byte[] data) {
+	public @Nullable Object deserialize(String topic, Headers headers, byte[] data) {
 		return findDelegate(topic).deserialize(topic, headers, data);
 	}
 
 	@Override
-	public Object deserialize(String topic, Headers headers, ByteBuffer data) {
+	public @Nullable Object deserialize(String topic, Headers headers, ByteBuffer data) {
 		return findDelegate(topic).deserialize(topic, headers, data);
 	}
 
