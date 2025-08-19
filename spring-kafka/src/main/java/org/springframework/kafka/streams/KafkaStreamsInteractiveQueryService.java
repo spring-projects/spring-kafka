@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.streams;
 
+import java.util.Objects;
 import java.util.Properties;
 
 import org.apache.kafka.common.serialization.Serializer;
@@ -26,8 +27,9 @@ import org.apache.kafka.streams.state.HostInfo;
 import org.apache.kafka.streams.state.QueryableStoreType;
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.core.retry.RetryException;
+import org.springframework.core.retry.RetryTemplate;
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
-import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
@@ -85,15 +87,15 @@ public class KafkaStreamsInteractiveQueryService {
 		populateKafkaStreams();
 		StoreQueryParameters<T> storeQueryParams = StoreQueryParameters.fromNameAndType(storeName, storeType);
 
-		return this.retryTemplate.execute(context -> {
-			try {
+		try {
+			return Objects.requireNonNull(this.retryTemplate.execute(() -> {
 				Assert.state(this.kafkaStreams != null, "KafkaStreams cannot be null.");
 				return this.kafkaStreams.store(storeQueryParams);
-			}
-			catch (Exception e) {
-				throw new IllegalStateException("Error retrieving state store: " + storeName, e);
-			}
-		});
+			}));
+		}
+		catch (RetryException ex) {
+			throw new IllegalStateException("Error retrieving state store: " + storeName, ex.getCause());
+		}
 	}
 
 	private void populateKafkaStreams() {
@@ -141,24 +143,23 @@ public class KafkaStreamsInteractiveQueryService {
 	 */
 	public <K> HostInfo getKafkaStreamsApplicationHostInfo(String store, K key, Serializer<K> serializer) {
 		populateKafkaStreams();
-		return this.retryTemplate.execute(context -> {
-			Throwable throwable = null;
-			try {
-				Assert.state(this.kafkaStreams != null, "KafkaStreams cannot be null.");
-				KeyQueryMetadata keyQueryMetadata = this.kafkaStreams.queryMetadataForKey(store, key, serializer);
-				if (keyQueryMetadata != null) {
-					return keyQueryMetadata.activeHost();
-				}
+		try {
+			return getActiveHost(store, key, serializer);
+		}
+		catch (RetryException ex) {
+			throw new IllegalStateException("Error when retrieving state store.", ex.getCause());
+		}
+	}
+
+	private <K> HostInfo getActiveHost(String store, K key, Serializer<K> serializer) throws RetryException {
+		return Objects.requireNonNull(this.retryTemplate.execute(() -> {
+			Assert.state(this.kafkaStreams != null, "KafkaStreams cannot be null.");
+			KeyQueryMetadata keyQueryMetadata = this.kafkaStreams.queryMetadataForKey(store, key, serializer);
+			if (keyQueryMetadata != null) {
+				return keyQueryMetadata.activeHost();
 			}
-			catch (Exception e) {
-				throwable = e;
-			}
-			// In addition to the obvious case of a valid exception above, if keyQueryMetadata was null for any
-			// transient reasons, let the retry kick in by forcing an exception below.
-			throw new IllegalStateException(
-					"Error when retrieving state store.", throwable != null ? throwable :
-					new Throwable("KeyQueryMetadata is not yet available."));
-		});
+			throw new IllegalStateException("KeyQueryMetadata is not yet available.");
+		}));
 	}
 
 }
