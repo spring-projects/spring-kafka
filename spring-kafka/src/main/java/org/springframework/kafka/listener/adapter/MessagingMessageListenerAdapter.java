@@ -513,6 +513,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	 * @param source the source data for the method invocation - e.g.
 	 * {@code o.s.messaging.Message<?>}; may be null
 	 */
+	@SuppressWarnings("try")
 	protected void handleResult(Object resultArg, Object request, @Nullable Acknowledgment acknowledgment,
 			@Nullable Consumer<?, ?> consumer, @Nullable Message<?> source) {
 		final Observation observation = getCurrentObservation();
@@ -550,7 +551,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 
 		completableFutureResult.whenComplete((r, t) -> {
-			try (var scope = observation.openScope()) {
+			try (var ignored = observation.openScope()) {
 				if (t == null) {
 					asyncSuccess(r, replyTopic, source, messageReturnType);
 					if (isAsyncReplies()) {
