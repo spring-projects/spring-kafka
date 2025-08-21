@@ -1,18 +1,19 @@
 [[retry-config]]
 = Configuration
 
-Starting with version 2.9, for default configuration, the `@EnableKafkaRetryTopic` annotation should be used in a `@Configuration` annotated class.
-This enables the feature to bootstrap properly and gives access to injecting some of the feature's components to be looked up at runtime.
+For the default setup, enable non-blocking retries by adding the `@RetryableTopic` annotation to a `@KafkaListener` method. This is the recommended and simplest approach, as it automatically configures the required retry infrastructure and creates the retry and DLT topics with default settings.
+
+To import the non-blocking retry infrastructure and expose its components as beans, annotate a `@Configuration` class with `@EnableKafkaRetryTopic`. This enables injection and runtime lookup of the feature’s components and serves as a foundation for advanced and global configuration.
 
 NOTE: It is not necessary to also add `@EnableKafka`, if you add this annotation, because `@EnableKafkaRetryTopic` is meta-annotated with `@EnableKafka`.
 
-Also, starting with that version, for more advanced configuration of the feature's components and global features, the `RetryTopicConfigurationSupport` class should be extended in a `@Configuration` class, and the appropriate methods overridden.
+For advanced and global customization, extend `RetryTopicConfigurationSupport` in a single `@Configuration` class and override the relevant methods.
 For more details refer to xref:retrytopic/retry-config.adoc#retry-topic-global-settings[Configuring Global Settings and Features].
 
 By default, the containers for the retry topics will have the same concurrency as the main container.
 Starting with version 3.0, you can set a different `concurrency` for the retry containers (either on the annotation, or in `RetryTopicConfigurationBuilder`).
 
-IMPORTANT: Only one of the above techniques can be used, and only one `@Configuration` class can extend `RetryTopicConfigurationSupport`.
+IMPORTANT: Use only one of the two global configuration approaches above (`@EnableKafkaRetryTopic` or extending `RetryTopicConfigurationSupport`). In addition, only one `@Configuration` class should extend `RetryTopicConfigurationSupport`.
 
 [[using-the-retryabletopic-annotation]]
 == Using the `@RetryableTopic` annotation
