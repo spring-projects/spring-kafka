@@ -26,7 +26,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
-import org.springframework.retry.annotation.Backoff;
+import org.springframework.kafka.annotation.Backoff;
 
 /**
  * Sample shows use of topic-based retry.

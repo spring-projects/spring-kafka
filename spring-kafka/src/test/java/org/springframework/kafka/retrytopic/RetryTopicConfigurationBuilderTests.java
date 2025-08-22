@@ -107,6 +107,8 @@ class RetryTopicConfigurationBuilderTests {
 	}
 
 	@Test
+	@Deprecated
+	@SuppressWarnings("removal")
 	void shouldSetUniformRandomBackOff() {
 
 		// setup
