@@ -37,6 +37,8 @@ import org.springframework.util.MimeType;
  * (generic) types. Based on Jackson 3.
  *
  * @author Soby Chacko
+ * @author Artem Bilan
+ *
  * @since 4.0
  */
 public class MappingJacksonJsonParameterizedConverter extends JacksonJsonMessageConverter {
@@ -83,20 +85,21 @@ public class MappingJacksonJsonParameterizedConverter extends JacksonJsonMessage
 	protected Object convertFromInternal(Message<?> message, Class<?> targetClass, @Nullable Object conversionHint) {
 		JavaType javaType = determineJavaType(message, conversionHint);
 		Object value = message.getPayload();
-		if (value instanceof Bytes) {
-			value = ((Bytes) value).get();
+		if (value instanceof Bytes bytesValue) {
+			value = bytesValue.get();
 		}
-		if (value instanceof String) {
+
+		if (value instanceof String stringValue) {
 			try {
-				return getObjectMapper().readValue((String) value, javaType);
+				return getJsonMapper().readValue(stringValue, javaType);
 			}
 			catch (Exception e) {
 				throw new ConversionException("Failed to convert from JSON", message, e);
 			}
 		}
-		else if (value instanceof byte[]) {
+		else if (value instanceof byte[] byteArrayValue) {
 			try {
-				return getObjectMapper().readValue((byte[]) value, javaType);
+				return getJsonMapper().readValue(byteArrayValue, javaType);
 			}
 			catch (Exception e) {
 				throw new ConversionException("Failed to convert from JSON", message, e);
