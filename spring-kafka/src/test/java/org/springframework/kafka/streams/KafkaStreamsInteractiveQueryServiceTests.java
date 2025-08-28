@@ -17,6 +17,7 @@
 package org.springframework.kafka.streams;
 
 import java.lang.reflect.Field;
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -274,7 +275,7 @@ class KafkaStreamsInteractiveQueryServiceTests {
 			final KafkaStreamsInteractiveQueryService kafkaStreamsInteractiveQueryService =
 					new KafkaStreamsInteractiveQueryService(streamsBuilderFactoryBean);
 			RetryTemplate retryTemplate = new RetryTemplate();
-			retryTemplate.setRetryPolicy(RetryPolicy.builder().maxAttempts(2).build());
+			retryTemplate.setRetryPolicy(RetryPolicy.builder().maxAttempts(2).delay(Duration.ZERO).build());
 			kafkaStreamsInteractiveQueryService.setRetryTemplate(retryTemplate);
 			return kafkaStreamsInteractiveQueryService;
 		}

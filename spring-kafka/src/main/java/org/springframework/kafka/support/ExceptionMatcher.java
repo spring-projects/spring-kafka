@@ -46,6 +46,7 @@ import org.springframework.util.Assert;
  * @author Stephane Nicoll
  * @author Dave Syer
  * @author Gary Russell
+ * @since 4.0
  */
 public class ExceptionMatcher {
 
@@ -84,7 +85,6 @@ public class ExceptionMatcher {
 
 	/**
 	 * Create a matcher that matches any {@link Exception}, but not errors.
-	 *
 	 * @return a matcher that match any exception, but not errors
 	 */
 	public static ExceptionMatcher defaultMatcher() {
@@ -94,7 +94,6 @@ public class ExceptionMatcher {
 	/**
 	 * Create a builder for a matcher that only match an exception that is found in
 	 * the configurable list of exception types.
-	 *
 	 * @return a {@link Builder} that configures an allow list of exceptions
 	 */
 	public static Builder forAllowList() {
@@ -104,7 +103,6 @@ public class ExceptionMatcher {
 	/**
 	 * Create a builder for a matcher that only match an exception that is not found in
 	 * the configurable list of exception types.
-	 *
 	 * @return a {@link Builder} that configures a deny list of exceptions
 	 */
 	public static Builder forDenyList() {
@@ -114,7 +112,6 @@ public class ExceptionMatcher {
 	/**
 	 * Specify if this match should traverse nested causes to check for the
 	 * presence of a matching exception.
-	 *
 	 * @param traverseCauses whether to traverse causes
 	 */
 	public void setTraverseCauses(boolean traverseCauses) {
@@ -123,7 +120,6 @@ public class ExceptionMatcher {
 
 	/**
 	 * Specify if the given {@link Throwable} match this instance.
-	 *
 	 * @param exception the exception to check
 	 * @return {@code true} if this exception match this instance, {@code false} otherwise
 	 */
@@ -210,7 +206,6 @@ public class ExceptionMatcher {
 
 		/**
 		 * Add an exception type.
-		 *
 		 * @param exceptionType the exception type to add
 		 * @return {@code this}
 		 */
@@ -222,7 +217,6 @@ public class ExceptionMatcher {
 
 		/**
 		 * Add all exception type from the given collection.
-		 *
 		 * @param exceptionTypes the exception types to add
 		 * @return {@code this}
 		 */
@@ -234,7 +228,6 @@ public class ExceptionMatcher {
 		/**
 		 * Specify if the matcher should traverse nested causes to check for the presence
 		 * of a matching exception.
-		 *
 		 * @param traverseCauses whether to traverse causes
 		 * @return {@code this}
 		 */
@@ -245,7 +238,6 @@ public class ExceptionMatcher {
 
 		/**
 		 * Build an {@link ExceptionMatcher}.
-		 *
 		 * @return a new exception matcher
 		 */
 		public ExceptionMatcher build() {
