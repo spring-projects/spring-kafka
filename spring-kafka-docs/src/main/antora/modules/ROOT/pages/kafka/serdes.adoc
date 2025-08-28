@@ -400,8 +400,7 @@ ConsumerFactory cf = new DefaultKafkaConsumerFactory(myConsumerConfigs,
     new RetryingDeserializer(myUnreliableValueDeserializer, retryTemplate));
 ----
 
-A recovery callback be set on the `RetryingDeserializer`, to return a fallback object
-if all retries are exhausted.
+A recovery callback be set on the `RetryingDeserializer`, to return a fallback object if all retries are exhausted.
 
 Refer to the https://github.com/spring-projects/spring-framework[Spring Framework] project for configuration of the `RetryTemplate` with a retry policy, back off, etc.
 

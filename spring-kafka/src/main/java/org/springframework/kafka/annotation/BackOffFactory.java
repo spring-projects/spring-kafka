@@ -35,6 +35,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * {@link BackOff @BackOff} annotation.
  *
  * @author Stephane Nicoll
+ * @since 4.0
  */
 final class BackOffFactory {
 
@@ -54,7 +55,7 @@ final class BackOffFactory {
 	 * @param annotation the annotation to source the parameters from
 	 * @return a {@link org.springframework.util.backoff.BackOff}
 	 */
-	public org.springframework.util.backoff.BackOff createFromAnnotation(BackOff annotation) { // NOSONAR
+	org.springframework.util.backoff.BackOff createFromAnnotation(BackOff annotation) { // NOSONAR
 		Duration delay = resolveDuration("delay", () -> annotation.delay() == DEFAULT_DELAY
 				? annotation.value() : annotation.delay(), annotation::delayString);
 		Duration maxDelay = resolveDuration("maxDelay", annotation::maxDelay, annotation::maxDelayString);
