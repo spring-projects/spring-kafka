@@ -47,7 +47,7 @@ public class KafkaStreamsInteractiveQueryService {
 	private final StreamsBuilderFactoryBean streamsBuilderFactoryBean;
 
 	/**
-	 * {@link RetryTemplate} to be used by the interative query service.
+	 * {@link RetryTemplate} to be used by the interactive query service.
 	 */
 	private RetryTemplate retryTemplate = new RetryTemplate();
 
