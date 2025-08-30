@@ -72,6 +72,19 @@ If the topic is configured to use `LOG_APPEND_TIME`, the user-specified timestam
 The `metrics` and `partitionsFor` methods delegate to the same methods on the underlying javadoc:org.apache.kafka.clients.producer.Producer[].
 The `execute` method provides direct access to the underlying javadoc:org.apache.kafka.clients.producer.Producer[].
 
+[NOTE]
+====
+When sending messages from Spring components, avoid using `@PostConstruct` methods
+if you rely on automatic topic creation via `NewTopic` beans. `@PostConstruct` runs
+before the application context is fully ready, which may cause
+`UnknownTopicOrPartitionException` on clean brokers.
+
+Instead, consider:
+- Using an `ApplicationListener<ContextRefreshedEvent>` to send after the context is fully refreshed.
+- Implementing `SmartLifecycle` and starting after `KafkaAdmin`.
+- Or pre-creating topics externally.
+====
+
 To use the template, you can configure a producer factory and provide it in the template's constructor.
 The following example shows how to do so:
 
