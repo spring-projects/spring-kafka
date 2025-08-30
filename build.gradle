@@ -71,7 +71,6 @@ ext {
 	scalaVersion = '2.13'
 	springBootVersion = '3.5.0' // docs module
 	springDataVersion = '2025.1.0-SNAPSHOT'
-	springRetryVersion = '2.0.12'
 	springVersion = '7.0.0-SNAPSHOT'
 
 	idPrefix = 'kafka'
@@ -249,9 +248,6 @@ project ('spring-kafka') {
 		api 'org.springframework:spring-context'
 		api 'org.springframework:spring-messaging'
 		api 'org.springframework:spring-tx'
-		api ("org.springframework.retry:spring-retry:$springRetryVersion") {
-			exclude group: 'org.springframework'
-		}
 		api "org.apache.kafka:kafka-clients:$kafkaVersion"
 		api 'io.micrometer:micrometer-observation'
 		optionalApi "org.apache.kafka:kafka-streams:$kafkaVersion"
@@ -322,7 +318,6 @@ project ('spring-kafka-test') {
 		api "org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion"
 		api 'org.springframework:spring-context'
 		api 'org.springframework:spring-test'
-		api "org.springframework.retry:spring-retry:$springRetryVersion"
 
 		api "org.apache.kafka:kafka-clients:$kafkaVersion:test"
 		api "org.apache.kafka:kafka-server:$kafkaVersion"
