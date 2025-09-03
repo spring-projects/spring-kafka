@@ -74,15 +74,14 @@ The `execute` method provides direct access to the underlying javadoc:org.apache
 
 [NOTE]
 ====
-When sending messages from Spring components, avoid using `@PostConstruct` methods
-if you rely on automatic topic creation via `NewTopic` beans. `@PostConstruct` runs
-before the application context is fully ready, which may cause
-`UnknownTopicOrPartitionException` on clean brokers.
+When sending messages from Spring components, avoid using `@PostConstruct` methods if relying on automatic topic creation via `NewTopic` beans.
+`@PostConstruct` runs before the application context is fully ready, which may cause `UnknownTopicOrPartitionException` on clean brokers.
 
-Instead, consider:
-- Using an `ApplicationListener<ContextRefreshedEvent>` to send after the context is fully refreshed.
-- Implementing `SmartLifecycle` and starting after `KafkaAdmin`.
-- Or pre-creating topics externally.
+Instead, consider these alternatives:
+
+- Use an `ApplicationListener<ContextRefreshedEvent>` to ensure the context is fully refreshed before sending.
+- Implement `SmartLifecycle` to start after the `KafkaAdmin` bean has completed its initialization.
+- Pre-create topics externally.
 ====
 
 To use the template, you can configure a producer factory and provide it in the template's constructor.
