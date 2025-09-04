@@ -31,7 +31,7 @@ import org.springframework.util.StringValueResolver;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
- * Create a {@link org.springframework.util.backoff.BackOff} from the state of a
+ * Create a {@link org.springframework.util.backoff.BackOff BackOff} from the state of a
  * {@link BackOff @BackOff} annotation.
  *
  * @author Stephane Nicoll
@@ -48,9 +48,10 @@ final class BackOffFactory {
 	}
 
 	/**
-	 * Create a {@link org.springframework.util.backoff.BackOff} instance based on the
-	 * state of the given {@link BackOff @Backff}. The returned backoff instance has
-	 * unlimited number of attempts as these are controlled externally.
+	 * Create a {@link org.springframework.util.backoff.BackOff BackOff} instance based on
+	 * the state of the given {@link BackOff @Backff}. The returned
+	 * {@link org.springframework.util.backoff.BackOff BackOff} instance has unlimited
+	 * number of attempts as these are controlled externally.
 	 *
 	 * @param annotation the annotation to source the parameters from
 	 * @return a {@link org.springframework.util.backoff.BackOff}

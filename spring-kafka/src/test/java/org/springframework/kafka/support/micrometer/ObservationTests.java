@@ -902,7 +902,7 @@ public class ObservationTests {
 
 		@RetryableTopic(
 				attempts = "2",
-				backoff = @BackOff(delay = 1000)
+				backOff = @BackOff(delay = 1000)
 		)
 		@KafkaListener(id = "asyncFailure", topics = OBSERVATION_ASYNC_FAILURE_TEST)
 		CompletableFuture<Void> handleAsync(ConsumerRecord<Integer, String> record) {

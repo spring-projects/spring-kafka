@@ -44,7 +44,7 @@ public class Application {
 		SpringApplication.run(Application.class, args);
 	}
 
-	@RetryableTopic(attempts = "5", backoff = @Backoff(delay = 2_000, maxDelay = 10_000, multiplier = 2))
+	@RetryableTopic(attempts = "5", backOff = @BackOff(delay = 2_000, maxDelay = 10_000, multiplier = 2))
 	@KafkaListener(id = "fooGroup", topics = "topic4")
 	public void listen(String in, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic,
 			@Header(KafkaHeaders.OFFSET) long offset) {

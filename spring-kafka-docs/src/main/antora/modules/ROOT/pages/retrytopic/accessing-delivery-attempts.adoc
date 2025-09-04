@@ -17,7 +17,7 @@ Starting with version 3.0.10, a convenient `KafkaMessageHeaderAccessor` is provi
 
 [souce, java]
 ----
-@RetryableTopic(backoff = @Backoff(...))
+@RetryableTopic(backOff = @BackOff(...))
 @KafkaListener(id = "dh1", topics = "dh1")
 void listen(Thing thing, KafkaMessageHeaderAccessor accessor) {
     ...

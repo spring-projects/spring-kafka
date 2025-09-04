@@ -64,7 +64,7 @@ public @interface RetryableTopic {
 	 * about the available options
 	 * @return a backOff specification
 	 */
-	BackOff backoff() default @BackOff;
+	BackOff backOff() default @BackOff;
 
 	/**
 	 *
@@ -191,7 +191,7 @@ public @interface RetryableTopic {
 
 
 	/**
-	 * Topic reuse strategy for sequential attempts made with a same backoff interval.
+	 * Topic reuse strategy for sequential attempts made with a same back off interval.
 	 * Starting 3.2, change default behavior to {@code SameIntervalTopicReuseStrategy.SINGLE_TOPIC}.
 	 *
 	 * @return the strategy.

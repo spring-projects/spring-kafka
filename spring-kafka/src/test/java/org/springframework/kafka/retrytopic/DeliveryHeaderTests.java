@@ -113,7 +113,7 @@ public class DeliveryHeaderTests {
 			return DeadLetterPublishingRecovererFactory::neverLogListenerException;
 		}
 
-		@RetryableTopic(backoff = @BackOff(maxDelay = 0))
+		@RetryableTopic(backOff = @BackOff(maxDelay = 0))
 		@KafkaListener(id = "dh1", topics = "dh1")
 		void listen(String in, @Header(KafkaHeaders.DELIVERY_ATTEMPT) int blockingAttempts,
 				@Header(name = RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS, required = false) Integer nonBlockingAttempts,
@@ -167,7 +167,7 @@ public class DeliveryHeaderTests {
 
 	}
 
-	@RetryableTopic(backoff = @BackOff(maxDelay = 0))
+	@RetryableTopic(backOff = @BackOff(maxDelay = 0))
 	@KafkaListener(id = "dhClassLevel1", topics = DH_CLASS_LEVEL_1)
 	static class RetryTopicClassLevel {
 

@@ -354,7 +354,7 @@ public class RetryTopicIntegrationTests {
 		CountDownLatchContainer container;
 
 		@RetryableTopic(attempts = "${five.attempts}",
-				backoff = @BackOff(delay = 250, maxDelay = 1000, multiplier = 1.5),
+				backOff = @BackOff(delay = 250, maxDelay = 1000, multiplier = 1.5),
 				numPartitions = "#{3}",
 				timeout = "${missing.property:2000}",
 				include = MyRetryException.class, kafkaTemplate = "${kafka.template}",
@@ -380,7 +380,7 @@ public class RetryTopicIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@RetryableTopic(dltStrategy = DltStrategy.NO_DLT, attempts = "4", backoff = @BackOff(300),
+		@RetryableTopic(dltStrategy = DltStrategy.NO_DLT, attempts = "4", backOff = @BackOff(300),
 				sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS,
 				kafkaTemplate = "${kafka.template}")
 		@KafkaListener(topics = FOURTH_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
@@ -404,7 +404,7 @@ public class RetryTopicIntegrationTests {
 		CountDownLatchContainer container;
 
 		@RetryableTopic(attempts = "4",
-				backoff = @BackOff(250),
+				backOff = @BackOff(250),
 				numPartitions = "2",
 				retryTopicSuffix = "-listener1", dltTopicSuffix = "-listener1-dlt",
 				topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
@@ -437,7 +437,7 @@ public class RetryTopicIntegrationTests {
 		CountDownLatchContainer container;
 
 		@RetryableTopic(attempts = "4",
-				backoff = @BackOff(250),
+				backOff = @BackOff(250),
 				numPartitions = "2",
 				retryTopicSuffix = "-listener2", dltTopicSuffix = "-listener2-dlt",
 				topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
@@ -467,7 +467,7 @@ public class RetryTopicIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@RetryableTopic(attempts = "4", backoff = @BackOff(50),
+		@RetryableTopic(attempts = "4", backOff = @BackOff(50),
 				sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS)
 		@KafkaListener(id = "manual", topics = MANUAL_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenNoDlt(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic,
@@ -486,7 +486,7 @@ public class RetryTopicIntegrationTests {
 		CountDownLatchContainer container;
 
 		@RetryableTopic(attempts = "3", numPartitions = "3", exclude = MyDontRetryException.class,
-				backoff = @BackOff(delay = 50, maxDelay = 100, multiplier = 3),
+				backOff = @BackOff(delay = 50, maxDelay = 100, multiplier = 3),
 				traversingCauses = "true", kafkaTemplate = "${kafka.template}")
 		@KafkaListener(topics = NOT_RETRYABLE_EXCEPTION_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenWithAnnotation2(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
@@ -509,7 +509,7 @@ public class RetryTopicIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@RetryableTopic(attempts = "2", backoff = @BackOff(50))
+		@RetryableTopic(attempts = "2", backOff = @BackOff(50))
 		@KafkaListener(id = "reuseRetry1", topics = FIRST_REUSE_RETRY_TOPIC,
 				containerFactory = "retryTopicListenerContainerFactory")
 		public void listen1(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
@@ -528,7 +528,7 @@ public class RetryTopicIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@RetryableTopic(attempts = "5", backoff = @BackOff(delay = 30, maxDelay = 100, multiplier = 2))
+		@RetryableTopic(attempts = "5", backOff = @BackOff(delay = 30, maxDelay = 100, multiplier = 2))
 		@KafkaListener(id = "reuseRetry2", topics = SECOND_REUSE_RETRY_TOPIC,
 				containerFactory = "retryTopicListenerContainerFactory")
 		public void listen2(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
@@ -547,7 +547,7 @@ public class RetryTopicIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@RetryableTopic(attempts = "5", backoff = @BackOff(delay = 1, maxDelay = 5, multiplier = 1.4))
+		@RetryableTopic(attempts = "5", backOff = @BackOff(delay = 1, maxDelay = 5, multiplier = 1.4))
 		@KafkaListener(id = "reuseRetry3", topics = THIRD_REUSE_RETRY_TOPIC,
 				containerFactory = "retryTopicListenerContainerFactory")
 		public void listen3(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {

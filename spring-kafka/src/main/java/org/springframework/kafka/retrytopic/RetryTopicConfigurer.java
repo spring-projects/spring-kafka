@@ -145,7 +145,7 @@ import org.springframework.kafka.support.TopicForRetryable;
  *
  * <pre>
  *     <code>@RetryableTopic(attempts = 3,
- *     		backoff = @Backoff(delay = 700, maxDelay = 12000, multiplier = 3))</code>
+ *     		backOff = @BackOff(delay = 700, maxDelay = 12000, multiplier = 3))</code>
  *     <code>@KafkaListener(topics = "my-annotated-topic")
  *     public void processMessage(MyPojo message) {
  *        		// ... message processing
@@ -155,7 +155,7 @@ import org.springframework.kafka.support.TopicForRetryable;
  * {@link org.springframework.kafka.annotation.KafkaListener} annotated class, such as:
  * <pre>
  *     <code>@RetryableTopic(attempts = 3,
- *     		backoff = @Backoff(delay = 700, maxDelay = 12000, multiplier = 3))</code>
+ *     		backOff = @BackOff(delay = 700, maxDelay = 12000, multiplier = 3))</code>
  *     <code>@KafkaListener(topics = "my-annotated-topic")
  *     static class ListenerBean {
  *         <code> @KafkaHandler
@@ -168,7 +168,7 @@ import org.springframework.kafka.support.TopicForRetryable;
  * {@link org.springframework.kafka.annotation.KafkaListener} annotated class, such as:
  * <pre>
  *     <code>@RetryableTopic(attempts = 3,
- *     		backoff = @Backoff(delay = 700, maxDelay = 12000, multiplier = 3))</code>
+ *     		backOff = @BackOff(delay = 700, maxDelay = 12000, multiplier = 3))</code>
  *     <code>@KafkaListener(topics = "my-annotated-topic")
  *     static class ListenerBean {
  *         <code> @KafkaHandler
@@ -179,7 +179,7 @@ import org.springframework.kafka.support.TopicForRetryable;
  *</pre>
  * <p> Or through meta-annotations, such as:
  * <pre>
- *     <code>@RetryableTopic(backoff = @Backoff(delay = 700, maxDelay = 12000, multiplier = 3))</code>
+ *     <code>@RetryableTopic(backOff = @BackOff(delay = 700, maxDelay = 12000, multiplier = 3))</code>
  *     <code>public @interface WithExponentialBackoffRetry {</code>
  *     <code>   	{@literal @}AliasFor(attribute = "attempts", annotation = RetryableTopic.class)
  *        	String retries();

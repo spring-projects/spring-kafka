@@ -141,7 +141,7 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 
 		@RetryableTopic(
 				attempts = "4",
-				backoff = @BackOff(delay = 1000, multiplier = 2.0),
+				backOff = @BackOff(delay = 1000, multiplier = 2.0),
 				autoCreateTopics = "false",
 				topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
 				sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS)
@@ -160,7 +160,7 @@ public class RetryTopicSameContainerFactoryIntegrationTests {
 	@Component
 	@RetryableTopic(
 			attempts = "4",
-			backoff = @BackOff(delay = 1000, multiplier = 2.0),
+			backOff = @BackOff(delay = 1000, multiplier = 2.0),
 			autoCreateTopics = "false",
 			topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE,
 			sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS)

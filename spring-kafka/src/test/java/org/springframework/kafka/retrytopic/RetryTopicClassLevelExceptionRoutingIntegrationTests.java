@@ -195,7 +195,7 @@ class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 	}
 
 	@RetryableTopic(exclude = ShouldRetryOnlyBlockingException.class, traversingCauses = "true",
-			backoff = @BackOff(50), kafkaTemplate = "kafkaTemplate")
+			backOff = @BackOff(50), kafkaTemplate = "kafkaTemplate")
 	@KafkaListener(topics = ONLY_RETRY_VIA_BLOCKING)
 	static class OnlyRetryBlockingListener {
 
@@ -216,7 +216,7 @@ class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 		}
 	}
 
-	@RetryableTopic(backoff = @BackOff(50), kafkaTemplate = "kafkaTemplate")
+	@RetryableTopic(backOff = @BackOff(50), kafkaTemplate = "kafkaTemplate")
 	@KafkaListener(topics = USER_FATAL_EXCEPTION_TOPIC)
 	static class UserFatalTopicListener {
 
@@ -237,7 +237,7 @@ class RetryTopicClassLevelExceptionRoutingIntegrationTests {
 		}
 	}
 
-	@RetryableTopic(backoff = @BackOff(50))
+	@RetryableTopic(backOff = @BackOff(50))
 	@KafkaListener(topics = FRAMEWORK_FATAL_EXCEPTION_TOPIC)
 	static class FrameworkFatalTopicListener {
 

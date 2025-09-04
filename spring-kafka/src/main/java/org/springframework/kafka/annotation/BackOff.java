@@ -29,7 +29,7 @@ import org.springframework.util.backoff.ExponentialBackOff;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
- * Collects metadata for creating a {@link org.springframework.util.backoff.BackOff BacOff}
+ * Collects metadata for creating a {@link org.springframework.util.backoff.BackOff BackOff}
  * instance as part of a {@link RetryPolicy}. Values can be provided as is or using a
  * {@code *String} equivalent that supports more format, as well as expression evaluations.
  * <p>
@@ -37,7 +37,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * <ul>
  * <li>With no explicit settings, the default is a {@link FixedBackOff} with a delay of
  * {@value #DEFAULT_DELAY} ms</li>
- * <li>With only {@link #delay()} set: the backoff is a fixed delay with that value</li>
+ * <li>With only {@link #delay()} set: a fixed delay back off with that value</li>
  * <li>In all other cases, an {@link ExponentialBackOff} is created with the values of
  * {@link #delay()} (default: {@value RetryPolicy.Builder#DEFAULT_DELAY} ms),
  * {@link #maxDelay()} (default: no maximum), {@link #multiplier()}

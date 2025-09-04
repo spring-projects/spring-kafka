@@ -275,7 +275,7 @@ public class RetryTopicConfigurationBuilder {
 
 	/**
 	 * Configure the use of a single retry topic for the attempts that have the same
-	 * backoff interval (as long as these attempts are in the end of the chain).
+	 * back off interval (as long as these attempts are in the end of the chain).
 	 *
 	 * Used for the last retries of exponential backoff (when a {@code maxDelay} is
 	 * provided), and to use a single retry topic for fixed backoff.

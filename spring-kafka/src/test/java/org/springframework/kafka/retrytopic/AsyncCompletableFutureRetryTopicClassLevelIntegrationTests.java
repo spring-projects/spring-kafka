@@ -352,7 +352,7 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 
 	@RetryableTopic(
 			attempts = "${five.attempts}",
-			backoff = @BackOff(delay = 25, maxDelay = 1000, multiplier = 1.5),
+			backOff = @BackOff(delay = 25, maxDelay = 1000, multiplier = 1.5),
 			numPartitions = "#{3}",
 			timeout = "${missing.property:100000}",
 			include = MyRetryException.class, kafkaTemplate = "${kafka.template}",
@@ -388,7 +388,7 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 		}
 	}
 
-	@RetryableTopic(dltStrategy = DltStrategy.NO_DLT, attempts = "4", backoff = @BackOff(30),
+	@RetryableTopic(dltStrategy = DltStrategy.NO_DLT, attempts = "4", backOff = @BackOff(30),
 			sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS,
 			kafkaTemplate = "${kafka.template}")
 	@KafkaListener(topics = FOURTH_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
@@ -432,7 +432,7 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 
 	@RetryableTopic(
 			attempts = "4",
-			backoff = @BackOff(25),
+			backOff = @BackOff(25),
 			numPartitions = "2",
 			retryTopicSuffix = "-listener1",
 			dltTopicSuffix = "-listener1-dlt",
@@ -465,7 +465,7 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 
 	@RetryableTopic(
 			attempts = "4",
-			backoff = @BackOff(25),
+			backOff = @BackOff(25),
 			numPartitions = "2",
 			retryTopicSuffix = "-listener2",
 			dltTopicSuffix = "-listener2-dlt",
@@ -498,7 +498,7 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 
 	@RetryableTopic(
 			attempts = "4",
-			backoff = @BackOff(50),
+			backOff = @BackOff(50),
 			sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS)
 	@KafkaListener(
 			id = "manual",
@@ -530,7 +530,7 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 			attempts = "3",
 			numPartitions = "3",
 			exclude = MyDontRetryException.class,
-			backoff = @BackOff(delay = 50, maxDelay = 100, multiplier = 3),
+			backOff = @BackOff(delay = 50, maxDelay = 100, multiplier = 3),
 			traversingCauses = "true",
 			kafkaTemplate = "${kafka.template}")
 	@KafkaListener(topics = NOT_RETRYABLE_EXCEPTION_TOPIC, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
@@ -561,7 +561,7 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 
 	@RetryableTopic(
 			attempts = "2",
-			backoff = @BackOff(50))
+			backOff = @BackOff(50))
 	@KafkaListener(
 			id = "reuseRetry1",
 			topics = FIRST_REUSE_RETRY_TOPIC,
@@ -592,7 +592,7 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 
 	@RetryableTopic(
 			attempts = "5",
-			backoff = @BackOff(delay = 30, maxDelay = 100, multiplier = 2))
+			backOff = @BackOff(delay = 30, maxDelay = 100, multiplier = 2))
 	@KafkaListener(
 			id = "reuseRetry2",
 			topics = SECOND_REUSE_RETRY_TOPIC,
@@ -621,7 +621,7 @@ public class AsyncCompletableFutureRetryTopicClassLevelIntegrationTests {
 
 	}
 
-	@RetryableTopic(attempts = "5", backoff = @BackOff(delay = 1, maxDelay = 5, multiplier = 1.4))
+	@RetryableTopic(attempts = "5", backOff = @BackOff(delay = 1, maxDelay = 5, multiplier = 1.4))
 	@KafkaListener(id = "reuseRetry3", topics = THIRD_REUSE_RETRY_TOPIC,
 			containerFactory = "retryTopicListenerContainerFactory")
 	static class ThirdReuseRetryTopicListener {

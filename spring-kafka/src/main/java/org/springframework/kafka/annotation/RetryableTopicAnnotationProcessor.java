@@ -148,7 +148,7 @@ public class RetryableTopicAnnotationProcessor {
 			autoStartDlt = resolveExpressionAsBoolean(annotation.autoStartDltHandler(), "autoStartDltContainer");
 		}
 		RetryTopicConfigurationBuilder builder = RetryTopicConfigurationBuilder.newInstance()
-				.customBackoff(createBackOffFactory().createFromAnnotation(annotation.backoff()))
+				.customBackoff(createBackOffFactory().createFromAnnotation(annotation.backOff()))
 				.retryTopicSuffix(resolveExpressionAsString(annotation.retryTopicSuffix(), "retryTopicSuffix"))
 				.dltSuffix(resolveExpressionAsString(annotation.dltTopicSuffix(), "dltTopicSuffix"))
 				.dltHandlerMethod(getDltProcessor(clazz, bean))

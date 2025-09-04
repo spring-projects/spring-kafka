@@ -28,7 +28,7 @@ import org.springframework.util.Assert;
  * due. Use with {@link DefaultErrorHandler} to guarantee that the message is read
  * again after partition consumption is resumed (or seek it manually by other means).
  * Note that when a record backs off the partition consumption gets paused for
- * approximately that amount of time, so you must have a fixed backoff value per partition.
+ * approximately that amount of time, so you must have a fixed back off value per partition.
  *
  * @author Tomaz Fernandes
  * @author Gary Russell

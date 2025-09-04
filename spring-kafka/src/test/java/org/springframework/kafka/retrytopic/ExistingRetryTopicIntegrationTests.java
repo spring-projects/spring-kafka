@@ -162,7 +162,7 @@ public class ExistingRetryTopicIntegrationTests {
 		CountByPartitionContainer countByPartitionContainerWithoutPartition;
 
 		@RetryableTopic(autoCreateTopics = "false", dltStrategy = DltStrategy.NO_DLT,
-				attempts = "${two.attempts}", backoff = @BackOff(0), kafkaTemplate = "kafkaTemplate")
+				attempts = "${two.attempts}", backOff = @BackOff(0), kafkaTemplate = "kafkaTemplate")
 		@KafkaListener(id = "firstTopicId", topics = MAIN_TOPIC_WITH_NO_PARTITION_INFO, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenFirst(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic,
 								@Header(KafkaHeaders.ORIGINAL_PARTITION) String originalPartition,
@@ -182,7 +182,7 @@ public class ExistingRetryTopicIntegrationTests {
 		CountByPartitionContainer countByPartitionContainerWithPartition;
 
 		@RetryableTopic(autoCreateTopics = "false", numPartitions = "4", dltStrategy = DltStrategy.NO_DLT,
-				attempts = "${two.attempts}", backoff = @BackOff(0), kafkaTemplate = "kafkaTemplate")
+				attempts = "${two.attempts}", backOff = @BackOff(0), kafkaTemplate = "kafkaTemplate")
 		@KafkaListener(id = "secondTopicId", topics = MAIN_TOPIC_WITH_PARTITION_INFO, containerFactory = MAIN_TOPIC_CONTAINER_FACTORY)
 		public void listenSecond(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic,
 								@Header(KafkaHeaders.ORIGINAL_PARTITION) String originalPartition,

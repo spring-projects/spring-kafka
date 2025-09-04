@@ -211,7 +211,7 @@ public class RetryTopicExceptionRoutingIntegrationTests {
 		CountDownLatchContainer container;
 
 		@RetryableTopic(exclude = ShouldRetryOnlyBlockingException.class, traversingCauses = "true",
-				backoff = @BackOff(50), kafkaTemplate = "kafkaTemplate")
+				backOff = @BackOff(50), kafkaTemplate = "kafkaTemplate")
 		@KafkaListener(topics = ONLY_RETRY_VIA_BLOCKING)
 		public void listenWithAnnotation(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			container.onlyRetryViaBlockingLatch.countDown();
@@ -233,7 +233,7 @@ public class RetryTopicExceptionRoutingIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@RetryableTopic(backoff = @BackOff(50), kafkaTemplate = "kafkaTemplate")
+		@RetryableTopic(backOff = @BackOff(50), kafkaTemplate = "kafkaTemplate")
 		@KafkaListener(topics = USER_FATAL_EXCEPTION_TOPIC)
 		public void listenWithAnnotation(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			container.fatalUserLatch.countDown();
@@ -255,7 +255,7 @@ public class RetryTopicExceptionRoutingIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
-		@RetryableTopic(backoff = @BackOff(50))
+		@RetryableTopic(backOff = @BackOff(50))
 		@KafkaListener(topics = FRAMEWORK_FATAL_EXCEPTION_TOPIC)
 		public void listenWithAnnotation(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
 			container.fatalFrameworkLatch.countDown();

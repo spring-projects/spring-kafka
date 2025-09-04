@@ -27,7 +27,7 @@ import org.springframework.util.backoff.FixedBackOff;
 
 /**
  *
- * Generates the backoff values from the provided maxAttempts value and
+ * Generates the back off values from the provided maxAttempts value and
  * {@link BackOff}.
  *
  * @author Tomaz Fernandes
