@@ -232,17 +232,16 @@ public class ObservationTests {
 		MessageListenerContainer listenerContainer1 = rler.getListenerContainer("obs1");
 		listenerContainer1.stop();
 
-		template.send(OBSERVATION_TEST_1, "test")
-				.thenAccept((sendResult) -> spanFromCallback.set(tracer.currentSpan()))
-				.get(10, TimeUnit.SECONDS);
+		assertThat(template.send(OBSERVATION_TEST_1, "test")
+				.thenAccept((sendResult) -> spanFromCallback.set(tracer.currentSpan())))
+				.succeedsWithin(Duration.ofSeconds(20));
 
 		Deque<SimpleSpan> spans = tracer.getSpans();
 		assertThat(spans).hasSize(1);
 
 		SimpleSpan templateSpan = spans.peek();
 		assertThat(templateSpan).isNotNull();
-		assertThat(templateSpan.getTags()).containsAllEntriesOf(Map.of(
-				"key", "value"));
+		assertThat(templateSpan.getTags()).containsAllEntriesOf(Map.of("key", "value"));
 
 		assertThat(spanFromCallback.get()).isNotNull();
 		listenerContainer1.start();
@@ -352,7 +351,7 @@ public class ObservationTests {
 				"messaging.system", "kafka",
 				"messaging.destination.kind", "topic",
 				"messaging.destination.name", destName));
-		if (keyValues != null && keyValues.length > 0) {
+		if (keyValues.length > 0) {
 			Arrays.stream(keyValues).forEach(entry -> assertThat(span.getTags()).contains(entry));
 		}
 		assertThat(span.getName()).isEqualTo(destName + " send");
@@ -382,7 +381,7 @@ public class ObservationTests {
 								Map.entry("messaging.source.kind", "topic"),
 								Map.entry("messaging.source.name", sourceName),
 								Map.entry("messaging.system", "kafka")));
-		if (keyValues != null && keyValues.length > 0) {
+		if (keyValues.length > 0) {
 			Arrays.stream(keyValues).forEach(entry -> assertThat(span.getTags()).contains(entry));
 		}
 		assertThat(span.getName()).isEqualTo(sourceName + " receive");
@@ -479,7 +478,8 @@ public class ObservationTests {
 	}
 
 	@Test
-	void observationErrorExceptionWhenCompletableFutureReturned(@Autowired ExceptionListener listener, @Autowired SimpleTracer tracer,
+	void observationErrorExceptionWhenCompletableFutureReturned(@Autowired ExceptionListener listener,
+			@Autowired SimpleTracer tracer,
 			@Autowired @Qualifier("throwableTemplate") KafkaTemplate<Integer, String> errorTemplate,
 			@Autowired KafkaListenerEndpointRegistry endpointRegistry)
 			throws ExecutionException, InterruptedException, TimeoutException {
@@ -665,8 +665,11 @@ public class ObservationTests {
 		}
 
 		@Bean
-		ReplyingKafkaTemplate<Integer, String, String> replyingKafkaTemplate(ProducerFactory<Integer, String> pf, ConcurrentKafkaListenerContainerFactory<Integer, String> containerFactory) {
-			ReplyingKafkaTemplate<Integer, String, String> kafkaTemplate = new ReplyingKafkaTemplate<>(pf, containerFactory.createContainer(OBSERVATION_REPLY));
+		ReplyingKafkaTemplate<Integer, String, String> replyingKafkaTemplate(
+				ProducerFactory<Integer, String> pf,
+				ConcurrentKafkaListenerContainerFactory<Integer, String> containerFactory) {
+
+			var kafkaTemplate = new ReplyingKafkaTemplate<>(pf, containerFactory.createContainer(OBSERVATION_REPLY));
 			kafkaTemplate.setObservationEnabled(true);
 			return kafkaTemplate;
 		}
@@ -734,7 +737,8 @@ public class ObservationTests {
 									new PropagatingSenderTracingObservationHandler<>(tracer, propagator),
 									// This is responsible for creating a default span
 									new DefaultTracingObservationHandler(tracer)))
-					.observationHandler(new TracingAwareMeterObservationHandler<>(new DefaultMeterObservationHandler(meterRegistry), tracer));
+					.observationHandler(new TracingAwareMeterObservationHandler<>(
+							new DefaultMeterObservationHandler(meterRegistry), tracer));
 			return observationRegistry;
 		}
 
@@ -803,6 +807,7 @@ public class ObservationTests {
 		public TaskScheduler taskExecutor() {
 			return new ThreadPoolTaskScheduler();
 		}
+
 	}
 
 	public static class Listener {
@@ -932,6 +937,7 @@ public class ObservationTests {
 			this.capturedSpanInDlt = this.tracer.currentSpan();
 			this.asyncFailureLatch.countDown();
 		}
+
 	}
 
 }
