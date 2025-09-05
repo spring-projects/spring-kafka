@@ -50,8 +50,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @EmbeddedKafka(
 	topics = {"share-listener-integration-test"}, partitions = 1,
 	brokerProperties = {
-		"unstable.api.versions.enable=true",
-		"group.coordinator.rebalance.protocols=classic,share",
 		"share.coordinator.state.topic.replication.factor=1",
 		"share.coordinator.state.topic.min.isr=1"
 	}

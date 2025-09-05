@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.internals.Plugin;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,7 @@ import static org.mockito.Mockito.mock;
 
 /**
  * @author Gary Russell
+ * @author Soby Chacko
  * @since 2.8.1
  *
  */
@@ -46,6 +48,7 @@ public class SerializationIntegrationTests {
 	public static final String DBTD_TOPIC = "dbtd";
 
 	@Test
+	@SuppressWarnings("unchecked")
 	void configurePreLoadedDelegates() {
 		Map<String, Object> consumerProps =
 				KafkaTestUtils.consumerProps(EmbeddedKafkaCondition.getBroker(), DBTD_TOPIC, false);
@@ -63,8 +66,11 @@ public class SerializationIntegrationTests {
 		props.setMessageListener(mock(MessageListener.class));
 		KafkaMessageListenerContainer<String, Object> container = new KafkaMessageListenerContainer<>(cFact, props);
 		container.start();
-		assertThat(KafkaTestUtils.getPropertyValue(container,
-				"listenerConsumer.consumer.delegate.deserializers.valueDeserializer"))
+		//The Deserializers class uses a plugin mechanism to retrieve the actual deserializer.
+		Plugin<Deserializer<?>> valueDeserializerPlugin = (Plugin<Deserializer<?>>) KafkaTestUtils.getPropertyValue(container,
+				"listenerConsumer.consumer.delegate.deserializers.valueDeserializerPlugin");
+		assertThat(valueDeserializerPlugin).isNotNull();
+		assertThat(valueDeserializerPlugin.get())
 				.isSameAs(delegating);
 		Map<?, ?> delegates = KafkaTestUtils.getPropertyValue(delegating, "delegates", Map.class);
 		assertThat(delegates).hasSize(1);

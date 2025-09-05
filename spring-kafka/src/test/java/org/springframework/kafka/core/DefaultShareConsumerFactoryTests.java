@@ -31,7 +31,6 @@ import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AlterConfigOp;
 import org.apache.kafka.clients.admin.ConfigEntry;
-import org.apache.kafka.clients.consumer.AcknowledgeType;
 import org.apache.kafka.clients.consumer.ShareConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -56,8 +55,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @EmbeddedKafka(
 		topics = {"embedded-share-test", "embedded-share-distribution-test"}, partitions = 1,
 		brokerProperties = {
-				"unstable.api.versions.enable=true",
-				"group.coordinator.rebalance.protocols=classic,share",
 				"share.coordinator.state.topic.replication.factor=1",
 				"share.coordinator.state.topic.min.isr=1"
 		})
@@ -248,7 +245,9 @@ class DefaultShareConsumerFactoryTests {
 						var records = consumer.poll(Duration.ofMillis(200));
 						for (var r : records) {
 							allReceived.add(r.value());
-							consumer.acknowledge(r, AcknowledgeType.ACCEPT);
+							// Leverage implicit acknowledgment where records are automatically treated as ACCEPT
+							// Use commitSync() for explicit commit timing instead of relying on next poll() auto-commit
+							consumer.commitSync(Duration.ofMillis(10000));
 							latch.countDown();
 						}
 					}
