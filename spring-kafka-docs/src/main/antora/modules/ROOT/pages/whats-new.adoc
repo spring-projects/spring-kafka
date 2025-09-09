@@ -121,3 +121,63 @@ The framework automatically detects and prefers Jackson 3 when both versions are
 They will be removed in a future major version.
 
 See xref:kafka/serdes.adoc[Serialization, Deserialization, and Message Conversion] for configuration examples.
+
+[[x40-spring-retry-replacement]]
+=== Spring Retry Dependency Removal
+
+Spring for Apache Kafka has removed its dependency on Spring Retry in favor of the core retry support introduced in Spring Framework 7.
+This is a breaking change that affects retry configuration and APIs throughout the framework.
+
+`BackOffValuesGenerator` that generates the required `BackOff` values upfront, now works directly with Spring Framework's `BackOff` interface instead of `BackOffPolicy`.
+These values are then managed by the listener infrastructure and Spring Retry is no longer involved.
+
+From a configuration standpoint, Spring Kafka relied heavily on Spring Retry's `@Backoff` annotation.
+As there is no equivalent in Spring Framework, the annotation has been moved to Spring Kafka as `@BackOff` with the following improvements:
+
+* Harmonized naming: Uses `@BackOff` instead of `@Backoff` for consistency
+* Expression evaluation: All string attributes support SpEL expressions and property placeholders
+* Duration format support: String attributes accept `java.util.Duration` formats (e.g., "2s", "500ms")
+* Enhanced documentation: Improved Javadoc with clearer explanations
+
+Migration example:
+[source,java]
+----
+// Before
+@RetryableTopic(backoff = @Backoff(delay = 2000, maxDelay = 10000, multiplier = 2))
+
+// After
+@RetryableTopic(backOff = @BackOff(delay = 2000, maxDelay = 10000, multiplier = 2))
+
+// With new duration format support
+@RetryableTopic(backOff = @BackOff(delayString = "2s", maxDelayString = "10s", multiplier = 2))
+
+// With property placeholders
+@RetryableTopic(backOff = @BackOff(delayString = "${retry.delay}", multiplierString = "${retry.multiplier}"))
+----
+
+`RetryingDeserializer` no longer offers a `RecoveryCallback` but an equivalent function that takes `RetryException` as input.
+This contains the exceptions thrown as well as the number of retry attempts:
+
+[source,java]
+----
+// Before
+retryingDeserializer.setRecoveryCallback(context -> {
+    return fallbackValue;
+});
+
+// After
+retryingDeserializer.setRecoveryCallback(retryException -> {
+    return fallbackValue;
+});
+----
+
+The use of `BinaryExceptionClassifier` has been replaced by the newly introduced `ExceptionMatcher`, which provides a polished API.
+
+Additional changes include:
+
+* `DestinationTopicPropertiesFactory` uses `ExceptionMatcher` instead of `BinaryExceptionClassifier`
+* The `uniformRandomBackoff` method in `RetryTopicConfigurationBuilder` has been deprecated in favor of jitter support
+* Error handling utilities have been updated to work with the new exception matching system
+* Kafka Streams retry templates now use Spring Framework's retry support
+
+Applications must update their configuration to use the new Spring Framework retry APIs, but the retry behavior and functionality remain the same.
