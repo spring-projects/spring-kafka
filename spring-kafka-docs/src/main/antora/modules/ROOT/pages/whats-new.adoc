@@ -1,5 +1,26 @@
 = What's new?
 
+[[whats-new-in-3-1-since-3-0]]
+== What's New in 3.1 Since 3.0
+:page-section-summary-toc: 1
+
+This section covers the changes made from version 3.0 to version 3.1.
+
+[[x31-record-filtered-ack-mode]]
+=== RECORD_FILTERED Acknowledgment Mode
+
+A new acknowledgment mode `RECORD_FILTERED` has been added that works in conjunction with record filtering.
+Unlike standard filtering where filtered records are still committed, this mode excludes filtered record offsets from commits, ensuring they can be reprocessed if needed.
+
+Key features:
+* Automatically disables auto-commit
+* Tracks filtered records and excludes their offsets from commits
+* Works with both single record and batch listeners
+* Supports transactions
+* Compatible with existing filtering adapters and record filter strategies
+
+See xref:kafka/receiving-messages/filtering.adoc#record-filtered-acknowledgment-mode[RECORD_FILTERED Acknowledgment Mode] for more details.
+
 [[whats-new-in-4-0-since-3-3]]
 == What's New in 4.0 Since 3.3
 :page-section-summary-toc: 1

@@ -215,6 +215,7 @@ The `MessageListener` is called for each record.
 The following lists describes the action taken by the container for each `AckMode` (when transactions are not being used):
 
 * `RECORD`: Commit the offset when the listener returns after processing the record.
+* `RECORD_FILTERED`: Like `RECORD`, but when a `RecordFilterStrategy` filters a record, that record's offset is not committed. Auto-commit is disabled. Filtered records are tracked and their offsets are excluded from commits to ensure they can be reprocessed if needed. Requires the use of a `RecordFilterStrategy`.
 * `BATCH`: Commit the offset when all the records returned by the `poll()` have been processed.
 * `TIME`: Commit the offset when all the records returned by the `poll()` have been processed, as long as the `ackTime` since the last commit has been exceeded.
 * `COUNT`: Commit the offset when all the records returned by the `poll()` have been processed, as long as `ackCount` records have been received since the last commit.

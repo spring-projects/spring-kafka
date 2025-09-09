@@ -113,6 +113,7 @@ import org.springframework.kafka.listener.adapter.AsyncRepliesAware;
 import org.springframework.kafka.listener.adapter.KafkaBackoffAwareMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.FilterAwareAcknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.LogIfLevelEnabled;
@@ -639,6 +640,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Map<TopicPartition, Long> savedPositions = new HashMap<>();
 
+		private final Map<TopicPartition, Long> filteredOffsets = new ConcurrentHashMap<>();
+
 		private final GenericMessageListener<?> genericListener;
 
 		private final @Nullable ConsumerSeekAware consumerSeekAwareListener;
@@ -676,6 +679,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private final boolean isAnyManualAck;
 
 		private final boolean isRecordAck;
+
+		private final boolean isRecordFilteredAck;
 
 		private final BlockingQueue<ConsumerRecord<K, V>> acks = new LinkedBlockingQueue<>();
 
@@ -871,6 +876,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.isManualImmediateAck = AckMode.MANUAL_IMMEDIATE.equals(this.ackMode);
 			this.isAnyManualAck = this.isManualAck || this.isManualImmediateAck;
 			this.isRecordAck = this.ackMode.equals(AckMode.RECORD);
+			this.isRecordFilteredAck = this.ackMode.equals(AckMode.RECORD_FILTERED);
 			boolean isOutOfCommit = this.isAnyManualAck && this.asyncReplies;
 			this.offsetsInThisBatch = isOutOfCommit ? new ConcurrentHashMap<>() : null;
 			this.deferredOffsets = isOutOfCommit ? new ConcurrentHashMap<>() : null;
@@ -930,8 +936,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.isConsumerAwareListener = listenerType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
 					|| listenerType.equals(ListenerType.CONSUMER_AWARE);
 			this.commonErrorHandler = determineCommonErrorHandler();
-			Assert.state(!this.isBatchListener || !this.isRecordAck,
-					"Cannot use AckMode.RECORD with a batch listener");
+			Assert.state(!this.isBatchListener || (!this.isRecordAck && !this.isRecordFilteredAck),
+					"Cannot use AckMode.RECORD or AckMode.RECORD_FILTERED with a batch listener");
 			if (this.containerProperties.getScheduler() != null) {
 				this.taskScheduler = this.containerProperties.getScheduler();
 				this.taskSchedulerExplicitlySet = true;
@@ -1202,6 +1208,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			else {
 				isAutoCommit = KafkaMessageListenerContainer.this.consumerFactory.isAutoCommit();
+			}
+			if (this.isRecordFilteredAck && isAutoCommit) {
+				consumerProperties.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+				isAutoCommit = false;
 			}
 			Assert.state(!this.isAnyManualAck || !isAutoCommit,
 					() -> "Consumer cannot be configured for auto commit for ackMode " + this.ackMode);
@@ -1514,7 +1524,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void doProcessCommits() {
-			if (!this.autoCommit && !this.isRecordAck) {
+			if (!this.autoCommit && !this.isRecordAck && !this.isRecordFilteredAck) {
 				try {
 					processCommits();
 				}
@@ -2278,7 +2288,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					}
 					getAfterRollbackProcessor().clearThreadState();
 				}
-				if (!this.autoCommit && !this.isRecordAck) {
+				if (!this.autoCommit && !this.isRecordAck && !this.isRecordFilteredAck) {
 					processCommits();
 				}
 			}
@@ -2736,7 +2746,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void handleNack(final ConsumerRecords<K, V> records, final ConsumerRecord<K, V> cRecord) {
-			if (!this.autoCommit && !this.isRecordAck) {
+			if (!this.autoCommit && !this.isRecordAck && !this.isRecordFilteredAck) {
 				processCommits();
 			}
 			List<ConsumerRecord<?, ?>> list = new ArrayList<>();
@@ -3092,7 +3102,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		public void ackCurrent(final ConsumerRecord<K, V> cRecord, boolean commitRecovered) {
-			if (this.isRecordAck && this.producer == null) {
+			if ((this.isRecordAck || this.isRecordFilteredAck) && this.producer == null) {
 				Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = buildSingleCommits(cRecord);
 				this.commitLogger.log(() -> COMMITTING + offsetsToCommit);
 				commitOffsets(offsetsToCommit);
@@ -3121,6 +3131,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.fixTxOffsets) {
 				this.lastCommits.putAll(commits);
 			}
+			cleanupFilteredOffsetsAfterCommit(commits);
 		}
 
 		private void processCommits() {
@@ -3365,6 +3376,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.commitLogger.log(() -> COMMITTING + commits);
 				try {
 					commitOffsets(commits);
+					cleanupFilteredOffsetsAfterCommit(commits);
 				}
 				catch (@SuppressWarnings(UNUSED) WakeupException e) {
 					// ignore - not polling
@@ -3432,9 +3444,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		Map<TopicPartition, OffsetAndMetadata> buildSingleCommits(ConsumerRecord<K, V> cRecord) {
-			return Collections.singletonMap(
+			Map<TopicPartition, OffsetAndMetadata> commits = Collections.singletonMap(
 					new TopicPartition(cRecord.topic(), cRecord.partition()),
 					createOffsetAndMetadata(cRecord.offset() + 1));
+			return pruneByFilteredOffsets(commits);
 		}
 
 		private Map<TopicPartition, OffsetAndMetadata> buildCommits() {
@@ -3443,7 +3456,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				commits.put(topicPartition, createOffsetAndMetadata(offset + 1));
 			});
 			this.offsets.clear();
-			return commits;
+			return pruneByFilteredOffsets(commits);
 		}
 
 		private Collection<ConsumerRecord<K, V>> getHighestOffsetRecords(ConsumerRecords<K, V> records) {
@@ -3545,7 +3558,43 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			return this.offsetAndMetadataProvider.provide(this.listenerMetadata, offset);
 		}
 
-		private final class ConsumerAcknowledgment implements Acknowledgment {
+		private Map<TopicPartition, OffsetAndMetadata> pruneByFilteredOffsets(
+				Map<TopicPartition, OffsetAndMetadata> commits) {
+			if (!this.isRecordFilteredAck || this.filteredOffsets.isEmpty()) {
+				return commits;
+			}
+			Map<TopicPartition, OffsetAndMetadata> prunedCommits = new HashMap<>(commits.size());
+			commits.forEach((tp, oam) -> {
+				Long filteredOffset = this.filteredOffsets.get(tp);
+				if (filteredOffset == null) {
+					prunedCommits.put(tp, oam);
+				} else {
+					long commitOffset = oam.offset();
+					// Only commit if the commit offset is beyond the filtered offset
+					// filteredOffset is inclusive, so we need commitOffset > filteredOffset + 1
+					if (commitOffset > filteredOffset + 1) {
+						prunedCommits.put(tp, oam);
+					}
+					// else: skip this partition for now, filtered record is not yet processed
+				}
+			});
+			return prunedCommits;
+		}
+
+		private void cleanupFilteredOffsetsAfterCommit(Map<TopicPartition, OffsetAndMetadata> commits) {
+			if (!this.isRecordFilteredAck || this.filteredOffsets.isEmpty()) {
+				return;
+			}
+			// Remove filtered offsets that are now below the committed offsets
+			commits.forEach((tp, oam) -> {
+				Long filteredOffset = this.filteredOffsets.get(tp);
+				if (filteredOffset != null && filteredOffset < oam.offset() - 1) {
+					this.filteredOffsets.remove(tp);
+				}
+			});
+		}
+
+		private final class ConsumerAcknowledgment implements FilterAwareAcknowledgment {
 
 			private final ConsumerRecord<K, V> cRecord;
 
@@ -3579,13 +3628,19 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 
 			@Override
+			public void markFiltered(ConsumerRecord<?, ?> record) {
+				TopicPartition tp = new TopicPartition(record.topic(), record.partition());
+				ListenerConsumer.this.filteredOffsets.merge(tp, record.offset(), Math::max);
+			}
+
+			@Override
 			public String toString() {
 				return "Acknowledgment for " + KafkaUtils.format(this.cRecord);
 			}
 
 		}
 
-		private final class ConsumerBatchAcknowledgment implements Acknowledgment {
+		private final class ConsumerBatchAcknowledgment implements FilterAwareAcknowledgment {
 
 			private final ConsumerRecords<K, V> records;
 
@@ -3682,6 +3737,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 
 			@Override
+			public void markFiltered(ConsumerRecord<?, ?> record) {
+				TopicPartition tp = new TopicPartition(record.topic(), record.partition());
+				ListenerConsumer.this.filteredOffsets.merge(tp, record.offset(), Math::max);
+			}
+
+			@Override
 			public String toString() {
 				return "Acknowledgment for " + this.records;
 			}
@@ -3734,6 +3795,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				ListenerConsumer.this.pausedForNack.removeAll(partitions);
 				partitions.forEach(ListenerConsumer.this.lastCommits::remove);
+				// Clean up filtered offsets for revoked partitions
+				partitions.forEach(ListenerConsumer.this.filteredOffsets::remove);
 				synchronized (ListenerConsumer.this) {
 					Map<TopicPartition, List<Long>> pendingOffsets = ListenerConsumer.this.offsetsInThisBatch;
 					if (pendingOffsets != null) {

@@ -23,6 +23,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.FilterAwareAcknowledgment;
 
 /**
  * A {@link MessageListener} adapter that implements filter logic
@@ -77,6 +78,9 @@ public class FilteringMessageListenerAdapter<K, V>
 			}
 		}
 		else {
+			if (acknowledgment instanceof FilterAwareAcknowledgment faa) {
+				faa.markFiltered(consumerRecord);
+			}
 			ackFilteredIfNecessary(acknowledgment);
 		}
 	}

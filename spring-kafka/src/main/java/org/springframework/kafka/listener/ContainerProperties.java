@@ -114,6 +114,14 @@ public class ContainerProperties extends ConsumerProperties {
 		 */
 		MANUAL_IMMEDIATE,
 
+		/**
+		 * Like RECORD, but when a RecordFilterStrategy filters a record,
+		 * that record's offset is not committed. Auto-commit is disabled.
+		 * Filtered records are tracked and their offsets are excluded from commits
+		 * to ensure they can be reprocessed if needed.
+		 */
+		RECORD_FILTERED,
+
 	}
 
 	/**

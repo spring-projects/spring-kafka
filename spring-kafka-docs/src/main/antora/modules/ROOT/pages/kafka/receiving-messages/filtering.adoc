@@ -87,3 +87,40 @@ public void listen(List<Thing> things) {
 ----
 However, in this case, `IgnoreEmptyBatchRecordFilterStrategy` always returns empty list and return `false` as result of `ignoreEmptyBatch()`.
 Thus `KafkaListener#listen(...)` always will be invoked.
+
+== RECORD_FILTERED Acknowledgment Mode
+
+Starting with version 3.1, the `RECORD_FILTERED` acknowledgment mode is available for use with filtered message listeners.
+Unlike the standard filtering approach where filtered records are still committed, `RECORD_FILTERED` mode ensures that offsets for filtered records are not committed, allowing them to be reprocessed if needed.
+
+Key characteristics:
+
+* Auto-commit is automatically disabled when using `RECORD_FILTERED` mode
+* Filtered records are tracked internally and excluded from offset commits  
+* Works with both single record and batch listeners
+* Compatible with filtering adapters and record filter strategies
+* Supports transactions
+
+Example configuration:
+
+[source, java]
+----
+@Bean
+public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
+    ConcurrentKafkaListenerContainerFactory<String, String> factory = 
+        new ConcurrentKafkaListenerContainerFactory<>();
+    factory.setConsumerFactory(consumerFactory());
+    factory.getContainerProperties().setAckMode(AckMode.RECORD_FILTERED);
+    factory.setRecordFilterStrategy(record -> record.value().contains("ignore"));
+    return factory;
+}
+
+@KafkaListener(topics = "my-topic")
+public void listen(String message) {
+    // Only non-filtered messages will reach this method
+    // Filtered messages will not have their offsets committed
+    process(message);
+}
+----
+
+When using `RECORD_FILTERED` mode, the framework automatically marks filtered records so their offsets are excluded from commits, ensuring they remain available for reprocessing in scenarios such as consumer restart or rebalancing.

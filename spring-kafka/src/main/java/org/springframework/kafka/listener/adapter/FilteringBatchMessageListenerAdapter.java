@@ -26,6 +26,7 @@ import org.springframework.kafka.listener.BatchAcknowledgingConsumerAwareMessage
 import org.springframework.kafka.listener.BatchMessageListener;
 import org.springframework.kafka.listener.ListenerType;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.FilterAwareAcknowledgment;
 import org.springframework.util.Assert;
 
 /**
@@ -84,9 +85,20 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 		final List<ConsumerRecord<K, V>> consumerRecords = recordFilterStrategy.filterBatch(records);
 		Assert.state(consumerRecords != null, "filter returned null from filterBatch");
 
+		// Mark filtered records
+		if (acknowledgment instanceof FilterAwareAcknowledgment faa && consumerRecords.size() < records.size()) {
+			records.stream()
+				.filter(record -> !consumerRecords.contains(record))
+				.forEach(faa::markFiltered);
+		}
+
 		if (recordFilterStrategy.ignoreEmptyBatch() &&
 			consumerRecords.isEmpty() &&
 			acknowledgment != null) {
+			// All records were filtered but ignoreEmptyBatch is true
+			if (acknowledgment instanceof FilterAwareAcknowledgment faa) {
+				faa.markFiltered(records);
+			}
 			acknowledgment.acknowledge();
 		}
 		else if (!consumerRecords.isEmpty() || this.consumerAware
@@ -94,6 +106,10 @@ public class FilteringBatchMessageListenerAdapter<K, V>
 			invokeDelegate(consumerRecords, acknowledgment, consumer);
 		}
 		else {
+			// All records were filtered and ignoreEmptyBatch is false
+			if (acknowledgment instanceof FilterAwareAcknowledgment faa) {
+				faa.markFiltered(records);
+			}
 			if (this.ackDiscarded && acknowledgment != null) {
 				acknowledgment.acknowledge();
 			}
