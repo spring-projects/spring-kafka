@@ -34,6 +34,7 @@ import org.springframework.util.Assert;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Christian Fredriksson
  * @since 2.7
  *
  */
@@ -83,6 +84,15 @@ public class CompositeBatchInterceptor<K, V> implements BatchInterceptor<K, V> {
 	@Override
 	public void clearThreadState(Consumer<?, ?> consumer) {
 		this.delegates.forEach(del -> del.clearThreadState(consumer));
+	}
+
+	/**
+	 * Add an {@link BatchInterceptor} to delegates.
+	 * @param batchInterceptor the interceptor.
+	 * @since 4.0
+	 */
+	public void addBatchInterceptor(BatchInterceptor<K, V> batchInterceptor) {
+		this.delegates.add(batchInterceptor);
 	}
 
 }

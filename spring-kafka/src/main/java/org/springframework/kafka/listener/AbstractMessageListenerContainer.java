@@ -72,6 +72,7 @@ import org.springframework.util.StringUtils;
  * @author Soby Chacko
  * @author Sanghyeok An
  * @author Lokesh Alamuri
+ * @author Christian Fredriksson
  */
 public abstract class AbstractMessageListenerContainer<K, V>
 		implements GenericMessageListenerContainer<K, V>, BeanNameAware, ApplicationEventPublisherAware,
@@ -480,7 +481,12 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		this.recordInterceptor = recordInterceptor;
 	}
 
-	protected @Nullable BatchInterceptor<K, V> getBatchInterceptor() {
+	/**
+	 * Get the {@link BatchInterceptor} for modification, if configured.
+	 * @return the {@link BatchInterceptor}, or {@code null} if not configured
+	 * @since 4.0
+	 */
+	public @Nullable BatchInterceptor<K, V> getBatchInterceptor() {
 		return this.batchInterceptor;
 	}
 
