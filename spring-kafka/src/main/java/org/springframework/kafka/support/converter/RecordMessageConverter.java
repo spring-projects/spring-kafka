@@ -20,11 +20,13 @@ import java.lang.reflect.Type;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ShareConsumer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.ShareAcknowledgment;
 import org.springframework.messaging.Message;
 
 /**
@@ -45,6 +47,10 @@ public interface RecordMessageConverter extends MessageConverter {
 	 */
 	@NonNull
 	Message<?> toMessage(ConsumerRecord<?, ?> record, @Nullable Acknowledgment acknowledgment, @Nullable Consumer<?, ?> consumer,
+			@Nullable Type payloadType);
+
+	@NonNull
+	Message<?> toShareMessage(ConsumerRecord<?, ?> record, @Nullable ShareAcknowledgment acknowledgment, @Nullable ShareConsumer<?, ?> consumer,
 			@Nullable Type payloadType);
 
 	/**

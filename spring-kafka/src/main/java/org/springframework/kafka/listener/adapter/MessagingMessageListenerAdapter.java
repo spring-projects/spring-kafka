@@ -35,9 +35,11 @@ import java.util.stream.Collectors;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.consumer.AcknowledgeType;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.ShareConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -61,6 +63,7 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.KafkaUtils;
+import org.springframework.kafka.support.ShareAcknowledgment;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
@@ -413,6 +416,12 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		return getMessageConverter().toMessage(cRecord, acknowledgment, consumer, getType());
 	}
 
+	protected Message<?> toMessagingMessage(ConsumerRecord<K, V> cRecord, @Nullable ShareAcknowledgment acknowledgment,
+			@Nullable ShareConsumer<?, ?> consumer) {
+
+		return getMessageConverter().toShareMessage(cRecord, acknowledgment, consumer, getType());
+	}
+
 	protected void invoke(Object records, @Nullable Acknowledgment acknowledgment, @Nullable Consumer<?, ?> consumer,
 			final Message<?> message) {
 
@@ -429,6 +438,33 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			listenerError = e;
 			currentObservation.error(e.getCause() != null ? e.getCause() : e);
 			handleException(records, acknowledgment, consumer, message, e);
+		}
+		catch (Error e) {
+			listenerError = e;
+			currentObservation.error(e);
+			throw e;
+		}
+		finally {
+			if (listenerError != null || result == null) {
+				currentObservation.stop();
+			}
+		}
+	}
+
+	protected void invoke(Object records, @Nullable ShareAcknowledgment acknowledgment, @Nullable ShareConsumer<?, ?> consumer,
+			final Message<?> message) {
+
+		Throwable listenerError = null;
+		Object result = null;
+		Observation currentObservation = getCurrentObservation();
+		try {
+			result = invokeHandler(records, acknowledgment, message, consumer);
+			//TODO: How it should handle results with queues? We will tackle it later after some careful evaluation.
+		}
+		catch (ListenerExecutionFailedException e) {
+			listenerError = e;
+			currentObservation.error(e.getCause() != null ? e.getCause() : e);
+			throw e; // throw the error back to the container so that it is handled there for share consumer.
 		}
 		catch (Error e) {
 			listenerError = e;
@@ -493,11 +529,64 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 	}
 
+	/**
+	 * Invoke the handler, wrapping any exception to a {@link ListenerExecutionFailedException}
+	 * with a dedicated error message.
+	 * @param data the data to process during invocation.
+	 * @param acknowledgment the acknowledgment to use if any.
+	 * @param message the message to process.
+	 * @param consumer the consumer.
+	 * @return the result of invocation.
+	 */
+	@Nullable
+	protected final Object invokeHandler(Object data, @Nullable ShareAcknowledgment acknowledgment, Message<?> message,
+			@Nullable ShareConsumer<?, ?> consumer) {
+
+		ShareAcknowledgment ack = acknowledgment;
+		Assert.notNull(this.handlerMethod, "the 'handlerMethod' must not be null");
+		try {
+			if (data instanceof List && !this.isConsumerRecordList) {
+				return this.handlerMethod.invoke(message, ack, consumer);
+			}
+			else if (this.hasMetadataParameter) {
+				return this.handlerMethod.invoke(message, data, ack, consumer,
+						AdapterUtils.buildConsumerRecordMetadata(data));
+			}
+			else {
+				return this.handlerMethod.invoke(message, data, ack, consumer);
+			}
+		}
+		catch (MessageConversionException ex) {
+			throw checkAckArg(ack, message, new MessageConversionException("Cannot handle message", ex));
+		}
+		catch (MethodArgumentNotValidException ex) {
+			throw checkAckArg(ack, message, ex);
+		}
+		catch (MessagingException ex) {
+			throw new ListenerExecutionFailedException(createMessagingErrorMessage("Listener method could not " +
+					"be invoked with the incoming message", message.getPayload()), ex);
+		}
+		catch (Exception ex) {
+			throw new ListenerExecutionFailedException("Listener method '" +
+					this.handlerMethod.getMethodAsString(message.getPayload()) + "' threw exception", ex);
+		}
+	}
+
 	private RuntimeException checkAckArg(@Nullable Acknowledgment acknowledgment, Message<?> message, Exception ex) {
 		if (this.hasAckParameter && acknowledgment == null) {
 			return new ListenerExecutionFailedException("invokeHandler Failed",
 					new IllegalStateException("No Acknowledgment available as an argument, "
 							+ "the listener container must have a MANUAL AckMode to populate the Acknowledgment."));
+		}
+		return new ListenerExecutionFailedException(createMessagingErrorMessage("Listener method could not " +
+				"be invoked with the incoming message", message.getPayload()), ex);
+	}
+
+	private RuntimeException checkAckArg(@Nullable ShareAcknowledgment acknowledgment, Message<?> message, Exception ex) {
+		if (this.hasAckParameter && acknowledgment == null) {
+			return new ListenerExecutionFailedException("invokeHandler Failed",
+					new IllegalStateException("No ShareAcknowledgment available as an argument, "
+							+ "the listener container must have an explicit acknowledgement mode to populate the Acknowledgment."));
 		}
 		return new ListenerExecutionFailedException(createMessagingErrorMessage("Listener method could not " +
 				"be invoked with the incoming message", message.getPayload()), ex);
@@ -847,6 +936,9 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			Type parameterType = methodParameter.getGenericParameterType();
 			boolean isNotConvertible = parameterIsType(parameterType, ConsumerRecord.class);
 			boolean isAck = parameterIsType(parameterType, Acknowledgment.class);
+			if (!isAck) {
+				isAck = parameterIsType(parameterType, ShareAcknowledgment.class);
+			}
 			this.hasAckParameter |= isAck;
 			if (isAck) {
 				this.noOpAck |= methodParameter.getParameterAnnotation(NonNull.class) != null;
@@ -957,6 +1049,29 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 
 		@Override
 		public void acknowledge() {
+		}
+
+	}
+
+	static class NoOpShareAck implements ShareAcknowledgment {
+
+		@Override
+		public void acknowledge(AcknowledgeType type) {
+
+		}
+
+		@Override
+		public void acknowledge() {
+		}
+
+		@Override
+		public boolean isAcknowledged() {
+			return false;
+		}
+
+		@Override
+		public @Nullable AcknowledgeType getAcknowledgmentType() {
+			return null;
 		}
 
 	}

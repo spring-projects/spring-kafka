@@ -98,6 +98,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private @Nullable Boolean batchListener;
 
+	private @Nullable  Boolean shareConsumer;
+
 	private @Nullable KafkaTemplate<?, ?> replyTemplate;
 
 	private @Nullable String clientIdPrefix;
@@ -289,6 +291,14 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 */
 	public void setBatchListener(boolean batchListener) {
 		this.batchListener = batchListener;
+	}
+
+	public void setShareConsumer(Boolean shareConsumer) {
+		this.shareConsumer = shareConsumer;
+	}
+
+	public @Nullable Boolean getShareConsumer() {
+		return this.shareConsumer;
 	}
 
 	/**

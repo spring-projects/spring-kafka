@@ -19,12 +19,14 @@ package org.springframework.kafka.support.converter;
 import java.util.Map;
 
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ShareConsumer;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.JavaUtils;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
+import org.springframework.kafka.support.ShareAcknowledgment;
 
 /**
  * A top level interface for message converters.
@@ -72,6 +74,24 @@ public interface MessageConverter {
 					(key, val) -> rawHeaders.put(key, val))
 			.acceptIfNotNull(KafkaHeaders.ACKNOWLEDGMENT, acknowledgment, (key, val) -> rawHeaders.put(key, val))
 			.acceptIfNotNull(KafkaHeaders.CONSUMER, consumer, (key, val) -> rawHeaders.put(key, val));
+	}
+
+	@SuppressWarnings("NullAway") // Dataflow analysis limitation
+	default void commonHeaders(@Nullable ShareAcknowledgment acknowledgment, @Nullable ShareConsumer<?, ?> consumer, Map<String, Object> rawHeaders,
+			@Nullable Object theKey, Object topic, Object partition, Object offset,
+			@Nullable Object timestampType, Object timestamp) {
+
+		rawHeaders.put(KafkaHeaders.RECEIVED_TOPIC, topic);
+		rawHeaders.put(KafkaHeaders.RECEIVED_PARTITION, partition);
+		rawHeaders.put(KafkaHeaders.OFFSET, offset);
+		rawHeaders.put(KafkaHeaders.TIMESTAMP_TYPE, timestampType);
+		rawHeaders.put(KafkaHeaders.RECEIVED_TIMESTAMP, timestamp);
+		JavaUtils.INSTANCE
+				.acceptIfNotNull(KafkaHeaders.RECEIVED_KEY, theKey, (key, val) -> rawHeaders.put(key, val))
+				.acceptIfNotNull(KafkaHeaders.GROUP_ID, MessageConverter.getGroupId(),
+						(key, val) -> rawHeaders.put(key, val))
+				.acceptIfNotNull(KafkaHeaders.ACKNOWLEDGMENT, acknowledgment, (key, val) -> rawHeaders.put(key, val))
+				.acceptIfNotNull(KafkaHeaders.CONSUMER, consumer, (key, val) -> rawHeaders.put(key, val));
 	}
 
 }

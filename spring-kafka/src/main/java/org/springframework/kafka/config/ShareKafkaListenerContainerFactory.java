@@ -125,6 +125,15 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	protected void initializeContainer(ShareKafkaMessageListenerContainer<K, V> instance, KafkaListenerEndpoint endpoint) {
 		ContainerProperties properties = instance.getContainerProperties();
 		Boolean effectiveAutoStartup = endpoint.getAutoStartup() != null ? endpoint.getAutoStartup() : this.autoStartup;
+
+		// Validate share group configuration
+		validateShareConfiguration(endpoint);
+
+		Object o = this.shareConsumerFactory.getConfigurationProperties().get("share.acknowledgement.mode");
+		String explicitAck = null;
+		if (o != null) {
+			explicitAck = (String) o;
+		}
 		JavaUtils.INSTANCE
 				.acceptIfNotNull(effectiveAutoStartup, instance::setAutoStartup)
 				.acceptIfNotNull(this.phase, instance::setPhase)
@@ -132,7 +141,27 @@ public class ShareKafkaListenerContainerFactory<K, V>
 				.acceptIfNotNull(this.applicationEventPublisher, instance::setApplicationEventPublisher)
 				.acceptIfNotNull(endpoint.getGroupId(), properties::setGroupId)
 				.acceptIfNotNull(endpoint.getClientIdPrefix(), properties::setClientId)
-				.acceptIfNotNull(endpoint.getConsumerProperties(), properties::setKafkaConsumerProperties);
+				.acceptIfCondition(explicitAck != null && explicitAck.equals("explicit"),
+						ContainerProperties.ShareAcknowledgmentMode.EXPLICIT,
+						properties::setShareAcknowledgmentMode);
+	}
+
+	private void validateShareConfiguration(KafkaListenerEndpoint endpoint) {
+		// Validate that batch listeners aren't used with share consumers
+		if (endpoint.getBatchListener() != null && endpoint.getBatchListener()) {
+			throw new IllegalArgumentException(
+					"Batch listeners are not supported with share consumers. " +
+							"Share groups operate at the record level.");
+		}
+
+		// Validate acknowledgment mode consistency
+		Object ackMode = this.shareConsumerFactory.getConfigurationProperties()
+				.get("share.acknowledgement.mode");
+		if (ackMode != null && !Arrays.asList("implicit", "explicit").contains(ackMode)) {
+			throw new IllegalArgumentException(
+					"Invalid share.acknowledgement.mode: " + ackMode +
+							". Must be 'implicit' or 'explicit'");
+		}
 	}
 
 	@Override
