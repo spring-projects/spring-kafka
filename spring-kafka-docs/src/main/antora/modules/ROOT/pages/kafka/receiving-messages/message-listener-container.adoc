@@ -22,32 +22,39 @@ IMPORTANT: If the interceptor mutates the record (by creating a new one), the `t
 
 The `CompositeRecordInterceptor` and `CompositeBatchInterceptor` can be used to invoke multiple interceptors.
 
-Starting with version 4.0, `AbstractMessageListenerContainer` exposes `getRecordInterceptor()` and `getBatchInterceptor()` as public methods.
+Starting with version 4.0, `AbstractKafkaListenerContainerFactory` exposes `getRecordInterceptor()` and `getBatchInterceptor()` as public methods.
 If the returned interceptor is an instance of `CompositeRecordInterceptor` or `CompositeBatchInterceptor`, additional `RecordInterceptor` or `BatchInterceptor` instances can be added to it even after the container instance extending `AbstractMessageListenerContainer` has been created and a `RecordInterceptor` or `BatchInterceptor` has already been configured.
-The following example shows how to do so:
+The following example shows how to do so in a `BeanPostProcessor`:
 
 [source, java]
 ----
-public void configureRecordInterceptor(KafkaMessageListenerContainer<Integer, String> container) {
-    CompositeRecordInterceptor compositeInterceptor;
+public class RecordInterceptorBeanPostProcessor implements BeanPostProcessor {
 
-    RecordInterceptor<Integer, String> previousInterceptor = container.getRecordInterceptor();
-    if (previousInterceptor instanceof CompositeRecordInterceptor interceptor) {
-        compositeInterceptor = interceptor;
-    } else {
-        compositeInterceptor = new CompositeRecordInterceptor<>();
-        container.setRecordInterceptor(compositeInterceptor);
+    @Override
+    public Object postProcessAfterInitialization(Object bean, String beanName) {
+        if (bean instanceof AbstractKafkaListenerContainerFactory containerFactory) {
+
+            RecordInterceptor previousInterceptor = containerFactory.getRecordInterceptor();
+
+            CompositeRecordInterceptor compositeInterceptor;
+            if (previousInterceptor instanceof CompositeRecordInterceptor interceptor) {
+                compositeInterceptor = interceptor;
+            } else {
+                compositeInterceptor = new CompositeRecordInterceptor<>();
+                containerFactory.setRecordInterceptor(compositeInterceptor);
+                if (previousInterceptor != null) {
+                    compositeRecordInterceptor.addRecordInterceptor(previousInterceptor);
+                }
+            }
+
+            RecordInterceptor<Integer, String> recordInterceptor1 = new RecordInterceptor() {...};
+            RecordInterceptor<Integer, String> recordInterceptor2 = new RecordInterceptor() {...};
+
+            compositeInterceptor.addRecordInterceptor(recordInterceptor1);
+            compositeInterceptor.addRecordInterceptor(recordInterceptor2);
+        }
+        return bean;
     }
-
-    if (previousInterceptor != null) {
-        compositeRecordInterceptor.addRecordInterceptor(previousInterceptor);
-    }
-
-    RecordInterceptor<Integer, String> recordInterceptor1 = new RecordInterceptor() {...};
-    RecordInterceptor<Integer, String> recordInterceptor2 = new RecordInterceptor() {...};
-
-    compositeInterceptor.addRecordInterceptor(recordInterceptor1);
-    compositeInterceptor.addRecordInterceptor(recordInterceptor2);
 }
 ----
 
