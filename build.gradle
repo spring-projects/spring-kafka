@@ -70,7 +70,7 @@ ext {
 	springBootVersion = '3.3.13' // docs module
 	springDataVersion = '2024.1.9'
 	springRetryVersion = '2.0.12'
-	springVersion = '6.2.10'
+	springVersion = '6.2.11'
 	zookeeperVersion = '3.8.4'
 
 	idPrefix = 'kafka'
