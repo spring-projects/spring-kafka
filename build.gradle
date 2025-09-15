@@ -64,14 +64,14 @@ ext {
 	kotlinCoroutinesVersion = '1.10.2'
 	log4jVersion = '2.25.1'
 	micrometerDocsVersion = '1.0.4'
-	micrometerVersion = '1.16.0-SNAPSHOT'
-	micrometerTracingVersion = '1.6.0-SNAPSHOT'
+	micrometerVersion = '1.16.0-M3'
+	micrometerTracingVersion = '1.6.0-M3'
 	mockitoVersion = '5.19.0'
-	reactorVersion = '2025.0.0-SNAPSHOT'
+	reactorVersion = '2025.0.0-M7'
 	scalaVersion = '2.13'
 	springBootVersion = '3.5.0' // docs module
-	springDataVersion = '2025.1.0-SNAPSHOT'
-	springVersion = '7.0.0-SNAPSHOT'
+	springDataVersion = '2025.1.0-M6'
+	springVersion = '7.0.0-M9'
 
 	idPrefix = 'kafka'
 
