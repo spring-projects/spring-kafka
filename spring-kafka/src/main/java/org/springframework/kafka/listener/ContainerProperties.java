@@ -35,6 +35,7 @@ import org.springframework.aop.framework.Advised;
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.core.task.AsyncTaskExecutor;
+import org.springframework.kafka.support.ShareAcknowledgment;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservationConvention;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
@@ -158,6 +159,31 @@ public class ContainerProperties extends ConsumerProperties {
 		 */
 		V2;
 
+	}
+
+	/**
+	 * Acknowledgment mode for share consumer containers.
+	 */
+	public enum ShareAcknowledgmentMode {
+		/**
+		 * Records are automatically acknowledged as ACCEPT on next poll, commitSync, or commitAsync.
+		 */
+		IMPLICIT("implicit"),
+
+		/**
+		 * Application must explicitly acknowledge all records before next poll.
+		 */
+		EXPLICIT("explicit");
+
+		private final String mode;
+
+		ShareAcknowledgmentMode(String mode) {
+			this.mode = mode;
+		}
+
+		public String getMode() {
+			return this.mode;
+		}
 	}
 
 	/**
@@ -312,6 +338,8 @@ public class ContainerProperties extends ConsumerProperties {
 	private boolean restartAfterAuthExceptions;
 
 	private boolean recordObservationsInBatch;
+
+	private ShareAcknowledgmentMode shareAcknowledgmentMode = ShareAcknowledgmentMode.IMPLICIT;
 
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
@@ -1113,6 +1141,37 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	public void setRecordObservationsInBatch(boolean recordObservationsInBatch) {
 		this.recordObservationsInBatch = recordObservationsInBatch;
+	}
+
+	/**
+	 * Set the acknowledgment mode for share consumer containers.
+	 * <p>
+	 * This setting only applies to share consumer containers and is ignored
+	 * by regular consumer containers. The acknowledgment mode determines
+	 * how records are acknowledged:
+	 * <ul>
+	 * <li>{@link ShareAcknowledgmentMode#IMPLICIT} - Records are automatically
+	 * acknowledged as ACCEPT when the next poll occurs or when commitSync/commitAsync
+	 * is called</li>
+	 * <li>{@link ShareAcknowledgmentMode#EXPLICIT} - Application must explicitly
+	 * acknowledge each record using the provided {@link ShareAcknowledgment}</li>
+	 * </ul>
+	 *
+	 * @param shareAcknowledgmentMode the acknowledgment mode
+	 * @since 4.0
+	 * @see ShareAcknowledgment
+	 */
+	public void setShareAcknowledgmentMode(ShareAcknowledgmentMode shareAcknowledgmentMode) {
+		this.shareAcknowledgmentMode = shareAcknowledgmentMode;
+	}
+
+	/**
+	 * Get the acknowledgment mode for share consumer containers.
+	 *
+	 * @return the acknowledgment mode
+	 */
+	public ShareAcknowledgmentMode getShareAcknowledgmentMode() {
+		return this.shareAcknowledgmentMode;
 	}
 
 	@Override
