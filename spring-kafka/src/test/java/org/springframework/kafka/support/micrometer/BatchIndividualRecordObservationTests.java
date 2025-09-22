@@ -19,6 +19,7 @@ package org.springframework.kafka.support.micrometer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -37,6 +38,7 @@ import io.micrometer.tracing.handler.PropagatingReceiverTracingObservationHandle
 import io.micrometer.tracing.handler.PropagatingSenderTracingObservationHandler;
 import io.micrometer.tracing.propagation.Propagator;
 import io.micrometer.tracing.test.simple.SimpleTracer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -64,6 +66,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests for batch individual record observation functionality.
  *
  * @author Igor Quintanilha
+ * @author Artem Bilan
+ *
  * @since 4.0
  */
 @SpringJUnitConfig
@@ -78,8 +82,8 @@ public class BatchIndividualRecordObservationTests {
 
 	@Test
 	void batchIndividualRecordObservationCreatesObservationPerRecord(@Autowired BatchListener listener,
-																		@Autowired KafkaTemplate<Integer, String> template, @Autowired TestObservationHandler observationHandler,
-																		@Autowired SimpleTracer tracer)
+			@Autowired KafkaTemplate<Integer, String> template, @Autowired TestObservationHandler observationHandler,
+			@Autowired SimpleTracer tracer)
 			throws InterruptedException {
 
 		// Clear any existing observations and spans
@@ -147,8 +151,9 @@ public class BatchIndividualRecordObservationTests {
 	}
 
 	@Test
-	void batchIndividualRecordObservationDisabledCreatesNoIndividualObservations(@Autowired BatchListenerWithoutIndividualObservation batchListener,
-																					@Autowired KafkaTemplate<Integer, String> template, @Autowired TestObservationHandler observationHandler)
+	void batchIndividualRecordObservationDisabledCreatesNoIndividualObservations(
+			@Autowired BatchListenerWithoutIndividualObservation batchListener,
+			@Autowired KafkaTemplate<Integer, String> template, @Autowired TestObservationHandler observationHandler)
 			throws InterruptedException {
 
 		// Clear any existing observations
@@ -181,12 +186,16 @@ public class BatchIndividualRecordObservationTests {
 
 		@Bean
 		ConsumerFactory<Integer, String> consumerFactory(EmbeddedKafkaBroker broker) {
-			return new DefaultKafkaConsumerFactory<>(
-					KafkaTestUtils.consumerProps(broker, "batch-tests", false));
+			Map<String, Object> configs = KafkaTestUtils.consumerProps(broker, "batch-tests", false);
+			configs.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 54);
+			configs.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, 1000);
+			return new DefaultKafkaConsumerFactory<>(configs);
 		}
 
 		@Bean
-		KafkaTemplate<Integer, String> template(ProducerFactory<Integer, String> pf, ObservationRegistry observationRegistry) {
+		KafkaTemplate<Integer, String> template(ProducerFactory<Integer, String> pf,
+				ObservationRegistry observationRegistry) {
+
 			KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
 			template.setObservationEnabled(true);
 			template.setObservationRegistry(observationRegistry);
@@ -196,6 +205,7 @@ public class BatchIndividualRecordObservationTests {
 		@Bean
 		ConcurrentKafkaListenerContainerFactory<Integer, String> kafkaListenerContainerFactory(
 				ConsumerFactory<Integer, String> cf) {
+
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(cf);
@@ -208,6 +218,7 @@ public class BatchIndividualRecordObservationTests {
 		@Bean
 		ConcurrentKafkaListenerContainerFactory<Integer, String> observationListenerContainerFactory(
 				ConsumerFactory<Integer, String> cf, ObservationRegistry observationRegistry) {
+
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(cf);
@@ -221,6 +232,7 @@ public class BatchIndividualRecordObservationTests {
 		@Bean
 		ConcurrentKafkaListenerContainerFactory<Integer, String> batchOnlyObservationListenerContainerFactory(
 				ConsumerFactory<Integer, String> cf, ObservationRegistry observationRegistry) {
+
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(cf);
@@ -283,7 +295,9 @@ public class BatchIndividualRecordObservationTests {
 		}
 
 		@Bean
-		ObservationRegistry observationRegistry(Tracer tracer, Propagator propagator, MeterRegistry meterRegistry, TestObservationHandler testObservationHandler) {
+		ObservationRegistry observationRegistry(Tracer tracer, Propagator propagator, MeterRegistry meterRegistry,
+				TestObservationHandler testObservationHandler) {
+
 			ObservationRegistry observationRegistry = ObservationRegistry.create();
 			observationRegistry.observationConfig()
 					.observationHandler(
@@ -309,34 +323,43 @@ public class BatchIndividualRecordObservationTests {
 		BatchListenerWithoutIndividualObservation batchListenerWithoutIndividualObservation() {
 			return new BatchListenerWithoutIndividualObservation();
 		}
+
 	}
 
 	static class BatchListener {
+
 		final CountDownLatch latch = new CountDownLatch(1);
 
 		final List<String> processedRecords = new ArrayList<>();
 
-		@KafkaListener(topics = BATCH_INDIVIDUAL_OBSERVATION_TOPIC, containerFactory = "observationListenerContainerFactory")
+		@KafkaListener(topics = BATCH_INDIVIDUAL_OBSERVATION_TOPIC,
+				containerFactory = "observationListenerContainerFactory")
 		public void listen(List<ConsumerRecord<Integer, String>> records) {
+
 			for (ConsumerRecord<Integer, String> record : records) {
 				processedRecords.add(record.value());
 			}
 			latch.countDown();
 		}
+
 	}
 
 	static class BatchListenerWithoutIndividualObservation {
+
 		final CountDownLatch latch = new CountDownLatch(1);
 
 		final List<String> processedRecords = new ArrayList<>();
 
-		@KafkaListener(topics = BATCH_ONLY_OBSERVATION_TOPIC, containerFactory = "batchOnlyObservationListenerContainerFactory")
+		@KafkaListener(topics = BATCH_ONLY_OBSERVATION_TOPIC,
+				containerFactory = "batchOnlyObservationListenerContainerFactory")
+
 		public void listen(List<ConsumerRecord<Integer, String>> records) {
 			for (ConsumerRecord<Integer, String> record : records) {
 				processedRecords.add(record.value());
 			}
 			latch.countDown();
 		}
+
 	}
 
 	static class TestObservationHandler implements ObservationHandler<Observation.Context> {
@@ -373,6 +396,7 @@ public class BatchIndividualRecordObservationTests {
 		public void clear() {
 			startedObservations.set(0);
 		}
+
 	}
 
 }
