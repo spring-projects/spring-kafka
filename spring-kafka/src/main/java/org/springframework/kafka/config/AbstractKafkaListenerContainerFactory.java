@@ -61,6 +61,7 @@ import org.springframework.util.Assert;
  * @author Stephane Nicoll
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Christian Fredriksson
  *
  * @see AbstractMessageListenerContainer
  */
@@ -276,6 +277,15 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	}
 
 	/**
+	 * Get the {@link RecordInterceptor} for modification, if configured.
+	 * @return the {@link RecordInterceptor}, or {@code null} if not configured
+	 * @since 4.0
+	 */
+	public @Nullable RecordInterceptor<K, V> getRecordInterceptor() {
+		return this.recordInterceptor;
+	}
+
+	/**
 	 * Set an interceptor to be called before calling the listener.
 	 * Only used with record listeners.
 	 * @param recordInterceptor the interceptor.
@@ -284,6 +294,15 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	 */
 	public void setRecordInterceptor(RecordInterceptor<K, V> recordInterceptor) {
 		this.recordInterceptor = recordInterceptor;
+	}
+
+	/**
+	 * Get the {@link BatchInterceptor} for modification, if configured.
+	 * @return the {@link BatchInterceptor}, or {@code null} if not configured
+	 * @since 4.0
+	 */
+	public @Nullable BatchInterceptor<K, V> getBatchInterceptor() {
+		return this.batchInterceptor;
 	}
 
 	/**

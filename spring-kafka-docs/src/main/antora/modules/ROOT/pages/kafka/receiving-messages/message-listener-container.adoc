@@ -22,25 +22,24 @@ IMPORTANT: If the interceptor mutates the record (by creating a new one), the `t
 
 The `CompositeRecordInterceptor` and `CompositeBatchInterceptor` can be used to invoke multiple interceptors.
 
-Starting with version 4.0, `AbstractMessageListenerContainer` exposes `getRecordInterceptor()` and `getBatchInterceptor()` as public methods.
+Starting with version 4.0, `AbstractKafkaListenerContainerFactory` and `AbstractMessageListenerContainer` exposes `getRecordInterceptor()` and `getBatchInterceptor()` as public methods.
 If the returned interceptor is an instance of `CompositeRecordInterceptor` or `CompositeBatchInterceptor`, additional `RecordInterceptor` or `BatchInterceptor` instances can be added to it even after the container instance extending `AbstractMessageListenerContainer` has been created and a `RecordInterceptor` or `BatchInterceptor` has already been configured.
 The following example shows how to do so:
 
 [source, java]
 ----
-public void configureRecordInterceptor(KafkaMessageListenerContainer<Integer, String> container) {
+public void configureRecordInterceptor(AbstractKafkaListenerContainerFactory<Integer, String> containerFactory) {
     CompositeRecordInterceptor compositeInterceptor;
 
-    RecordInterceptor<Integer, String> previousInterceptor = container.getRecordInterceptor();
+    RecordInterceptor<Integer, String> previousInterceptor = containerFactory.getRecordInterceptor();
     if (previousInterceptor instanceof CompositeRecordInterceptor interceptor) {
         compositeInterceptor = interceptor;
     } else {
         compositeInterceptor = new CompositeRecordInterceptor<>();
-        container.setRecordInterceptor(compositeInterceptor);
-    }
-
-    if (previousInterceptor != null) {
-        compositeRecordInterceptor.addRecordInterceptor(previousInterceptor);
+        containerFactory.setRecordInterceptor(compositeInterceptor);
+        if (previousInterceptor != null) {
+            compositeRecordInterceptor.addRecordInterceptor(previousInterceptor);
+        }
     }
 
     RecordInterceptor<Integer, String> recordInterceptor1 = new RecordInterceptor() {...};
