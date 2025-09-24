@@ -280,7 +280,8 @@ class ShareKafkaMessageListenerContainerConstraintTests {
 			// Only one acknowledgment should succeed
 			assertThat(successfulAcks.get()).isEqualTo(1);
 			assertThat(failedAcks.get()).isEqualTo(numThreads - 1);
-			assertThat(ack.isAcknowledged()).isTrue();
+			// Check internal state through reflection since isAcknowledged() is no longer public
+			assertThat(isAcknowledgedInternal(ack)).isTrue();
 
 		}
 		finally {
@@ -326,6 +327,21 @@ class ShareKafkaMessageListenerContainerConstraintTests {
 				new ConfigResource(ConfigResource.Type.GROUP, groupId), List.of(op));
 		try (Admin admin = Admin.create(adminProperties)) {
 			admin.incrementalAlterConfigs(configs).all().get();
+		}
+	}
+
+	/**
+	 * Helper method to access internal acknowledgment state for testing.
+	 * Since isAcknowledged() was removed from the public interface, we use reflection.
+	 */
+	private boolean isAcknowledgedInternal(ShareAcknowledgment ack) {
+		try {
+			java.lang.reflect.Method method = ack.getClass().getDeclaredMethod("isAcknowledged");
+			method.setAccessible(true);
+			return (Boolean) method.invoke(ack);
+		}
+		catch (Exception e) {
+			throw new RuntimeException("Failed to access internal acknowledgment state", e);
 		}
 	}
 }

@@ -154,7 +154,7 @@ class ShareKafkaListenerIntegrationTests {
 		assertThat(AckShareConsumerAwareTestListener.received.get()).isEqualTo("ack-consumer-aware-message");
 		assertThat(AckShareConsumerAwareTestListener.consumerReceived.get()).isNotNull();
 		assertThat(AckShareConsumerAwareTestListener.acknowledgmentReceived.get()).isNotNull();
-		assertThat(AckShareConsumerAwareTestListener.acknowledgmentReceived.get().isAcknowledged()).isTrue();
+		assertThat(isAcknowledgedInternal(AckShareConsumerAwareTestListener.acknowledgmentReceived.get())).isTrue();
 	}
 
 	@Test
@@ -209,6 +209,20 @@ class ShareKafkaListenerIntegrationTests {
 			Map<ConfigResource, Collection<AlterConfigOp>> configs = Map.of(configResource,
 					List.of(new AlterConfigOp(configEntry, AlterConfigOp.OpType.SET)));
 			admin.incrementalAlterConfigs(configs).all().get();
+		}
+	}
+
+	/**
+	 * Helper method to access internal acknowledgment state for testing.
+	 */
+	private boolean isAcknowledgedInternal(ShareAcknowledgment ack) {
+		try {
+			java.lang.reflect.Method method = ack.getClass().getDeclaredMethod("isAcknowledged");
+			method.setAccessible(true);
+			return (Boolean) method.invoke(ack);
+		}
+		catch (Exception e) {
+			throw new RuntimeException("Failed to access internal acknowledgment state", e);
 		}
 	}
 
@@ -328,26 +342,26 @@ class ShareKafkaListenerIntegrationTests {
 			String key = record.key();
 
 			if ("accept".equals(key)) {
-				acknowledgment.acknowledge(AcknowledgeType.ACCEPT);
+				acknowledgment.acknowledge();
 				acknowledgmentTypes.put(key, AcknowledgeType.ACCEPT);
 				latch.countDown();
 			}
 			else if ("release".equals(key)) {
 				if (!acknowledgmentTypes.containsKey("release-attempted")) {
 					// First attempt - release it
-					acknowledgment.acknowledge(AcknowledgeType.RELEASE);
+					acknowledgment.release();
 					acknowledgmentTypes.put("release-attempted", AcknowledgeType.RELEASE);
 					latch.countDown();
 				}
 				else {
 					// Redelivered - accept it
-					acknowledgment.acknowledge(AcknowledgeType.ACCEPT);
+					acknowledgment.acknowledge();
 					redeliveredAndAccepted.set(true);
 					redeliveryLatch.countDown();
 				}
 			}
 			else if ("reject".equals(key)) {
-				acknowledgment.acknowledge(AcknowledgeType.REJECT);
+				acknowledgment.reject();
 				acknowledgmentTypes.put(key, AcknowledgeType.REJECT);
 				latch.countDown();
 			}
@@ -420,20 +434,20 @@ class ShareKafkaListenerIntegrationTests {
 				if (retryCount.get() == 0) {
 					// First attempt - release for retry
 					retryCount.incrementAndGet();
-					acknowledgment.acknowledge(AcknowledgeType.RELEASE);
+					acknowledgment.release();
 					processedLatch.countDown();
 				}
 				else {
 					// Retry attempt - accept
 					successCount.incrementAndGet();
-					acknowledgment.acknowledge(AcknowledgeType.ACCEPT);
+					acknowledgment.acknowledge();
 					retryLatch.countDown();
 				}
 			}
 			else {
 				// Success messages
 				successCount.incrementAndGet();
-				acknowledgment.acknowledge(AcknowledgeType.ACCEPT);
+				acknowledgment.acknowledge();
 				processedLatch.countDown();
 			}
 		}
@@ -460,7 +474,7 @@ class ShareKafkaListenerIntegrationTests {
 			}
 			else {
 				successCount.incrementAndGet();
-				acknowledgment.acknowledge(AcknowledgeType.ACCEPT);
+				acknowledgment.acknowledge();
 				latch.countDown();
 			}
 		}

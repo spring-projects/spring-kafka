@@ -35,7 +35,6 @@ import java.util.stream.Collectors;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import org.apache.commons.logging.LogFactory;
-import org.apache.kafka.clients.consumer.AcknowledgeType;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -1056,22 +1055,15 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	static class NoOpShareAck implements ShareAcknowledgment {
 
 		@Override
-		public void acknowledge(AcknowledgeType type) {
-
-		}
-
-		@Override
 		public void acknowledge() {
 		}
 
 		@Override
-		public boolean isAcknowledged() {
-			return false;
+		public void release() {
 		}
 
 		@Override
-		public @Nullable AcknowledgeType getAcknowledgmentType() {
-			return null;
+		public void reject() {
 		}
 
 	}

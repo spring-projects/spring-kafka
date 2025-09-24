@@ -164,8 +164,8 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 			assertThat(received).hasSize(3);
 			assertThat(acknowledgments).hasSize(3);
 			assertThat(acknowledgments).allMatch(Objects::nonNull);
-			assertThat(acknowledgments).allMatch(ack -> ack.isAcknowledged());
-			assertThat(acknowledgments).allMatch(ack -> ack.getAcknowledgmentType() == AcknowledgeType.ACCEPT);
+			assertThat(acknowledgments).allMatch(this::isAcknowledgedInternal);
+			assertThat(acknowledgments).allMatch(ack -> getAcknowledgmentTypeInternal(ack) == AcknowledgeType.ACCEPT);
 		}
 		finally {
 			container.stop();
@@ -376,26 +376,26 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 				String key = record.key();
 
 				if ("accept".equals(key)) {
-					acknowledgment.acknowledge(AcknowledgeType.ACCEPT);
+					acknowledgment.acknowledge();
 					ackTypes.put(key, AcknowledgeType.ACCEPT);
 					firstRoundLatch.countDown();
 				}
 				else if ("release".equals(key)) {
 					if (!ackTypes.containsKey("release-redelivered")) {
 						// First delivery - release it
-						acknowledgment.acknowledge(AcknowledgeType.RELEASE);
+						acknowledgment.release();
 						ackTypes.put("release-redelivered", AcknowledgeType.RELEASE);
 						firstRoundLatch.countDown();
 					}
 					else {
 						// Redelivered - accept it
-						acknowledgment.acknowledge(AcknowledgeType.ACCEPT);
+						acknowledgment.acknowledge();
 						ackTypes.put(key, AcknowledgeType.ACCEPT);
 						redeliveryLatch.countDown();
 					}
 				}
 				else if ("reject".equals(key)) {
-					acknowledgment.acknowledge(AcknowledgeType.REJECT);
+					acknowledgment.reject();
 					ackTypes.put(key, AcknowledgeType.REJECT);
 					firstRoundLatch.countDown();
 				}
@@ -539,11 +539,14 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		CountDownLatch latch = new CountDownLatch(1);
 		AtomicReference<ShareConsumer<?, ?>> consumerRef = new AtomicReference<>();
 
-		containerProps.setMessageListener(new ShareConsumerAwareMessageListener<String, String>() {
+		containerProps.setMessageListener(new AcknowledgingShareConsumerAwareMessageListener<String, String>() {
 			@Override
-			public void onShareRecord(ConsumerRecord<String, String> record, ShareConsumer<?, ?> consumer) {
+			public void onShareRecord(ConsumerRecord<String, String> record,
+					@Nullable ShareAcknowledgment acknowledgment, ShareConsumer<?, ?> consumer) {
 				assertThat(record).isNotNull();
 				assertThat(consumer).isNotNull();
+				// In implicit mode, acknowledgment should be null
+				assertThat(acknowledgment).isNull();
 				consumerRef.set(consumer);
 				latch.countDown();
 			}
@@ -636,6 +639,34 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 				new ConfigResource(ConfigResource.Type.GROUP, groupId), List.of(op));
 		try (Admin admin = Admin.create(adminProperties)) {
 			admin.incrementalAlterConfigs(configs).all().get();
+		}
+	}
+
+	/**
+	 * Helper method to access internal acknowledgment state for testing.
+	 */
+	private boolean isAcknowledgedInternal(ShareAcknowledgment ack) {
+		try {
+			java.lang.reflect.Method method = ack.getClass().getDeclaredMethod("isAcknowledged");
+			method.setAccessible(true);
+			return (Boolean) method.invoke(ack);
+		}
+		catch (Exception e) {
+			throw new RuntimeException("Failed to access internal acknowledgment state", e);
+		}
+	}
+
+	/**
+	 * Helper method to access internal acknowledgment type for testing.
+	 */
+	private AcknowledgeType getAcknowledgmentTypeInternal(ShareAcknowledgment ack) {
+		try {
+			java.lang.reflect.Method method = ack.getClass().getDeclaredMethod("getAcknowledgmentType");
+			method.setAccessible(true);
+			return (AcknowledgeType) method.invoke(ack);
+		}
+		catch (Exception e) {
+			throw new RuntimeException("Failed to access internal acknowledgment type", e);
 		}
 	}
 }
