@@ -168,22 +168,12 @@ public class ContainerProperties extends ConsumerProperties {
 		/**
 		 * Records are automatically acknowledged as ACCEPT on next poll, commitSync, or commitAsync.
 		 */
-		IMPLICIT("implicit"),
+		IMPLICIT,
 
 		/**
 		 * Application must explicitly acknowledge all records before next poll.
 		 */
-		EXPLICIT("explicit");
-
-		private final String mode;
-
-		ShareAcknowledgmentMode(String mode) {
-			this.mode = mode;
-		}
-
-		public String getMode() {
-			return this.mode;
-		}
+		EXPLICIT
 	}
 
 	/**
@@ -340,6 +330,8 @@ public class ContainerProperties extends ConsumerProperties {
 	private boolean recordObservationsInBatch;
 
 	private ShareAcknowledgmentMode shareAcknowledgmentMode = ShareAcknowledgmentMode.IMPLICIT;
+
+	private Duration shareAcknowledgmentTimeout = Duration.ofSeconds(60); // 1 minute default
 
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
@@ -1172,6 +1164,32 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	public ShareAcknowledgmentMode getShareAcknowledgmentMode() {
 		return this.shareAcknowledgmentMode;
+	}
+
+	/**
+	 * Set the timeout for share acknowledgments in explicit mode.
+	 * <p>
+	 * When a record is not acknowledged within this timeout, a warning
+	 * will be logged to help identify missing acknowledgment calls.
+	 * This only applies when using explicit acknowledgment mode.
+	 * <p>
+	 * Default is 60 seconds.
+	 *
+	 * @param shareAcknowledgmentTimeout the timeout duration
+	 * @since 4.0
+	 */
+	public void setShareAcknowledgmentTimeout(Duration shareAcknowledgmentTimeout) {
+		this.shareAcknowledgmentTimeout = shareAcknowledgmentTimeout;
+	}
+
+	/**
+	 * Get the timeout for share acknowledgments in explicit mode.
+	 *
+	 * @return the acknowledgment timeout
+	 * @since 4.0
+	 */
+	public Duration getShareAcknowledgmentTimeout() {
+		return this.shareAcknowledgmentTimeout;
 	}
 
 	@Override

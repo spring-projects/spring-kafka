@@ -23,18 +23,30 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.kafka.support.ShareAcknowledgment;
 
 /**
- * A message listener for share consumer containers that supports explicit acknowledgment.
+ * A message listener for share consumer containers with acknowledgment support.
  * <p>
- * This interface provides both access to the ShareConsumer and explicit acknowledgment
- * capabilities. When used with explicit acknowledgment mode, the acknowledgment parameter
- * will be non-null and must be used to acknowledge each record. In implicit mode,
- * the acknowledgment parameter will be null and records are auto-acknowledged.
+ * This interface provides access to both the {@link ShareConsumer} instance and acknowledgment
+ * capabilities. The acknowledgment parameter behavior depends on the container's
+ * acknowledgment mode:
+ * <ul>
+ * <li><strong>Explicit mode</strong>: The acknowledgment parameter is non-null and must
+ * be used to acknowledge each record</li>
+ * <li><strong>Implicit mode</strong>: The acknowledgment parameter is null and records
+ * are automatically acknowledged</li>
+ * </ul>
+ * <p>
+ * This is the primary listener interface for share consumers when you need access
+ * to the ShareConsumer instance or need explicit acknowledgment control.
  *
  * @param <K> the key type
  * @param <V> the value type
+ *
  * @author Soby Chacko
+ *
  * @since 4.0
+ *
  * @see ShareAcknowledgment
+ * @see ShareConsumer
  * @see ContainerProperties.ShareAcknowledgmentMode
  */
 @FunctionalInterface
@@ -45,7 +57,6 @@ public interface AcknowledgingShareConsumerAwareMessageListener<K, V> extends Ge
 	 * When explicit acknowledgment mode is used, the acknowledgment parameter will be non-null
 	 * and must be used to acknowledge the record. When implicit acknowledgment mode is used,
 	 * the acknowledgment parameter will be null.
-	 *
 	 * @param data the data to be processed.
 	 * @param acknowledgment the acknowledgment (nullable in implicit mode).
 	 * @param consumer the consumer.

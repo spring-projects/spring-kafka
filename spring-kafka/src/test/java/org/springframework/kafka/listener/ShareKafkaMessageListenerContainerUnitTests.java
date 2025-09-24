@@ -57,9 +57,6 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 	private MessageListener<String, String> messageListener;
 
 	@Mock
-	private ShareConsumerAwareMessageListener<String, String> shareConsumerAwareListener;
-
-	@Mock
 	private AcknowledgingShareConsumerAwareMessageListener<String, String> ackListener;
 
 	private ContainerProperties containerProperties;
@@ -119,11 +116,11 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		container.stop();
 
 		verify(messageListener, atLeastOnce()).onMessage(testRecord);
-		verify(shareConsumer, atLeastOnce()).acknowledge(testRecord, AcknowledgeType.ACCEPT);
+		verify(shareConsumer, never()).acknowledge(testRecord, AcknowledgeType.ACCEPT);
 	}
 
 	@Test
-	void shouldInvokeShareConsumerAwareListener() throws Exception {
+	void shouldInvokeShareConsumerAwareListenerInImplicitMode() throws Exception {
 		// Setup test data
 		ConsumerRecord<String, String> testRecord = new ConsumerRecord<>("test-topic", 0, 100L, "key", "value");
 		Map<TopicPartition, List<ConsumerRecord<String, String>>> records = new HashMap<>();
@@ -137,7 +134,8 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 				.willReturn(ConsumerRecords.empty());
 
 		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		containerProperties.setMessageListener(shareConsumerAwareListener);
+		// Using the unified interface with implicit mode (acknowledgment will be null)
+		containerProperties.setMessageListener(ackListener);
 
 		ShareKafkaMessageListenerContainer<String, String> container =
 				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
@@ -146,8 +144,9 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		Thread.sleep(1000);
 		container.stop();
 
-		verify(shareConsumerAwareListener, atLeastOnce()).onShareRecord(testRecord, shareConsumer);
-		verify(shareConsumer, atLeastOnce()).acknowledge(testRecord, AcknowledgeType.ACCEPT);
+		// In implicit mode, acknowledgment should be null
+		verify(ackListener, atLeastOnce()).onShareRecord(eq(testRecord), isNull(), eq(shareConsumer));
+		verify(shareConsumer, never()).acknowledge(testRecord, AcknowledgeType.ACCEPT);
 	}
 
 	@Test
@@ -176,7 +175,7 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		container.stop();
 
 		verify(ackListener, atLeastOnce()).onShareRecord(eq(testRecord), isNull(), eq(shareConsumer));
-		verify(shareConsumer, atLeastOnce()).acknowledge(testRecord, AcknowledgeType.ACCEPT);
+		verify(shareConsumer, never()).acknowledge(testRecord, AcknowledgeType.ACCEPT);
 	}
 
 	@Test

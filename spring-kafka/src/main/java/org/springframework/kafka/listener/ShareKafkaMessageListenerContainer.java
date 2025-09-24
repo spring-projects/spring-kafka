@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -40,7 +41,6 @@ import org.springframework.kafka.core.ShareConsumerFactory;
 import org.springframework.kafka.event.ConsumerStartedEvent;
 import org.springframework.kafka.event.ConsumerStartingEvent;
 import org.springframework.kafka.support.ShareAcknowledgment;
-import org.springframework.kafka.support.ShareAcknowledgmentException;
 import org.springframework.util.Assert;
 
 /**
@@ -175,6 +175,21 @@ public class ShareKafkaMessageListenerContainer<K, V>
 	}
 
 	/**
+	 * Represents a pending acknowledgment to be processed on the consumer thread.
+	 */
+	private static class PendingAcknowledgment<K, V> {
+
+		private final ConsumerRecord<K, V> record;
+
+		private final AcknowledgeType type;
+
+		PendingAcknowledgment(ConsumerRecord<K, V> record, AcknowledgeType type) {
+			this.record = record;
+			this.type = type;
+		}
+	}
+
+	/**
 	 * The inner share consumer thread that polls for records and dispatches to the listener.
 	 */
 	private class ShareListenerConsumer implements Runnable {
@@ -192,7 +207,18 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		// Acknowledgment tracking for explicit mode
 		private final Map<ConsumerRecord<K, V>, ShareConsumerAcknowledgment> pendingAcknowledgments = new ConcurrentHashMap<>();
 
+		// Tracking for missed acknowledgment detection
+		private final Map<ConsumerRecord<K, V>, Long> acknowledgmentTimestamps = new ConcurrentHashMap<>();
+
+		// Lock for coordinating acknowledgment completion
+		private final Object acknowledgmentLock = new Object();
+
+		// Queue for acknowledgments from other threads
+		private final ConcurrentLinkedQueue<PendingAcknowledgment<K, V>> acknowledgmentQueue = new ConcurrentLinkedQueue<>();
+
 		private final boolean isExplicitMode;
+
+		private final long ackTimeoutMs;
 
 		ShareListenerConsumer(GenericMessageListener<?> listener) {
 			this.consumer = ShareKafkaMessageListenerContainer.this.shareConsumerFactory.createShareConsumer(
@@ -206,6 +232,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			// Configure acknowledgment mode
 			this.isExplicitMode = containerProperties.getShareAcknowledgmentMode() ==
 					ContainerProperties.ShareAcknowledgmentMode.EXPLICIT;
+			this.ackTimeoutMs = containerProperties.getShareAcknowledgmentTimeout().toMillis();
 
 			// Configure consumer properties based on acknowledgment mode
 			if (this.isExplicitMode) {
@@ -229,16 +256,36 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			Throwable exitThrowable = null;
 			while (isRunning()) {
 				try {
-					// Check acknowledgment constraints before polling
+					// Process any pending acknowledgments from other threads
+					processQueuedAcknowledgments();
+
+					// In explicit mode, check for acknowledgment timeouts before polling
 					if (this.isExplicitMode && !this.pendingAcknowledgments.isEmpty()) {
-						// In explicit mode, all records from previous poll must be acknowledged
-						this.logger.warn(() -> "Skipping poll - " + this.pendingAcknowledgments.size() +
-								" records from previous poll still need acknowledgment");
-						Thread.sleep(100); // Brief pause to avoid tight loop
-						continue;
+						checkAcknowledgmentTimeouts();
 					}
 
-					var records = this.consumer.poll(java.time.Duration.ofMillis(POLL_TIMEOUT));
+					ConsumerRecords<K, V> records;
+					try {
+						records = this.consumer.poll(java.time.Duration.ofMillis(POLL_TIMEOUT));
+					}
+					catch (IllegalStateException e) {
+						// KIP-932: In explicit mode, poll() throws if unacknowledged records exist
+						if (this.isExplicitMode && !this.pendingAcknowledgments.isEmpty()) {
+							this.logger.trace(() -> "Poll blocked waiting for " + this.pendingAcknowledgments.size() +
+									" acknowledgments");
+							// Small delay to prevent tight loop while maintaining reasonable responsiveness
+							try {
+								Thread.sleep(10);
+							}
+							catch (InterruptedException ie) {
+								Thread.currentThread().interrupt();
+								break;
+							}
+							continue;
+						}
+						throw e; // Re-throw if not related to acknowledgments
+					}
+
 					if (records != null && records.count() > 0) {
 						processRecords(records);
 					}
@@ -272,6 +319,8 @@ public class ShareKafkaMessageListenerContainer<K, V>
 						// Create acknowledgment using inner class
 						acknowledgment = new ShareConsumerAcknowledgment(record);
 						this.pendingAcknowledgments.put(record, acknowledgment);
+						// Track when the record was dispatched for acknowledgment timeout detection
+						this.acknowledgmentTimestamps.put(record, System.currentTimeMillis());
 					}
 
 					// Dispatch to listener
@@ -279,13 +328,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 						@SuppressWarnings("unchecked")
 						AcknowledgingShareConsumerAwareMessageListener<K, V> typedAckListener =
 								(AcknowledgingShareConsumerAwareMessageListener<K, V>) ackListener;
-						typedAckListener.onShareRecord(record, acknowledgment, this.consumer);  // Changed method name
-					}
-					else if (this.genericListener instanceof ShareConsumerAwareMessageListener<?, ?> consumerAwareListener) {
-						@SuppressWarnings("unchecked")
-						ShareConsumerAwareMessageListener<K, V> typedConsumerAwareListener =
-								(ShareConsumerAwareMessageListener<K, V>) consumerAwareListener;
-						typedConsumerAwareListener.onShareRecord(record, this.consumer);  // Changed method name
+						typedAckListener.onShareRecord(record, acknowledgment, this.consumer);
 					}
 					else {
 						// Basic listener remains the same
@@ -293,12 +336,6 @@ public class ShareKafkaMessageListenerContainer<K, V>
 						GenericMessageListener<ConsumerRecord<K, V>> listener =
 								(GenericMessageListener<ConsumerRecord<K, V>>) this.genericListener;
 						listener.onMessage(record);
-					}
-
-					// Handle acknowledgment based on mode
-					if (!this.isExplicitMode) {
-						// In implicit mode, auto-acknowledge as ACCEPT
-						this.consumer.acknowledge(record, AcknowledgeType.ACCEPT);
 					}
 				}
 				catch (Exception e) {
@@ -351,7 +388,57 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		void onRecordAcknowledged(ConsumerRecord<K, V> record) {
 			if (this.isExplicitMode) {
 				this.pendingAcknowledgments.remove(record);
+				this.acknowledgmentTimestamps.remove(record);
 				this.logger.debug(() -> "Record acknowledged, " + this.pendingAcknowledgments.size() + " still pending");
+			}
+		}
+
+		/**
+		 * Process acknowledgments queued from other threads.
+		 * This ensures all consumer access happens on the consumer thread.
+		 */
+		private void processQueuedAcknowledgments() {
+			PendingAcknowledgment<K, V> pendingAck;
+			while ((pendingAck = this.acknowledgmentQueue.poll()) != null) {
+				try {
+					this.consumer.acknowledge(pendingAck.record, pendingAck.type);
+					// Find and notify the acknowledgment object
+					ShareConsumerAcknowledgment ack = this.pendingAcknowledgments.get(pendingAck.record);
+					if (ack != null) {
+						ack.notifyAcknowledged(pendingAck.type);
+						onRecordAcknowledged(pendingAck.record);
+					}
+				}
+				catch (Exception e) {
+					this.logger.error(e, "Failed to process queued acknowledgment for record: " + pendingAck.record);
+				}
+			}
+		}
+
+		/**
+		 * Check if any records have exceeded the acknowledgment timeout and log a warning.
+		 */
+		private void checkAcknowledgmentTimeouts() {
+			if (!this.isExplicitMode || this.acknowledgmentTimestamps.isEmpty()) {
+				return;
+			}
+
+			long currentTime = System.currentTimeMillis();
+			for (Map.Entry<ConsumerRecord<K, V>, Long> entry : this.acknowledgmentTimestamps.entrySet()) {
+				long recordAge = currentTime - entry.getValue();
+				if (recordAge > this.ackTimeoutMs) {
+					ConsumerRecord<K, V> record = entry.getKey();
+					this.logger.warn(() -> String.format(
+						"Record not acknowledged within timeout (%d seconds). " +
+						"In explicit acknowledgment mode, you must call ack.acknowledge(), ack.release(), " +
+						"or ack.reject() for every record. " +
+						"Unacknowledged record: topic='%s', partition=%d, offset=%d",
+						this.ackTimeoutMs / 1000,
+						record.topic(), record.partition(), record.offset()
+					));
+					// Only warn once per record
+					this.acknowledgmentTimestamps.put(record, currentTime);
+				}
 			}
 		}
 
@@ -387,39 +474,46 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			}
 
 			@Override
-			public void acknowledge(AcknowledgeType type) {
-				Assert.notNull(type, "AcknowledgeType cannot be null");
+			public void acknowledge() {
+				acknowledgeInternal(AcknowledgeType.ACCEPT);
+			}
 
+			@Override
+			public void release() {
+				acknowledgeInternal(AcknowledgeType.RELEASE);
+			}
+
+			@Override
+			public void reject() {
+				acknowledgeInternal(AcknowledgeType.REJECT);
+			}
+
+			private void acknowledgeInternal(AcknowledgeType type) {
 				if (!this.acknowledgmentType.compareAndSet(null, type)) {
 					throw new IllegalStateException(
 							String.format("Record at offset %d has already been acknowledged with type %s",
 									this.record.offset(), this.acknowledgmentType.get()));
 				}
 
-				try {
-					// Direct access to container's consumer
-					ShareKafkaMessageListenerContainer.this.listenerConsumer.consumer.acknowledge(this.record, type);
-
-					// Direct notification to container
-					ShareKafkaMessageListenerContainer.this.listenerConsumer.onRecordAcknowledged(this.record);
-
-				}
-				catch (Exception e) {
-					// Reset state if acknowledgment failed
-					this.acknowledgmentType.set(null);
-					throw new ShareAcknowledgmentException(
-							"Failed to acknowledge record at offset " + this.record.offset(), e);
-				}
+				// Queue the acknowledgment to be processed on the consumer thread
+				ShareKafkaMessageListenerContainer.this.listenerConsumer.acknowledgmentQueue.offer(
+						new PendingAcknowledgment<>(this.record, type));
 			}
 
-			@Override
-			public boolean isAcknowledged() {
+			/**
+			 * Called by the consumer thread after successful acknowledgment.
+			 * @param type the type of acknowledgment
+			 */
+			void notifyAcknowledged(AcknowledgeType type) {
+				this.acknowledgmentType.set(type);
+			}
+
+			boolean isAcknowledged() {
 				return this.acknowledgmentType.get() != null;
 			}
 
-			@Override
 			@Nullable
-			public AcknowledgeType getAcknowledgmentType() {
+			AcknowledgeType getAcknowledgmentType() {
 				return this.acknowledgmentType.get();
 			}
 

@@ -98,7 +98,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 
 	private @Nullable Boolean batchListener;
 
-	private @Nullable  Boolean shareConsumer;
+	private @Nullable Boolean shareConsumer;
 
 	private @Nullable KafkaTemplate<?, ?> replyTemplate;
 
@@ -297,8 +297,13 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.shareConsumer = shareConsumer;
 	}
 
-	public @Nullable Boolean getShareConsumer() {
-		return this.shareConsumer;
+	/**
+	 * Return true if this endpoint is for a share consumer.
+	 * @return true for a share consumer endpoint.
+	 * @since 4.0
+	 */
+	public boolean isShareConsumer() {
+		return this.shareConsumer != null && this.shareConsumer;
 	}
 
 	/**

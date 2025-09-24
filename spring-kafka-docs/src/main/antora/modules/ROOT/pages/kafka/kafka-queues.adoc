@@ -231,13 +231,8 @@ private void configureShareGroup(String bootstrapServers, String groupId) throws
 
 Share consumers support two acknowledgment modes that control how records are acknowledged after processing.
 
-[[share-acknowledgment-modes]]
-=== Acknowledgment Modes
-
-Share containers support two acknowledgment modes:
 [[share-implicit-acknowledgment]]
-
-==== Implicit Acknowledgment (Default)
+=== Implicit Acknowledgment (Default)
 In implicit mode, records are automatically acknowledged based on processing outcome:
 
 Successful processing: Records are acknowledged as `ACCEPT`
@@ -259,9 +254,13 @@ public ShareKafkaListenerContainerFactory<String, String> shareKafkaListenerCont
 ----
 
 [[share-explicit-acknowledgment]]
-==== Explicit Acknowledgment
+=== Explicit Acknowledgment
 
-In explicit mode, the application must manually acknowledge each record using the provided ShareAcknowledgment:
+In explicit mode, the application must manually acknowledge each record using the provided ShareAcknowledgment.
+
+There are two ways to configure explicit acknowledgment mode:
+
+==== Option 1: Using Kafka Client Configuration
 
 [source,java]
 ----
@@ -271,25 +270,46 @@ public ShareConsumerFactory<String, String> explicitShareConsumerFactory() {
     props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
     props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-    props.put("share.acknowledgement.mode", "explicit");
+    props.put(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG, "explicit"); // Official Kafka client config
     return new DefaultShareConsumerFactory<>(props);
 }
+----
 
+==== Option 2: Using Spring Container Configuration
+
+[source,java]
+----
 @Bean
 public ShareKafkaListenerContainerFactory<String, String> explicitShareKafkaListenerContainerFactory(
-    ShareConsumerFactory<String, String> explicitShareConsumerFactory) {
-    return new ShareKafkaListenerContainerFactory<>(explicitShareConsumerFactory);
+    ShareConsumerFactory<String, String> shareConsumerFactory) {
+
+    ShareKafkaListenerContainerFactory<String, String> factory =
+        new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
+
+    // Configure acknowledgment mode at container factory level
+    factory.getContainerProperties()
+        .setShareAcknowledgmentMode(ContainerProperties.ShareAcknowledgmentMode.EXPLICIT);
+
+    return factory;
 }
 ----
+
+==== Configuration Precedence
+
+When both configuration methods are used, Spring Kafka follows this precedence order (highest to lowest):
+
+1. **Container Properties**: `containerProperties.setShareAcknowledgmentMode()`
+2. **Consumer Config**: `ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG`
+3. **Default**: `ShareAcknowledgmentMode.IMPLICIT`
 
 [[share-acknowledgment-types]]
 === Acknowledgment Types
 
 Share consumers support three acknowledgment types:
 
-`ACCEPT`: Record processed successfully, mark as completed
-`RELEASE`: Temporary failure, make record available for redelivery
-`REJECT`: Permanent failure, do not retry
+ ACCEPT: Record processed successfully, mark as completed
+ RELEASE: Temporary failure, make record available for redelivery
+ REJECT: Permanent failure, do not retry
 
 [[share-acknowledgment-api]]
 === ShareAcknowledgment API
@@ -326,46 +346,60 @@ public void listen(ConsumerRecord<String, String> record) {
 }
 ----
 
-[[share-consumer-aware-listener]]
-==== ShareConsumerAwareMessageListener
-
-Access the ShareConsumer instance for advanced operations:
-
-[source,java]
-----
-@KafkaListener(topics = "my-topic", containerFactory = "shareKafkaListenerContainerFactory")
-public void listen(ConsumerRecord<String, String> record, ShareConsumer<?, ?> consumer) {
-    System.out.println("Received: " + record.value());
-    // Access consumer metrics, etc.
-}
-----
-
 [[share-acknowledging-listener]]
 ==== AcknowledgingShareConsumerAwareMessageListener
 
-Use explicit acknowledgment with full consumer access:
+This interface provides access to the ShareConsumer instance with optional acknowledgment support.
+The acknowledgment parameter is nullable and depends on the container's acknowledgment mode:
+
+===== Implicit Mode Example (acknowledgment is null)
+
+[source,java]
+----
+@KafkaListener(
+    topics = "my-topic",
+    containerFactory = "shareKafkaListenerContainerFactory"  // Implicit mode by default
+)
+public void listen(ConsumerRecord<String, String> record,
+                  @Nullable ShareAcknowledgment acknowledgment,
+                  ShareConsumer<?, ?> consumer) {
+
+    // In implicit mode, acknowledgment is null
+    System.out.println("Received: " + record.value());
+
+    // Access consumer metrics if needed
+    Map<MetricName, ? extends Metric> metrics = consumer.metrics();
+
+    // Record is auto-acknowledged as ACCEPT on success, REJECT on error
+}
+----
+
+===== Explicit Mode Example (acknowledgment is non-null)
 
 [source,java]
 ----
 @Component
 public class ExplicitAckListener {
-@KafkaListener(
-    topics = "my-topic",
-    containerFactory = "explicitShareKafkaListenerContainerFactory"
-)
-public void listen(ConsumerRecord<String, String> record,
-                  ShareAcknowledgment acknowledgment,
-                  ShareConsumer<?, ?> consumer) {
+    @KafkaListener(
+        topics = "my-topic",
+        containerFactory = "explicitShareKafkaListenerContainerFactory"
+    )
+    public void listen(ConsumerRecord<String, String> record,
+                      @Nullable ShareAcknowledgment acknowledgment,
+                      ShareConsumer<?, ?> consumer) {
 
-    try {
-        processRecord(record);
-        acknowledgment.acknowledge(); // ACCEPT
-    } catch (RetryableException e) {
-        acknowledgment.release(); // Will be redelivered
-    } catch (Exception e) {
-        acknowledgment.reject(); // Permanent failure
+        // In explicit mode, acknowledgment is non-null
+        try {
+            processRecord(record);
+            acknowledgment.acknowledge(); // ACCEPT
+        }
+		catch (RetryableException e) {
+            acknowledgment.release(); // Will be redelivered
+        }
+		catch (Exception e) {
+            acknowledgment.reject(); // Permanent failure
+        }
     }
-}
 
     private void processRecord(ConsumerRecord<String, String> record) {
         // Business logic here
@@ -386,6 +420,37 @@ Error Handling: If processing throws an exception, the record is automatically a
 In explicit mode, failing to acknowledge records will block further message processing.
 Always ensure records are acknowledged in all code paths.
 
+[[share-acknowledgment-timeout]]
+==== Acknowledgment Timeout Detection
+
+To help identify missing acknowledgments, Spring Kafka provides configurable timeout detection.
+When a record is not acknowledged within the specified timeout, a warning is logged with details about the unacknowledged record.
+
+[source,java]
+----
+@Bean
+public ShareKafkaListenerContainerFactory<String, String> shareKafkaListenerContainerFactory(
+    ShareConsumerFactory<String, String> shareConsumerFactory) {
+    ShareKafkaListenerContainerFactory<String, String> factory =
+        new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
+
+    // Set acknowledgment timeout (default is 60 seconds)
+    factory.getContainerProperties().setShareAcknowledgmentTimeout(Duration.ofSeconds(30));
+
+    return factory;
+}
+----
+
+When a record exceeds the timeout, you'll see a warning like:
+----
+WARN: Record not acknowledged within timeout (30 seconds).
+In explicit acknowledgment mode, you must call ack.acknowledge(), ack.release(),
+or ack.reject() for every record.
+Unacknowledged record: topic='my-topic', partition=0, offset=123
+----
+
+This feature helps developers quickly identify when acknowledgment calls are missing from their code, preventing the common issue of "Spring Kafka does not consume new records any more" due to forgotten acknowledgments.
+
 [[share-acknowledgment-examples]]
 === Acknowledgment Examples
 
@@ -405,7 +470,6 @@ Always ensure records are acknowledged in all code paths.
                 }
                 else {
                     acknowledgment.release(); // Temporary failure - retry later
-                }
                 }
                 else {
                     acknowledgment.reject(); // Invalid order - don't retry

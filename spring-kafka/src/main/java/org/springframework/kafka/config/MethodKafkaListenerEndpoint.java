@@ -211,7 +211,7 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 			@Nullable MessageConverter messageConverter) {
 
 		MessagingMessageListenerAdapter<K, V> listener;
-		if (getShareConsumer() != null && getShareConsumer()) {
+		if (isShareConsumer()) {
 			ShareRecordMessagingMessageListenerAdapter<K, V> messageListener = new ShareRecordMessagingMessageListenerAdapter<>(
 					this.bean, this.method, this.errorHandler);
 			if (messageConverter instanceof RecordMessageConverter recordMessageConverter) {
