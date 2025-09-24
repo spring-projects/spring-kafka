@@ -40,6 +40,7 @@ import org.springframework.core.annotation.MergedAnnotations;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.test.utils.JUnitUtils;
 import org.springframework.kafka.test.utils.JUnitUtils.LevelsContainer;
+import org.springframework.util.Assert;
 
 /**
  * JUnit condition that adjusts and reverts log levels before/after each test.
@@ -128,6 +129,7 @@ public class LogLevelsCondition
 		LogLevels logLevels = store.remove(STORE_ANNOTATION_KEY, LogLevels.class);
 		if (logLevels != null) {
 			LevelsContainer container = store.get(STORE_CONTAINER_KEY, LevelsContainer.class);
+			Assert.notNull(container, "Container should not be null");
 			JUnitUtils.revertLevels(context.getDisplayName(), container);
 			store.remove(STORE_CONTAINER_KEY);
 		}
