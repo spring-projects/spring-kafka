@@ -43,13 +43,13 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import reactor.core.publisher.Mono;
 
-import org.springframework.context.expression.MapAccessor;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.expression.BeanResolver;
 import org.springframework.expression.Expression;
 import org.springframework.expression.common.LiteralExpression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.expression.spel.support.MapAccessor;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.expression.spel.support.StandardTypeConverter;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -735,8 +735,8 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		try {
 			Throwable cause = t instanceof CompletionException ? t.getCause() : t;
 			handleException(request, acknowledgment, consumer, source,
-							new ListenerExecutionFailedException(createMessagingErrorMessage(
-									"Async Fail", Objects.requireNonNull(source).getPayload()), cause));
+					new ListenerExecutionFailedException(createMessagingErrorMessage(
+							"Async Fail", Objects.requireNonNull(source).getPayload()), cause));
 		}
 		catch (Throwable ex) {
 			acknowledge(acknowledgment);

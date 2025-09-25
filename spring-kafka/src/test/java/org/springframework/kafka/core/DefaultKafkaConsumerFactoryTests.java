@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.kafka.clients.consumer.CloseOptions;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -490,7 +491,7 @@ public class DefaultKafkaConsumerFactoryTests {
 		assertThat(adds.get(0)).isEqualTo("cf.foo-0");
 		assertThat(removals).isEmpty();
 		if (closeWithTimeout) {
-			consumer.close(Duration.ofSeconds(10));
+			consumer.close(CloseOptions.timeout(Duration.ofSeconds(10)));
 		}
 		else {
 			consumer.close();

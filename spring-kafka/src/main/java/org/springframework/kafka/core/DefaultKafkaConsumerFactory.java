@@ -16,7 +16,6 @@
 
 package org.springframework.kafka.core;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -32,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.consumer.CloseOptions;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -524,8 +524,8 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 		}
 
 		@Override
-		public void close(Duration timeout) {
-			super.close(timeout);
+		public void close(CloseOptions option) {
+			super.close(option);
 			notifyConsumerRemoved();
 		}
 
