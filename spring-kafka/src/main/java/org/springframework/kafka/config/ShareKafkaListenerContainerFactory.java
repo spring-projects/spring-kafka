@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.regex.Pattern;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.context.ApplicationContext;
@@ -125,14 +126,90 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	protected void initializeContainer(ShareKafkaMessageListenerContainer<K, V> instance, KafkaListenerEndpoint endpoint) {
 		ContainerProperties properties = instance.getContainerProperties();
 		Boolean effectiveAutoStartup = endpoint.getAutoStartup() != null ? endpoint.getAutoStartup() : this.autoStartup;
+
+		// Validate share group configuration
+		validateShareConfiguration(endpoint);
+
+		// Determine acknowledgment mode following Spring Kafka's configuration precedence patterns
+		ContainerProperties.ShareAcknowledgmentMode ackMode = determineAcknowledgmentMode(properties);
+		properties.setShareAcknowledgmentMode(ackMode);
+
 		JavaUtils.INSTANCE
 				.acceptIfNotNull(effectiveAutoStartup, instance::setAutoStartup)
 				.acceptIfNotNull(this.phase, instance::setPhase)
 				.acceptIfNotNull(this.applicationContext, instance::setApplicationContext)
 				.acceptIfNotNull(this.applicationEventPublisher, instance::setApplicationEventPublisher)
 				.acceptIfNotNull(endpoint.getGroupId(), properties::setGroupId)
-				.acceptIfNotNull(endpoint.getClientIdPrefix(), properties::setClientId)
-				.acceptIfNotNull(endpoint.getConsumerProperties(), properties::setKafkaConsumerProperties);
+				.acceptIfNotNull(endpoint.getClientIdPrefix(), properties::setClientId);
+	}
+
+	/**
+	 * Determine the acknowledgment mode following Spring Kafka's configuration precedence patterns.
+	 * <p>
+	 * Configuration precedence (highest to lowest):
+	 * <ol>
+	 * <li>Container Properties: {@code containerProperties.getShareAcknowledgmentMode()} (if explicitly set)</li>
+	 * <li>Consumer Config: {@code ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG}</li>
+	 * <li>Default: {@code ShareAcknowledgmentMode.IMPLICIT}</li>
+	 * </ol>
+	 *
+	 * @param containerProperties the container properties to check
+	 * @return the resolved acknowledgment mode
+	 * @throws IllegalArgumentException if an invalid acknowledgment mode is configured
+	 */
+	private ContainerProperties.ShareAcknowledgmentMode determineAcknowledgmentMode(ContainerProperties containerProperties) {
+		// 1. Check if explicitly set at container level (highest priority)
+		// Note: We need to check if it was explicitly set vs using the default
+		// For now, we assume if it's not the default, it was explicitly set
+		ContainerProperties.ShareAcknowledgmentMode containerMode = containerProperties.getShareAcknowledgmentMode();
+		if (containerMode != ContainerProperties.ShareAcknowledgmentMode.IMPLICIT) {
+			// Container level setting takes precedence
+			return containerMode;
+		}
+
+		// 2. Check Kafka client configuration (middle priority)
+		Object clientAckMode = this.shareConsumerFactory.getConfigurationProperties()
+				.get(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG);
+
+		if (clientAckMode != null) {
+			String mode = clientAckMode.toString();
+			if ("explicit".equals(mode)) {
+				return ContainerProperties.ShareAcknowledgmentMode.EXPLICIT;
+			}
+			else if ("implicit".equals(mode)) {
+				return ContainerProperties.ShareAcknowledgmentMode.IMPLICIT;
+			}
+			else {
+				throw new IllegalArgumentException(
+						"Invalid " + ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG + ": " + mode +
+						". Must be 'implicit' or 'explicit'");
+			}
+		}
+		// 3. Default (lowest priority)
+		return ContainerProperties.ShareAcknowledgmentMode.IMPLICIT;
+	}
+
+	private void validateShareConfiguration(KafkaListenerEndpoint endpoint) {
+		// Validate that batch listeners aren't used with share consumers
+		if (Boolean.TRUE.equals(endpoint.getBatchListener())) {
+			throw new IllegalArgumentException(
+					"Batch listeners are not supported with share consumers. " +
+							"Share groups operate at the record level.");
+		}
+
+		// Validate acknowledgment mode consistency using official Kafka client configuration
+		Object ackMode = this.shareConsumerFactory.getConfigurationProperties()
+				.get(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG);
+		if (ackMode != null) {
+			String ackModeStr = ackMode.toString().toLowerCase();
+			boolean isValid = Arrays.stream(ContainerProperties.ShareAcknowledgmentMode.values())
+					.anyMatch(mode -> mode.name().toLowerCase().equals(ackModeStr));
+			if (!isValid) {
+				throw new IllegalArgumentException(
+					"Invalid " + ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG + ": " + ackMode +
+							". Must be 'implicit' or 'explicit'");
+			}
+		}
 	}
 
 	@Override

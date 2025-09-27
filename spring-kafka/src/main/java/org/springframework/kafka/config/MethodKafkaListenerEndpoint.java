@@ -36,6 +36,7 @@ import org.springframework.kafka.listener.adapter.BatchToRecordAdapter;
 import org.springframework.kafka.listener.adapter.HandlerAdapter;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
+import org.springframework.kafka.listener.adapter.ShareRecordMessagingMessageListenerAdapter;
 import org.springframework.kafka.support.JavaUtils;
 import org.springframework.kafka.support.converter.BatchMessageConverter;
 import org.springframework.kafka.support.converter.MessageConverter;
@@ -210,7 +211,15 @@ public class MethodKafkaListenerEndpoint<K, V> extends AbstractKafkaListenerEndp
 			@Nullable MessageConverter messageConverter) {
 
 		MessagingMessageListenerAdapter<K, V> listener;
-		if (isBatchListener()) {
+		if (isShareConsumer()) {
+			ShareRecordMessagingMessageListenerAdapter<K, V> messageListener = new ShareRecordMessagingMessageListenerAdapter<>(
+					this.bean, this.method, this.errorHandler);
+			if (messageConverter instanceof RecordMessageConverter recordMessageConverter) {
+				messageListener.setMessageConverter(recordMessageConverter);
+			}
+			listener = messageListener;
+		}
+		else if (isBatchListener()) {
 			BatchMessagingMessageListenerAdapter<K, V> messageListener = new BatchMessagingMessageListenerAdapter<>(
 					this.bean, this.method, this.errorHandler);
 			BatchToRecordAdapter<K, V> batchToRecordAdapter = getBatchToRecordAdapter();
