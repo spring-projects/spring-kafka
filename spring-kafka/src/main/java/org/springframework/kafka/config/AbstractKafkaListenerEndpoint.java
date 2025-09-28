@@ -293,7 +293,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 		this.batchListener = batchListener;
 	}
 
-	public void setShareConsumer(Boolean shareConsumer) {
+	public void setShareConsumer(boolean shareConsumer) {
 		this.shareConsumer = shareConsumer;
 	}
 

@@ -81,7 +81,7 @@ class ShareKafkaMessageListenerContainerConstraintTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setShareAcknowledgmentMode(ContainerProperties.ShareAcknowledgmentMode.EXPLICIT);
+		containerProps.setExplicitShareAcknowledgment(true);
 
 		CountDownLatch firstBatchLatch = new CountDownLatch(3);
 		CountDownLatch secondBatchLatch = new CountDownLatch(2);
@@ -153,7 +153,7 @@ class ShareKafkaMessageListenerContainerConstraintTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setShareAcknowledgmentMode(ContainerProperties.ShareAcknowledgmentMode.EXPLICIT);
+		containerProps.setExplicitShareAcknowledgment(true);
 
 		CountDownLatch batchLatch = new CountDownLatch(4);
 		CountDownLatch nextPollLatch = new CountDownLatch(1);
@@ -227,7 +227,7 @@ class ShareKafkaMessageListenerContainerConstraintTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setShareAcknowledgmentMode(ContainerProperties.ShareAcknowledgmentMode.EXPLICIT);
+		containerProps.setExplicitShareAcknowledgment(true);
 
 		CountDownLatch processedLatch = new CountDownLatch(1);
 		AtomicReference<ShareAcknowledgment> ackRef = new AtomicReference<>();
@@ -290,7 +290,7 @@ class ShareKafkaMessageListenerContainerConstraintTests {
 	}
 
 	// Utility methods
-	private Map<String, Object> createConsumerProps(String bootstrapServers, String groupId, boolean explicit) {
+	private static Map<String, Object> createConsumerProps(String bootstrapServers, String groupId, boolean explicit) {
 		Map<String, Object> props = new HashMap<>();
 		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
@@ -302,7 +302,7 @@ class ShareKafkaMessageListenerContainerConstraintTests {
 		return props;
 	}
 
-	private void produceTestRecords(String bootstrapServers, String topic, int count) throws Exception {
+	private static void produceTestRecords(String bootstrapServers, String topic, int count) throws Exception {
 		try (var producer = createProducer(bootstrapServers)) {
 			for (int i = 0; i < count; i++) {
 				producer.send(new ProducerRecord<>(topic, "key" + i, "value" + i)).get();
@@ -310,7 +310,7 @@ class ShareKafkaMessageListenerContainerConstraintTests {
 		}
 	}
 
-	private KafkaProducer<String, String> createProducer(String bootstrapServers) {
+	private static KafkaProducer<String, String> createProducer(String bootstrapServers) {
 		Map<String, Object> producerProps = new HashMap<>();
 		producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -318,7 +318,7 @@ class ShareKafkaMessageListenerContainerConstraintTests {
 		return new KafkaProducer<>(producerProps);
 	}
 
-	private void setShareAutoOffsetResetEarliest(String bootstrapServers, String groupId) throws Exception {
+	private static void setShareAutoOffsetResetEarliest(String bootstrapServers, String groupId) throws Exception {
 		Map<String, Object> adminProperties = new HashMap<>();
 		adminProperties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		ConfigEntry entry = new ConfigEntry("share.auto.offset.reset", "earliest");
@@ -334,7 +334,7 @@ class ShareKafkaMessageListenerContainerConstraintTests {
 	 * Helper method to access internal acknowledgment state for testing.
 	 * Since isAcknowledged() was removed from the public interface, we use reflection.
 	 */
-	private boolean isAcknowledgedInternal(ShareAcknowledgment ack) {
+	private static boolean isAcknowledgedInternal(ShareAcknowledgment ack) {
 		try {
 			java.lang.reflect.Method method = ack.getClass().getDeclaredMethod("isAcknowledged");
 			method.setAccessible(true);

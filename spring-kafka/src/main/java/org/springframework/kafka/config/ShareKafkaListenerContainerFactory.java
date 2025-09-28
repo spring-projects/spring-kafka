@@ -131,8 +131,8 @@ public class ShareKafkaListenerContainerFactory<K, V>
 		validateShareConfiguration(endpoint);
 
 		// Determine acknowledgment mode following Spring Kafka's configuration precedence patterns
-		ContainerProperties.ShareAcknowledgmentMode ackMode = determineAcknowledgmentMode(properties);
-		properties.setShareAcknowledgmentMode(ackMode);
+		boolean explicitAck = determineExplicitAcknowledgment(properties);
+		properties.setExplicitShareAcknowledgment(explicitAck);
 
 		JavaUtils.INSTANCE
 				.acceptIfNotNull(effectiveAutoStartup, instance::setAutoStartup)
@@ -144,40 +144,30 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	}
 
 	/**
-	 * Determine the acknowledgment mode following Spring Kafka's configuration precedence patterns.
+	 * Determine whether explicit acknowledgment is required following Spring Kafka's configuration precedence patterns.
 	 * <p>
 	 * Configuration precedence (highest to lowest):
 	 * <ol>
-	 * <li>Container Properties: {@code containerProperties.getShareAcknowledgmentMode()} (if explicitly set)</li>
+	 * <li>Container Properties: {@code containerProperties.isExplicitShareAcknowledgment()} (if explicitly set)</li>
 	 * <li>Consumer Config: {@code ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG}</li>
-	 * <li>Default: {@code ShareAcknowledgmentMode.IMPLICIT}</li>
+	 * <li>Default: {@code false} (implicit acknowledgment)</li>
 	 * </ol>
-	 *
 	 * @param containerProperties the container properties to check
-	 * @return the resolved acknowledgment mode
+	 * @return true if explicit acknowledgment is required, false for implicit
 	 * @throws IllegalArgumentException if an invalid acknowledgment mode is configured
 	 */
-	private ContainerProperties.ShareAcknowledgmentMode determineAcknowledgmentMode(ContainerProperties containerProperties) {
-		// 1. Check if explicitly set at container level (highest priority)
-		// Note: We need to check if it was explicitly set vs using the default
-		// For now, we assume if it's not the default, it was explicitly set
-		ContainerProperties.ShareAcknowledgmentMode containerMode = containerProperties.getShareAcknowledgmentMode();
-		if (containerMode != ContainerProperties.ShareAcknowledgmentMode.IMPLICIT) {
-			// Container level setting takes precedence
-			return containerMode;
-		}
-
-		// 2. Check Kafka client configuration (middle priority)
+	private boolean determineExplicitAcknowledgment(ContainerProperties containerProperties) {
+		// Check Kafka client configuration
 		Object clientAckMode = this.shareConsumerFactory.getConfigurationProperties()
 				.get(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG);
 
 		if (clientAckMode != null) {
-			String mode = clientAckMode.toString();
+			String mode = clientAckMode.toString().toLowerCase();
 			if ("explicit".equals(mode)) {
-				return ContainerProperties.ShareAcknowledgmentMode.EXPLICIT;
+				return true;
 			}
 			else if ("implicit".equals(mode)) {
-				return ContainerProperties.ShareAcknowledgmentMode.IMPLICIT;
+				return false;
 			}
 			else {
 				throw new IllegalArgumentException(
@@ -185,8 +175,8 @@ public class ShareKafkaListenerContainerFactory<K, V>
 						". Must be 'implicit' or 'explicit'");
 			}
 		}
-		// 3. Default (lowest priority)
-		return ContainerProperties.ShareAcknowledgmentMode.IMPLICIT;
+		// Default to implicit acknowledgment (false)
+		return containerProperties.isExplicitShareAcknowledgment();
 	}
 
 	private void validateShareConfiguration(KafkaListenerEndpoint endpoint) {
@@ -197,19 +187,6 @@ public class ShareKafkaListenerContainerFactory<K, V>
 							"Share groups operate at the record level.");
 		}
 
-		// Validate acknowledgment mode consistency using official Kafka client configuration
-		Object ackMode = this.shareConsumerFactory.getConfigurationProperties()
-				.get(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG);
-		if (ackMode != null) {
-			String ackModeStr = ackMode.toString().toLowerCase();
-			boolean isValid = Arrays.stream(ContainerProperties.ShareAcknowledgmentMode.values())
-					.anyMatch(mode -> mode.name().toLowerCase().equals(ackModeStr));
-			if (!isValid) {
-				throw new IllegalArgumentException(
-					"Invalid " + ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG + ": " + ackMode +
-							". Must be 'implicit' or 'explicit'");
-			}
-		}
 	}
 
 	@Override

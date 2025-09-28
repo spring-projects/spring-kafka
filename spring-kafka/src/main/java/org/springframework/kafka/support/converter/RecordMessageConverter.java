@@ -18,15 +18,11 @@ package org.springframework.kafka.support.converter;
 
 import java.lang.reflect.Type;
 
-import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ShareConsumer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.kafka.support.ShareAcknowledgment;
 import org.springframework.messaging.Message;
 
 /**
@@ -40,17 +36,13 @@ public interface RecordMessageConverter extends MessageConverter {
 	/**
 	 * Convert a {@link ConsumerRecord} to a {@link Message}.
 	 * @param record the record.
-	 * @param acknowledgment the acknowledgment.
-	 * @param consumer the consumer
+	 * @param acknowledgment the acknowledgment (can be Acknowledgment or ShareAcknowledgment).
+	 * @param consumer the consumer (can be Consumer or ShareConsumer).
 	 * @param payloadType the required payload type.
 	 * @return the message.
 	 */
 	@NonNull
-	Message<?> toMessage(ConsumerRecord<?, ?> record, @Nullable Acknowledgment acknowledgment, @Nullable Consumer<?, ?> consumer,
-			@Nullable Type payloadType);
-
-	@NonNull
-	Message<?> toShareMessage(ConsumerRecord<?, ?> record, @Nullable ShareAcknowledgment acknowledgment, @Nullable ShareConsumer<?, ?> consumer,
+	Message<?> toMessage(ConsumerRecord<?, ?> record, @Nullable Object acknowledgment, @Nullable Object consumer,
 			@Nullable Type payloadType);
 
 	/**

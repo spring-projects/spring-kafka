@@ -16,16 +16,6 @@
 
 package org.springframework.kafka.listener;
 
-import java.time.Duration;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.kafka.clients.consumer.AcknowledgeType;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.ShareConsumer;
-import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -34,16 +24,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.ShareConsumerFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.ArgumentMatchers.notNull;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willThrow;
-import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
+/**
+ * Unit tests for {@link ShareKafkaMessageListenerContainer}.
+ * These tests focus on configuration validation and setup logic.
+ * Message processing, acknowledgment behavior, and error handling are covered
+ * by integration tests in {@link ShareKafkaMessageListenerContainerIntegrationTests}.
+ *
+ * @author Soby Chacko
+ * @since 4.0
+ */
 @ExtendWith(MockitoExtension.class)
 public class ShareKafkaMessageListenerContainerUnitTests {
 
@@ -51,32 +42,22 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 	private ShareConsumerFactory<String, String> shareConsumerFactory;
 
 	@Mock
-	private ShareConsumer<String, String> shareConsumer;
-
-	@Mock
 	private MessageListener<String, String> messageListener;
 
 	@Mock
 	private AcknowledgingShareConsumerAwareMessageListener<String, String> ackListener;
 
-	private ContainerProperties containerProperties;
-
-	private ConsumerRecord<String, String> testRecord;
-
-	private ConsumerRecords<String, String> testRecords;
-
 	@Test
 	void shouldConfigureExplicitModeCorrectly() {
-
 		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		containerProperties.setShareAcknowledgmentMode(ContainerProperties.ShareAcknowledgmentMode.EXPLICIT);
+		containerProperties.setExplicitShareAcknowledgment(true);
 		containerProperties.setMessageListener(ackListener);
 
 		ShareKafkaMessageListenerContainer<String, String> container =
 				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
 
-		assertThat(container.getContainerProperties().getShareAcknowledgmentMode())
-				.isEqualTo(ContainerProperties.ShareAcknowledgmentMode.EXPLICIT);
+		assertThat(container.getContainerProperties().isExplicitShareAcknowledgment())
+				.isTrue();
 	}
 
 	@Test
@@ -87,303 +68,40 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		ShareKafkaMessageListenerContainer<String, String> container =
 				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
 
-		assertThat(container.getContainerProperties().getShareAcknowledgmentMode())
-				.isEqualTo(ContainerProperties.ShareAcknowledgmentMode.IMPLICIT);
+		assertThat(container.getContainerProperties().isExplicitShareAcknowledgment())
+				.isFalse();
 	}
 
 	@Test
-	void shouldInvokeBasicMessageListener() throws Exception {
-		// Setup test data
-		ConsumerRecord<String, String> testRecord = new ConsumerRecord<>("test-topic", 0, 100L, "key", "value");
-		Map<TopicPartition, List<ConsumerRecord<String, String>>> records = new HashMap<>();
-		records.put(new TopicPartition("test-topic", 0), List.of(testRecord));
-		ConsumerRecords<String, String> testRecords = new ConsumerRecords<>(records, Map.of());
-
-		// Setup mocks
-		given(shareConsumerFactory.createShareConsumer(any(), any())).willReturn(shareConsumer);
-		given(shareConsumer.poll(any(Duration.class)))
-				.willReturn(testRecords)
-				.willReturn(ConsumerRecords.empty());
-
+	void shouldFailWhenExplicitModeUsedWithNonAcknowledgingListener() {
+		// Given: A container with explicit acknowledgment mode
 		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setExplicitShareAcknowledgment(true);
+		// Using a non-acknowledging listener (just GenericMessageListener)
 		containerProperties.setMessageListener(messageListener);
 
 		ShareKafkaMessageListenerContainer<String, String> container =
 				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
 
-		container.start();
-		Thread.sleep(1000);
-		container.stop();
-
-		verify(messageListener, atLeastOnce()).onMessage(testRecord);
-		verify(shareConsumer, never()).acknowledge(testRecord, AcknowledgeType.ACCEPT);
+		// Starting the container should fail with validation error
+		assertThatExceptionOfType(IllegalStateException.class)
+				.isThrownBy(container::start)
+				.withMessageContaining("Explicit acknowledgment mode requires an AcknowledgingShareConsumerAwareMessageListener");
 	}
 
 	@Test
-	void shouldInvokeShareConsumerAwareListenerInImplicitMode() throws Exception {
-		// Setup test data
-		ConsumerRecord<String, String> testRecord = new ConsumerRecord<>("test-topic", 0, 100L, "key", "value");
-		Map<TopicPartition, List<ConsumerRecord<String, String>>> records = new HashMap<>();
-		records.put(new TopicPartition("test-topic", 0), List.of(testRecord));
-		ConsumerRecords<String, String> testRecords = new ConsumerRecords<>(records, Map.of());
-
-		// Setup mocks
-		given(shareConsumerFactory.createShareConsumer(any(), any())).willReturn(shareConsumer);
-		given(shareConsumer.poll(any(Duration.class)))
-				.willReturn(testRecords)
-				.willReturn(ConsumerRecords.empty());
-
+	void shouldValidateListenerTypeOnStartup() {
+		// Given: A container with explicit acknowledgment mode and proper listener
 		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		// Using the unified interface with implicit mode (acknowledgment will be null)
+		containerProperties.setExplicitShareAcknowledgment(true);
+		// Using an acknowledging listener should not throw during construction
 		containerProperties.setMessageListener(ackListener);
 
 		ShareKafkaMessageListenerContainer<String, String> container =
 				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
 
-		container.start();
-		Thread.sleep(1000);
-		container.stop();
-
-		// In implicit mode, acknowledgment should be null
-		verify(ackListener, atLeastOnce()).onShareRecord(eq(testRecord), isNull(), eq(shareConsumer));
-		verify(shareConsumer, never()).acknowledge(testRecord, AcknowledgeType.ACCEPT);
-	}
-
-	@Test
-	void shouldInvokeAckListenerWithNullInImplicitMode() throws Exception {
-		// Setup test data
-		ConsumerRecord<String, String> testRecord = new ConsumerRecord<>("test-topic", 0, 100L, "key", "value");
-		Map<TopicPartition, List<ConsumerRecord<String, String>>> records = new HashMap<>();
-		records.put(new TopicPartition("test-topic", 0), List.of(testRecord));
-		ConsumerRecords<String, String> testRecords = new ConsumerRecords<>(records, Map.of());
-
-		// Setup mocks
-		given(shareConsumerFactory.createShareConsumer(any(), any())).willReturn(shareConsumer);
-		given(shareConsumer.poll(any(Duration.class)))
-				.willReturn(testRecords)
-				.willReturn(ConsumerRecords.empty());
-
-		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		containerProperties.setMessageListener(ackListener);
-		// Default is implicit mode
-
-		ShareKafkaMessageListenerContainer<String, String> container =
-				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
-
-		container.start();
-		Thread.sleep(1000);
-		container.stop();
-
-		verify(ackListener, atLeastOnce()).onShareRecord(eq(testRecord), isNull(), eq(shareConsumer));
-		verify(shareConsumer, never()).acknowledge(testRecord, AcknowledgeType.ACCEPT);
-	}
-
-	@Test
-	void shouldInvokeAckListenerWithAckInExplicitMode() throws Exception {
-		// Setup test data
-		ConsumerRecord<String, String> testRecord = new ConsumerRecord<>("test-topic", 0, 100L, "key", "value");
-		Map<TopicPartition, List<ConsumerRecord<String, String>>> records = new HashMap<>();
-		records.put(new TopicPartition("test-topic", 0), List.of(testRecord));
-		ConsumerRecords<String, String> testRecords = new ConsumerRecords<>(records, Map.of());
-
-		// Setup mocks
-		given(shareConsumerFactory.createShareConsumer(any(), any())).willReturn(shareConsumer);
-		given(shareConsumer.poll(any(Duration.class)))
-				.willReturn(testRecords)
-				.willReturn(ConsumerRecords.empty());
-
-		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		containerProperties.setShareAcknowledgmentMode(ContainerProperties.ShareAcknowledgmentMode.EXPLICIT);
-		containerProperties.setMessageListener(ackListener);
-
-		ShareKafkaMessageListenerContainer<String, String> container =
-				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
-
-		container.start();
-		Thread.sleep(1000);
-		container.stop();
-
-		verify(ackListener, atLeastOnce()).onShareRecord(eq(testRecord), notNull(), eq(shareConsumer));
-		// No auto-acknowledgment in explicit mode
-		verify(shareConsumer, never()).acknowledge(any(), any());
-	}
-
-	@Test
-	void shouldHandleProcessingErrorInImplicitMode() throws Exception {
-		// Setup test data
-		ConsumerRecord<String, String> testRecord = new ConsumerRecord<>("test-topic", 0, 100L, "key", "value");
-		Map<TopicPartition, List<ConsumerRecord<String, String>>> records = new HashMap<>();
-		records.put(new TopicPartition("test-topic", 0), List.of(testRecord));
-		ConsumerRecords<String, String> testRecords = new ConsumerRecords<>(records, Map.of());
-
-		// Setup mocks
-		given(shareConsumerFactory.createShareConsumer(any(), any())).willReturn(shareConsumer);
-		given(shareConsumer.poll(any(Duration.class)))
-				.willReturn(testRecords)
-				.willReturn(ConsumerRecords.empty());
-		willThrow(new RuntimeException("Processing error")).given(messageListener).onMessage(any());
-
-		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		containerProperties.setMessageListener(messageListener);
-
-		ShareKafkaMessageListenerContainer<String, String> container =
-				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
-
-		container.start();
-		Thread.sleep(1000);
-		container.stop();
-
-		verify(messageListener, atLeastOnce()).onMessage(testRecord);
-		// Should auto-reject on error
-		verify(shareConsumer, atLeastOnce()).acknowledge(testRecord, AcknowledgeType.REJECT);
-	}
-
-	@Test
-	void shouldHandleProcessingErrorInExplicitMode() throws Exception {
-		// Setup test data
-		ConsumerRecord<String, String> testRecord = new ConsumerRecord<>("test-topic", 0, 100L, "key", "value");
-		Map<TopicPartition, List<ConsumerRecord<String, String>>> records = new HashMap<>();
-		records.put(new TopicPartition("test-topic", 0), List.of(testRecord));
-		ConsumerRecords<String, String> testRecords = new ConsumerRecords<>(records, Map.of());
-
-		// Setup mocks
-		given(shareConsumerFactory.createShareConsumer(any(), any())).willReturn(shareConsumer);
-		given(shareConsumer.poll(any(Duration.class)))
-				.willReturn(testRecords)
-				.willReturn(ConsumerRecords.empty());
-		willThrow(new RuntimeException("Processing error")).given(ackListener).onShareRecord(any(), any(), any());
-
-		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		containerProperties.setShareAcknowledgmentMode(ContainerProperties.ShareAcknowledgmentMode.EXPLICIT);
-		containerProperties.setMessageListener(ackListener);
-
-		ShareKafkaMessageListenerContainer<String, String> container =
-				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
-
-		container.start();
-		Thread.sleep(1000);
-		container.stop();
-
-		verify(ackListener, atLeastOnce()).onShareRecord(eq(testRecord), notNull(), eq(shareConsumer));
-		// Should auto-reject on error in explicit mode too
-		verify(shareConsumer, atLeastOnce()).acknowledge(testRecord, AcknowledgeType.REJECT);
-	}
-
-	@Test
-	void shouldCommitAcknowledgments() throws Exception {
-		// Setup test data
-		ConsumerRecord<String, String> testRecord = new ConsumerRecord<>("test-topic", 0, 100L, "key", "value");
-		Map<TopicPartition, List<ConsumerRecord<String, String>>> records = new HashMap<>();
-		records.put(new TopicPartition("test-topic", 0), List.of(testRecord));
-		ConsumerRecords<String, String> testRecords = new ConsumerRecords<>(records, Map.of());
-
-		// Setup mocks
-		given(shareConsumerFactory.createShareConsumer(any(), any())).willReturn(shareConsumer);
-		given(shareConsumer.poll(any(Duration.class)))
-				.willReturn(testRecords)
-				.willReturn(ConsumerRecords.empty());
-
-		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		containerProperties.setMessageListener(messageListener);
-
-		ShareKafkaMessageListenerContainer<String, String> container =
-				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
-
-		container.start();
-		Thread.sleep(1000);
-		container.stop();
-
-		verify(shareConsumer, atLeastOnce()).commitSync();
-	}
-
-	@Test
-	void shouldSubscribeToTopics() {
-		given(shareConsumerFactory.createShareConsumer(any(), any())).willReturn(shareConsumer);
-
-		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		containerProperties.setMessageListener(messageListener);
-
-		ShareKafkaMessageListenerContainer<String, String> container =
-				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
-
-		container.start();
-
-		verify(shareConsumer).subscribe(List.of("test-topic"));
-
-		container.stop();
-	}
-
-	@Test
-	void shouldHandleEmptyPollResults() throws Exception {
-		// Setup mocks for empty results
-		given(shareConsumerFactory.createShareConsumer(any(), any())).willReturn(shareConsumer);
-		given(shareConsumer.poll(any(Duration.class))).willReturn(ConsumerRecords.empty());
-
-		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		containerProperties.setMessageListener(messageListener);
-
-		ShareKafkaMessageListenerContainer<String, String> container =
-				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
-
-		container.start();
-		Thread.sleep(1000);
-		container.stop();
-
-		// No listener invocation for empty records
-		verify(messageListener, never()).onMessage(any());
-		// No acknowledgments for empty records
-		verify(shareConsumer, never()).acknowledge(any(), any());
-		// But commit should still be called
-		verify(shareConsumer, never()).commitSync();
-	}
-
-	@Test
-	void shouldCloseConsumerOnStop() throws Exception {
-		given(shareConsumerFactory.createShareConsumer(any(), any())).willReturn(shareConsumer);
-
-		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		containerProperties.setMessageListener(messageListener);
-
-		ShareKafkaMessageListenerContainer<String, String> container =
-				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
-
-		container.start();
-		container.stop();
-		Thread.sleep(100);
-
-		verify(shareConsumer).close();
-	}
-
-	@Test
-	void shouldSupportContainerProperties() {
-		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		containerProperties.setMessageListener(messageListener);
-		containerProperties.setShareAcknowledgmentMode(ContainerProperties.ShareAcknowledgmentMode.EXPLICIT);
-
-		ShareKafkaMessageListenerContainer<String, String> container =
-				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
-
-		assertThat(container.getContainerProperties().getShareAcknowledgmentMode())
-				.isEqualTo(ContainerProperties.ShareAcknowledgmentMode.EXPLICIT);
-	}
-
-	@Test
-	void shouldReportRunningState() {
-		given(shareConsumerFactory.createShareConsumer(any(), any())).willReturn(shareConsumer);
-
-		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		containerProperties.setMessageListener(messageListener);
-
-		ShareKafkaMessageListenerContainer<String, String> container =
-				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
-
-		assertThat(container.isRunning()).isFalse();
-
-		container.start();
-		assertThat(container.isRunning()).isTrue();
-
-		container.stop();
-		assertThat(container.isRunning()).isFalse();
+		// Validation occurs during startup, but we don't need to actually start for this test
+		assertThat(container.getContainerProperties().isExplicitShareAcknowledgment()).isTrue();
 	}
 
 	@Test
@@ -397,6 +115,31 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		container.setBeanName("testContainer");
 		assertThat(container.getBeanName()).isEqualTo("testContainer");
 		assertThat(container.getListenerId()).isEqualTo("testContainer");
+	}
+
+	@Test
+	void shouldReportRunningStateBeforeStart() {
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		// Should not be running before start
+		assertThat(container.isRunning()).isFalse();
+	}
+
+	@Test
+	void shouldSupportContainerProperties() {
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(ackListener);
+		containerProperties.setExplicitShareAcknowledgment(true);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		assertThat(container.getContainerProperties().isExplicitShareAcknowledgment())
+				.isTrue();
 	}
 
 }

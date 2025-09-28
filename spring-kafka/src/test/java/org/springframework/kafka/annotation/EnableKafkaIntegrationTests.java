@@ -58,7 +58,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
-import org.apache.kafka.clients.consumer.ShareConsumer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.errors.TopicExistsException;
@@ -124,7 +123,6 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.SendResult;
-import org.springframework.kafka.support.ShareAcknowledgment;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.JacksonJsonMessageConverter;
 import org.springframework.kafka.support.converter.JacksonProjectingMessageConverter;
@@ -1300,15 +1298,10 @@ public class EnableKafkaIntegrationTests {
 			factory.setRecordMessageConverter(new RecordMessageConverter() {
 
 				@Override
-				public Message<?> toMessage(ConsumerRecord<?, ?> record, Acknowledgment acknowledgment,
-						Consumer<?, ?> consumer, Type payloadType) {
+				public Message<?> toMessage(ConsumerRecord<?, ?> record, @Nullable Object acknowledgment,
+						@Nullable Object consumer, @Nullable Type payloadType) {
 
 					throw new UnsupportedOperationException();
-				}
-
-				@Override
-				public @NonNull Message<?> toShareMessage(ConsumerRecord<?, ?> record, @Nullable ShareAcknowledgment acknowledgment, @Nullable ShareConsumer<?, ?> consumer, @Nullable Type payloadType) {
-					return null;
 				}
 
 				@Override

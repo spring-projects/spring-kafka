@@ -132,7 +132,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setShareAcknowledgmentMode(ContainerProperties.ShareAcknowledgmentMode.EXPLICIT);
+		containerProps.setExplicitShareAcknowledgment(true);
 
 		CountDownLatch latch = new CountDownLatch(3);
 		List<String> received = Collections.synchronizedList(new ArrayList<>());
@@ -230,7 +230,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setShareAcknowledgmentMode(ContainerProperties.ShareAcknowledgmentMode.EXPLICIT);
+		containerProps.setExplicitShareAcknowledgment(true);
 
 		CountDownLatch firstBatchLatch = new CountDownLatch(3);
 		CountDownLatch secondBatchLatch = new CountDownLatch(3);
@@ -302,7 +302,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setShareAcknowledgmentMode(ContainerProperties.ShareAcknowledgmentMode.EXPLICIT);
+		containerProps.setExplicitShareAcknowledgment(true);
 
 		CountDownLatch latch = new CountDownLatch(5);
 		AtomicInteger errorCount = new AtomicInteger();
@@ -362,7 +362,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setShareAcknowledgmentMode(ContainerProperties.ShareAcknowledgmentMode.EXPLICIT);
+		containerProps.setExplicitShareAcknowledgment(true);
 
 		CountDownLatch firstRoundLatch = new CountDownLatch(3);
 		CountDownLatch redeliveryLatch = new CountDownLatch(1);
@@ -458,7 +458,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setShareAcknowledgmentMode(ContainerProperties.ShareAcknowledgmentMode.EXPLICIT);
+		containerProps.setExplicitShareAcknowledgment(true);
 
 		AtomicBoolean listenerCalled = new AtomicBoolean(false);
 		containerProps.setMessageListener(new AcknowledgingShareConsumerAwareMessageListener<String, String>() {

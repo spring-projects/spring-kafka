@@ -162,21 +162,6 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	/**
-	 * Acknowledgment mode for share consumer containers.
-	 */
-	public enum ShareAcknowledgmentMode {
-		/**
-		 * Records are automatically acknowledged as ACCEPT on next poll, commitSync, or commitAsync.
-		 */
-		IMPLICIT,
-
-		/**
-		 * Application must explicitly acknowledge all records before next poll.
-		 */
-		EXPLICIT
-	}
-
-	/**
 	 * The default {@link #setShutdownTimeout(long) shutDownTimeout} (ms).
 	 */
 	public static final long DEFAULT_SHUTDOWN_TIMEOUT = 10_000L;
@@ -329,9 +314,9 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private boolean recordObservationsInBatch;
 
-	private ShareAcknowledgmentMode shareAcknowledgmentMode = ShareAcknowledgmentMode.IMPLICIT;
+	private boolean explicitShareAcknowledgment = false;
 
-	private Duration shareAcknowledgmentTimeout = Duration.ofSeconds(60); // 1 minute default
+	private Duration shareAcknowledgmentTimeout = Duration.ofSeconds(30); // Align with Kafka's share.record.lock.duration.ms default
 
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
@@ -1136,34 +1121,30 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	/**
-	 * Set the acknowledgment mode for share consumer containers.
+	 * Set whether explicit acknowledgment is required for share consumer containers.
 	 * <p>
 	 * This setting only applies to share consumer containers and is ignored
-	 * by regular consumer containers. The acknowledgment mode determines
-	 * how records are acknowledged:
-	 * <ul>
-	 * <li>{@link ShareAcknowledgmentMode#IMPLICIT} - Records are automatically
-	 * acknowledged as ACCEPT when the next poll occurs or when commitSync/commitAsync
-	 * is called</li>
-	 * <li>{@link ShareAcknowledgmentMode#EXPLICIT} - Application must explicitly
-	 * acknowledge each record using the provided {@link ShareAcknowledgment}</li>
-	 * </ul>
-	 *
-	 * @param shareAcknowledgmentMode the acknowledgment mode
+	 * by regular consumer containers.
+	 * <p>
+	 * When set to {@code false} (default), records are automatically acknowledged
+	 * as ACCEPT when the next poll occurs or when commitSync/commitAsync is called.
+	 * <p>
+	 * When set to {@code true}, the application must explicitly acknowledge each
+	 * record using the provided {@link ShareAcknowledgment}.
+	 * @param explicitShareAcknowledgment true for explicit acknowledgment, false for implicit
 	 * @since 4.0
 	 * @see ShareAcknowledgment
 	 */
-	public void setShareAcknowledgmentMode(ShareAcknowledgmentMode shareAcknowledgmentMode) {
-		this.shareAcknowledgmentMode = shareAcknowledgmentMode;
+	public void setExplicitShareAcknowledgment(boolean explicitShareAcknowledgment) {
+		this.explicitShareAcknowledgment = explicitShareAcknowledgment;
 	}
 
 	/**
-	 * Get the acknowledgment mode for share consumer containers.
-	 *
-	 * @return the acknowledgment mode
+	 * Check whether explicit acknowledgment is required for share consumer containers.
+	 * @return true if explicit acknowledgment is required, false for implicit acknowledgment
 	 */
-	public ShareAcknowledgmentMode getShareAcknowledgmentMode() {
-		return this.shareAcknowledgmentMode;
+	public boolean isExplicitShareAcknowledgment() {
+		return this.explicitShareAcknowledgment;
 	}
 
 	/**
@@ -1173,8 +1154,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * will be logged to help identify missing acknowledgment calls.
 	 * This only applies when using explicit acknowledgment mode.
 	 * <p>
-	 * Default is 60 seconds.
-	 *
+	 * Default is 30 seconds.
 	 * @param shareAcknowledgmentTimeout the timeout duration
 	 * @since 4.0
 	 */
@@ -1184,7 +1164,6 @@ public class ContainerProperties extends ConsumerProperties {
 
 	/**
 	 * Get the timeout for share acknowledgments in explicit mode.
-	 *
 	 * @return the acknowledgment timeout
 	 * @since 4.0
 	 */

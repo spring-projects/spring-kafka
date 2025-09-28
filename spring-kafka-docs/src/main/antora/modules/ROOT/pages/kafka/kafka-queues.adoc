@@ -233,6 +233,7 @@ Share consumers support two acknowledgment modes that control how records are ac
 
 [[share-implicit-acknowledgment]]
 === Implicit Acknowledgment (Default)
+
 In implicit mode, records are automatically acknowledged based on processing outcome:
 
 Successful processing: Records are acknowledged as `ACCEPT`
@@ -245,9 +246,8 @@ public ShareKafkaListenerContainerFactory<String, String> shareKafkaListenerCont
     ShareConsumerFactory<String, String> shareConsumerFactory) {
     ShareKafkaListenerContainerFactory<String, String> factory =
     new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
-    // Implicit mode is the default
-    factory.getContainerProperties().setShareAcknowledgmentMode(
-        ContainerProperties.ShareAcknowledgmentMode.IMPLICIT);
+    // Implicit mode is the default (false means implicit acknowledgment)
+    factory.getContainerProperties().setExplicitShareAcknowledgment(false);
 
     return factory;
 }
@@ -287,8 +287,8 @@ public ShareKafkaListenerContainerFactory<String, String> explicitShareKafkaList
         new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
 
     // Configure acknowledgment mode at container factory level
-    factory.getContainerProperties()
-        .setShareAcknowledgmentMode(ContainerProperties.ShareAcknowledgmentMode.EXPLICIT);
+    // true means explicit acknowledgment is required
+    factory.getContainerProperties().setExplicitShareAcknowledgment(true);
 
     return factory;
 }
@@ -298,9 +298,9 @@ public ShareKafkaListenerContainerFactory<String, String> explicitShareKafkaList
 
 When both configuration methods are used, Spring Kafka follows this precedence order (highest to lowest):
 
-1. **Container Properties**: `containerProperties.setShareAcknowledgmentMode()`
-2. **Consumer Config**: `ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG`
-3. **Default**: `ShareAcknowledgmentMode.IMPLICIT`
+1. **Container Properties**: `containerProperties.setExplicitShareAcknowledgment(true/false)`
+2. **Consumer Config**: `ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG` ("implicit" or "explicit")
+3. **Default**: `false` (implicit acknowledgment)
 
 [[share-acknowledgment-types]]
 === Acknowledgment Types
@@ -319,12 +319,9 @@ The `ShareAcknowledgment` interface provides methods for explicit acknowledgment
 [source,java]
 ----
 public interface ShareAcknowledgment {
-    void acknowledge(AcknowledgeType type);
-    void acknowledge();  // Convenience method for ACCEPT
-    void release();      // Convenience method for RELEASE
-    void reject();       // Convenience method for REJECT
-    boolean isAcknowledged();
-    AcknowledgeType getAcknowledgmentType();
+    void acknowledge();
+    void release();
+    void reject();
 }
 ----
 
@@ -349,7 +346,7 @@ public void listen(ConsumerRecord<String, String> record) {
 [[share-acknowledging-listener]]
 ==== AcknowledgingShareConsumerAwareMessageListener
 
-This interface provides access to the ShareConsumer instance with optional acknowledgment support.
+This interface provides access to the `ShareConsumer` instance with optional acknowledgment support.
 The acknowledgment parameter is nullable and depends on the container's acknowledgment mode:
 
 ===== Implicit Mode Example (acknowledgment is null)
@@ -412,9 +409,9 @@ public class ExplicitAckListener {
 
 In explicit acknowledgment mode, the container enforces important constraints:
 
-Poll Blocking: Subsequent polls are blocked until all records from the previous poll are acknowledged.
-One-time Acknowledgment: Each record can only be acknowledged once.
-Error Handling: If processing throws an exception, the record is automatically acknowledged as `REJECT`.
+ Poll Blocking: Subsequent polls are blocked until all records from the previous poll are acknowledged.
+ One-time Acknowledgment: Each record can only be acknowledged once.
+ Error Handling: If processing throws an exception, the record is automatically acknowledged as `REJECT`.
 
 [WARNING]
 In explicit mode, failing to acknowledge records will block further message processing.
@@ -434,7 +431,7 @@ public ShareKafkaListenerContainerFactory<String, String> shareKafkaListenerCont
     ShareKafkaListenerContainerFactory<String, String> factory =
         new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
 
-    // Set acknowledgment timeout (default is 60 seconds)
+    // Set acknowledgment timeout (default is 30 seconds)
     factory.getContainerProperties().setShareAcknowledgmentTimeout(Duration.ofSeconds(30));
 
     return factory;
@@ -446,7 +443,6 @@ When a record exceeds the timeout, you'll see a warning like:
 WARN: Record not acknowledged within timeout (30 seconds).
 In explicit acknowledgment mode, you must call ack.acknowledge(), ack.release(),
 or ack.reject() for every record.
-Unacknowledged record: topic='my-topic', partition=0, offset=123
 ----
 
 This feature helps developers quickly identify when acknowledgment calls are missing from their code, preventing the common issue of "Spring Kafka does not consume new records any more" due to forgotten acknowledgments.
@@ -501,47 +497,6 @@ public void validateData(ConsumerRecord<String, String> record, ShareAcknowledgm
             acknowledgment.acknowledge(AcknowledgeType.REJECT);
             break;
     }
-}
-----
-
-[[share-acknowledgment-configuration]]
-=== Acknowledgment Mode Configuration
-
-You can configure the acknowledgment mode at both the consumer factory and container levels:
-
-[[share-factory-level-configuration]]
-==== Factory Level Configuration
-
-[source,java]
-----
-@Bean
-public ShareConsumerFactory<String, String> explicitAckShareConsumerFactory() {
-    Map<String, Object> props = new HashMap<>();
-    props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-    // Configure explicit acknowledgment at the factory level
-    props.put("share.acknowledgement.mode", "explicit");
-    return new DefaultShareConsumerFactory<>(props);
-}
-----
-
-[[share-container-level-configuration]]
-==== Container Level Configuration
-
-[source,java]
-----
-@Bean
-public ShareKafkaListenerContainerFactory<String, String> customShareKafkaListenerContainerFactory(
-    ShareConsumerFactory<String, String> shareConsumerFactory) {
-    ShareKafkaListenerContainerFactory<String, String> factory =
-        new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
-
-    // Configure acknowledgment mode at container level
-    factory.getContainerProperties().setShareAcknowledgmentMode(
-    ContainerProperties.ShareAcknowledgmentMode.EXPLICIT);
-
-    return factory;
 }
 ----
 

@@ -23,9 +23,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import org.apache.commons.logging.LogFactory;
-import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ShareConsumer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
@@ -34,14 +32,12 @@ import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.support.AbstractKafkaHeaderMapper;
-import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.JacksonPresent;
 import org.springframework.kafka.support.JsonKafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaderMapper;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
-import org.springframework.kafka.support.ShareAcknowledgment;
 import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
@@ -158,7 +154,7 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	 * IMPORTANT: This converter's {@link #fromMessage(Message, String)} method is called
 	 * for outbound conversion to a {@link ProducerRecord} with the message payload in the
 	 * {@link ProducerRecord#value()} property.
-	 * {@link #toMessage(ConsumerRecord, Acknowledgment, Consumer, Type)} is called for
+	 * {@link #toMessage(ConsumerRecord, Object, Object, Type)} is called for
 	 * inbound conversion from {@link ConsumerRecord} with the payload being the
 	 * {@link ConsumerRecord#value()} property.
 	 * <p>
@@ -183,36 +179,7 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	}
 
 	@Override
-	public Message<?> toMessage(ConsumerRecord<?, ?> record, @Nullable Acknowledgment acknowledgment, @Nullable Consumer<?, ?> consumer,
-			@Nullable Type type) {
-
-		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(this.generateMessageId,
-				this.generateTimestamp);
-
-		Map<String, Object> rawHeaders = kafkaMessageHeaders.getRawHeaders();
-		if (record.headers() != null) {
-			mapOrAddHeaders(record, rawHeaders);
-		}
-		String ttName = record.timestampType() != null ? record.timestampType().name() : null;
-		commonHeaders(acknowledgment, consumer, rawHeaders, record.key(), record.topic(), record.partition(),
-				record.offset(), ttName, record.timestamp());
-		if (this.rawRecordHeader) {
-			rawHeaders.put(KafkaHeaders.RAW_DATA, record);
-		}
-		Message<?> message = MessageBuilder.createMessage(extractAndConvertValue(record, type), kafkaMessageHeaders);
-		if (this.messagingConverter != null && !message.getPayload().equals(KafkaNull.INSTANCE)) {
-			Class<?> clazz = type instanceof Class ? (Class<?>) type : type instanceof ParameterizedType
-					? (Class<?>) ((ParameterizedType) type).getRawType() : Object.class;
-			Object payload = this.messagingConverter.fromMessage(message, clazz, type);
-			if (payload != null) {
-				message = new GenericMessage<>(payload, message.getHeaders());
-			}
-		}
-		return message;
-	}
-
-	@Override
-	public Message<?> toShareMessage(ConsumerRecord<?, ?> record, @Nullable ShareAcknowledgment acknowledgment, @Nullable ShareConsumer<?, ?> consumer,
+	public Message<?> toMessage(ConsumerRecord<?, ?> record, @Nullable Object acknowledgment, @Nullable Object consumer,
 			@Nullable Type type) {
 
 		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(this.generateMessageId,

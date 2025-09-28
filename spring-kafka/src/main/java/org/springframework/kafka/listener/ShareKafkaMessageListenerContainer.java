@@ -69,11 +69,11 @@ import org.springframework.util.Assert;
  *
  * @param <K> the key type
  * @param <V> the value type
+ *
  * @author Soby Chacko
  * @since 4.0
  * @see ShareConsumer
  * @see ShareAcknowledgment
- * @see ContainerProperties.ShareAcknowledgmentMode
  */
 public class ShareKafkaMessageListenerContainer<K, V>
 		extends AbstractShareKafkaMessageListenerContainer<K, V> {
@@ -148,6 +148,16 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		}
 		GenericMessageListener<?> listener = (GenericMessageListener<?>) messageListener;
 		Assert.state(listener != null, "'messageListener' cannot be null");
+
+		// Validate listener type for explicit acknowledgment mode
+		if (containerProperties.isExplicitShareAcknowledgment()) {
+			boolean isAcknowledgingListener = listener instanceof AcknowledgingShareConsumerAwareMessageListener;
+			Assert.state(isAcknowledgingListener,
+					"Explicit acknowledgment mode requires an AcknowledgingShareConsumerAwareMessageListener. " +
+					"Current listener type: " + listener.getClass().getName() + ". " +
+					"Either use implicit acknowledgment mode or provide a listener that can handle acknowledgments.");
+		}
+
 		this.listenerConsumer = new ShareListenerConsumer(listener);
 		setRunning(true);
 		this.listenerConsumerFuture = CompletableFuture.runAsync(this.listenerConsumer, consumerExecutor);
@@ -230,8 +240,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			ContainerProperties containerProperties = getContainerProperties();
 
 			// Configure acknowledgment mode
-			this.isExplicitMode = containerProperties.getShareAcknowledgmentMode() ==
-					ContainerProperties.ShareAcknowledgmentMode.EXPLICIT;
+			this.isExplicitMode = containerProperties.isExplicitShareAcknowledgment();
 			this.ackTimeoutMs = containerProperties.getShareAcknowledgmentTimeout().toMillis();
 
 			// Configure consumer properties based on acknowledgment mode

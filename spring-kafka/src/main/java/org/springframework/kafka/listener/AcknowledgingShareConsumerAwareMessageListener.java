@@ -47,7 +47,6 @@ import org.springframework.kafka.support.ShareAcknowledgment;
  *
  * @see ShareAcknowledgment
  * @see ShareConsumer
- * @see ContainerProperties.ShareAcknowledgmentMode
  */
 @FunctionalInterface
 public interface AcknowledgingShareConsumerAwareMessageListener<K, V> extends GenericMessageListener<ConsumerRecord<K, V>> {
