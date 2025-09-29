@@ -113,6 +113,7 @@ import static org.mockito.Mockito.mock;
  * @author Christian Mergenthaler
  * @author Soby Chacko
  * @author Francois Rosiere
+ * @author Christian Fredriksson
  *
  * @since 3.0
  */
@@ -377,14 +378,14 @@ public class ObservationTests {
 								Map.entry("messaging.kafka.consumer.group", consumerGroup),
 								Map.entry("messaging.kafka.message.offset", offset),
 								Map.entry("messaging.kafka.source.partition", partition),
-								Map.entry("messaging.operation", "receive"),
+								Map.entry("messaging.operation", "process"),
 								Map.entry("messaging.source.kind", "topic"),
 								Map.entry("messaging.source.name", sourceName),
 								Map.entry("messaging.system", "kafka")));
 		if (keyValues.length > 0) {
 			Arrays.stream(keyValues).forEach(entry -> assertThat(span.getTags()).contains(entry));
 		}
-		assertThat(span.getName()).isEqualTo(sourceName + " receive");
+		assertThat(span.getName()).isEqualTo(sourceName + " process");
 		return span;
 	}
 
@@ -406,7 +407,7 @@ public class ObservationTests {
 		meterRegistryAssert.hasTimerWithNameAndTags("spring.kafka.listener",
 				KeyValues.of(
 								"messaging.kafka.consumer.group", consumerGroup,
-								"messaging.operation", "receive",
+								"messaging.operation", "process",
 								"messaging.source.kind", "topic",
 								"messaging.source.name", destName,
 								"messaging.system", "kafka",
