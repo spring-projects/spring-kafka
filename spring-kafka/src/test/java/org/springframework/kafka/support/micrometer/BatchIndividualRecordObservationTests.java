@@ -187,7 +187,7 @@ public class BatchIndividualRecordObservationTests {
 		@Bean
 		ConsumerFactory<Integer, String> consumerFactory(EmbeddedKafkaBroker broker) {
 			Map<String, Object> configs = KafkaTestUtils.consumerProps(broker, "batch-tests", false);
-			configs.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 54);
+			configs.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, 100);
 			configs.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, 2000);
 			return new DefaultKafkaConsumerFactory<>(configs);
 		}
