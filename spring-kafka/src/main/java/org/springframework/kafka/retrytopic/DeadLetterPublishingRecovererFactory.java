@@ -55,6 +55,8 @@ import org.springframework.util.Assert;
  * @author Tomaz Fernandes
  * @author Gary Russell
  * @author Soby Chacko
+ * @author Artem Bilan
+ *
  * @since 2.7
  *
  */
@@ -69,14 +71,15 @@ public class DeadLetterPublishingRecovererFactory {
 
 	private final Set<Class<? extends Exception>> nonFatalExceptions = new HashSet<>();
 
-	private Consumer<DeadLetterPublishingRecoverer> recovererCustomizer = recoverer -> { };
+	private Consumer<DeadLetterPublishingRecoverer> recovererCustomizer = recoverer -> {
+	};
 
-	@Nullable
-	private BiFunction<ConsumerRecord<?, ?>, Exception, Headers> headersFunction;
+	private @Nullable BiFunction<ConsumerRecord<?, ?>, Exception, @Nullable Headers> headersFunction;
 
 	private ListenerExceptionLoggingStrategy loggingStrategy = ListenerExceptionLoggingStrategy.AFTER_RETRIES_EXHAUSTED;
 
-	private BiFunction<ConsumerRecord<?, ?>, String, Integer> partitionResolver = (cr, nextTopic) -> cr.partition();
+	private BiFunction<ConsumerRecord<?, ?>, @Nullable String, @Nullable Integer> partitionResolver =
+			(cr, nextTopic) -> cr.partition();
 
 	private boolean retainAllRetryHeaderValues = true;
 
@@ -92,25 +95,25 @@ public class DeadLetterPublishingRecovererFactory {
 	 * @param headersFunction the function.
 	 * @since 2.8.4
 	 */
-	public void setHeadersFunction(BiFunction<ConsumerRecord<?, ?>, Exception, Headers> headersFunction) {
+	public void setHeadersFunction(BiFunction<ConsumerRecord<?, ?>, Exception, @Nullable Headers> headersFunction) {
 		this.headersFunction = headersFunction;
 	}
 
 	/**
-	 * Set a resolver for the partition number to publish to. By default the same partition as
+	 * Set a resolver for the partition number to publish to. By default, the same partition as
 	 * the consumer record is used. If the resolver returns {@code null} or a negative number, the
 	 * partition is set to null in the producer record and the {@code KafkaProducer} decides which
 	 * partition to publish to.
 	 * @param resolver the resolver.
 	 * @since 2.9.2
 	 */
-	public void setPartitionResolver(BiFunction<ConsumerRecord<?, ?>, String, Integer> resolver) {
+	public void setPartitionResolver(BiFunction<ConsumerRecord<?, ?>, @Nullable String, @Nullable Integer> resolver) {
 		Assert.notNull(resolver, "'resolver' cannot be null");
 		this.partitionResolver = resolver;
 	}
 
 	/**
-	 * Set to false to only retain the last value for {@link RetryTopicHeaders}; true by
+	 * Set to {@code false} to only retain the last value for {@link RetryTopicHeaders}; true by
 	 * default, which retains all the values as the record transitions through topics.
 	 * @param retainAllRetryHeaderValues false to only store the last values.
 	 * @since 2.9.6
@@ -142,7 +145,7 @@ public class DeadLetterPublishingRecovererFactory {
 	}
 
 	/**
-	 * Add exception type to the default list. By default, the following exceptions will
+	 * Add an exception type to the default list. By default, the following exceptions will
 	 * not be retried:
 	 * <ul>
 	 * <li>{@link org.springframework.kafka.support.serializer.DeserializationException}</li>
@@ -200,7 +203,6 @@ public class DeadLetterPublishingRecovererFactory {
 		this.loggingStrategy = ListenerExceptionLoggingStrategy.EACH_ATTEMPT;
 	}
 
-	@SuppressWarnings("unchecked")
 	public DeadLetterPublishingRecoverer create(String mainListenerId) {
 		Assert.notNull(mainListenerId, "'listenerId' cannot be null");
 		Supplier<HeaderNames> headerNamesSupplier = () -> HeaderNames.Builder
@@ -211,7 +213,7 @@ public class DeadLetterPublishingRecovererFactory {
 				.topicHeader(KafkaHeaders.ORIGINAL_TOPIC)
 				.partitionHeader(KafkaHeaders.ORIGINAL_PARTITION)
 				.consumerGroupHeader(KafkaHeaders.ORIGINAL_CONSUMER_GROUP)
-			.exception()
+				.exception()
 				.keyExceptionFqcn(KafkaHeaders.KEY_EXCEPTION_FQCN)
 				.exceptionFqcn(KafkaHeaders.EXCEPTION_FQCN)
 				.exceptionCauseFqcn(KafkaHeaders.EXCEPTION_CAUSE_FQCN)
@@ -219,7 +221,7 @@ public class DeadLetterPublishingRecovererFactory {
 				.exceptionMessage(KafkaHeaders.EXCEPTION_MESSAGE)
 				.keyExceptionStacktrace(KafkaHeaders.KEY_EXCEPTION_STACKTRACE)
 				.exceptionStacktrace(KafkaHeaders.EXCEPTION_STACKTRACE)
-			.build();
+				.build();
 		DeadLetterPublishingRecoverer recoverer = this.dlpCreator.create(templateResolver(mainListenerId),
 				destinationResolver(mainListenerId));
 		recoverer.setHeaderNamesSupplier(headerNamesSupplier);
@@ -269,19 +271,21 @@ public class DeadLetterPublishingRecovererFactory {
 	}
 
 	private DeadLetterPublishingRecoverer create(
-			Function<ProducerRecord<?, ?>, @Nullable KafkaOperations<?, ?>> templateResolver,
-			BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
+			Function<ProducerRecord<?, ?>, ? extends @Nullable KafkaOperations<?, ?>> templateResolver,
+			BiFunction<ConsumerRecord<?, ?>, Exception, @Nullable TopicPartition> destinationResolver) {
 
 		return new DeadLetterPublishingRecoverer(templateResolver, destinationResolver);
 	}
 
 	private Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver(String mainListenerId) {
 		return outRecord -> this.destinationTopicResolver
-						.getDestinationTopicByName(mainListenerId, outRecord.topic())
-						.getKafkaOperations();
+				.getDestinationTopicByName(mainListenerId, outRecord.topic())
+				.getKafkaOperations();
 	}
 
-	private BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver(String mainListenerId) {
+	private BiFunction<ConsumerRecord<?, ?>, Exception, @Nullable TopicPartition> destinationResolver(
+			String mainListenerId) {
+
 		return (cr, ex) -> {
 			if (SeekUtils.isBackoffException(ex)) {
 				throw (NestedRuntimeException) ex; // Necessary to not commit the offset and seek to current again
@@ -297,8 +301,8 @@ public class DeadLetterPublishingRecovererFactory {
 			maybeLogListenerException(ex, cr, nextDestination);
 
 			return nextDestination.isNoOpsTopic()
-						? null
-						: resolveTopicPartition(cr, nextDestination);
+					? null
+					: resolveTopicPartition(cr, nextDestination);
 		};
 	}
 
@@ -315,14 +319,11 @@ public class DeadLetterPublishingRecovererFactory {
 
 	/**
 	 * Creates and returns the {@link TopicPartition}, where the original record should be forwarded.
-	 * By default, it will use the partition same as original record's partition, in the next destination topic.
-	 *
-	 * <p>{@link DeadLetterPublishingRecoverer#checkPartition} has logic to check whether that partition exists,
-	 * and if it doesn't it sets -1, to allow the Producer itself to assign a partition to the record.</p>
-	 *
+	 * By default, it will use the same partition as the original record's partition, in the next destination topic.
+	 * <p>{@code DeadLetterPublishingRecoverer#checkPartition} has logic to check whether that partition exists,
+	 * and if it doesn't, it sets -1, to allow the Producer itself to assign a partition to the record.</p>
 	 * <p>Subclasses can inherit from this method to override the implementation, if necessary.</p>
 	 * The destination partition can also be customized using {@link #setPartitionResolver(BiFunction)}.
-	 *
 	 * @param cr The original {@link ConsumerRecord}, which is to be forwarded to DLT
 	 * @param nextDestination The next {@link DestinationTopic}, where the consumerRecord is to be forwarded
 	 * @return An instance of {@link TopicPartition}, specifying the topic and partition, where the cr is to be sent.
@@ -395,8 +396,8 @@ public class DeadLetterPublishingRecovererFactory {
 
 	private long getFailureTimestamp(Exception e) {
 		return e instanceof NestedRuntimeException && ((NestedRuntimeException) e).contains(TimestampedException.class)
-					? getTimestampedException(e).getTimestamp()
-					: Instant.now().toEpochMilli();
+				? getTimestampedException(e).getTimestamp()
+				: Instant.now().toEpochMilli();
 	}
 
 	private TimestampedException getTimestampedException(@Nullable Throwable e) {
@@ -426,7 +427,7 @@ public class DeadLetterPublishingRecovererFactory {
 	@Nullable
 	private Header getOriginaTimeStampHeader(ConsumerRecord<?, ?> consumerRecord) {
 		return consumerRecord.headers()
-					.lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP);
+				.lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP);
 	}
 
 	private enum ListenerExceptionLoggingStrategy {
@@ -462,8 +463,9 @@ public class DeadLetterPublishingRecovererFactory {
 		 * @param destinationResolver the destination resolver.
 		 * @return the publisher.
 		 */
-		DeadLetterPublishingRecoverer create(Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver,
-				BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver);
+		DeadLetterPublishingRecoverer create(
+				Function<ProducerRecord<?, ?>, ? extends @Nullable KafkaOperations<?, ?>> templateResolver,
+				BiFunction<ConsumerRecord<?, ?>, Exception, @Nullable TopicPartition> destinationResolver);
 
 	}
 

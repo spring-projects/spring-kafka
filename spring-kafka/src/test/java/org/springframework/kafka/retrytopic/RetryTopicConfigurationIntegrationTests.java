@@ -171,7 +171,7 @@ class RetryTopicConfigurationIntegrationTests {
 
 	static class CustomDLPR extends DeadLetterPublishingRecoverer {
 
-		CustomDLPR(Function<ProducerRecord<?, ?>, KafkaOperations<?, ?>> templateResolver,
+		CustomDLPR(Function<ProducerRecord<?, ?>, ? extends KafkaOperations<?, ?>> templateResolver,
 				BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
 			super(templateResolver, destinationResolver);
 		}

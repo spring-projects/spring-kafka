@@ -67,18 +67,20 @@ import org.springframework.util.ObjectUtils;
  * @author Tomaz Fernandes
  * @author Watlas R
  * @author Borahm Lee
+ * @author Artem Bilan
+ *
  * @since 2.2
  *
  */
 public class DeadLetterPublishingRecoverer extends ExceptionClassifier implements ConsumerAwareRecordRecoverer {
 
-	private static final BiFunction<ConsumerRecord<?, ?>, Exception, Headers> DEFAULT_HEADERS_FUNCTION =
+	private static final BiFunction<ConsumerRecord<?, ?>, Exception, @Nullable Headers> DEFAULT_HEADERS_FUNCTION =
 			(rec, ex) -> null;
 
 	protected final LogAccessor logger = new LogAccessor(LogFactory.getLog(getClass())); // NOSONAR
 
-	private static final BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition>
-		DEFAULT_DESTINATION_RESOLVER = (cr, e) -> new TopicPartition(cr.topic() + "-dlt", cr.partition());
+	private static final BiFunction<ConsumerRecord<?, ?>, Exception, @Nullable TopicPartition>
+			DEFAULT_DESTINATION_RESOLVER = (cr, e) -> new TopicPartition(cr.topic() + "-dlt", cr.partition());
 
 	private static final long FIVE = 5L;
 
@@ -86,9 +88,9 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	private final boolean transactional;
 
-	private final BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver;
+	private final BiFunction<ConsumerRecord<?, ?>, Exception, @Nullable TopicPartition> destinationResolver;
 
-	private final Function<ProducerRecord<?, ?>, @Nullable KafkaOperations<?, ?>> templateResolver;
+	private final Function<ProducerRecord<?, ?>, ? extends @Nullable KafkaOperations<?, ?>> templateResolver;
 
 	private final EnumSet<HeaderNames.HeadersToAdd> whichHeaders = EnumSet.allOf(HeaderNames.HeadersToAdd.class);
 
@@ -96,7 +98,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	private boolean retainExceptionHeader;
 
-	private BiFunction<ConsumerRecord<?, ?>, Exception, Headers> headersFunction = DEFAULT_HEADERS_FUNCTION;
+	private BiFunction<ConsumerRecord<?, ?>, Exception, @Nullable Headers> headersFunction = DEFAULT_HEADERS_FUNCTION;
 
 	private boolean verifyPartition = true;
 
@@ -128,7 +130,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 			.topicHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)
 			.partitionHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)
 			.consumerGroupHeader(KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP)
-		.exception()
+			.exception()
 			.keyExceptionFqcn(KafkaHeaders.DLT_KEY_EXCEPTION_FQCN)
 			.exceptionFqcn(KafkaHeaders.DLT_EXCEPTION_FQCN)
 			.exceptionCauseFqcn(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN)
@@ -136,37 +138,38 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 			.exceptionMessage(KafkaHeaders.DLT_EXCEPTION_MESSAGE)
 			.keyExceptionStacktrace(KafkaHeaders.DLT_KEY_EXCEPTION_STACKTRACE)
 			.exceptionStacktrace(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)
-		.build();
+			.build();
 
 	/**
 	 * Create an instance with the provided template and a default destination resolving
 	 * function that returns a TopicPartition based on the original topic (appended with "-dlt")
-	 * from the failed record, and the same partition as the failed record. Therefore the
+	 * from the failed record and the same partition as the failed record. Therefore, the
 	 * dead-letter topic must have at least as many partitions as the original topic.
 	 * @param template the {@link KafkaOperations} to use for publishing.
 	 */
-	public DeadLetterPublishingRecoverer(KafkaOperations<? extends Object, ? extends Object> template) {
+	public DeadLetterPublishingRecoverer(KafkaOperations<?, ?> template) {
 		this(template, DEFAULT_DESTINATION_RESOLVER);
 	}
 
 	/**
-	 * Create an instance with the provided template and destination resolving function,
+	 * Create an instance with the provided template and destination-resolving function,
 	 * that receives the failed consumer record and the exception and returns a
 	 * {@link TopicPartition}. If the partition in the {@link TopicPartition} is less than
 	 * 0, no partition is set when publishing to the topic.
 	 * @param template the {@link KafkaOperations} to use for publishing.
 	 * @param destinationResolver the resolving function.
 	 */
-	public DeadLetterPublishingRecoverer(KafkaOperations<? extends Object, ? extends Object> template,
-			BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
+	public DeadLetterPublishingRecoverer(KafkaOperations<?, ?> template,
+			BiFunction<ConsumerRecord<?, ?>, Exception, @Nullable TopicPartition> destinationResolver) {
+
 		this(Collections.singletonMap(Object.class, template), destinationResolver);
 	}
 
 	/**
 	 * Create an instance with the provided templates and a default destination resolving
 	 * function that returns a TopicPartition based on the original topic (appended with
-	 * "-dlt") from the failed record, and the same partition as the failed record.
-	 * Therefore the dead-letter topic must have at least as many partitions as the
+	 * "-dlt") from the failed record and the same partition as the failed record.
+	 * Therefore, the dead-letter topic must have at least as many partitions as the
 	 * original topic. The templates map keys are classes and the value the corresponding
 	 * template to use for objects (producer record values) of that type. A
 	 * {@link java.util.LinkedHashMap} is recommended when there is more than one
@@ -175,12 +178,12 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	 * template from the map values iterator will be used.
 	 * @param templates the {@link KafkaOperations}s to use for publishing.
 	 */
-	public DeadLetterPublishingRecoverer(Map<Class<?>, @Nullable KafkaOperations<? extends Object, ? extends Object>> templates) {
+	public DeadLetterPublishingRecoverer(Map<Class<?>, ? extends @Nullable KafkaOperations<?, ?>> templates) {
 		this(templates, DEFAULT_DESTINATION_RESOLVER);
 	}
 
 	/**
-	 * Create an instance with the provided templates and destination resolving function,
+	 * Create an instance with the provided templates and destination-resolving function,
 	 * that receives the failed consumer record and the exception and returns a
 	 * {@link TopicPartition}. If the partition in the {@link TopicPartition} is less than
 	 * 0, no partition is set when publishing to the topic. The templates map keys are
@@ -192,9 +195,8 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	 * @param templates the {@link KafkaOperations}s to use for publishing.
 	 * @param destinationResolver the resolving function.
 	 */
-	@SuppressWarnings("unchecked")
-	public DeadLetterPublishingRecoverer(Map<Class<?>, @Nullable KafkaOperations<? extends Object, ? extends Object>> templates,
-			BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
+	public DeadLetterPublishingRecoverer(Map<Class<?>, ? extends @Nullable KafkaOperations<?, ?>> templates,
+			BiFunction<ConsumerRecord<?, ?>, Exception, @Nullable TopicPartition> destinationResolver) {
 
 		Assert.isTrue(!ObjectUtils.isEmpty(templates), "At least one template is required");
 		Assert.notNull(destinationResolver, "The destinationResolver cannot be null");
@@ -205,45 +207,48 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		this.transactional = firstTemplate.isTransactional();
 		Boolean tx = this.transactional;
 		Assert.isTrue(templates.values()
-			.stream()
-			.map(t -> Objects.requireNonNull(t).isTransactional())
-			.allMatch(t -> t.equals(tx)), "All templates must have the same setting for transactional");
+				.stream()
+				.map(t -> Objects.requireNonNull(t).isTransactional())
+				.allMatch(t -> t.equals(tx)), "All templates must have the same setting for transactional");
 		this.destinationResolver = destinationResolver;
 	}
 
 	/**
-	* Create an instance with a template resolving function that receives the failed
-	* consumer record and the exception and returns a {@link KafkaOperations} and a
-	* flag on whether or not the publishing from this instance will be transactional
-	* or not. Also receives a destination resolving function that works similarly but
-	* returns a {@link TopicPartition} instead. If the partition in the {@link TopicPartition}
-	* is less than 0, no partition is set when publishing to the topic.
-	*
-	* @param templateResolver the function that resolver the {@link KafkaOperations} to use for publishing.
-	* @param destinationResolver the resolving function.
-	* @since 3.0.9
-	*/
-	public DeadLetterPublishingRecoverer(Function<ProducerRecord<?, ?>, @Nullable KafkaOperations<?, ?>> templateResolver,
-										BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
+	 * Create an instance with a template-resolving function that receives the failed
+	 * consumer record and the exception and returns a {@link KafkaOperations} and a
+	 * flag on whether the publishing from this instance will be transactional
+	 * or not. Also receives a destination resolving function that works similarly but
+	 * returns a {@link TopicPartition} instead. If the partition in the {@link TopicPartition}
+	 * is less than 0, no partition is set when publishing to the topic.
+	 *
+	 * @param templateResolver the function that resolver the {@link KafkaOperations} to use for publishing.
+	 * @param destinationResolver the resolving function.
+	 * @since 3.0.9
+	 */
+	public DeadLetterPublishingRecoverer(
+			Function<ProducerRecord<?, ?>, ? extends @Nullable KafkaOperations<?, ?>> templateResolver,
+			BiFunction<ConsumerRecord<?, ?>, Exception, @Nullable TopicPartition> destinationResolver) {
+
 		this(templateResolver, false, destinationResolver);
 	}
 
 	/**
-	* Create an instance with a template resolving function that receives the failed
-	* consumer record and the exception and returns a {@link KafkaOperations} and a
-	* flag on whether or not the publishing from this instance will be transactional
-	* or not. Also receives a destination resolving function that works similarly but
-	* returns a {@link TopicPartition} instead. If the partition in the {@link TopicPartition}
-	* is less than 0, no partition is set when publishing to the topic.
-	*
-	* @param templateResolver the function that resolver the {@link KafkaOperations} to use for publishing.
-	* @param transactional whether or not publishing by this instance should be transactional
-	* @param destinationResolver the resolving function.
-	* @since 2.7
-	*/
-	public DeadLetterPublishingRecoverer(Function<ProducerRecord<?, ?>, @Nullable KafkaOperations<?, ?>> templateResolver,
-										boolean transactional,
-										BiFunction<ConsumerRecord<?, ?>, Exception, TopicPartition> destinationResolver) {
+	 * Create an instance with a template-resolving function that receives the failed
+	 * consumer record and the exception and returns a {@link KafkaOperations} and a
+	 * flag on whether the publishing from this instance will be transactional
+	 * or not. Also receives a destination resolving function that works similarly but
+	 * returns a {@link TopicPartition} instead. If the partition in the {@link TopicPartition}
+	 * is less than 0, no partition is set when publishing to the topic.
+	 *
+	 * @param templateResolver the function that resolver the {@link KafkaOperations} to use for publishing.
+	 * @param transactional whether publishing by this instance should be transactional
+	 * @param destinationResolver the resolving function.
+	 * @since 2.7
+	 */
+	public DeadLetterPublishingRecoverer(
+			Function<ProducerRecord<?, ?>, ? extends @Nullable KafkaOperations<?, ?>> templateResolver,
+			boolean transactional,
+			BiFunction<ConsumerRecord<?, ?>, Exception, @Nullable TopicPartition> destinationResolver) {
 
 		Assert.notNull(templateResolver, "The templateResolver cannot be null");
 		Assert.notNull(destinationResolver, "The destinationResolver cannot be null");
@@ -257,7 +262,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	 * default, such headers are removed from the published record, unless both key and
 	 * value deserialization exceptions occur, in which case, the DLT_* headers are
 	 * created from the value exception and the key exception header is retained.
-	 * @param retainExceptionHeader true to retain the
+	 * @param retainExceptionHeader true to retain the exception header.
 	 * @since 2.5
 	 */
 	public void setRetainExceptionHeader(boolean retainExceptionHeader) {
@@ -273,7 +278,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	 * @since 2.5.4
 	 * @see #addHeadersFunction(BiFunction)
 	 */
-	public void setHeadersFunction(BiFunction<ConsumerRecord<?, ?>, Exception, Headers> headersFunction) {
+	public void setHeadersFunction(BiFunction<ConsumerRecord<?, ?>, Exception, @Nullable Headers> headersFunction) {
 		Assert.notNull(headersFunction, "'headersFunction' cannot be null");
 		if (!this.headersFunction.equals(DEFAULT_HEADERS_FUNCTION)) {
 			this.logger.warn(() -> "Replacing custom headers function: " + this.headersFunction
@@ -308,7 +313,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	/**
 	 * Set to false if you don't want to append the current "original" headers (topic,
-	 * partition etc.) if they are already present. When false, only the first "original"
+	 * partition, etc.) if they are already present. When false, only the first "original"
 	 * headers are retained.
 	 * @param appendOriginalHeaders set to false not to replace.
 	 * @since 2.7.9
@@ -328,7 +333,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	}
 
 	/**
-	 * Set to true to enable waiting for the send result and throw an exception if it fails.
+	 * Set to true to enable waiting for the {@code send} result and throw an exception if it fails.
 	 * It will wait for the milliseconds specified in waitForSendResultTimeout for the result.
 	 * @param failIfSendResultIsError true to enable.
 	 * @since 2.7
@@ -339,7 +344,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	}
 
 	/**
-	 * If true, wait for the send result and throw an exception if it fails.
+	 * If true, wait for the {@code send} result and throw an exception if it fails.
 	 * It will wait for the milliseconds specified in waitForSendResultTimeout for the result.
 	 * @return true to wait.
 	 * @since 2.7.14
@@ -350,7 +355,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	}
 
 	/**
-	 * Set the minimum time to wait for message sending. Default is the producer
+	 * Set the minimum time to wait for a message sending. Default is the producer
 	 * configuration {@code delivery.timeout.ms} plus the {@link #setTimeoutBuffer(long)}.
 	 * @param waitForSendResultTimeout the timeout.
 	 * @since 2.7
@@ -384,7 +389,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	}
 
 	/**
-	 * Set to false to retain previous exception headers as well as headers for the
+	 * Set to {@code false} to retain previous exception headers as well as headers for the
 	 * current exception. Default is true, which means only the current headers are
 	 * retained; setting it to false this can cause a growth in record size when a record
 	 * is republished many times.
@@ -456,14 +461,12 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	public void includeHeader(HeaderNames.HeadersToAdd... headers) {
 		Assert.notNull(headers, "'headers' cannot be null");
 		Assert.noNullElements(headers, "'headers' cannot include null elements");
-		for (HeaderNames.HeadersToAdd header : headers) {
-			this.whichHeaders.add(header);
-		}
+		Collections.addAll(this.whichHeaders, headers);
 	}
 
 	/**
 	 * Add a function which will be called to obtain additional headers to add to the
-	 * published record. Functions are called in the order that they are added, and after
+	 * published record. Functions are called in the order that they are added and after
 	 * any function passed into {@link #setHeadersFunction(BiFunction)}. If a
 	 * {@link Header} returned is an instance of {@link SingleRecordHeader}, then that
 	 * header will replace any existing header of that name, rather than being appended as
@@ -472,13 +475,13 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	 * @since 2.8.4
 	 * @see #setHeadersFunction(BiFunction)
 	 */
-	public void addHeadersFunction(BiFunction<ConsumerRecord<?, ?>, Exception, Headers> headersFunction) {
+	public void addHeadersFunction(BiFunction<ConsumerRecord<?, ?>, Exception, @Nullable Headers> headersFunction) {
 		Assert.notNull(headersFunction, "'headersFunction' cannot be null");
 		if (this.headersFunction.equals(DEFAULT_HEADERS_FUNCTION)) {
 			this.headersFunction = headersFunction;
 		}
 		else {
-			BiFunction<ConsumerRecord<?, ?>, Exception, Headers> toCompose = this.headersFunction;
+			BiFunction<ConsumerRecord<?, ?>, Exception, @Nullable Headers> toCompose = this.headersFunction;
 			this.headersFunction = (rec, ex) -> {
 				Headers headers1 = toCompose.apply(rec, ex);
 				if (headers1 == null) {
@@ -531,9 +534,8 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		addAndEnhanceHeaders(record, exception, vDeserEx, kDeserEx, headers);
 		ProducerRecord<Object, Object> outRecord = createProducerRecord(record, tp, headers,
 				kDeserEx == null ? null : kDeserEx.getData(), vDeserEx == null ? null : vDeserEx.getData());
-		KafkaOperations<Object, Object> kafkaTemplate =
-				(KafkaOperations<Object, Object>) this.templateResolver.apply(outRecord);
-		sendOrThrow(outRecord, kafkaTemplate, record);
+		KafkaOperations<?, ?> kafkaTemplate = this.templateResolver.apply(outRecord);
+		sendOrThrow(outRecord, (KafkaOperations<Object, Object>) kafkaTemplate, record);
 	}
 
 	private void addAndEnhanceHeaders(ConsumerRecord<?, ?> record, Exception exception,
@@ -573,7 +575,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 
 	private void maybeThrow(ConsumerRecord<?, ?> record, Exception exception) {
 		String message = String.format("No destination returned for record %s and exception %s. " +
-				"throwIfNoDestinationReturned: %s", KafkaUtils.format(record), exception,
+						"throwIfNoDestinationReturned: %s", KafkaUtils.format(record), exception,
 				this.throwIfNoDestinationReturned);
 		this.logger.warn(message);
 		if (this.throwIfNoDestinationReturned) {
@@ -626,30 +628,29 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		}
 	}
 
-	@SuppressWarnings("unchecked")
-	private @Nullable KafkaOperations<Object, Object> findTemplateForValue(@Nullable Object value,
-			Map<Class<?>, @Nullable KafkaOperations<?, ?>> templates) {
+	private @Nullable KafkaOperations<?, ?> findTemplateForValue(@Nullable Object value,
+			Map<Class<?>, ? extends @Nullable KafkaOperations<?, ?>> templates) {
 
 		if (value == null) {
 			KafkaOperations<?, ?> operations = templates.get(Void.class);
 			if (operations == null) {
-				return (KafkaOperations<Object, Object>) templates.values().iterator().next();
+				return templates.values().iterator().next();
 			}
 			else {
-				return (KafkaOperations<Object, Object>) operations;
+				return operations;
 			}
 		}
 		Optional<Class<?>> key = templates.keySet()
-			.stream()
-			.filter((k) -> k.isAssignableFrom(value.getClass()))
-			.findFirst();
+				.stream()
+				.filter((k) -> k.isAssignableFrom(value.getClass()))
+				.findFirst();
 		if (key.isPresent()) {
-			return (KafkaOperations<Object, Object>) templates.get(key.get());
+			return templates.get(key.get());
 		}
 		this.logger.warn(() -> "Failed to find a template for " + value.getClass() + " attempting to use the last entry");
-		return (KafkaOperations<Object, Object>) templates.values()
+		return templates.values()
 				.stream()
-				.reduce((first,  second) -> second)
+				.reduce((first, second) -> second)
 				.get();
 	}
 
@@ -665,12 +666,12 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	 * @param headers the headers - original record headers plus DLT headers.
 	 * @param key the key to use instead of the consumer record key.
 	 * @param value the value to use instead of the consumer record value.
-	 * @return the producer record to send.
+	 * @return the producer record for sending.
 	 * @see KafkaHeaders
 	 */
 	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	protected ProducerRecord<Object, Object> createProducerRecord(ConsumerRecord<?, ?> record,
-			TopicPartition topicPartition, Headers headers, @Nullable byte[] key, @Nullable byte[] value) {
+			TopicPartition topicPartition, Headers headers, byte @Nullable [] key, byte @Nullable [] value) {
 
 		return new ProducerRecord<>(topicPartition.topic(),
 				topicPartition.partition() < 0 ? null : topicPartition.partition(),
@@ -679,7 +680,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	}
 
 	/**
-	 * Override this if you want more than just logging of the send result.
+	 * Override this if you want more than just logging of the {@code send} result.
 	 * @param outRecord the record to send.
 	 * @param kafkaTemplate the template.
 	 * @param inRecord the consumer record.
@@ -710,7 +711,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	}
 
 	/**
-	 * Wait for the send future to complete.
+	 * Wait for the {@code send} future to complete.
 	 * @param kafkaTemplate the template used to send the record.
 	 * @param outRecord the record.
 	 * @param sendResult the future.
@@ -749,7 +750,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 	 * @since 2.7.14
 	 */
 	protected Duration determineSendTimeout(KafkaOperations<?, ?> template) {
-		ProducerFactory<? extends Object, ? extends Object> producerFactory = template.getProducerFactory();
+		ProducerFactory<?, ?> producerFactory = template.getProducerFactory();
 		if (producerFactory != null) { // NOSONAR - will only occur in mock tests
 			Map<String, Object> props;
 			try {
@@ -838,8 +839,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 				HeaderNames.HeadersToAdd.EX_STACKTRACE);
 	}
 
-	@Nullable
-	private String buildMessage(Exception exception, @Nullable Throwable cause) {
+	private @Nullable String buildMessage(Exception exception, @Nullable Throwable cause) {
 		String message = exception.getMessage();
 		if (!exception.equals(cause)) {
 			if (message != null) {
@@ -1295,6 +1295,7 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 							this.partitionHeader,
 							this.consumerGroupHeader);
 				}
+
 			}
 
 			/**
@@ -1425,7 +1426,9 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 									this.keyExceptionStacktrace,
 									this.exceptionStacktrace));
 				}
+
 			}
+
 		}
 
 	}
