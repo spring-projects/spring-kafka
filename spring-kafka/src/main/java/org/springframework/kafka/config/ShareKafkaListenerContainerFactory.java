@@ -50,6 +50,7 @@ import org.springframework.util.Assert;
  * @param <V> the value type
  *
  * @author Soby Chacko
+ *
  * @since 4.0
  */
 public class ShareKafkaListenerContainerFactory<K, V>
@@ -179,7 +180,7 @@ public class ShareKafkaListenerContainerFactory<K, V>
 		return containerProperties.isExplicitShareAcknowledgment();
 	}
 
-	private void validateShareConfiguration(KafkaListenerEndpoint endpoint) {
+	private static void validateShareConfiguration(KafkaListenerEndpoint endpoint) {
 		// Validate that batch listeners aren't used with share consumers
 		if (Boolean.TRUE.equals(endpoint.getBatchListener())) {
 			throw new IllegalArgumentException(

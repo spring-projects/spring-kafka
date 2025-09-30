@@ -26,7 +26,6 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -164,7 +163,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 			assertThat(received).hasSize(3);
 			assertThat(acknowledgments).hasSize(3);
 			assertThat(acknowledgments).allMatch(Objects::nonNull);
-			assertThat(acknowledgments).allMatch(this::isAcknowledgedInternal);
+			assertThat(acknowledgments).allMatch(ShareKafkaMessageListenerContainerIntegrationTests::isAcknowledgedInternal);
 			assertThat(acknowledgments).allMatch(ack -> getAcknowledgmentTypeInternal(ack) == AcknowledgeType.ACCEPT);
 		}
 		finally {
@@ -267,17 +266,18 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 			assertThat(firstBatchLatch.await(15, TimeUnit.SECONDS)).isTrue();
 			assertThat(pendingAcks).hasSize(3);
 
-			// Wait a bit to ensure no more records are processed while acknowledgments are pending
-			Thread.sleep(2000);
+			// Produce more records for second batch while first is pending
+			produceTestRecords(bootstrapServers, topic, 3);
+
+			// Verify second batch is NOT processed yet while acknowledgments are pending
+			// Using a latch that should NOT count down to verify blocking behavior
+			assertThat(secondBatchLatch.await(2, TimeUnit.SECONDS)).isFalse();
 			assertThat(processedCount.get()).isEqualTo(3);
 
 			// Acknowledge first batch
 			for (ShareAcknowledgment ack : pendingAcks) {
 				ack.acknowledge();
 			}
-
-			// Produce more records for second batch
-			produceTestRecords(bootstrapServers, topic, 3);
 
 			// Now second batch should be processed
 			assertThat(secondBatchLatch.await(15, TimeUnit.SECONDS)).isTrue();
@@ -460,12 +460,21 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		ContainerProperties containerProps = new ContainerProperties(topic);
 		containerProps.setExplicitShareAcknowledgment(true);
 
-		AtomicBoolean listenerCalled = new AtomicBoolean(false);
+		CountDownLatch firstProcessingLatch = new CountDownLatch(1);
+		CountDownLatch secondProcessingLatch = new CountDownLatch(1);
+		AtomicInteger callCount = new AtomicInteger(0);
+
 		containerProps.setMessageListener(new AcknowledgingShareConsumerAwareMessageListener<String, String>() {
 			@Override
 			public void onShareRecord(ConsumerRecord<String, String> record,
 					@Nullable ShareAcknowledgment acknowledgment, ShareConsumer<?, ?> consumer) {
-				listenerCalled.set(true);
+				int count = callCount.incrementAndGet();
+				if (count == 1) {
+					firstProcessingLatch.countDown();
+				}
+				else if (count == 2) {
+					secondProcessingLatch.countDown();
+				}
 				acknowledgment.acknowledge();
 			}
 		});
@@ -474,35 +483,27 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 				new ShareKafkaMessageListenerContainer<>(factory, containerProps);
 		container.setBeanName("lifecycleTestContainer");
 
-		// Test initial state
 		assertThat(container.isRunning()).isFalse();
 
-		// Test start
 		container.start();
 		assertThat(container.isRunning()).isTrue();
 
-		// Test processing
 		produceTestRecords(bootstrapServers, topic, 1);
-		Thread.sleep(3000); // Give time for processing
-		assertThat(listenerCalled.get()).isTrue();
+		assertThat(firstProcessingLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
-		// Test stop
 		container.stop();
 		assertThat(container.isRunning()).isFalse();
 
-		// Test restart
-		listenerCalled.set(false);
 		container.start();
 		assertThat(container.isRunning()).isTrue();
 
 		produceTestRecords(bootstrapServers, topic, 1);
-		Thread.sleep(3000);
-		assertThat(listenerCalled.get()).isTrue();
+		assertThat(secondProcessingLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
 		container.stop();
 	}
 
-	private void testBasicMessageListener(DefaultShareConsumerFactory<String, String> factory,
+	private static void testBasicMessageListener(DefaultShareConsumerFactory<String, String> factory,
 			String topic, String bootstrapServers, String groupId) throws Exception {
 
 		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
@@ -529,7 +530,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		}
 	}
 
-	private void testShareConsumerAwareListener(DefaultShareConsumerFactory<String, String> factory,
+	private static void testShareConsumerAwareListener(DefaultShareConsumerFactory<String, String> factory,
 			String topic, String bootstrapServers, String groupId) throws Exception {
 
 		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
@@ -566,7 +567,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		}
 	}
 
-	private void testAckListenerInImplicitMode(DefaultShareConsumerFactory<String, String> factory,
+	private static void testAckListenerInImplicitMode(DefaultShareConsumerFactory<String, String> factory,
 			String topic, String bootstrapServers, String groupId) throws Exception {
 
 		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
@@ -602,7 +603,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 	}
 
 	// Utility methods
-	private Map<String, Object> createConsumerProps(String bootstrapServers, String groupId, boolean explicit) {
+	private static Map<String, Object> createConsumerProps(String bootstrapServers, String groupId, boolean explicit) {
 		Map<String, Object> props = new HashMap<>();
 		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
@@ -614,7 +615,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		return props;
 	}
 
-	private void produceTestRecords(String bootstrapServers, String topic, int count) throws Exception {
+	private static void produceTestRecords(String bootstrapServers, String topic, int count) throws Exception {
 		try (var producer = createProducer(bootstrapServers)) {
 			for (int i = 0; i < count; i++) {
 				producer.send(new ProducerRecord<>(topic, "key" + i, "value" + i)).get();
@@ -622,7 +623,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		}
 	}
 
-	private KafkaProducer<String, String> createProducer(String bootstrapServers) {
+	private static KafkaProducer<String, String> createProducer(String bootstrapServers) {
 		Map<String, Object> producerProps = new HashMap<>();
 		producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -630,7 +631,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		return new KafkaProducer<>(producerProps);
 	}
 
-	private void setShareAutoOffsetResetEarliest(String bootstrapServers, String groupId) throws Exception {
+	private static void setShareAutoOffsetResetEarliest(String bootstrapServers, String groupId) throws Exception {
 		Map<String, Object> adminProperties = new HashMap<>();
 		adminProperties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		ConfigEntry entry = new ConfigEntry("share.auto.offset.reset", "earliest");
@@ -645,7 +646,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 	/**
 	 * Helper method to access internal acknowledgment state for testing.
 	 */
-	private boolean isAcknowledgedInternal(ShareAcknowledgment ack) {
+	private static boolean isAcknowledgedInternal(ShareAcknowledgment ack) {
 		try {
 			java.lang.reflect.Method method = ack.getClass().getDeclaredMethod("isAcknowledged");
 			method.setAccessible(true);
@@ -659,7 +660,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 	/**
 	 * Helper method to access internal acknowledgment type for testing.
 	 */
-	private AcknowledgeType getAcknowledgmentTypeInternal(ShareAcknowledgment ack) {
+	private static AcknowledgeType getAcknowledgmentTypeInternal(ShareAcknowledgment ack) {
 		try {
 			java.lang.reflect.Method method = ack.getClass().getDeclaredMethod("getAcknowledgmentType");
 			method.setAccessible(true);

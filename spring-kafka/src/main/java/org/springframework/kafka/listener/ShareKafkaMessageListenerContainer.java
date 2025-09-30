@@ -35,6 +35,7 @@ import org.jspecify.annotations.Nullable;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.log.LogAccessor;
+import org.springframework.core.log.LogMessage;
 import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.core.ShareConsumerFactory;
@@ -71,7 +72,9 @@ import org.springframework.util.Assert;
  * @param <V> the value type
  *
  * @author Soby Chacko
+ *
  * @since 4.0
+ *
  * @see ShareConsumer
  * @see ShareAcknowledgment
  */
@@ -247,7 +250,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			if (this.isExplicitMode) {
 				// Apply explicit mode configuration to consumer
 				// Note: This should ideally be done during consumer creation in the factory
-				this.logger.info(() -> "Share consumer configured for explicit acknowledgment mode");
+				this.logger.info("Share consumer configured for explicit acknowledgment mode");
 			}
 
 			this.consumer.subscribe(Arrays.asList(containerProperties.getTopics()));
@@ -409,17 +412,18 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		private void processQueuedAcknowledgments() {
 			PendingAcknowledgment<K, V> pendingAck;
 			while ((pendingAck = this.acknowledgmentQueue.poll()) != null) {
+				final PendingAcknowledgment<K, V> ack = pendingAck;
 				try {
-					this.consumer.acknowledge(pendingAck.record, pendingAck.type);
+					this.consumer.acknowledge(ack.record, ack.type);
 					// Find and notify the acknowledgment object
-					ShareConsumerAcknowledgment ack = this.pendingAcknowledgments.get(pendingAck.record);
-					if (ack != null) {
-						ack.notifyAcknowledged(pendingAck.type);
-						onRecordAcknowledged(pendingAck.record);
+					ShareConsumerAcknowledgment acknowledgment = this.pendingAcknowledgments.get(ack.record);
+					if (acknowledgment != null) {
+						acknowledgment.notifyAcknowledged(ack.type);
+						onRecordAcknowledged(ack.record);
 					}
 				}
 				catch (Exception e) {
-					this.logger.error(e, "Failed to process queued acknowledgment for record: " + pendingAck.record);
+					this.logger.error(e, () -> "Failed to process queued acknowledgment for record: " + ack.record);
 				}
 			}
 		}
@@ -437,7 +441,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 				long recordAge = currentTime - entry.getValue();
 				if (recordAge > this.ackTimeoutMs) {
 					ConsumerRecord<K, V> record = entry.getKey();
-					this.logger.warn(() -> String.format(
+					this.logger.warn(LogMessage.format(
 						"Record not acknowledged within timeout (%d seconds). " +
 						"In explicit acknowledgment mode, you must call ack.acknowledge(), ack.release(), " +
 						"or ack.reject() for every record. " +

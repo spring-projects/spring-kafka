@@ -122,7 +122,8 @@ class ShareKafkaMessageListenerContainerConstraintTests {
 			produceTestRecords(bootstrapServers, topic, 2);
 
 			// Wait and verify second batch is NOT processed yet
-			Thread.sleep(3000);
+			// Using a latch that should NOT count down to verify blocking behavior
+			assertThat(secondBatchLatch.await(3, TimeUnit.SECONDS)).isFalse();
 			assertThat(totalProcessed.get()).isEqualTo(3);
 			assertThat(secondBatchLatch.getCount()).isEqualTo(2);
 
@@ -198,7 +199,8 @@ class ShareKafkaMessageListenerContainerConstraintTests {
 			produceTestRecords(bootstrapServers, topic, 1);
 
 			// Should not process new records while one is still pending
-			Thread.sleep(3000);
+			// Using a latch that should NOT count down to verify blocking behavior
+			assertThat(nextPollLatch.await(3, TimeUnit.SECONDS)).isFalse();
 			assertThat(totalProcessed.get()).isEqualTo(4);
 
 			// Acknowledge the last pending record
