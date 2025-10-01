@@ -231,7 +231,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 			KeyValues keyValues = KeyValues.of(
 					ListenerLowCardinalityTags.LISTENER_ID.withValue(context.getListenerId()),
 					ListenerLowCardinalityTags.MESSAGING_SYSTEM.withValue("kafka"),
-					ListenerLowCardinalityTags.MESSAGING_OPERATION.withValue("receive"),
+					ListenerLowCardinalityTags.MESSAGING_OPERATION.withValue("process"),
 					ListenerLowCardinalityTags.MESSAGING_SOURCE_NAME.withValue(context.getSource()),
 					ListenerLowCardinalityTags.MESSAGING_SOURCE_KIND.withValue("topic")
 			);
@@ -269,7 +269,7 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 
 		@Override
 		public String getContextualName(KafkaRecordReceiverContext context) {
-			return context.getSource() + " receive";
+			return context.getSource() + " process";
 		}
 
 		private static @Nullable String getConsumerId(@Nullable String groupId, @Nullable String clientId) {
