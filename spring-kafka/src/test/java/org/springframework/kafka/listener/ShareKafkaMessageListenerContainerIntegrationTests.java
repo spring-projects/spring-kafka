@@ -161,10 +161,10 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		try {
 			assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue();
 			assertThat(received).hasSize(3);
-			assertThat(acknowledgments).hasSize(3);
-			assertThat(acknowledgments).allMatch(Objects::nonNull);
-			assertThat(acknowledgments).allMatch(ShareKafkaMessageListenerContainerIntegrationTests::isAcknowledgedInternal);
-			assertThat(acknowledgments).allMatch(ack -> getAcknowledgmentTypeInternal(ack) == AcknowledgeType.ACCEPT);
+			assertThat(acknowledgments).hasSize(3)
+					.allMatch(Objects::nonNull)
+					.allMatch(ShareKafkaMessageListenerContainerIntegrationTests::isAcknowledgedInternal)
+					.allMatch(ack -> AcknowledgeType.ACCEPT.equals(getAcknowledgmentTypeInternal(ack)));
 		}
 		finally {
 			container.stop();
@@ -270,8 +270,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 			produceTestRecords(bootstrapServers, topic, 3);
 
 			// Verify second batch is NOT processed yet while acknowledgments are pending
-			// Using a latch that should NOT count down to verify blocking behavior
-			assertThat(secondBatchLatch.await(2, TimeUnit.SECONDS)).isFalse();
+			Thread.sleep(2000);
 			assertThat(processedCount.get()).isEqualTo(3);
 
 			// Acknowledge first batch
