@@ -48,6 +48,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.awaitility.Awaitility;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.core.log.LogAccessor;
@@ -58,7 +59,6 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -150,7 +150,8 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		List<String> received = Collections.synchronizedList(new ArrayList<>());
 		List<ShareAcknowledgment> acknowledgments = Collections.synchronizedList(new ArrayList<>());
 
-		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (record, acknowledgment, consumer) -> {
+		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
+				record, acknowledgment, consumer) -> {
 			received.add(record.value());
 			acknowledgments.add(acknowledgment);
 
@@ -264,7 +265,8 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		container.setBeanName("constraintTestContainer");
 		container.start();
 
-		LogAccessor logAccessor = spy(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.logger", LogAccessor.class));
+		LogAccessor logAccessor = spy(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.logger",
+				LogAccessor.class));
 
 		DirectFieldAccessor accessor = new DirectFieldAccessor(container);
 		accessor.setPropertyValue("listenerConsumer.logger", logAccessor);
@@ -280,8 +282,9 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 			// Wait for the next poll to be blocked since no explicit acknowledgment has been made yet.
 			// this.logger.trace(() -> "Poll blocked waiting for " + this.pendingAcknowledgments.size() +
 			//									" acknowledgments");
-			Awaitility.await().atMost(15, TimeUnit.SECONDS).untilAsserted(
-					() -> verify(logAccessor, atLeastOnce()).trace(any(Supplier.class)));
+			Awaitility.await().atMost(15, TimeUnit.SECONDS).untilAsserted(() ->
+				verify(logAccessor, atLeastOnce()).trace(ArgumentMatchers.<Supplier<CharSequence>>any())
+			);
 
 			assertThat(processedCount.get()).isEqualTo(3);
 
@@ -340,7 +343,8 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		container.setBeanName("partialAckTestContainer");
 		container.start();
 
-		LogAccessor logAccessor = spy(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.logger", LogAccessor.class));
+		LogAccessor logAccessor = spy(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.logger",
+				LogAccessor.class));
 
 		DirectFieldAccessor accessor = new DirectFieldAccessor(container);
 		accessor.setPropertyValue("listenerConsumer.logger", logAccessor);
@@ -363,8 +367,9 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 			// Wait for the next poll to be blocked since one acknowledgment is still pending.
 			// this.logger.trace(() -> "Poll blocked waiting for " + this.pendingAcknowledgments.size() +
 			//									" acknowledgments");
-			Awaitility.await().atMost(15, TimeUnit.SECONDS).untilAsserted(
-					() -> verify(logAccessor, atLeastOnce()).trace(any(Supplier.class)));
+			Awaitility.await().atMost(15, TimeUnit.SECONDS).untilAsserted(() ->
+				verify(logAccessor, atLeastOnce()).trace(ArgumentMatchers.<Supplier<CharSequence>>any())
+			);
 
 			assertThat(totalProcessed.get()).isEqualTo(4);
 

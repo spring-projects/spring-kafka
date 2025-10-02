@@ -467,9 +467,10 @@ This feature helps developers quickly identify when acknowledgment calls are mis
                 else {
                     acknowledgment.release(); // Temporary failure - retry later
                 }
-                else {
-                    acknowledgment.reject(); // Invalid order - don't retry
-                }
+            }
+            else {
+                acknowledgment.reject(); // Invalid order - don't retry
+            }
         }
         catch (Exception e) {
             // Exception automatically triggers REJECT

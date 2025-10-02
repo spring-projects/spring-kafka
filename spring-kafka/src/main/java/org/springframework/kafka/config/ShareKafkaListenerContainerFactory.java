@@ -21,7 +21,7 @@ import java.util.Collection;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.jspecify.annotations.Nullable;
+import org.apache.kafka.clients.consumer.internals.ShareAcknowledgementMode;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -54,17 +54,20 @@ import org.springframework.util.Assert;
  * @since 4.0
  */
 public class ShareKafkaListenerContainerFactory<K, V>
-		implements KafkaListenerContainerFactory<ShareKafkaMessageListenerContainer<K, V>>, ApplicationEventPublisherAware, ApplicationContextAware {
+		implements KafkaListenerContainerFactory<ShareKafkaMessageListenerContainer<K, V>>,
+		ApplicationEventPublisherAware, ApplicationContextAware {
 
 	private final ShareConsumerFactory<? super K, ? super V> shareConsumerFactory;
 
-	private @Nullable Boolean autoStartup;
+	private boolean autoStartup = true;
 
-	private @Nullable Integer phase;
+	private int phase = 0;
 
-	private @Nullable ApplicationEventPublisher applicationEventPublisher;
+	@SuppressWarnings("NullAway.Init")
+	private ApplicationEventPublisher applicationEventPublisher;
 
-	private @Nullable ApplicationContext applicationContext;
+	@SuppressWarnings("NullAway.Init")
+	private ApplicationContext applicationContext;
 
 	/**
 	 * Construct an instance with the provided consumer factory.
@@ -83,7 +86,7 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	 * Set whether containers created by this factory should auto-start.
 	 * @param autoStartup true to auto-start
 	 */
-	public void setAutoStartup(Boolean autoStartup) {
+	public void setAutoStartup(boolean autoStartup) {
 		this.autoStartup = autoStartup;
 	}
 
@@ -91,7 +94,7 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	 * Set the phase in which containers created by this factory should start and stop.
 	 * @param phase the phase
 	 */
-	public void setPhase(Integer phase) {
+	public void setPhase(int phase) {
 		this.phase = phase;
 	}
 
@@ -126,7 +129,7 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	 */
 	protected void initializeContainer(ShareKafkaMessageListenerContainer<K, V> instance, KafkaListenerEndpoint endpoint) {
 		ContainerProperties properties = instance.getContainerProperties();
-		Boolean effectiveAutoStartup = endpoint.getAutoStartup() != null ? endpoint.getAutoStartup() : this.autoStartup;
+		boolean effectiveAutoStartup = endpoint.getAutoStartup() != null ? endpoint.getAutoStartup() : this.autoStartup;
 
 		// Validate share group configuration
 		validateShareConfiguration(endpoint);
@@ -135,11 +138,12 @@ public class ShareKafkaListenerContainerFactory<K, V>
 		boolean explicitAck = determineExplicitAcknowledgment(properties);
 		properties.setExplicitShareAcknowledgment(explicitAck);
 
+		instance.setAutoStartup(effectiveAutoStartup);
+		instance.setPhase(this.phase);
+		instance.setApplicationContext(this.applicationContext);
+		instance.setApplicationEventPublisher(this.applicationEventPublisher);
+
 		JavaUtils.INSTANCE
-				.acceptIfNotNull(effectiveAutoStartup, instance::setAutoStartup)
-				.acceptIfNotNull(this.phase, instance::setPhase)
-				.acceptIfNotNull(this.applicationContext, instance::setApplicationContext)
-				.acceptIfNotNull(this.applicationEventPublisher, instance::setApplicationEventPublisher)
 				.acceptIfNotNull(endpoint.getGroupId(), properties::setGroupId)
 				.acceptIfNotNull(endpoint.getClientIdPrefix(), properties::setClientId);
 	}
@@ -163,18 +167,8 @@ public class ShareKafkaListenerContainerFactory<K, V>
 				.get(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG);
 
 		if (clientAckMode != null) {
-			String mode = clientAckMode.toString().toLowerCase();
-			if ("explicit".equals(mode)) {
-				return true;
-			}
-			else if ("implicit".equals(mode)) {
-				return false;
-			}
-			else {
-				throw new IllegalArgumentException(
-						"Invalid " + ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG + ": " + mode +
-						". Must be 'implicit' or 'explicit'");
-			}
+			ShareAcknowledgementMode mode = ShareAcknowledgementMode.fromString(clientAckMode.toString());
+			return mode == ShareAcknowledgementMode.EXPLICIT;
 		}
 		// Default to implicit acknowledgment (false)
 		return containerProperties.isExplicitShareAcknowledgment();

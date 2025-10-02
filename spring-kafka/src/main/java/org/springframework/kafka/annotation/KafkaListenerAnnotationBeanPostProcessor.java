@@ -653,7 +653,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 				containerFactory, beanName);
 
 		if (listenerContainerFactory instanceof ShareKafkaListenerContainerFactory<?, ?>) {
-			endpoint.setShareConsumer(Boolean.TRUE);
+			endpoint.setShareConsumer(true);
 		}
 
 		this.registrar.registerEndpoint(endpoint, listenerContainerFactory);
