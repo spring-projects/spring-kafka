@@ -25,9 +25,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AlterConfigOp;
@@ -42,15 +45,23 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.awaitility.Awaitility;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.beans.DirectFieldAccessor;
+import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.DefaultShareConsumerFactory;
 import org.springframework.kafka.support.ShareAcknowledgment;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 @EmbeddedKafka(
 		topics = {
@@ -58,6 +69,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 				"share-container-explicit-test",
 				"share-container-implicit-test",
 				"share-container-constraint-test",
+				"share-container-partial-test",
+				"share-container-concurrent-test",
 				"share-container-error-test",
 				"share-container-mixed-ack-test",
 				"share-container-lifecycle-test"
@@ -137,20 +150,16 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		List<String> received = Collections.synchronizedList(new ArrayList<>());
 		List<ShareAcknowledgment> acknowledgments = Collections.synchronizedList(new ArrayList<>());
 
-		containerProps.setMessageListener(new AcknowledgingShareConsumerAwareMessageListener<String, String>() {
-			@Override
-			public void onShareRecord(ConsumerRecord<String, String> record,
-					@Nullable ShareAcknowledgment acknowledgment, ShareConsumer<?, ?> consumer) {
-				received.add(record.value());
-				acknowledgments.add(acknowledgment);
+		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (record, acknowledgment, consumer) -> {
+			received.add(record.value());
+			acknowledgments.add(acknowledgment);
 
-				// Explicitly acknowledge the record
-				if (acknowledgment != null) {
-					acknowledgment.acknowledge(); // ACCEPT
-				}
-
-				latch.countDown();
+			// Explicitly acknowledge the record
+			if (acknowledgment != null) {
+				acknowledgment.acknowledge(); // ACCEPT
 			}
+
+			latch.countDown();
 		});
 
 		ShareKafkaMessageListenerContainer<String, String> container =
@@ -189,17 +198,14 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		CountDownLatch latch = new CountDownLatch(3);
 		List<String> received = Collections.synchronizedList(new ArrayList<>());
 
-		containerProps.setMessageListener(new AcknowledgingShareConsumerAwareMessageListener<String, String>() {
-			@Override
-			public void onShareRecord(ConsumerRecord<String, String> record,
-					@Nullable ShareAcknowledgment acknowledgment, ShareConsumer<?, ?> consumer) {
-				received.add(record.value());
+		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
+				record, acknowledgment, consumer) -> {
+			received.add(record.value());
 
-				// In implicit mode, acknowledgment should be null
-				assertThat(acknowledgment).isNull();
+			// In implicit mode, acknowledgment should be null
+			assertThat(acknowledgment).isNull();
 
-				latch.countDown();
-			}
+			latch.countDown();
 		});
 
 		ShareKafkaMessageListenerContainer<String, String> container =
@@ -236,23 +242,20 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		AtomicInteger processedCount = new AtomicInteger();
 		List<ShareAcknowledgment> pendingAcks = Collections.synchronizedList(new ArrayList<>());
 
-		containerProps.setMessageListener(new AcknowledgingShareConsumerAwareMessageListener<String, String>() {
-			@Override
-			public void onShareRecord(ConsumerRecord<String, String> record,
-					@Nullable ShareAcknowledgment acknowledgment, ShareConsumer<?, ?> consumer) {
+		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
+				record, acknowledgment, consumer) -> {
 
-				int count = processedCount.incrementAndGet();
+			int count = processedCount.incrementAndGet();
 
-				if (count <= 3) {
-					// First batch - collect acknowledgments but don't acknowledge yet
-					pendingAcks.add(acknowledgment);
-					firstBatchLatch.countDown();
-				}
-				else {
-					// Second batch - should only happen after first batch is acknowledged
-					acknowledgment.acknowledge();
-					secondBatchLatch.countDown();
-				}
+			if (count <= 3) {
+				// First batch - collect acknowledgments but don't acknowledge yet
+				pendingAcks.add(acknowledgment);
+				firstBatchLatch.countDown();
+			}
+			else {
+				// Second batch - should only happen after first batch is acknowledged
+				acknowledgment.acknowledge();
+				secondBatchLatch.countDown();
 			}
 		});
 
@@ -260,6 +263,11 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 				new ShareKafkaMessageListenerContainer<>(factory, containerProps);
 		container.setBeanName("constraintTestContainer");
 		container.start();
+
+		LogAccessor logAccessor = spy(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.logger", LogAccessor.class));
+
+		DirectFieldAccessor accessor = new DirectFieldAccessor(container);
+		accessor.setPropertyValue("listenerConsumer.logger", logAccessor);
 
 		try {
 			// Wait for first batch to be processed
@@ -269,8 +277,12 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 			// Produce more records for second batch while first is pending
 			produceTestRecords(bootstrapServers, topic, 3);
 
-			// Verify second batch is NOT processed yet while acknowledgments are pending
-			Thread.sleep(2000);
+			// Wait for the next poll to be blocked since no explicit acknowledgment has been made yet.
+			// this.logger.trace(() -> "Poll blocked waiting for " + this.pendingAcknowledgments.size() +
+			//									" acknowledgments");
+			Awaitility.await().atMost(15, TimeUnit.SECONDS).untilAsserted(
+					() -> verify(logAccessor, atLeastOnce()).trace(any(Supplier.class)));
+
 			assertThat(processedCount.get()).isEqualTo(3);
 
 			// Acknowledge first batch
@@ -281,6 +293,87 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 			// Now second batch should be processed
 			assertThat(secondBatchLatch.await(15, TimeUnit.SECONDS)).isTrue();
 			assertThat(processedCount.get()).isEqualTo(6);
+
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	void shouldHandlePartialAcknowledgmentCorrectly(EmbeddedKafkaBroker broker) throws Exception {
+		String topic = "share-container-partial-test";
+		String groupId = "share-container-partial-group";
+		String bootstrapServers = broker.getBrokersAsString();
+
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
+
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
+
+		ContainerProperties containerProps = new ContainerProperties(topic);
+		containerProps.setExplicitShareAcknowledgment(true);
+
+		CountDownLatch batchLatch = new CountDownLatch(4);
+		CountDownLatch nextPollLatch = new CountDownLatch(1);
+		List<ShareAcknowledgment> batchAcks = Collections.synchronizedList(new ArrayList<>());
+		AtomicInteger totalProcessed = new AtomicInteger();
+
+		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
+				record, acknowledgment, consumer) -> {
+
+			int count = totalProcessed.incrementAndGet();
+
+			if (count <= 4) {
+				batchAcks.add(acknowledgment);
+				batchLatch.countDown();
+			}
+			else {
+				// This should only happen after all previous records acknowledged
+				acknowledgment.acknowledge();
+				nextPollLatch.countDown();
+			}
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(factory, containerProps);
+		container.setBeanName("partialAckTestContainer");
+		container.start();
+
+		LogAccessor logAccessor = spy(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.logger", LogAccessor.class));
+
+		DirectFieldAccessor accessor = new DirectFieldAccessor(container);
+		accessor.setPropertyValue("listenerConsumer.logger", logAccessor);
+
+		produceTestRecords(bootstrapServers, topic, 4);
+
+		try {
+			// Wait for batch to be processed
+			assertThat(batchLatch.await(15, TimeUnit.SECONDS)).isTrue();
+			assertThat(batchAcks).hasSize(4);
+
+			// Acknowledge only first 3 records
+			for (int i = 0; i < 3; i++) {
+				batchAcks.get(i).acknowledge();
+			}
+
+			// Produce more records
+			produceTestRecords(bootstrapServers, topic, 1);
+
+			// Wait for the next poll to be blocked since one acknowledgment is still pending.
+			// this.logger.trace(() -> "Poll blocked waiting for " + this.pendingAcknowledgments.size() +
+			//									" acknowledgments");
+			Awaitility.await().atMost(15, TimeUnit.SECONDS).untilAsserted(
+					() -> verify(logAccessor, atLeastOnce()).trace(any(Supplier.class)));
+
+			assertThat(totalProcessed.get()).isEqualTo(4);
+
+			// Acknowledge the last pending record
+			batchAcks.get(3).acknowledge();
+
+			// Now should process new records
+			assertThat(nextPollLatch.await(15, TimeUnit.SECONDS)).isTrue();
+			assertThat(totalProcessed.get()).isEqualTo(5);
 
 		}
 		finally {
@@ -307,24 +400,21 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		AtomicInteger errorCount = new AtomicInteger();
 		AtomicInteger successCount = new AtomicInteger();
 
-		containerProps.setMessageListener(new AcknowledgingShareConsumerAwareMessageListener<String, String>() {
-			@Override
-			public void onShareRecord(ConsumerRecord<String, String> record,
-					@Nullable ShareAcknowledgment acknowledgment, ShareConsumer<?, ?> consumer) {
+		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
+				record, acknowledgment, consumer) -> {
 
-				// Simulate error for every 3rd record
-				if (record.value().endsWith("2")) { // value2
-					errorCount.incrementAndGet();
-					latch.countDown();
-					throw new RuntimeException("Simulated processing error");
-				}
-				else {
-					successCount.incrementAndGet();
-					acknowledgment.acknowledge();
-				}
-
+			// Simulate error for every 3rd record
+			if (record.value().endsWith("2")) { // value2
+				errorCount.incrementAndGet();
 				latch.countDown();
+				throw new RuntimeException("Simulated processing error");
 			}
+			else {
+				successCount.incrementAndGet();
+				acknowledgment.acknowledge();
+			}
+
+			latch.countDown();
 		});
 
 		ShareKafkaMessageListenerContainer<String, String> container =
@@ -367,37 +457,34 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		CountDownLatch redeliveryLatch = new CountDownLatch(1);
 		Map<String, AcknowledgeType> ackTypes = new ConcurrentHashMap<>();
 
-		containerProps.setMessageListener(new AcknowledgingShareConsumerAwareMessageListener<String, String>() {
-			@Override
-			public void onShareRecord(ConsumerRecord<String, String> record,
-					@Nullable ShareAcknowledgment acknowledgment, ShareConsumer<?, ?> consumer) {
+		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
+				record, acknowledgment, consumer) -> {
 
-				String key = record.key();
+			String key = record.key();
 
-				if ("accept".equals(key)) {
+			if ("accept".equals(key)) {
+				acknowledgment.acknowledge();
+				ackTypes.put(key, AcknowledgeType.ACCEPT);
+				firstRoundLatch.countDown();
+			}
+			else if ("release".equals(key)) {
+				if (!ackTypes.containsKey("release-redelivered")) {
+					// First delivery - release it
+					acknowledgment.release();
+					ackTypes.put("release-redelivered", AcknowledgeType.RELEASE);
+					firstRoundLatch.countDown();
+				}
+				else {
+					// Redelivered - accept it
 					acknowledgment.acknowledge();
 					ackTypes.put(key, AcknowledgeType.ACCEPT);
-					firstRoundLatch.countDown();
+					redeliveryLatch.countDown();
 				}
-				else if ("release".equals(key)) {
-					if (!ackTypes.containsKey("release-redelivered")) {
-						// First delivery - release it
-						acknowledgment.release();
-						ackTypes.put("release-redelivered", AcknowledgeType.RELEASE);
-						firstRoundLatch.countDown();
-					}
-					else {
-						// Redelivered - accept it
-						acknowledgment.acknowledge();
-						ackTypes.put(key, AcknowledgeType.ACCEPT);
-						redeliveryLatch.countDown();
-					}
-				}
-				else if ("reject".equals(key)) {
-					acknowledgment.reject();
-					ackTypes.put(key, AcknowledgeType.REJECT);
-					firstRoundLatch.countDown();
-				}
+			}
+			else if ("reject".equals(key)) {
+				acknowledgment.reject();
+				ackTypes.put(key, AcknowledgeType.REJECT);
+				firstRoundLatch.countDown();
 			}
 		});
 
@@ -463,19 +550,16 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		CountDownLatch secondProcessingLatch = new CountDownLatch(1);
 		AtomicInteger callCount = new AtomicInteger(0);
 
-		containerProps.setMessageListener(new AcknowledgingShareConsumerAwareMessageListener<String, String>() {
-			@Override
-			public void onShareRecord(ConsumerRecord<String, String> record,
-					@Nullable ShareAcknowledgment acknowledgment, ShareConsumer<?, ?> consumer) {
-				int count = callCount.incrementAndGet();
-				if (count == 1) {
-					firstProcessingLatch.countDown();
-				}
-				else if (count == 2) {
-					secondProcessingLatch.countDown();
-				}
-				acknowledgment.acknowledge();
+		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
+				record, acknowledgment, consumer) -> {
+			int count = callCount.incrementAndGet();
+			if (count == 1) {
+				firstProcessingLatch.countDown();
 			}
+			else if (count == 2) {
+				secondProcessingLatch.countDown();
+			}
+			acknowledgment.acknowledge();
 		});
 
 		ShareKafkaMessageListenerContainer<String, String> container =
@@ -500,6 +584,78 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		assertThat(secondProcessingLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
 		container.stop();
+	}
+
+	@Test
+	void shouldHandleConcurrentAcknowledgmentAttempts(EmbeddedKafkaBroker broker) throws Exception {
+		String topic = "share-container-concurrent-test";
+		String groupId = "share-container-concurrent-group";
+		String bootstrapServers = broker.getBrokersAsString();
+
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
+		produceTestRecords(bootstrapServers, topic, 1);
+
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
+
+		ContainerProperties containerProps = new ContainerProperties(topic);
+		containerProps.setExplicitShareAcknowledgment(true);
+
+		CountDownLatch processedLatch = new CountDownLatch(1);
+		AtomicReference<ShareAcknowledgment> ackRef = new AtomicReference<>();
+		AtomicInteger successfulAcks = new AtomicInteger();
+		AtomicInteger failedAcks = new AtomicInteger();
+
+		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
+				record, acknowledgment, consumer) -> {
+			ackRef.set(acknowledgment);
+			processedLatch.countDown();
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(factory, containerProps);
+		container.setBeanName("concurrentAckTestContainer");
+		container.start();
+
+		try {
+			// Wait for record to be processed
+			assertThat(processedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			ShareAcknowledgment ack = ackRef.get();
+			assertThat(ack).isNotNull();
+
+			// Try to acknowledge the same record concurrently from multiple threads
+			int numThreads = 10;
+			ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+			CountDownLatch threadLatch = new CountDownLatch(numThreads);
+
+			for (int i = 0; i < numThreads; i++) {
+				executor.submit(() -> {
+					try {
+						ack.acknowledge();
+						successfulAcks.incrementAndGet();
+					}
+					catch (IllegalStateException e) {
+						failedAcks.incrementAndGet();
+					}
+					finally {
+						threadLatch.countDown();
+					}
+				});
+			}
+
+			assertThat(threadLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			executor.shutdown();
+
+			// Only one acknowledgment should succeed
+			assertThat(successfulAcks.get()).isEqualTo(1);
+			assertThat(failedAcks.get()).isEqualTo(numThreads - 1);
+			// Check internal state through reflection since isAcknowledged() is no longer public
+			assertThat(isAcknowledgedInternal(ack)).isTrue();
+
+		}
+		finally {
+			container.stop();
+		}
 	}
 
 	private static void testBasicMessageListener(DefaultShareConsumerFactory<String, String> factory,
@@ -576,16 +732,13 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		// Implicit mode (default)
 		CountDownLatch latch = new CountDownLatch(1);
 
-		containerProps.setMessageListener(new AcknowledgingShareConsumerAwareMessageListener<String, String>() {
-			@Override
-			public void onShareRecord(ConsumerRecord<String, String> record,
-					@Nullable ShareAcknowledgment acknowledgment, ShareConsumer<?, ?> consumer) {
-				assertThat(record).isNotNull();
-				assertThat(consumer).isNotNull();
-				// In implicit mode, acknowledgment should be null
-				assertThat(acknowledgment).isNull();
-				latch.countDown();
-			}
+		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
+				record, acknowledgment, consumer) -> {
+			assertThat(record).isNotNull();
+			assertThat(consumer).isNotNull();
+			// In implicit mode, acknowledgment should be null
+			assertThat(acknowledgment).isNull();
+			latch.countDown();
 		});
 
 		ShareKafkaMessageListenerContainer<String, String> container =
@@ -669,4 +822,5 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 			throw new RuntimeException("Failed to access internal acknowledgment type", e);
 		}
 	}
+
 }
