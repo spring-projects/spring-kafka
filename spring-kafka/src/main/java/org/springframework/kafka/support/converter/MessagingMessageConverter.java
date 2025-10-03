@@ -23,7 +23,6 @@ import java.util.Map;
 import java.util.function.Function;
 
 import org.apache.commons.logging.LogFactory;
-import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
@@ -33,7 +32,6 @@ import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.support.AbstractKafkaHeaderMapper;
-import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.DefaultKafkaHeaderMapper;
 import org.springframework.kafka.support.JacksonPresent;
 import org.springframework.kafka.support.JsonKafkaHeaderMapper;
@@ -156,7 +154,7 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	 * IMPORTANT: This converter's {@link #fromMessage(Message, String)} method is called
 	 * for outbound conversion to a {@link ProducerRecord} with the message payload in the
 	 * {@link ProducerRecord#value()} property.
-	 * {@link #toMessage(ConsumerRecord, Acknowledgment, Consumer, Type)} is called for
+	 * {@link #toMessage(ConsumerRecord, Object, Object, Type)} is called for
 	 * inbound conversion from {@link ConsumerRecord} with the payload being the
 	 * {@link ConsumerRecord#value()} property.
 	 * <p>
@@ -181,7 +179,7 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	}
 
 	@Override
-	public Message<?> toMessage(ConsumerRecord<?, ?> record, @Nullable Acknowledgment acknowledgment, @Nullable Consumer<?, ?> consumer,
+	public Message<?> toMessage(ConsumerRecord<?, ?> record, @Nullable Object acknowledgment, @Nullable Object consumer,
 			@Nullable Type type) {
 
 		KafkaMessageHeaders kafkaMessageHeaders = new KafkaMessageHeaders(this.generateMessageId,

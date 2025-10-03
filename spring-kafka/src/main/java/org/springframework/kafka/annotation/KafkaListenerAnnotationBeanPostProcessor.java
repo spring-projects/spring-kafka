@@ -89,6 +89,7 @@ import org.springframework.kafka.config.KafkaListenerEndpointRegistrar;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
+import org.springframework.kafka.config.ShareKafkaListenerContainerFactory;
 import org.springframework.kafka.listener.ContainerGroupSequencer;
 import org.springframework.kafka.listener.KafkaConsumerBackoffManager;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
@@ -651,6 +652,10 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		KafkaListenerContainerFactory<?> listenerContainerFactory = resolveContainerFactory(kafkaListener,
 				containerFactory, beanName);
 
+		if (listenerContainerFactory instanceof ShareKafkaListenerContainerFactory<?, ?>) {
+			endpoint.setShareConsumer(true);
+		}
+
 		this.registrar.registerEndpoint(endpoint, listenerContainerFactory);
 	}
 
@@ -685,6 +690,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		if (StringUtils.hasText(kafkaListener.batch())) {
 			endpoint.setBatchListener(Boolean.parseBoolean(kafkaListener.batch()));
 		}
+
 		endpoint.setBeanFactory(this.beanFactory);
 		resolveErrorHandler(endpoint, kafkaListener);
 		resolveContentTypeConverter(endpoint, kafkaListener);

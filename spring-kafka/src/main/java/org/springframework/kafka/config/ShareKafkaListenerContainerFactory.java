@@ -20,7 +20,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.regex.Pattern;
 
-import org.jspecify.annotations.Nullable;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.internals.ShareAcknowledgementMode;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -49,20 +50,24 @@ import org.springframework.util.Assert;
  * @param <V> the value type
  *
  * @author Soby Chacko
+ *
  * @since 4.0
  */
 public class ShareKafkaListenerContainerFactory<K, V>
-		implements KafkaListenerContainerFactory<ShareKafkaMessageListenerContainer<K, V>>, ApplicationEventPublisherAware, ApplicationContextAware {
+		implements KafkaListenerContainerFactory<ShareKafkaMessageListenerContainer<K, V>>,
+		ApplicationEventPublisherAware, ApplicationContextAware {
 
 	private final ShareConsumerFactory<? super K, ? super V> shareConsumerFactory;
 
-	private @Nullable Boolean autoStartup;
+	private boolean autoStartup = true;
 
-	private @Nullable Integer phase;
+	private int phase = 0;
 
-	private @Nullable ApplicationEventPublisher applicationEventPublisher;
+	@SuppressWarnings("NullAway.Init")
+	private ApplicationEventPublisher applicationEventPublisher;
 
-	private @Nullable ApplicationContext applicationContext;
+	@SuppressWarnings("NullAway.Init")
+	private ApplicationContext applicationContext;
 
 	/**
 	 * Construct an instance with the provided consumer factory.
@@ -81,7 +86,7 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	 * Set whether containers created by this factory should auto-start.
 	 * @param autoStartup true to auto-start
 	 */
-	public void setAutoStartup(Boolean autoStartup) {
+	public void setAutoStartup(boolean autoStartup) {
 		this.autoStartup = autoStartup;
 	}
 
@@ -89,7 +94,7 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	 * Set the phase in which containers created by this factory should start and stop.
 	 * @param phase the phase
 	 */
-	public void setPhase(Integer phase) {
+	public void setPhase(int phase) {
 		this.phase = phase;
 	}
 
@@ -124,15 +129,59 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	 */
 	protected void initializeContainer(ShareKafkaMessageListenerContainer<K, V> instance, KafkaListenerEndpoint endpoint) {
 		ContainerProperties properties = instance.getContainerProperties();
-		Boolean effectiveAutoStartup = endpoint.getAutoStartup() != null ? endpoint.getAutoStartup() : this.autoStartup;
+		boolean effectiveAutoStartup = endpoint.getAutoStartup() != null ? endpoint.getAutoStartup() : this.autoStartup;
+
+		// Validate share group configuration
+		validateShareConfiguration(endpoint);
+
+		// Determine acknowledgment mode following Spring Kafka's configuration precedence patterns
+		boolean explicitAck = determineExplicitAcknowledgment(properties);
+		properties.setExplicitShareAcknowledgment(explicitAck);
+
+		instance.setAutoStartup(effectiveAutoStartup);
+		instance.setPhase(this.phase);
+		instance.setApplicationContext(this.applicationContext);
+		instance.setApplicationEventPublisher(this.applicationEventPublisher);
+
 		JavaUtils.INSTANCE
-				.acceptIfNotNull(effectiveAutoStartup, instance::setAutoStartup)
-				.acceptIfNotNull(this.phase, instance::setPhase)
-				.acceptIfNotNull(this.applicationContext, instance::setApplicationContext)
-				.acceptIfNotNull(this.applicationEventPublisher, instance::setApplicationEventPublisher)
 				.acceptIfNotNull(endpoint.getGroupId(), properties::setGroupId)
-				.acceptIfNotNull(endpoint.getClientIdPrefix(), properties::setClientId)
-				.acceptIfNotNull(endpoint.getConsumerProperties(), properties::setKafkaConsumerProperties);
+				.acceptIfNotNull(endpoint.getClientIdPrefix(), properties::setClientId);
+	}
+
+	/**
+	 * Determine whether explicit acknowledgment is required following Spring Kafka's configuration precedence patterns.
+	 * <p>
+	 * Configuration precedence (highest to lowest):
+	 * <ol>
+	 * <li>Container Properties: {@code containerProperties.isExplicitShareAcknowledgment()} (if explicitly set)</li>
+	 * <li>Consumer Config: {@code ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG}</li>
+	 * <li>Default: {@code false} (implicit acknowledgment)</li>
+	 * </ol>
+	 * @param containerProperties the container properties to check
+	 * @return true if explicit acknowledgment is required, false for implicit
+	 * @throws IllegalArgumentException if an invalid acknowledgment mode is configured
+	 */
+	private boolean determineExplicitAcknowledgment(ContainerProperties containerProperties) {
+		// Check Kafka client configuration
+		Object clientAckMode = this.shareConsumerFactory.getConfigurationProperties()
+				.get(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG);
+
+		if (clientAckMode != null) {
+			ShareAcknowledgementMode mode = ShareAcknowledgementMode.fromString(clientAckMode.toString());
+			return mode == ShareAcknowledgementMode.EXPLICIT;
+		}
+		// Default to implicit acknowledgment (false)
+		return containerProperties.isExplicitShareAcknowledgment();
+	}
+
+	private static void validateShareConfiguration(KafkaListenerEndpoint endpoint) {
+		// Validate that batch listeners aren't used with share consumers
+		if (Boolean.TRUE.equals(endpoint.getBatchListener())) {
+			throw new IllegalArgumentException(
+					"Batch listeners are not supported with share consumers. " +
+							"Share groups operate at the record level.");
+		}
+
 	}
 
 	@Override

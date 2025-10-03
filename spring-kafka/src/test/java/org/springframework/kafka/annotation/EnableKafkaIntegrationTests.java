@@ -1298,8 +1298,8 @@ public class EnableKafkaIntegrationTests {
 			factory.setRecordMessageConverter(new RecordMessageConverter() {
 
 				@Override
-				public Message<?> toMessage(ConsumerRecord<?, ?> record, Acknowledgment acknowledgment,
-						Consumer<?, ?> consumer, Type payloadType) {
+				public Message<?> toMessage(ConsumerRecord<?, ?> record, @Nullable Object acknowledgment,
+						@Nullable Object consumer, @Nullable Type payloadType) {
 
 					throw new UnsupportedOperationException();
 				}

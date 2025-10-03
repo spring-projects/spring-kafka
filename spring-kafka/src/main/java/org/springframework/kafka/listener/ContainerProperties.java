@@ -35,6 +35,7 @@ import org.springframework.aop.framework.Advised;
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.core.task.AsyncTaskExecutor;
+import org.springframework.kafka.support.ShareAcknowledgment;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservationConvention;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
@@ -312,6 +313,10 @@ public class ContainerProperties extends ConsumerProperties {
 	private boolean restartAfterAuthExceptions;
 
 	private boolean recordObservationsInBatch;
+
+	private boolean explicitShareAcknowledgment = false;
+
+	private Duration shareAcknowledgmentTimeout = Duration.ofSeconds(30); // Align with Kafka's share.record.lock.duration.ms default
 
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
@@ -1113,6 +1118,57 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	public void setRecordObservationsInBatch(boolean recordObservationsInBatch) {
 		this.recordObservationsInBatch = recordObservationsInBatch;
+	}
+
+	/**
+	 * Set whether explicit acknowledgment is required for share consumer containers.
+	 * <p>
+	 * This setting only applies to share consumer containers and is ignored
+	 * by regular consumer containers.
+	 * <p>
+	 * When set to {@code false} (default), records are automatically acknowledged
+	 * as ACCEPT when the next poll occurs or when commitSync/commitAsync is called.
+	 * <p>
+	 * When set to {@code true}, the application must explicitly acknowledge each
+	 * record using the provided {@link ShareAcknowledgment}.
+	 * @param explicitShareAcknowledgment true for explicit acknowledgment, false for implicit
+	 * @since 4.0
+	 * @see ShareAcknowledgment
+	 */
+	public void setExplicitShareAcknowledgment(boolean explicitShareAcknowledgment) {
+		this.explicitShareAcknowledgment = explicitShareAcknowledgment;
+	}
+
+	/**
+	 * Check whether explicit acknowledgment is required for share consumer containers.
+	 * @return true if explicit acknowledgment is required, false for implicit acknowledgment
+	 */
+	public boolean isExplicitShareAcknowledgment() {
+		return this.explicitShareAcknowledgment;
+	}
+
+	/**
+	 * Set the timeout for share acknowledgments in explicit mode.
+	 * <p>
+	 * When a record is not acknowledged within this timeout, a warning
+	 * will be logged to help identify missing acknowledgment calls.
+	 * This only applies when using explicit acknowledgment mode.
+	 * <p>
+	 * Default is 30 seconds.
+	 * @param shareAcknowledgmentTimeout the timeout duration
+	 * @since 4.0
+	 */
+	public void setShareAcknowledgmentTimeout(Duration shareAcknowledgmentTimeout) {
+		this.shareAcknowledgmentTimeout = shareAcknowledgmentTimeout;
+	}
+
+	/**
+	 * Get the timeout for share acknowledgments in explicit mode.
+	 * @return the acknowledgment timeout
+	 * @since 4.0
+	 */
+	public Duration getShareAcknowledgmentTimeout() {
+		return this.shareAcknowledgmentTimeout;
 	}
 
 	@Override
