@@ -26,6 +26,7 @@ import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListe
 import org.springframework.kafka.listener.AcknowledgingShareConsumerAwareMessageListener;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.support.ShareAcknowledgment;
+import org.springframework.kafka.support.converter.JacksonProjectingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
 
@@ -75,7 +76,7 @@ public class ShareRecordMessagingMessageListenerAdapter<K, V> extends MessagingM
 		}
 		if (logger.isDebugEnabled()) {
 			RecordMessageConverter messageConverter = getMessageConverter();
-			if (!(messageConverter instanceof org.springframework.kafka.support.converter.JacksonProjectingMessageConverter
+			if (!(messageConverter instanceof JacksonProjectingMessageConverter
 					|| messageConverter instanceof org.springframework.kafka.support.converter.ProjectingMessageConverter)) {
 				this.logger.debug("Processing [" + message + "]");
 			}
