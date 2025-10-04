@@ -3080,6 +3080,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void sendOffsetsToTransaction() {
+			if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+				return;
+			}
 			handleAcks();
 			Map<TopicPartition, OffsetAndMetadata> commits = buildCommits();
 			this.commitLogger.log(() -> "Sending offsets to transaction: " + commits);
