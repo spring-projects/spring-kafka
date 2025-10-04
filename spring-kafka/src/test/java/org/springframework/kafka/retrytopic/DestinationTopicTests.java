@@ -31,6 +31,7 @@ import org.springframework.kafka.support.serializer.DeserializationException;
 /**
  * @author Tomaz Fernandes
  * @author Adrian Chlebosz
+ * @author Hyunggeol Lee
  * @since 2.7
  */
 public class DestinationTopicTests {
@@ -143,6 +144,33 @@ public class DestinationTopicTests {
 	protected DestinationTopic.Properties dltTopicProps5 =
 			new DestinationTopic.Properties(0, dltSuffix, DestinationTopic.Type.DLT, 4, 1,
 					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, (a, e) -> false, timeout, null, Collections.emptySet());
+
+	protected DestinationTopic.Properties mainTopicProps6 =
+			new DestinationTopic.Properties(0, "", DestinationTopic.Type.MAIN, 4, 1,
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout);
+
+	protected DestinationTopic.Properties reusableRetryTopicProps6 =
+			new DestinationTopic.Properties(1000, retrySuffix, DestinationTopic.Type.REUSABLE_RETRY_TOPIC, 4, 1,
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout);
+
+	protected DestinationTopic.Properties customDltTopicProps6 =
+			new DestinationTopic.Properties(0, "-custom" + dltSuffix, DestinationTopic.Type.DLT, 4, 1,
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, (a, e) -> false, timeout, null,
+					Set.of(IllegalStateException.class));
+
+	protected DestinationTopic.Properties validationDltTopicProps6 =
+			new DestinationTopic.Properties(0, "-validation" + dltSuffix, DestinationTopic.Type.DLT, 4, 1,
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, (a, e) -> false, timeout, null,
+					Set.of(IllegalArgumentException.class));
+
+	protected DestinationTopic.Properties dltTopicProps6 =
+			new DestinationTopic.Properties(0, dltSuffix, DestinationTopic.Type.DLT, 4, 1,
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, (a, e) -> false, timeout, null,
+					Collections.emptySet());
+
+	protected DestinationTopic.Properties invalidRetryProps6 =
+			new DestinationTopic.Properties(2000, retrySuffix + "-2000", DestinationTopic.Type.RETRY, 4, 1,
+					DltStrategy.ALWAYS_RETRY_ON_ERROR, kafkaOperations2, getShouldRetryOn(), timeout);
 
 	// Holders
 
@@ -284,6 +312,38 @@ public class DestinationTopicTests {
 
 	protected List<DestinationTopic> allFifthDestinationTopics = Arrays
 			.asList(mainDestinationTopic5, reusableRetryDestinationTopic5, dltDestinationTopic5);
+
+	protected final static String SIXTH_TOPIC = "sixthTopic";
+
+	protected DestinationTopic mainDestinationTopic6 =
+			new DestinationTopic(SIXTH_TOPIC + mainTopicProps6.suffix(), mainTopicProps6);
+
+	protected DestinationTopic reusableRetryDestinationTopic6 =
+			new DestinationTopic(SIXTH_TOPIC + reusableRetryTopicProps6.suffix(), reusableRetryTopicProps6);
+
+	protected DestinationTopic customDltDestinationTopic6 =
+			new DestinationTopic(SIXTH_TOPIC + customDltTopicProps6.suffix(), customDltTopicProps6);
+
+	protected DestinationTopic validationDltDestinationTopic6 =
+			new DestinationTopic(SIXTH_TOPIC + validationDltTopicProps6.suffix(), validationDltTopicProps6);
+
+	protected DestinationTopic dltDestinationTopic6 =
+			new DestinationTopic(SIXTH_TOPIC + dltTopicProps6.suffix(), dltTopicProps6);
+
+	protected DestinationTopic invalidRetryDestinationTopic6 =
+			new DestinationTopic(SIXTH_TOPIC + invalidRetryProps6.suffix(), invalidRetryProps6);
+
+	protected DestinationTopic noOpsDestinationTopic6 =
+			new DestinationTopic(dltDestinationTopic6.getDestinationName() + "-noOps",
+					new DestinationTopic.Properties(dltTopicProps6, "-noOps", DestinationTopic.Type.NO_OPS));
+
+	protected List<DestinationTopic> allSixthDestinationTopics = Arrays.asList(
+			mainDestinationTopic6,
+			reusableRetryDestinationTopic6,
+			customDltDestinationTopic6,
+			validationDltDestinationTopic6,
+			dltDestinationTopic6
+	);
 
 	// Exception matchers
 
