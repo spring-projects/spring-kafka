@@ -47,6 +47,7 @@ import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -75,6 +76,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
 import org.springframework.util.backoff.FixedBackOff;
 
@@ -139,6 +141,8 @@ public class TransactionalContainerTests {
 	public static final String topic9 = "txTopic9";
 
 	public static final String topic10 = "txTopic10";
+
+	public static final String topic11 = "txTopic11";
 
 	private static EmbeddedKafkaBroker embeddedKafka;
 
@@ -1148,4 +1152,65 @@ public class TransactionalContainerTests {
 		container.stop();
 	}
 
+	@Test
+	void testSendOffsetOnlyOnActiveTransaction() throws InterruptedException {
+		// init producer
+		Map<String, Object> producerProperties = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<Object, Object> pf = new DefaultKafkaProducerFactory<>(producerProperties);
+		pf.setTransactionIdPrefix("testSendOffsetOnlyOnActiveTransaction.recordListener");
+		final KafkaTemplate<Object, Object> template = new KafkaTemplate<>(pf);
+
+		// init consumer
+		String group = "testSendOffsetOnlyOnActiveTransaction";
+		Map<String, Object> consumerProperties = KafkaTestUtils.consumerProps(embeddedKafka, group, false);
+		consumerProperties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProperties);
+		ContainerProperties containerProps = new ContainerProperties(topic11);
+		containerProps.setPollTimeout(10_000);
+		final var successLatch = new AtomicReference<>(new CountDownLatch(2));
+		containerProps.setMessageListener(new MessageListener<Integer, String>() {
+			@Transactional("testSendOffsetOnlyOnActiveTransaction")
+			@Override
+			public void onMessage(ConsumerRecord<Integer, String> data) {
+			}
+		});
+
+		// init container
+		KafkaTransactionManager<Object, Object> tm = new KafkaTransactionManager<>(pf);
+		containerProps.setKafkaAwareTransactionManager(tm);
+		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setBeanName("testSendOffsetOnlyOnActiveTransaction");
+		container.setRecordInterceptor(new RecordInterceptor<Integer, String>() {
+			boolean isFirst = true;
+
+			@Override
+			public @Nullable ConsumerRecord<Integer, String> intercept(
+					ConsumerRecord<Integer, String> record,
+					Consumer<Integer, String> consumer) {
+				if (isFirst) {
+					isFirst = false;
+					return record;
+				}
+				return null;
+			}
+
+			@Override
+			public void afterRecord(
+					ConsumerRecord<Integer, String> record,
+					Consumer<Integer, String> consumer) {
+				successLatch.get().countDown();
+			}
+		});
+		container.start();
+
+		template.executeInTransaction(t -> {
+			template.send(new ProducerRecord<>(topic11, 0, 0, "bar1"));
+			template.send(new ProducerRecord<>(topic11, 0, 0, "bar2"));
+			return null;
+		});
+		assertThat(successLatch.get().await(30, TimeUnit.SECONDS)).isTrue();
+
+		container.stop();
+		pf.destroy();
+	}
 }
