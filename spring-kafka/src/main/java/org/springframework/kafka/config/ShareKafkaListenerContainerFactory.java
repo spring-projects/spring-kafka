@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.internals.ShareAcknowledgementMode;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -63,6 +64,8 @@ public class ShareKafkaListenerContainerFactory<K, V>
 
 	private int phase = 0;
 
+	private @Nullable Integer concurrency;
+
 	@SuppressWarnings("NullAway.Init")
 	private ApplicationEventPublisher applicationEventPublisher;
 
@@ -96,6 +99,22 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	 */
 	public void setPhase(int phase) {
 		this.phase = phase;
+	}
+
+	/**
+	 * Set the concurrency for containers created by this factory.
+	 * <p>
+	 * This specifies the number of consumer threads to create within each container.
+	 * Each thread creates its own {@link org.apache.kafka.clients.consumer.ShareConsumer}
+	 * instance and participates in the same share group. The Kafka broker distributes
+	 * records across all consumer instances, providing record-level load balancing.
+	 * <p>
+	 * This can be overridden per listener endpoint using the {@code concurrency}
+	 * attribute on {@code @KafkaListener}.
+	 * @param concurrency the number of consumer threads (must be greater than 0)
+	 */
+	public void setConcurrency(Integer concurrency) {
+		this.concurrency = concurrency;
 	}
 
 	@Override
@@ -137,6 +156,15 @@ public class ShareKafkaListenerContainerFactory<K, V>
 		// Determine acknowledgment mode following Spring Kafka's configuration precedence patterns
 		boolean explicitAck = determineExplicitAcknowledgment(properties);
 		properties.setExplicitShareAcknowledgment(explicitAck);
+
+		// Set concurrency - endpoint setting takes precedence over factory setting
+		Integer conc = endpoint.getConcurrency();
+		if (conc != null) {
+			instance.setConcurrency(conc);
+		}
+		else if (this.concurrency != null) {
+			instance.setConcurrency(this.concurrency);
+		}
 
 		instance.setAutoStartup(effectiveAutoStartup);
 		instance.setPhase(this.phase);

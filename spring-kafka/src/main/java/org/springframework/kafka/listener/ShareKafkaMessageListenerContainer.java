@@ -16,8 +16,10 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -45,12 +47,21 @@ import org.springframework.kafka.support.ShareAcknowledgment;
 import org.springframework.util.Assert;
 
 /**
- * Single-threaded share consumer container using the Java {@link ShareConsumer}.
+ * Share consumer container using the Java {@link ShareConsumer}.
  * <p>
  * This container provides support for Kafka share groups, enabling cooperative
  * consumption where multiple consumers can process records from the same partitions.
  * Unlike traditional consumer groups with exclusive partition assignment, share groups
  * allow load balancing at the record level.
+ * <p>
+ * <strong>Concurrency Support:</strong>
+ * <p>
+ * This container supports running multiple consumer threads via the {@link #setConcurrency(int)}
+ * method. Each thread creates its own {@link ShareConsumer} instance and polls independently.
+ * Unlike traditional consumer groups where concurrency involves partition distribution,
+ * share consumers leverage Kafka's record-level distribution across all group members.
+ * This means multiple threads in the same container participate in the same share group,
+ * with the broker distributing records across all consumer instances.
  * <p>
  * Key features:
  * <ul>
@@ -58,6 +69,7 @@ import org.springframework.util.Assert;
  * <li>Automatic error handling with REJECT acknowledgments</li>
  * <li>Poll-level acknowledgment constraints in explicit mode</li>
  * <li>Integration with Spring's {@code @KafkaListener} annotation</li>
+ * <li>Configurable concurrency for increased throughput</li>
  * </ul>
  * <p>
  * <strong>Acknowledgment Modes:</strong>
@@ -86,11 +98,11 @@ public class ShareKafkaMessageListenerContainer<K, V>
 	@Nullable
 	private String clientId;
 
-	@SuppressWarnings("NullAway.Init")
-	private volatile ShareListenerConsumer listenerConsumer;
+	private int concurrency = 1;
 
-	@SuppressWarnings("NullAway.Init")
-	private volatile CompletableFuture<Void> listenerConsumerFuture;
+	private final List<ShareListenerConsumer> consumers = new ArrayList<>();
+
+	private final List<CompletableFuture<Void>> consumerFutures = new ArrayList<>();
 
 	private volatile CountDownLatch startLatch = new CountDownLatch(1);
 
@@ -122,6 +134,29 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		this.clientId = clientId;
 	}
 
+	/**
+	 * Get the concurrency level (number of consumer threads).
+	 * @return the concurrency level
+	 */
+	public int getConcurrency() {
+		return this.concurrency;
+	}
+
+	/**
+	 * Set the level of concurrency. This will create the specified number of
+	 * consumer threads, each with its own {@link ShareConsumer} instance.
+	 * All consumers participate in the same share group, leveraging Kafka's
+	 * record-level distribution for load balancing.
+	 * <p>
+	 * Must be called before the container is started.
+	 * @param concurrency the concurrency level (must be greater than 0)
+	 */
+	public void setConcurrency(int concurrency) {
+		Assert.isTrue(concurrency > 0, "concurrency must be greater than 0");
+		Assert.state(!isRunning(), "Cannot change concurrency while container is running");
+		this.concurrency = concurrency;
+	}
+
 	@Override
 	public boolean isInExpectedState() {
 		return isRunning();
@@ -129,12 +164,24 @@ public class ShareKafkaMessageListenerContainer<K, V>
 
 	@Override
 	public Map<String, Map<MetricName, ? extends Metric>> metrics() {
-		ShareListenerConsumer listenerConsumerForMetrics = this.listenerConsumer;
-		if (listenerConsumerForMetrics != null) {
-			Map<MetricName, ? extends Metric> metrics = listenerConsumerForMetrics.consumer.metrics();
-			return Collections.singletonMap(listenerConsumerForMetrics.getClientId(), metrics);
+		this.lifecycleLock.lock();
+		try {
+			if (this.consumers.isEmpty()) {
+				return Collections.emptyMap();
+			}
+			Map<String, Map<MetricName, ? extends Metric>> allMetrics = new ConcurrentHashMap<>();
+			for (ShareListenerConsumer consumer : this.consumers) {
+				Map<MetricName, ? extends Metric> consumerMetrics = consumer.consumer.metrics();
+				String consumerId = consumer.getClientId();
+				if (consumerId != null) {
+					allMetrics.put(consumerId, consumerMetrics);
+				}
+			}
+			return Collections.unmodifiableMap(allMetrics);
 		}
-		return Collections.emptyMap();
+		finally {
+			this.lifecycleLock.unlock();
+		}
 	}
 
 	@Override
@@ -161,15 +208,51 @@ public class ShareKafkaMessageListenerContainer<K, V>
 					"Either use implicit acknowledgment mode or provide a listener that can handle acknowledgments.");
 		}
 
-		this.listenerConsumer = new ShareListenerConsumer(listener);
 		setRunning(true);
-		this.listenerConsumerFuture = CompletableFuture.runAsync(this.listenerConsumer, consumerExecutor);
+
+		// Create multiple consumer threads based on concurrency setting
+		for (int i = 0; i < this.concurrency; i++) {
+			String consumerClientId = determineClientId(i);
+			ShareListenerConsumer consumer = new ShareListenerConsumer(listener, consumerClientId);
+			this.consumers.add(consumer);
+			CompletableFuture<Void> future = CompletableFuture.runAsync(consumer, consumerExecutor);
+			this.consumerFutures.add(future);
+		}
+	}
+
+	/**
+	 * Determine the client ID for a consumer thread.
+	 * @param index the consumer index
+	 * @return the client ID to use
+	 */
+	private String determineClientId(int index) {
+		String baseClientId = this.clientId != null ? this.clientId : getBeanName();
+		if (this.concurrency > 1) {
+			return baseClientId + "-" + index;
+		}
+		return baseClientId;
 	}
 
 	@Override
 	protected void doStop() {
 		setRunning(false);
-		// The consumer will exit its loop naturally when running becomes false.
+		// Wait for all consumer threads to complete
+		this.lifecycleLock.lock();
+		try {
+			for (CompletableFuture<Void> future : this.consumerFutures) {
+				try {
+					future.join(); // Wait for consumer to finish
+				}
+				catch (Exception e) {
+					this.logger.error(e, "Error waiting for consumer thread to stop");
+				}
+			}
+			this.consumers.clear();
+			this.consumerFutures.clear();
+		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
 	}
 
 	private void publishConsumerStartingEvent() {
@@ -233,13 +316,13 @@ public class ShareKafkaMessageListenerContainer<K, V>
 
 		private final long ackTimeoutMs;
 
-		ShareListenerConsumer(GenericMessageListener<?> listener) {
+		ShareListenerConsumer(GenericMessageListener<?> listener, String consumerClientId) {
 			this.consumer = ShareKafkaMessageListenerContainer.this.shareConsumerFactory.createShareConsumer(
 					ShareKafkaMessageListenerContainer.this.getGroupId(),
-					ShareKafkaMessageListenerContainer.this.getClientId());
+					consumerClientId);
 
 			this.genericListener = listener;
-			this.clientId = ShareKafkaMessageListenerContainer.this.getClientId();
+			this.clientId = consumerClientId;
 			ContainerProperties containerProperties = getContainerProperties();
 
 			// Configure acknowledgment mode
@@ -509,7 +592,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 				}
 
 				// Queue the acknowledgment to be processed on the consumer thread
-				ShareKafkaMessageListenerContainer.this.listenerConsumer.acknowledgmentQueue.offer(
+				ShareListenerConsumer.this.acknowledgmentQueue.offer(
 						new PendingAcknowledgment<>(this.record, type));
 			}
 

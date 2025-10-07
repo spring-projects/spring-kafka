@@ -107,7 +107,7 @@ factory.addListener(new ShareConsumerFactory.Listener<String, String>() {
 [[share-kafka-message-listener-container]]
 === ShareKafkaMessageListenerContainer
 
-The `ShareKafkaMessageListenerContainer` provides a simple, single-threaded container for share consumers:
+The `ShareKafkaMessageListenerContainer` provides a container for share consumers with support for concurrent processing:
 
 [source,java]
 ----
@@ -149,6 +149,145 @@ Share consumers do not support:
 * Explicit partition assignment (`TopicPartitionOffset`)
 * Topic patterns
 * Manual offset management
+====
+
+[[share-container-concurrency]]
+=== Concurrency
+
+The `ShareKafkaMessageListenerContainer` supports concurrent processing by creating multiple consumer threads within a single container.
+Each thread runs its own `ShareConsumer` instance that participates in the same share group.
+
+Unlike traditional consumer groups where concurrency involves partition distribution, share consumers leverage Kafka's record-level distribution at the broker.
+This means multiple consumer threads in the same container work together as part of the share group, with the Kafka broker distributing records across all consumer instances.
+
+==== Configuring Concurrency Programmatically
+
+[source,java]
+----
+@Bean
+public ShareKafkaMessageListenerContainer<String, String> concurrentContainer(
+        ShareConsumerFactory<String, String> shareConsumerFactory) {
+
+    ContainerProperties containerProps = new ContainerProperties("my-topic");
+    containerProps.setGroupId("my-share-group");
+
+    ShareKafkaMessageListenerContainer<String, String> container =
+        new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProps);
+
+    // Set concurrency to create 5 consumer threads
+    container.setConcurrency(5);
+
+    container.setupMessageListener(new MessageListener<String, String>() {
+        @Override
+        public void onMessage(ConsumerRecord<String, String> record) {
+            System.out.println("Received on " + Thread.currentThread().getName() + ": " + record.value());
+        }
+    });
+
+    return container;
+}
+----
+
+==== Configuring Concurrency via Factory
+
+You can set default concurrency at the factory level, which applies to all containers created by that factory:
+
+[source,java]
+----
+@Bean
+public ShareKafkaListenerContainerFactory<String, String> shareKafkaListenerContainerFactory(
+        ShareConsumerFactory<String, String> shareConsumerFactory) {
+
+    ShareKafkaListenerContainerFactory<String, String> factory =
+        new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
+
+    // Set default concurrency for all containers created by this factory
+    factory.setConcurrency(3);
+
+    return factory;
+}
+----
+
+==== Per-Listener Concurrency
+
+The concurrency setting can be overridden per listener using the `concurrency` attribute:
+
+[source,java]
+----
+@Component
+public class ConcurrentShareListener {
+
+    @KafkaListener(
+        topics = "high-throughput-topic",
+        containerFactory = "shareKafkaListenerContainerFactory",
+        groupId = "my-share-group",
+        concurrency = "10"  // Override factory default
+    )
+    public void listen(ConsumerRecord<String, String> record) {
+        // This listener will use 10 consumer threads
+        System.out.println("Processing: " + record.value());
+    }
+}
+----
+
+==== Concurrency Considerations
+
+* **Thread Safety**: Each consumer thread has its own `ShareConsumer` instance and manages its own acknowledgments independently
+* **Client IDs**: Each consumer thread receives a unique client ID with a numeric suffix (e.g., `myContainer-0`, `myContainer-1`, etc.)
+* **Metrics**: Metrics from all consumer threads are aggregated and accessible via `container.metrics()`
+* **Lifecycle**: All consumer threads start and stop together as a unit
+* **Work Distribution**: The Kafka broker handles record distribution across all consumer instances in the share group
+* **Explicit Acknowledgment**: Each thread independently manages acknowledgments for its records; unacknowledged records in one thread don't block other threads
+
+==== Concurrency with Explicit Acknowledgment
+
+Concurrency works seamlessly with explicit acknowledgment mode.
+Each consumer thread independently tracks and acknowledges its own records:
+
+[source,java]
+----
+@KafkaListener(
+    topics = "order-queue",
+    containerFactory = "explicitShareKafkaListenerContainerFactory",
+    groupId = "order-processors",
+    concurrency = "5"
+)
+public void processOrder(ConsumerRecord<String, String> record, ShareAcknowledgment acknowledgment) {
+    try {
+        // Process the order
+        processOrderLogic(record.value());
+        acknowledgment.acknowledge(); // ACCEPT
+    }
+    catch (RetryableException e) {
+        acknowledgment.release(); // Will be redelivered
+    }
+    catch (Exception e) {
+        acknowledgment.reject(); // Permanent failure
+    }
+}
+----
+
+[NOTE]
+====
+**Work Distribution Behavior:**
+
+With share consumers, record distribution is controlled by Kafka's share group coordinator at the broker level, not by Spring for Apache Kafka.
+The broker may assign all records to a single consumer thread at any given time, especially when:
+
+* The topic has a single partition
+* There's low message volume
+* The broker's distribution algorithm favors certain consumers
+
+This is normal behavior. The key benefit of concurrency is having multiple consumer threads *available* to the share group coordinator for distribution.
+As message volume increases or over time, you should see distribution across multiple threads.
+
+This differs from traditional `ConcurrentMessageListenerContainer` where Spring explicitly distributes partitions across threads.
+
+When using concurrency with share consumers:
+
+* Each thread polls and processes records independently
+* Acknowledgment constraints apply per-thread (one thread's unacknowledged records don't block other threads)
+* Concurrency setting must be greater than 0 and cannot be changed while the container is running
 ====
 
 [[share-annotation-driven-listeners]]
@@ -520,8 +659,7 @@ Share consumers differ from regular consumers in several key ways:
 === Current Limitations
 
 * **In preview**: This feature is in preview mode and may change in future versions
-* **Single-Threaded**: Share consumer containers currently run in single-threaded mode
 * **No Message Converters**: Message converters are not yet supported for share consumers
 * **No Batch Listeners**: Batch processing is not supported with share consumers
-* **Poll Constraints**: In explicit acknowledgment mode, unacknowledged records block subsequent polls
+* **Poll Constraints**: In explicit acknowledgment mode, unacknowledged records block subsequent polls within each consumer thread
 
