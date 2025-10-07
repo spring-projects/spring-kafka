@@ -22,7 +22,6 @@ import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.internals.ShareAcknowledgementMode;
-import org.jspecify.annotations.Nullable;
 
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
@@ -64,7 +63,7 @@ public class ShareKafkaListenerContainerFactory<K, V>
 
 	private int phase = 0;
 
-	private @Nullable Integer concurrency;
+	private int concurrency = 1;
 
 	@SuppressWarnings("NullAway.Init")
 	private ApplicationEventPublisher applicationEventPublisher;
@@ -113,7 +112,7 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	 * attribute on {@code @KafkaListener}.
 	 * @param concurrency the number of consumer threads (must be greater than 0)
 	 */
-	public void setConcurrency(Integer concurrency) {
+	public void setConcurrency(int concurrency) {
 		this.concurrency = concurrency;
 	}
 
@@ -162,7 +161,7 @@ public class ShareKafkaListenerContainerFactory<K, V>
 		if (conc != null) {
 			instance.setConcurrency(conc);
 		}
-		else if (this.concurrency != null) {
+		else {
 			instance.setConcurrency(this.concurrency);
 		}
 

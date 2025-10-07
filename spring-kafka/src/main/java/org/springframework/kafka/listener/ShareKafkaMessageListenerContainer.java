@@ -19,6 +19,7 @@ package org.springframework.kafka.listener;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -135,14 +136,6 @@ public class ShareKafkaMessageListenerContainer<K, V>
 	}
 
 	/**
-	 * Get the concurrency level (number of consumer threads).
-	 * @return the concurrency level
-	 */
-	public int getConcurrency() {
-		return this.concurrency;
-	}
-
-	/**
 	 * Set the level of concurrency. This will create the specified number of
 	 * consumer threads, each with its own {@link ShareConsumer} instance.
 	 * All consumers participate in the same share group, leveraging Kafka's
@@ -169,7 +162,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			if (this.consumers.isEmpty()) {
 				return Collections.emptyMap();
 			}
-			Map<String, Map<MetricName, ? extends Metric>> allMetrics = new ConcurrentHashMap<>();
+			Map<String, Map<MetricName, ? extends Metric>> allMetrics = new HashMap<>();
 			for (ShareListenerConsumer consumer : this.consumers) {
 				Map<MetricName, ? extends Metric> consumerMetrics = consumer.consumer.metrics();
 				String consumerId = consumer.getClientId();
@@ -239,16 +232,12 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		// Wait for all consumer threads to complete
 		this.lifecycleLock.lock();
 		try {
-			for (CompletableFuture<Void> future : this.consumerFutures) {
-				try {
-					future.join(); // Wait for consumer to finish
-				}
-				catch (Exception e) {
-					this.logger.error(e, "Error waiting for consumer thread to stop");
-				}
-			}
+			CompletableFuture.allOf(this.consumerFutures.toArray(new CompletableFuture<?>[0])).join();
 			this.consumers.clear();
 			this.consumerFutures.clear();
+		}
+		catch (Exception e) {
+			this.logger.error(e, "Error waiting for consumer threads to stop");
 		}
 		finally {
 			this.lifecycleLock.unlock();

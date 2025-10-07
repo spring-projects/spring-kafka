@@ -32,7 +32,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
-import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AlterConfigOp;
 import org.apache.kafka.clients.admin.ConfigEntry;
@@ -83,8 +82,6 @@ import static org.mockito.Mockito.verify;
 		}
 )
 class ShareKafkaMessageListenerContainerIntegrationTests {
-
-	private static final LogAccessor logger = new LogAccessor(LogFactory.getLog(ShareKafkaMessageListenerContainerIntegrationTests.class));
 
 	@Test
 	void integrationTestShareKafkaMessageListenerContainer(EmbeddedKafkaBroker broker) throws Exception {
@@ -856,12 +853,9 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
 		CountDownLatch latch = new CountDownLatch(numRecords);
-		Map<String, AtomicInteger> threadCounts = new ConcurrentHashMap<>();
 		List<String> receivedValues = Collections.synchronizedList(new ArrayList<>());
 
 		containerProps.setMessageListener((MessageListener<String, String>) record -> {
-			String threadName = Thread.currentThread().getName();
-			threadCounts.computeIfAbsent(threadName, k -> new AtomicInteger()).incrementAndGet();
 			receivedValues.add(record.value());
 			latch.countDown();
 		});
@@ -871,34 +865,14 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		container.setBeanName("concurrencyBasicTest");
 		container.setConcurrency(concurrency);
 
-		assertThat(container.getConcurrency()).isEqualTo(concurrency);
-
 		container.start();
 
 		try {
-			// Verify all records are processed
 			assertThat(latch.await(30, TimeUnit.SECONDS))
 					.as("All %d records should be processed", numRecords)
 					.isTrue();
 
-			// Log thread distribution for debugging
-			logger.info(() -> "Thread distribution: " + threadCounts);
-
-			// Verify all records received
 			assertThat(receivedValues).hasSize(numRecords);
-
-			// Share consumers with single partition may use only one consumer at a time
-			// So we verify: at least 1 thread used, at most concurrency threads
-			assertThat(threadCounts.size())
-					.as("At least one consumer thread should process records")
-					.isGreaterThanOrEqualTo(1)
-					.isLessThanOrEqualTo(concurrency);
-
-			// Verify work was done
-			int totalProcessed = threadCounts.values().stream()
-					.mapToInt(AtomicInteger::get)
-					.sum();
-			assertThat(totalProcessed).isEqualTo(numRecords);
 		}
 		finally {
 			container.stop();
@@ -953,8 +927,6 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 						.as("Client ID should contain bean name")
 						.contains("concurrencyMetricsTest");
 			}
-
-			logger.info(() -> "Client IDs from metrics: " + metrics.keySet());
 		}
 		finally {
 			container.stop();
@@ -983,13 +955,9 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		CountDownLatch latch = new CountDownLatch(numRecords);
 		AtomicInteger acceptCount = new AtomicInteger();
 		AtomicInteger rejectCount = new AtomicInteger();
-		Map<String, AtomicInteger> threadCounts = new ConcurrentHashMap<>();
 
 		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
 				record, acknowledgment, consumer) -> {
-			String threadName = Thread.currentThread().getName();
-			threadCounts.computeIfAbsent(threadName, k -> new AtomicInteger()).incrementAndGet();
-
 			// Reject every 5th record, accept others
 			int recordNum = Integer.parseInt(record.value().substring(5)); // "value0" -> 0
 			if (recordNum % 5 == 0) {
@@ -1014,16 +982,6 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 					.as("All records should be processed with explicit acknowledgment")
 					.isTrue();
 
-			logger.info(() -> "Thread distribution with explicit ack: " + threadCounts);
-			logger.info(() -> "Accept count: " + acceptCount.get() + ", Reject count: " + rejectCount.get());
-
-			// Verify at least one thread processed records
-			assertThat(threadCounts.size())
-					.as("At least one thread should process records in explicit mode")
-					.isGreaterThanOrEqualTo(1)
-					.isLessThanOrEqualTo(concurrency);
-
-			// Verify acknowledgments were processed correctly
 			assertThat(acceptCount.get() + rejectCount.get())
 					.as("Total acknowledgments should equal number of records")
 					.isEqualTo(numRecords);
@@ -1084,7 +1042,6 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 				.untilAsserted(() -> assertThat(processedCount.get()).isGreaterThan(0));
 
 		int processedBeforeStop = processedCount.get();
-		logger.info(() -> "Processed " + processedBeforeStop + " records before stop");
 
 		// Stop the container
 		container.stop();
@@ -1111,8 +1068,6 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		Awaitility.await()
 				.atMost(10, TimeUnit.SECONDS)
 				.untilAsserted(() -> assertThat(processedCount.get()).isGreaterThan(processedBeforeStop));
-
-		logger.info(() -> "Processed " + processedCount.get() + " records total after restart");
 
 		// Final stop
 		container.stop();

@@ -90,20 +90,6 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 	}
 
 	@Test
-	void shouldSetConcurrencyCorrectly() {
-		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		containerProperties.setMessageListener(messageListener);
-
-		ShareKafkaMessageListenerContainer<String, String> container =
-				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
-
-		assertThat(container.getConcurrency()).isEqualTo(1); // Default is 1
-
-		container.setConcurrency(5);
-		assertThat(container.getConcurrency()).isEqualTo(5);
-	}
-
-	@Test
 	void shouldRejectInvalidConcurrency() {
 		ContainerProperties containerProperties = new ContainerProperties("test-topic");
 		containerProperties.setMessageListener(messageListener);

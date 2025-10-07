@@ -160,6 +160,23 @@ Each thread runs its own `ShareConsumer` instance that participates in the same 
 Unlike traditional consumer groups where concurrency involves partition distribution, share consumers leverage Kafka's record-level distribution at the broker.
 This means multiple consumer threads in the same container work together as part of the share group, with the Kafka broker distributing records across all consumer instances.
 
+[IMPORTANT]
+====
+**Concurrency is Additive Across Application Instances**
+
+From the share group's perspective, each `ShareConsumer` instance is an independent member, regardless of where it runs.
+Setting `concurrency=3` in a single container creates 3 share group members.
+If you run multiple application instances with the same share group ID, all their consumer threads combine into one pool.
+
+For example:
+* Application Instance 1: `concurrency=3` → 3 share group members
+* Application Instance 2: `concurrency=3` → 3 share group members
+* **Total**: 6 share group members available for the broker to distribute records to
+
+This means setting `concurrency=5` in a single container is operationally equivalent to running 5 separate application instances with `concurrency=1` each (all using the same `group.id`).
+The Kafka broker treats all consumer instances equally and distributes records across the entire pool.
+====
+
 ==== Configuring Concurrency Programmatically
 
 [source,java]
@@ -269,21 +286,31 @@ public void processOrder(ConsumerRecord<String, String> record, ShareAcknowledgm
 
 [NOTE]
 ====
-**Work Distribution Behavior:**
+**Record Acquisition and Distribution Behavior:**
 
-With share consumers, record distribution is controlled by Kafka's share group coordinator at the broker level, not by Spring for Apache Kafka.
-The broker may assign all records to a single consumer thread at any given time, especially when:
+Share consumers use a pull-based model where each consumer thread calls `poll()` to fetch records from the broker.
+When a consumer polls, the broker's share-partition leader:
 
-* The topic has a single partition
-* There's low message volume
-* The broker's distribution algorithm favors certain consumers
+* Selects records in "Available" state
+* Moves them to "Acquired" state with a time-limited acquisition lock (default 30 seconds, configurable via `group.share.record.lock.duration.ms`)
+* Prefers to return complete record batches for efficiency
+* Applies `max.poll.records` as a soft limit, meaning complete record batches will be acquired even if it exceeds this value
 
-This is normal behavior. The key benefit of concurrency is having multiple consumer threads *available* to the share group coordinator for distribution.
-As message volume increases or over time, you should see distribution across multiple threads.
+While records are acquired by one consumer, they are not available to other consumers.
+When the acquisition lock expires, unacknowledged records automatically return to "Available" state and can be delivered to another consumer.
 
-This differs from traditional `ConcurrentMessageListenerContainer` where Spring explicitly distributes partitions across threads.
+The broker limits the number of records that can be acquired per partition using `group.share.partition.max.record.locks`.
+Once this limit is reached, subsequent polls temporarily return no records until locks expire.
 
-When using concurrency with share consumers:
+**Implications for Concurrency:**
+
+* Each consumer thread independently polls and may acquire different numbers of records per poll
+* Record distribution across threads depends on polling timing and batch availability
+* Multiple threads increase the pool of consumers available to acquire records
+* With low message volume or single partitions, records may concentrate on fewer threads
+* For long-running workloads, distribution tends to be more even
+
+**Configuration:**
 
 * Each thread polls and processes records independently
 * Acknowledgment constraints apply per-thread (one thread's unacknowledged records don't block other threads)
