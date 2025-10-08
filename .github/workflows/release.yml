@@ -12,7 +12,7 @@ jobs:
       contents: write
       issues: write
 
-    uses: spring-io/spring-github-workflows/.github/workflows/spring-artifactory-gradle-release.yml@main
+    uses: spring-io/spring-github-workflows/.github/workflows/spring-artifactory-gradle-release.yml@v6
     with:
       deployMilestoneToCentral: true
     secrets:
