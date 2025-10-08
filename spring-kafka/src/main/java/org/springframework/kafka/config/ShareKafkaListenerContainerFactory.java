@@ -63,6 +63,8 @@ public class ShareKafkaListenerContainerFactory<K, V>
 
 	private int phase = 0;
 
+	private int concurrency = 1;
+
 	@SuppressWarnings("NullAway.Init")
 	private ApplicationEventPublisher applicationEventPublisher;
 
@@ -96,6 +98,22 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	 */
 	public void setPhase(int phase) {
 		this.phase = phase;
+	}
+
+	/**
+	 * Set the concurrency for containers created by this factory.
+	 * <p>
+	 * This specifies the number of consumer threads to create within each container.
+	 * Each thread creates its own {@link org.apache.kafka.clients.consumer.ShareConsumer}
+	 * instance and participates in the same share group. The Kafka broker distributes
+	 * records across all consumer instances, providing record-level load balancing.
+	 * <p>
+	 * This can be overridden per listener endpoint using the {@code concurrency}
+	 * attribute on {@code @KafkaListener}.
+	 * @param concurrency the number of consumer threads (must be greater than 0)
+	 */
+	public void setConcurrency(int concurrency) {
+		this.concurrency = concurrency;
 	}
 
 	@Override
@@ -137,6 +155,15 @@ public class ShareKafkaListenerContainerFactory<K, V>
 		// Determine acknowledgment mode following Spring Kafka's configuration precedence patterns
 		boolean explicitAck = determineExplicitAcknowledgment(properties);
 		properties.setExplicitShareAcknowledgment(explicitAck);
+
+		// Set concurrency - endpoint setting takes precedence over factory setting
+		Integer conc = endpoint.getConcurrency();
+		if (conc != null) {
+			instance.setConcurrency(conc);
+		}
+		else {
+			instance.setConcurrency(this.concurrency);
+		}
 
 		instance.setAutoStartup(effectiveAutoStartup);
 		instance.setPhase(this.phase);

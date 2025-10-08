@@ -265,11 +265,12 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		container.setBeanName("constraintTestContainer");
 		container.start();
 
-		LogAccessor logAccessor = spy(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.logger",
+		// Access the first consumer from the consumers list
+		LogAccessor logAccessor = spy(KafkaTestUtils.getPropertyValue(container, "consumers[0].logger",
 				LogAccessor.class));
 
 		DirectFieldAccessor accessor = new DirectFieldAccessor(container);
-		accessor.setPropertyValue("listenerConsumer.logger", logAccessor);
+		accessor.setPropertyValue("consumers[0].logger", logAccessor);
 
 		try {
 			// Wait for first batch to be processed
@@ -343,11 +344,12 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		container.setBeanName("partialAckTestContainer");
 		container.start();
 
-		LogAccessor logAccessor = spy(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.logger",
+		// Access the first consumer from the consumers list
+		LogAccessor logAccessor = spy(KafkaTestUtils.getPropertyValue(container, "consumers[0].logger",
 				LogAccessor.class));
 
 		DirectFieldAccessor accessor = new DirectFieldAccessor(container);
-		accessor.setPropertyValue("listenerConsumer.logger", logAccessor);
+		accessor.setPropertyValue("consumers[0].logger", logAccessor);
 
 		produceTestRecords(bootstrapServers, topic, 4);
 
@@ -826,6 +828,250 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		catch (Exception e) {
 			throw new RuntimeException("Failed to access internal acknowledgment type", e);
 		}
+	}
+
+	// ==================== Concurrency Integration Tests ====================
+
+	@Test
+	void shouldProcessRecordsWithMultipleConsumerThreads(EmbeddedKafkaBroker broker) throws Exception {
+		String topic = "share-container-concurrency-basic-test";
+		String groupId = "share-container-concurrency-basic-group";
+		String bootstrapServers = broker.getBrokersAsString();
+
+		// Create topic with multiple partitions to allow better distribution
+		broker.addTopics(topic);
+
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
+
+		// Produce more records than consumers to ensure distribution
+		int numRecords = 30;
+		int concurrency = 3;
+		produceTestRecords(bootstrapServers, topic, numRecords);
+
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, false);
+		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
+
+		ContainerProperties containerProps = new ContainerProperties(topic);
+		CountDownLatch latch = new CountDownLatch(numRecords);
+		List<String> receivedValues = Collections.synchronizedList(new ArrayList<>());
+
+		containerProps.setMessageListener((MessageListener<String, String>) record -> {
+			receivedValues.add(record.value());
+			latch.countDown();
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(factory, containerProps);
+		container.setBeanName("concurrencyBasicTest");
+		container.setConcurrency(concurrency);
+
+		container.start();
+
+		try {
+			assertThat(latch.await(30, TimeUnit.SECONDS))
+					.as("All %d records should be processed", numRecords)
+					.isTrue();
+
+			assertThat(receivedValues).hasSize(numRecords);
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	void shouldAggregateMetricsFromMultipleConsumers(EmbeddedKafkaBroker broker) throws Exception {
+		String topic = "share-container-concurrency-metrics-test";
+		String groupId = "share-container-concurrency-metrics-group";
+		String bootstrapServers = broker.getBrokersAsString();
+
+		broker.addTopics(topic);
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
+
+		int concurrency = 4;
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, false);
+		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
+
+		ContainerProperties containerProps = new ContainerProperties(topic);
+		containerProps.setMessageListener((MessageListener<String, String>) record -> {
+			// Simple consumer
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(factory, containerProps);
+		container.setBeanName("concurrencyMetricsTest");
+		container.setConcurrency(concurrency);
+		container.start();
+
+		try {
+			// Wait for all consumers to initialize and register metrics
+			Awaitility.await()
+					.atMost(10, TimeUnit.SECONDS)
+					.untilAsserted(() -> {
+						var metrics = container.metrics();
+						assertThat(metrics)
+								.as("Metrics should be available from all %d consumers", concurrency)
+								.hasSize(concurrency);
+					});
+
+			var metrics = container.metrics();
+
+			// Verify each consumer has a unique client ID
+			assertThat(metrics.keySet())
+					.as("Each consumer should have unique client ID")
+					.hasSize(concurrency);
+
+			// Verify client IDs follow the pattern: beanName-0, beanName-1, etc.
+			for (String clientId : metrics.keySet()) {
+				assertThat(clientId)
+						.as("Client ID should contain bean name")
+						.contains("concurrencyMetricsTest");
+			}
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	void shouldHandleConcurrencyWithExplicitAcknowledgment(EmbeddedKafkaBroker broker) throws Exception {
+		String topic = "share-container-concurrency-explicit-test";
+		String groupId = "share-container-concurrency-explicit-group";
+		String bootstrapServers = broker.getBrokersAsString();
+
+		broker.addTopics(topic);
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
+
+		int numRecords = 15;
+		int concurrency = 3;
+		produceTestRecords(bootstrapServers, topic, numRecords);
+
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
+
+		ContainerProperties containerProps = new ContainerProperties(topic);
+		containerProps.setExplicitShareAcknowledgment(true);
+
+		CountDownLatch latch = new CountDownLatch(numRecords);
+		AtomicInteger acceptCount = new AtomicInteger();
+		AtomicInteger rejectCount = new AtomicInteger();
+
+		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
+				record, acknowledgment, consumer) -> {
+			// Reject every 5th record, accept others
+			int recordNum = Integer.parseInt(record.value().substring(5)); // "value0" -> 0
+			if (recordNum % 5 == 0) {
+				acknowledgment.reject();
+				rejectCount.incrementAndGet();
+			}
+			else {
+				acknowledgment.acknowledge();
+				acceptCount.incrementAndGet();
+			}
+			latch.countDown();
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(factory, containerProps);
+		container.setBeanName("concurrencyExplicitTest");
+		container.setConcurrency(concurrency);
+		container.start();
+
+		try {
+			assertThat(latch.await(30, TimeUnit.SECONDS))
+					.as("All records should be processed with explicit acknowledgment")
+					.isTrue();
+
+			assertThat(acceptCount.get() + rejectCount.get())
+					.as("Total acknowledgments should equal number of records")
+					.isEqualTo(numRecords);
+
+			assertThat(rejectCount.get())
+					.as("Expected number of rejections")
+					.isEqualTo(3); // Records 0, 5, 10
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	void shouldStopAllConsumerThreadsGracefully(EmbeddedKafkaBroker broker) throws Exception {
+		String topic = "share-container-concurrency-lifecycle-test";
+		String groupId = "share-container-concurrency-lifecycle-group";
+		String bootstrapServers = broker.getBrokersAsString();
+
+		broker.addTopics(topic);
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
+
+		int concurrency = 5;
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, false);
+		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
+
+		ContainerProperties containerProps = new ContainerProperties(topic);
+		AtomicInteger processedCount = new AtomicInteger();
+
+		containerProps.setMessageListener((MessageListener<String, String>) record -> {
+			processedCount.incrementAndGet();
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(factory, containerProps);
+		container.setBeanName("concurrencyLifecycleTest");
+		container.setConcurrency(concurrency);
+
+		// Verify initial state
+		assertThat(container.isRunning()).isFalse();
+		assertThat(container.metrics()).isEmpty();
+
+		// Start container
+		container.start();
+		assertThat(container.isRunning()).isTrue();
+
+		// Wait for consumers to initialize
+		Awaitility.await()
+				.atMost(10, TimeUnit.SECONDS)
+				.untilAsserted(() -> assertThat(container.metrics()).hasSize(concurrency));
+
+		// Produce some records
+		produceTestRecords(bootstrapServers, topic, 10);
+
+		// Give some time for processing
+		Awaitility.await()
+				.atMost(10, TimeUnit.SECONDS)
+				.untilAsserted(() -> assertThat(processedCount.get()).isGreaterThan(0));
+
+		int processedBeforeStop = processedCount.get();
+
+		// Stop the container
+		container.stop();
+		assertThat(container.isRunning()).isFalse();
+
+		// Verify metrics are cleared after stop
+		Awaitility.await()
+				.atMost(5, TimeUnit.SECONDS)
+				.untilAsserted(() -> assertThat(container.metrics()).isEmpty());
+
+		// Verify container can be restarted
+		container.start();
+		assertThat(container.isRunning()).isTrue();
+
+		// Verify consumers are recreated
+		Awaitility.await()
+				.atMost(10, TimeUnit.SECONDS)
+				.untilAsserted(() -> assertThat(container.metrics()).hasSize(concurrency));
+
+		// Produce more records
+		produceTestRecords(bootstrapServers, topic, 5);
+
+		// Verify processing continues after restart
+		Awaitility.await()
+				.atMost(10, TimeUnit.SECONDS)
+				.untilAsserted(() -> assertThat(processedCount.get()).isGreaterThan(processedBeforeStop));
+
+		// Final stop
+		container.stop();
+		assertThat(container.isRunning()).isFalse();
 	}
 
 }

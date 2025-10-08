@@ -90,6 +90,23 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 	}
 
 	@Test
+	void shouldRejectInvalidConcurrency() {
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		assertThatExceptionOfType(IllegalArgumentException.class)
+				.isThrownBy(() -> container.setConcurrency(0))
+				.withMessageContaining("concurrency must be greater than 0");
+
+		assertThatExceptionOfType(IllegalArgumentException.class)
+				.isThrownBy(() -> container.setConcurrency(-1))
+				.withMessageContaining("concurrency must be greater than 0");
+	}
+
+	@Test
 	void shouldValidateListenerTypeOnStartup() {
 		// Given: A container with explicit acknowledgment mode and proper listener
 		ContainerProperties containerProperties = new ContainerProperties("test-topic");
