@@ -3080,7 +3080,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void sendOffsetsToTransaction() {
-			if (this.kafkaTxManager != null && TransactionSynchronizationManager.getResource(this.kafkaTxManager.getProducerFactory()) == null) {
+			if (this.kafkaTxManager == null || TransactionSynchronizationManager.getResource(this.kafkaTxManager.getProducerFactory()) == null) {
 				return;
 			}
 			handleAcks();
