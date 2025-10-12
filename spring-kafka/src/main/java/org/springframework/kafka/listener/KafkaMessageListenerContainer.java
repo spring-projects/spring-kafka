@@ -1475,7 +1475,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			invokeIfHaveRecords(records);
 			if (this.remainingRecords == null) {
-				resumeConsumerIfNeccessary();
+				resumeConsumerIfNecessary();
 				if (!this.consumerPaused) {
 					resumePartitionsIfNecessary();
 				}
@@ -1830,7 +1830,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void resumeConsumerIfNeccessary() {
+		private void resumeConsumerIfNecessary() {
 			if (this.nackWakeTimeMillis > 0) {
 				if (System.currentTimeMillis() > this.nackWakeTimeMillis) {
 					this.nackWakeTimeMillis = 0;
@@ -1842,15 +1842,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			else if (this.offsetsInThisBatch != null) {
 				synchronized (this) {
-					doResumeConsumerIfNeccessary();
+					doResumeConsumerIfNecessary();
 				}
 			}
 			else {
-				doResumeConsumerIfNeccessary();
+				doResumeConsumerIfNecessary();
 			}
 		}
 
-		private void doResumeConsumerIfNeccessary() {
+		private void doResumeConsumerIfNecessary() {
 			if (this.pausedForAsyncAcks && Objects.requireNonNull(this.offsetsInThisBatch).isEmpty()) {
 				this.pausedForAsyncAcks = false;
 				this.logger.debug("Resuming after manual async acks cleared");
