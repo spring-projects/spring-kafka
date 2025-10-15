@@ -16,9 +16,6 @@
 
 package org.springframework.kafka.retrytopic;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -30,7 +27,6 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +56,9 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 /**
  * @author Hyunggeol Lee
@@ -219,11 +218,15 @@ public class ReusableRetryTopicMultipleDltIntegrationTests {
 	static class CountDownLatchContainer {
 
 		final CountDownLatch singleDltLatch = new CountDownLatch(1);
+
 		final CountDownLatch multiDltLatch = new CountDownLatch(1);
+
 		final CountDownLatch noDltProcessed = new CountDownLatch(1);
 
 		final AtomicInteger singleDltInvocations = new AtomicInteger(0);
+
 		final AtomicInteger multiDltInvocations = new AtomicInteger(0);
+
 		final AtomicInteger noDltInvocations = new AtomicInteger(0);
 	}
 
