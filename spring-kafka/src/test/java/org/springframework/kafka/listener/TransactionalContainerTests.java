@@ -47,7 +47,6 @@ import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -1164,7 +1163,7 @@ public class TransactionalContainerTests {
 
 		// init consumer
 		String group = "testSendOffsetOnlyOnActiveTransaction";
-		Map<String, Object> consumerProperties = KafkaTestUtils.consumerProps(embeddedKafka, group, false);
+		Map<String, Object> consumerProperties = KafkaTestUtils.consumerProps(group, "false", embeddedKafka);
 		consumerProperties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
 		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProperties);
 		ContainerProperties containerProps = new ContainerProperties(topic11);
@@ -1181,7 +1180,7 @@ public class TransactionalContainerTests {
 		AtomicInteger txCount = new AtomicInteger(0);
 		tm.addListener(new TransactionExecutionListener() {
 			@Override
-			public void afterCommit(TransactionExecution transaction, @Nullable Throwable commitFailure) {
+			public void afterCommit(TransactionExecution transaction, Throwable commitFailure) {
 				txCount.incrementAndGet();
 				TransactionExecutionListener.super.afterCommit(transaction, commitFailure);
 			}
@@ -1195,7 +1194,7 @@ public class TransactionalContainerTests {
 			boolean isFirst = true;
 
 			@Override
-			public @Nullable ConsumerRecord<Integer, String> intercept(
+			public ConsumerRecord<Integer, String> intercept(
 					ConsumerRecord<Integer, String> record,
 					Consumer<Integer, String> consumer) {
 				if (isFirst) {

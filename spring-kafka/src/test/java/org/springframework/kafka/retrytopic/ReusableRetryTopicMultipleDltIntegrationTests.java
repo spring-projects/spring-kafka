@@ -34,7 +34,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.kafka.annotation.BackOff;
 import org.springframework.kafka.annotation.DltHandler;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -52,6 +51,7 @@ import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.retry.annotation.Backoff;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.annotation.DirtiesContext;
@@ -134,7 +134,7 @@ public class ReusableRetryTopicMultipleDltIntegrationTests {
 
 		@RetryableTopic(
 				attempts = "3",
-				backOff = @BackOff(50),
+				backoff = @Backoff(50),
 				sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC
 		)
 		@KafkaListener(id = "singleDltListenerId", topics = SINGLE_DLT_TOPIC)
@@ -158,7 +158,7 @@ public class ReusableRetryTopicMultipleDltIntegrationTests {
 
 		@RetryableTopic(
 				attempts = "3",
-				backOff = @BackOff(50),
+				backoff = @Backoff(50),
 				sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC,
 				exceptionBasedDltRouting = {
 						@ExceptionBasedDltDestination(suffix = "-custom", exceptions = { CustomRetryException.class }),
@@ -195,7 +195,7 @@ public class ReusableRetryTopicMultipleDltIntegrationTests {
 
 		@RetryableTopic(
 				attempts = "3",
-				backOff = @BackOff(50),
+				backoff = @Backoff(50),
 				dltStrategy = DltStrategy.NO_DLT,
 				sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC
 		)
