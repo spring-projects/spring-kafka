@@ -39,6 +39,7 @@ import org.springframework.kafka.support.serializer.DeserializationException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 /**
@@ -46,6 +47,7 @@ import static org.assertj.core.api.Assertions.assertThatNullPointerException;
  * @author Yvette Quinby
  * @author Gary Russell
  * @author Adrian Chlebosz
+ * @author Hyunggeol Lee
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
@@ -290,4 +292,103 @@ class DefaultDestinationTopicResolverTests extends DestinationTopicTests {
 		assertThat(defaultDestinationTopicContainer.isContextRefreshed()).isFalse();
 	}
 
+	@Test
+	void shouldAllowReusableRetryTopicWithSingleDlt() {
+		assertThatNoException()
+				.isThrownBy(() -> defaultDestinationTopicContainer
+						.addDestinationTopics("id", allFifthDestinationTopics));
+	}
+
+	@Test
+	void shouldAllowReusableRetryTopicWithMultipleDlts() {
+		assertThatNoException()
+				.isThrownBy(() -> defaultDestinationTopicContainer
+						.addDestinationTopics("id", allSixthDestinationTopics));
+	}
+
+	@Test
+	void shouldAllowReusableRetryTopicAsLastTopic() {
+		List<DestinationTopic> topics = Arrays.asList(
+				mainDestinationTopic5,
+				reusableRetryDestinationTopic5
+		);
+
+		assertThatNoException()
+				.isThrownBy(() -> defaultDestinationTopicContainer
+						.addDestinationTopics("id", topics));
+	}
+
+	@Test
+	void shouldRejectReusableRetryTopicFollowedByRegularRetry() {
+		List<DestinationTopic> topics = Arrays.asList(
+				mainDestinationTopic6,
+				reusableRetryDestinationTopic6,
+				invalidRetryDestinationTopic6,
+				dltDestinationTopic6
+		);
+
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> defaultDestinationTopicContainer
+						.addDestinationTopics("id", topics))
+				.withMessageContaining("REUSABLE_RETRY_TOPIC")
+				.withMessageContaining("followed only by DLT topics");
+	}
+
+	@Test
+	void shouldRejectReusableRetryTopicFollowedByNoOps() {
+		List<DestinationTopic> topics = Arrays.asList(
+				mainDestinationTopic6,
+				reusableRetryDestinationTopic6,
+				noOpsDestinationTopic6,
+				dltDestinationTopic6
+		);
+
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> defaultDestinationTopicContainer
+						.addDestinationTopics("id", topics))
+				.withMessageContaining("REUSABLE_RETRY_TOPIC")
+				.withMessageContaining("followed only by DLT topics");
+	}
+
+	@Test
+	void shouldAllowReusableRetryTopicWithTwoDlts() {
+		List<DestinationTopic> topics = Arrays.asList(
+				mainDestinationTopic6,
+				reusableRetryDestinationTopic6,
+				customDltDestinationTopic6,
+				dltDestinationTopic6
+		);
+
+		assertThatNoException()
+				.isThrownBy(() -> defaultDestinationTopicContainer
+						.addDestinationTopics("id", topics));
+	}
+
+	@Test
+	void shouldAllowReusableRetryTopicWithDifferentDltCombinations() {
+		List<DestinationTopic> topics = Arrays.asList(
+				mainDestinationTopic6,
+				reusableRetryDestinationTopic6,
+				validationDltDestinationTopic6,
+				dltDestinationTopic6
+		);
+
+		assertThatNoException()
+				.isThrownBy(() -> defaultDestinationTopicContainer
+						.addDestinationTopics("id", topics));
+	}
+
+	@Test
+	void shouldRejectReusableRetryTopicFollowedByMainTopic() {
+		List<DestinationTopic> topics = Arrays.asList(
+				mainDestinationTopic6,
+				reusableRetryDestinationTopic6,
+				mainDestinationTopic5
+		);
+
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> defaultDestinationTopicContainer
+						.addDestinationTopics("id", topics))
+				.withMessageContaining("REUSABLE_RETRY_TOPIC");
+	}
 }
