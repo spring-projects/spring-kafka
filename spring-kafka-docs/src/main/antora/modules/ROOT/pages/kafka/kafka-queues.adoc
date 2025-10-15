@@ -410,12 +410,8 @@ Processing errors: Records are acknowledged as `REJECT`
 @Bean
 public ShareKafkaListenerContainerFactory<String, String> shareKafkaListenerContainerFactory(
     ShareConsumerFactory<String, String> shareConsumerFactory) {
-    ShareKafkaListenerContainerFactory<String, String> factory =
-    new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
-    // Implicit mode is the default (false means implicit acknowledgment)
-    factory.getContainerProperties().setExplicitShareAcknowledgment(false);
-
-    return factory;
+    // Implicit mode is the default - no additional configuration needed
+    return new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
 }
 ----
 
@@ -446,17 +442,20 @@ public ShareConsumerFactory<String, String> explicitShareConsumerFactory() {
 [source,java]
 ----
 @Bean
+public ShareConsumerFactory<String, String> explicitShareConsumerFactory() {
+    Map<String, Object> props = new HashMap<>();
+    props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+    props.put(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG, "explicit");
+    return new DefaultShareConsumerFactory<>(props);
+}
+
+@Bean
 public ShareKafkaListenerContainerFactory<String, String> explicitShareKafkaListenerContainerFactory(
-    ShareConsumerFactory<String, String> shareConsumerFactory) {
-
-    ShareKafkaListenerContainerFactory<String, String> factory =
-        new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
-
-    // Configure acknowledgment mode at container factory level
-    // true means explicit acknowledgment is required
-    factory.getContainerProperties().setExplicitShareAcknowledgment(true);
-
-    return factory;
+    ShareConsumerFactory<String, String> explicitShareConsumerFactory) {
+    // The factory will detect the explicit acknowledgment mode from the consumer factory configuration
+    return new ShareKafkaListenerContainerFactory<>(explicitShareConsumerFactory);
 }
 ----
 
