@@ -41,18 +41,6 @@ public class FilteringMessageListenerAdapter<K, V>
 		extends AbstractFilteringMessageListener<K, V, MessageListener<K, V>>
 		implements AcknowledgingConsumerAwareMessageListener<K, V>, FilteringAware<K, V> {
 
-	private static class FilterResult<K, V> {
-
-		final ConsumerRecord<K, V> record;
-
-		final boolean wasFiltered;
-
-		FilterResult(ConsumerRecord<K, V> record, boolean wasFiltered) {
-			this.record = record;
-			this.wasFiltered = wasFiltered;
-		}
-
-	}
 
 	private final boolean ackDiscarded;
 
@@ -142,4 +130,16 @@ public class FilteringMessageListenerAdapter<K, V>
 		onMessage(data, null, consumer);
 	}
 
+	private static class FilterResult<K, V> {
+
+		final ConsumerRecord<K, V> record;
+
+		final boolean wasFiltered;
+
+		FilterResult(ConsumerRecord<K, V> record, boolean wasFiltered) {
+			this.record = record;
+			this.wasFiltered = wasFiltered;
+		}
+
+	}
 }
