@@ -16,24 +16,31 @@
 
 package org.springframework.kafka.listener;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
+
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
 
-import java.time.Duration;
-import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 /**
  * Tests for the RECORD_FILTERED acknowledge mode.
@@ -45,7 +52,7 @@ import static org.mockito.Mockito.*;
  */
 public class AckModeRecordFilteredTest {
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "deprecation"})
 	@Test
 	public void testRecordFilteredModeOnlyCommitsProcessedRecords() throws InterruptedException {
 		// Given: A container with RECORD_FILTERED ack mode
@@ -88,7 +95,7 @@ public class AckModeRecordFilteredTest {
 
 		given(consumer.poll(any(Duration.class)))
 				.willReturn(consumerRecords)
-				.willReturn(new ConsumerRecords<>(Collections.emptyMap()));
+				.willReturn(ConsumerRecords.empty());
 
 		// When: Start the container and process records
 		container.start();
@@ -102,7 +109,7 @@ public class AckModeRecordFilteredTest {
 		verify(consumer, times(2)).commitSync(any(), any(Duration.class));
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "deprecation"})
 	@Test
 	public void testRecordFilteredModeWithAllRecordsFiltered() throws InterruptedException {
 		// Given: All records are filtered
@@ -139,7 +146,7 @@ public class AckModeRecordFilteredTest {
 
 		given(consumer.poll(any(Duration.class)))
 				.willReturn(consumerRecords)
-				.willReturn(new ConsumerRecords<>(Collections.emptyMap()));
+				.willReturn(ConsumerRecords.empty());
 
 		// When
 		container.start();
@@ -150,7 +157,7 @@ public class AckModeRecordFilteredTest {
 		verify(consumer, never()).commitSync(any(), any(Duration.class));
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "deprecation"})
 	@Test
 	public void testRecordFilteredModeWithMixedPartitions() throws InterruptedException {
 		// Given: Mixed partitions with different filtering scenarios
@@ -201,7 +208,7 @@ public class AckModeRecordFilteredTest {
 
 		given(consumer.poll(any(Duration.class)))
 				.willReturn(consumerRecords)
-				.willReturn(new ConsumerRecords<>(Collections.emptyMap()));
+				.willReturn(ConsumerRecords.empty());
 
 		// When
 		container.start();
@@ -213,7 +220,7 @@ public class AckModeRecordFilteredTest {
 		verify(consumer, times(3)).commitSync(any(), any(Duration.class));
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "deprecation"})
 	@Test
 	public void testRecordFilteredModeEfficiencyGains() throws InterruptedException {
 		ConsumerFactory<String, String> consumerFactory = mock(ConsumerFactory.class);
@@ -253,7 +260,7 @@ public class AckModeRecordFilteredTest {
 
 		given(consumer.poll(any(Duration.class)))
 				.willReturn(consumerRecords)
-				.willReturn(new ConsumerRecords<>(Collections.emptyMap()));
+				.willReturn(ConsumerRecords.empty());
 
 		// When
 		container.start();
@@ -266,7 +273,7 @@ public class AckModeRecordFilteredTest {
 		verify(consumer, times(1)).commitSync(any(), any(Duration.class));
 	}
 
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings({"unchecked", "deprecation"})
 	@Test
 	public void testRecordFilteredModeDoesNotBreakNormalProcessing() throws InterruptedException {
 		ConsumerFactory<String, String> consumerFactory = mock(ConsumerFactory.class);
@@ -307,7 +314,7 @@ public class AckModeRecordFilteredTest {
 
 		given(consumer.poll(any(Duration.class)))
 				.willReturn(consumerRecords)
-				.willReturn(new ConsumerRecords<>(Collections.emptyMap()));
+				.willReturn(ConsumerRecords.empty());
 
 		// When
 		container.start();
