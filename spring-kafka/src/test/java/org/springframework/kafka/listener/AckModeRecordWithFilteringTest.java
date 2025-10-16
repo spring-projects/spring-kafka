@@ -50,11 +50,11 @@ import static org.mockito.Mockito.verify;
  * @author Chaedong Im
  * @see AckModeRecordFilteredTest
  */
-public class AckModeRecordWithFilteringTest {
+class AckModeRecordWithFilteringTest {
 
 	@SuppressWarnings({"unchecked", "deprecation"})
 	@Test
-	public void testCurrentRecordModeCommitsAllRecords() throws InterruptedException {
+	void testCurrentRecordModeCommitsAllRecords() throws InterruptedException {
 		// Given: A container with RECORD ack mode and a filter that filters out even offsets
 		ConsumerFactory<String, String> consumerFactory = mock(ConsumerFactory.class);
 		Consumer<String, String> consumer = mock(Consumer.class);
@@ -111,7 +111,7 @@ public class AckModeRecordWithFilteringTest {
 
 	@SuppressWarnings({"unchecked", "deprecation"})
 	@Test
-	public void testAllRecordsFilteredStillCommits() throws InterruptedException {
+	void testAllRecordsFilteredStillCommits() throws InterruptedException {
 		// Given: A container where all records are filtered
 		ConsumerFactory<String, String> consumerFactory = mock(ConsumerFactory.class);
 		Consumer<String, String> consumer = mock(Consumer.class);
@@ -159,7 +159,7 @@ public class AckModeRecordWithFilteringTest {
 
 	@SuppressWarnings({"unchecked", "deprecation"})
 	@Test
-	public void testMixedPartitionsWithFiltering() throws InterruptedException {
+	void testMixedPartitionsWithFiltering() throws InterruptedException {
 		// Given: Multiple partitions with different records
 		ConsumerFactory<String, String> consumerFactory = mock(ConsumerFactory.class);
 		Consumer<String, String> consumer = mock(Consumer.class);
@@ -223,7 +223,7 @@ public class AckModeRecordWithFilteringTest {
 
 	@SuppressWarnings({"unchecked", "deprecation"})
 	@Test
-	public void testCommitLogging() throws InterruptedException {
+	void testCommitLogging() throws InterruptedException {
 		ConsumerFactory<String, String> consumerFactory = mock(ConsumerFactory.class);
 		Consumer<String, String> consumer = mock(Consumer.class);
 		given(consumerFactory.createConsumer(any(), any(), any(), any())).willReturn(consumer);
@@ -270,7 +270,7 @@ public class AckModeRecordWithFilteringTest {
 
 	@SuppressWarnings({"unchecked", "deprecation"})
 	@Test
-	public void testAckDiscardedParameterBehavior() throws InterruptedException {
+	void testAckDiscardedParameterBehavior() throws InterruptedException {
 		ConsumerFactory<String, String> consumerFactory = mock(ConsumerFactory.class);
 		Consumer<String, String> consumer = mock(Consumer.class);
 		given(consumerFactory.createConsumer(any(), any(), any(), any())).willReturn(consumer);
