@@ -47,6 +47,7 @@ import static org.mockito.Mockito.*;
  */
 public class AckModeRecordFilteredTest {
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testRecordFilteredModeOnlyCommitsProcessedRecords() throws InterruptedException {
 		// Given: A container with RECORD_FILTERED ack mode
@@ -103,6 +104,7 @@ public class AckModeRecordFilteredTest {
 		verify(consumer, times(2)).commitSync(any(), any(Duration.class));
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testRecordFilteredModeWithAllRecordsFiltered() throws InterruptedException {
 		// Given: All records are filtered
@@ -150,6 +152,7 @@ public class AckModeRecordFilteredTest {
 		verify(consumer, never()).commitSync(any(), any(Duration.class));
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testRecordFilteredModeWithMixedPartitions() throws InterruptedException {
 		// Given: Mixed partitions with different filtering scenarios
@@ -212,6 +215,7 @@ public class AckModeRecordFilteredTest {
 		verify(consumer, times(3)).commitSync(any(), any(Duration.class));
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testRecordFilteredModeEfficiencyGains() throws InterruptedException {
 		ConsumerFactory<String, String> consumerFactory = mock(ConsumerFactory.class);
@@ -264,6 +268,7 @@ public class AckModeRecordFilteredTest {
 		verify(consumer, times(1)).commitSync(any(), any(Duration.class));
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testRecordFilteredModeDoesNotBreakNormalProcessing() throws InterruptedException {
 		ConsumerFactory<String, String> consumerFactory = mock(ConsumerFactory.class);

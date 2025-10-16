@@ -48,6 +48,7 @@ import static org.mockito.Mockito.*;
  */
 public class AckModeRecordWithFilteringTest {
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testCurrentRecordModeCommitsAllRecords() throws InterruptedException {
 		// Given: A container with RECORD ack mode and a filter that filters out even offsets
@@ -104,6 +105,7 @@ public class AckModeRecordWithFilteringTest {
 		verify(consumer, times(4)).commitSync(any(), any(Duration.class));
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testAllRecordsFilteredStillCommits() throws InterruptedException {
 		// Given: A container where all records are filtered
@@ -151,6 +153,7 @@ public class AckModeRecordWithFilteringTest {
 		verify(consumer, times(2)).commitSync(any(), any(Duration.class));
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testMixedPartitionsWithFiltering() throws InterruptedException {
 		// Given: Multiple partitions with different records
@@ -214,6 +217,7 @@ public class AckModeRecordWithFilteringTest {
 		verify(consumer, times(5)).commitSync(any(), any(Duration.class));
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testCommitLogging() throws InterruptedException {
 		ConsumerFactory<String, String> consumerFactory = mock(ConsumerFactory.class);
@@ -260,6 +264,7 @@ public class AckModeRecordWithFilteringTest {
 		verify(consumer, times(2)).commitSync(anyMap(), any(Duration.class));
 	}
 
+	@SuppressWarnings("unchecked")
 	@Test
 	public void testAckDiscardedParameterBehavior() throws InterruptedException {
 		ConsumerFactory<String, String> consumerFactory = mock(ConsumerFactory.class);
