@@ -56,6 +56,7 @@ import org.springframework.util.CollectionUtils;
  * @author Kyuhyeok Park
  * @author Wang Zhiyang
  * @author Choi Wang Gyu
+ * @author Chaedong Im
  */
 public class ContainerProperties extends ConsumerProperties {
 
