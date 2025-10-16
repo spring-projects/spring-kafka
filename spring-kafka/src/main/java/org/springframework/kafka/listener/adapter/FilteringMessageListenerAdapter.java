@@ -41,7 +41,6 @@ public class FilteringMessageListenerAdapter<K, V>
 		extends AbstractFilteringMessageListener<K, V, MessageListener<K, V>>
 		implements AcknowledgingConsumerAwareMessageListener<K, V>, FilteringAware<K, V> {
 
-
 	private final boolean ackDiscarded;
 
 	private final AtomicReference<@Nullable FilterResult<K, V>> lastResult = new AtomicReference<>();
