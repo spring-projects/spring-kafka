@@ -70,6 +70,16 @@ public class ContainerProperties extends ConsumerProperties {
 		RECORD,
 
 		/**
+		 * Commit the offset after each record is processed by the listener, but only
+		 * for records that are not filtered out by a {@code RecordFilterStrategy}.
+		 * When a record is filtered (not passed to the listener), no offset commit
+		 * occurs for that record. This mode provides better performance when using
+		 * filtering strategies that filter out a significant portion of records.
+		 * @since 4.0
+		 */
+		RECORD_FILTERED,
+
+		/**
 		 * Commit the offsets of all records returned by the previous poll after they all
 		 * have been processed by the listener.
 		 */
