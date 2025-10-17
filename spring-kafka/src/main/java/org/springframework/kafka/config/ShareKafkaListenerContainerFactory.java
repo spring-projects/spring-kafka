@@ -23,6 +23,7 @@ import java.util.regex.Pattern;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.internals.ShareAcknowledgementMode;
 
+import org.springframework.beans.BeanUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationEventPublisher;
@@ -58,6 +59,8 @@ public class ShareKafkaListenerContainerFactory<K, V>
 		ApplicationEventPublisherAware, ApplicationContextAware {
 
 	private final ShareConsumerFactory<? super K, ? super V> shareConsumerFactory;
+
+	private final ContainerProperties containerProperties = new ContainerProperties((Pattern) null);
 
 	private boolean autoStartup = true;
 
@@ -116,6 +119,15 @@ public class ShareKafkaListenerContainerFactory<K, V>
 		this.concurrency = concurrency;
 	}
 
+	/**
+	 * Obtain the factory-level container properties - set properties as needed
+	 * and they will be copied to each listener container instance created by this factory.
+	 * @return the properties.
+	 */
+	public ContainerProperties getContainerProperties() {
+		return this.containerProperties;
+	}
+
 	@Override
 	public void setApplicationEventPublisher(ApplicationEventPublisher applicationEventPublisher) {
 		this.applicationEventPublisher = applicationEventPublisher;
@@ -152,7 +164,12 @@ public class ShareKafkaListenerContainerFactory<K, V>
 		// Validate share group configuration
 		validateShareConfiguration(endpoint);
 
+		// Copy factory-level properties to container
+		BeanUtils.copyProperties(this.containerProperties, properties, "topics", "topicPartitions", "topicPattern",
+				"messageListener", "ackCount", "ackTime", "subBatchPerPartition", "kafkaConsumerProperties");
+
 		// Determine acknowledgment mode following Spring Kafka's configuration precedence patterns
+		// Check factory-level properties first, then consumer factory config
 		boolean explicitAck = determineExplicitAcknowledgment(properties);
 		properties.setExplicitShareAcknowledgment(explicitAck);
 
@@ -180,7 +197,7 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	 * <p>
 	 * Configuration precedence (highest to lowest):
 	 * <ol>
-	 * <li>Container Properties: {@code containerProperties.isExplicitShareAcknowledgment()} (if explicitly set)</li>
+	 * <li>Container Properties: {@code containerProperties.isExplicitShareAcknowledgment()} (if explicitly set via factory-level properties)</li>
 	 * <li>Consumer Config: {@code ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG}</li>
 	 * <li>Default: {@code false} (implicit acknowledgment)</li>
 	 * </ol>
@@ -189,7 +206,13 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	 * @throws IllegalArgumentException if an invalid acknowledgment mode is configured
 	 */
 	private boolean determineExplicitAcknowledgment(ContainerProperties containerProperties) {
-		// Check Kafka client configuration
+		// Check factory-level properties first
+		// If explicitly set to true (non-default), use it with highest precedence
+		if (this.containerProperties.isExplicitShareAcknowledgment()) {
+			return true;
+		}
+
+		// Check Kafka client configuration as fallback
 		Object clientAckMode = this.shareConsumerFactory.getConfigurationProperties()
 				.get(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG);
 
@@ -197,8 +220,9 @@ public class ShareKafkaListenerContainerFactory<K, V>
 			ShareAcknowledgementMode mode = ShareAcknowledgementMode.fromString(clientAckMode.toString());
 			return mode == ShareAcknowledgementMode.EXPLICIT;
 		}
+
 		// Default to implicit acknowledgment (false)
-		return containerProperties.isExplicitShareAcknowledgment();
+		return false;
 	}
 
 	private static void validateShareConfiguration(KafkaListenerEndpoint endpoint) {
