@@ -26,7 +26,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.jspecify.annotations.Nullable;
 
-import org.springframework.aot.hint.MemberCategory;
+import org.springframework.aot.hint.BindingReflectionHintsRegistrar;
 import org.springframework.aot.hint.ReflectionHints;
 import org.springframework.beans.factory.aot.BeanRegistrationAotContribution;
 import org.springframework.beans.factory.aot.BeanRegistrationAotProcessor;
@@ -42,6 +42,7 @@ import org.springframework.util.ReflectionUtils;
  *
  * @author Gary Russell
  * @author Sagnhyeok An
+ * @author Soby Chacko
  * @since 3.0
  *
  */
@@ -54,6 +55,8 @@ public class KafkaAvroBeanRegistrationAotProcessor implements BeanRegistrationAo
 	private static final String AVRO_GENERATED_CLASS_NAME = "org.apache.avro.specific.AvroGenerated";
 
 	private static final boolean AVRO_PRESENT = ClassUtils.isPresent(AVRO_GENERATED_CLASS_NAME, null);
+
+	private final BindingReflectionHintsRegistrar bindingRegistrar = new BindingReflectionHintsRegistrar();
 
 	@Override
 	public @Nullable BeanRegistrationAotContribution processAheadOfTime(RegisteredBean registeredBean) {
@@ -83,9 +86,7 @@ public class KafkaAvroBeanRegistrationAotProcessor implements BeanRegistrationAo
 		if (!avroTypes.isEmpty()) {
 			return (generationContext, beanRegistrationCode) -> {
 				ReflectionHints reflectionHints = generationContext.getRuntimeHints().reflection();
-				avroTypes.forEach(type -> reflectionHints.registerType(type,
-						builder -> builder.withMembers(MemberCategory.INVOKE_DECLARED_CONSTRUCTORS,
-								MemberCategory.INVOKE_PUBLIC_METHODS)));
+				this.bindingRegistrar.registerReflectionHints(reflectionHints, avroTypes.toArray(new Class<?>[0]));
 			};
 		}
 		return null;
