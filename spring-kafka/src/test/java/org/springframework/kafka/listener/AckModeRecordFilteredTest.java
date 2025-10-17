@@ -345,27 +345,25 @@ class AckModeRecordFilteredTest {
 		RecordFilterStrategy<String, String> filter = rec -> rec.offset() == 0;
 
 		FilteringMessageListenerAdapter<String, String> adapter =
-				new FilteringMessageListenerAdapter<>(
-						(MessageListener<String, String>) r -> {
-						},
-						filter
-				) {
+				new FilteringMessageListenerAdapter<>((MessageListener<String, String>) r -> {
+				}, filter) {
 					@Override
-					public void onMessage(ConsumerRecord<String, String> rec,
-					                      Acknowledgment ack,
-					                      Consumer<?, ?> consumer) {
+					public void onMessage(ConsumerRecord<String, String> rec, Acknowledgment ack, Consumer<?, ?> consumer) {
 						super.onMessage(rec, ack, consumer);
 						if (rec.offset() == 0) {
 							aHasSetState.countDown();
 							try {
 								bHasProcessed.await(500, TimeUnit.MILLISECONDS);
-							} catch (InterruptedException e) {
+							}
+							catch (InterruptedException e) {
 								Thread.currentThread().interrupt();
 							}
-						} else if (rec.offset() == 1) {
+						}
+						else if (rec.offset() == 1) {
 							try {
 								aHasSetState.await(200, TimeUnit.MILLISECONDS);
-							} catch (InterruptedException e) {
+							}
+							catch (InterruptedException e) {
 								Thread.currentThread().interrupt();
 							}
 							bHasProcessed.countDown();
