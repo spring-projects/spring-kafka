@@ -72,7 +72,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 		"share-listener-consumer-aware-test",
 		"share-listener-ack-consumer-aware-test",
 		"share-listener-mixed-ack-test",
-		"share-listener-error-handling-test"
+		"share-listener-error-handling-test",
+		"share-listener-factory-props-test"
 },
 		brokerProperties = {
 				"share.coordinator.state.topic.replication.factor=1",
@@ -197,6 +198,22 @@ class ShareKafkaListenerIntegrationTests {
 		assertThat(ErrorHandlingTestListener.errorCount.get()).isEqualTo(1);
 	}
 
+	@Test
+	void shouldSupportExplicitAcknowledgmentViaFactoryContainerProperties() throws Exception {
+		final String topic = "share-listener-factory-props-test";
+		final String groupId = "share-factory-props-group";
+		setShareAutoOffsetResetEarliest(this.broker.getBrokersAsString(), groupId);
+
+		// Send test message
+		kafkaTemplate.send(topic, "factory-test", "factory-props-message");
+
+		// Wait for processing
+		assertThat(FactoryPropsTestListener.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(FactoryPropsTestListener.received.get()).isEqualTo("factory-props-message");
+		assertThat(FactoryPropsTestListener.acknowledgmentReceived.get()).isNotNull();
+		assertThat(isAcknowledgedInternal(FactoryPropsTestListener.acknowledgmentReceived.get())).isTrue();
+	}
+
 	/**
 	 * Sets the share.auto.offset.reset group config to earliest for the given groupId.
 	 */
@@ -262,6 +279,16 @@ class ShareKafkaListenerIntegrationTests {
 		}
 
 		@Bean
+		public ShareKafkaListenerContainerFactory<String, String> factoryPropsShareKafkaListenerContainerFactory(
+				ShareConsumerFactory<String, String> shareConsumerFactory) {
+			ShareKafkaListenerContainerFactory<String, String> factory =
+					new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
+			// Configure explicit acknowledgment via factory's container properties
+			factory.getContainerProperties().setExplicitShareAcknowledgment(true);
+			return factory;
+		}
+
+		@Bean
 		public ProducerFactory<String, String> producerFactory(EmbeddedKafkaBroker broker) {
 			Map<String, Object> props = new HashMap<>();
 			props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString());
@@ -304,6 +331,11 @@ class ShareKafkaListenerIntegrationTests {
 		@Bean
 		public ErrorHandlingTestListener errorHandlingTestListener() {
 			return new ErrorHandlingTestListener();
+		}
+
+		@Bean
+		public FactoryPropsTestListener factoryPropsTestListener() {
+			return new FactoryPropsTestListener();
 		}
 	}
 
@@ -477,6 +509,27 @@ class ShareKafkaListenerIntegrationTests {
 				acknowledgment.acknowledge();
 				latch.countDown();
 			}
+		}
+	}
+
+	static class FactoryPropsTestListener {
+
+		static final CountDownLatch latch = new CountDownLatch(1);
+
+		static final AtomicReference<String> received = new AtomicReference<>();
+
+		static final AtomicReference<ShareAcknowledgment> acknowledgmentReceived = new AtomicReference<>();
+
+		@KafkaListener(topics = "share-listener-factory-props-test",
+				groupId = "share-factory-props-group",
+				containerFactory = "factoryPropsShareKafkaListenerContainerFactory")
+		public void listen(ConsumerRecord<String, String> record, @Nullable ShareAcknowledgment acknowledgment) {
+			received.set(record.value());
+			acknowledgmentReceived.set(acknowledgment);
+			if (acknowledgment != null) {
+				acknowledgment.acknowledge(); // ACCEPT
+			}
+			latch.countDown();
 		}
 	}
 
