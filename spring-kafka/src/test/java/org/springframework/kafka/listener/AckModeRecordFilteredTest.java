@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordFilterStrategy;
+import org.springframework.kafka.support.Acknowledgment;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -325,5 +326,78 @@ class AckModeRecordFilteredTest {
 		// Then: All records processed
 		assertThat(processedValues).containsExactly("value0", "value1", "value2");
 		verify(consumer, times(3)).commitSync(any(), any(Duration.class));
+	}
+
+	@SuppressWarnings({"unchecked", "deprecation"})
+	@Test
+	void recordFilteredModeShouldBeThreadIsolated() throws Exception {
+		ConsumerFactory<String, String> cf = mock(ConsumerFactory.class);
+		Consumer<String, String> c0 = mock(Consumer.class);
+		Consumer<String, String> c1 = mock(Consumer.class);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(c0, c1);
+
+		ContainerProperties props = new ContainerProperties("iso-topic");
+		props.setGroupId("iso-group");
+		props.setAckMode(ContainerProperties.AckMode.RECORD_FILTERED);
+
+		CountDownLatch aHasSetState = new CountDownLatch(1);
+		CountDownLatch bHasProcessed = new CountDownLatch(1);
+		RecordFilterStrategy<String, String> filter = rec -> rec.offset() == 0;
+
+		FilteringMessageListenerAdapter<String, String> adapter =
+				new FilteringMessageListenerAdapter<>(
+						(MessageListener<String, String>) r -> {
+						},
+						filter
+				) {
+					@Override
+					public void onMessage(ConsumerRecord<String, String> rec,
+					                      Acknowledgment ack,
+					                      Consumer<?, ?> consumer) {
+						super.onMessage(rec, ack, consumer);
+						if (rec.offset() == 0) {
+							aHasSetState.countDown();
+							try {
+								bHasProcessed.await(500, TimeUnit.MILLISECONDS);
+							} catch (InterruptedException e) {
+								Thread.currentThread().interrupt();
+							}
+						} else if (rec.offset() == 1) {
+							try {
+								aHasSetState.await(200, TimeUnit.MILLISECONDS);
+							} catch (InterruptedException e) {
+								Thread.currentThread().interrupt();
+							}
+							bHasProcessed.countDown();
+						}
+					}
+				};
+
+		ConcurrentMessageListenerContainer<String, String> container =
+				new ConcurrentMessageListenerContainer<>(cf, props);
+		container.setConcurrency(2);
+		container.setupMessageListener(adapter);
+
+		TopicPartition tp0 = new TopicPartition("iso-topic", 0);
+		TopicPartition tp1 = new TopicPartition("iso-topic", 1);
+
+		ConsumerRecords<String, String> poll0 = new ConsumerRecords<>(Map.of(
+				tp0, List.of(new ConsumerRecord<>("iso-topic", 0, 0, "k0", "v0"))
+		));
+		ConsumerRecords<String, String> poll1 = new ConsumerRecords<>(Map.of(
+				tp1, List.of(new ConsumerRecord<>("iso-topic", 1, 1, "k1", "v1"))
+		));
+
+		given(c0.poll(any(Duration.class))).willReturn(poll0).willReturn(ConsumerRecords.empty());
+		given(c1.poll(any(Duration.class))).willReturn(poll1).willReturn(ConsumerRecords.empty());
+
+		// when: containers process records concurrently (thread-local isolation should apply)
+		container.start();
+		Thread.sleep(400);
+		container.stop();
+
+		// then: consumer c1 commits only its record, while c0 (filtered) does not
+		verify(c1, times(1)).commitSync(any(), any(Duration.class));
+		verify(c0, never()).commitSync(any(), any(Duration.class));
 	}
 }

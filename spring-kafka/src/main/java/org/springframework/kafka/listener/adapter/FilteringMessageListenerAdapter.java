@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.listener.adapter;
 
-import java.util.concurrent.atomic.AtomicReference;
-
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.jspecify.annotations.Nullable;
@@ -43,7 +41,8 @@ public class FilteringMessageListenerAdapter<K, V>
 
 	private final boolean ackDiscarded;
 
-	private final AtomicReference<@Nullable FilterResult<K, V>> lastResult = new AtomicReference<>();
+	@SuppressWarnings("rawtypes")
+	private static final ThreadLocal<FilterResult> LAST = new ThreadLocal<>();
 
 	/**
 	 * Create an instance with the supplied strategy and delegate listener.
@@ -74,9 +73,8 @@ public class FilteringMessageListenerAdapter<K, V>
 			@Nullable Consumer<?, ?> consumer) {
 
 		boolean filtered = filter(consumerRecord);
+		LAST.set(new FilterResult<>(consumerRecord, filtered));
 
-		// Atomically update both the record and its filtered state together
-		this.lastResult.set(new FilterResult<>(consumerRecord, filtered));
 
 		if (!filtered) {
 			switch (this.delegateType) {
@@ -105,8 +103,13 @@ public class FilteringMessageListenerAdapter<K, V>
 
 	@Override
 	public boolean wasFiltered(ConsumerRecord<K, V> record) {
-		FilterResult<K, V> result = this.lastResult.get();
-		return result != null && result.record == record && result.wasFiltered;
+		@SuppressWarnings("unchecked")
+		FilterResult<K, V> result = (FilterResult<K, V>) LAST.get();
+		return result != null
+				&& result.record.topic().equals(record.topic())
+				&& result.record.partition() == record.partition()
+				&& result.record.offset() == record.offset()
+				&& result.wasFiltered;
 	}
 
 	/*
