@@ -62,7 +62,7 @@ public class ListenerContainerFactoryConfigurer {
 	@Nullable
 	private BackOff providedBlockingBackOff;
 
-	private @Nullable Class<? extends Exception> @Nullable [] blockingExceptionTypes;
+	private Class<? extends Exception> @Nullable [] blockingExceptionTypes;
 
 	private boolean retainStandardFatal;
 
