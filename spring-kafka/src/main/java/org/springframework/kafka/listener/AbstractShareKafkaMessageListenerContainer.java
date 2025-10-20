@@ -94,7 +94,7 @@ public abstract class AbstractShareKafkaMessageListenerContainer<K, V>
 		Assert.notNull(containerProperties, "'containerProperties' cannot be null");
 		Assert.notNull(shareConsumerFactory, "'shareConsumerFactory' cannot be null");
 		this.shareConsumerFactory = (ShareConsumerFactory<K, V>) shareConsumerFactory;
-		@Nullable String @Nullable [] topics = containerProperties.getTopics();
+		String @Nullable [] topics = containerProperties.getTopics();
 		if (topics != null) {
 			this.containerProperties = new ContainerProperties(topics);
 		}
@@ -104,7 +104,7 @@ public abstract class AbstractShareKafkaMessageListenerContainer<K, V>
 				this.containerProperties = new ContainerProperties(topicPattern);
 			}
 			else {
-				@Nullable TopicPartitionOffset @Nullable [] topicPartitions = containerProperties.getTopicPartitions();
+				TopicPartitionOffset @Nullable [] topicPartitions = containerProperties.getTopicPartitions();
 				if (topicPartitions != null) {
 					this.containerProperties = new ContainerProperties(topicPartitions);
 				}

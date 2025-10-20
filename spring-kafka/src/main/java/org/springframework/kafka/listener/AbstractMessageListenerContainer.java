@@ -157,7 +157,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		Assert.notNull(containerProperties, "'containerProperties' cannot be null");
 		Assert.notNull(consumerFactory, "'consumerFactory' cannot be null");
 		this.consumerFactory = (ConsumerFactory<K, V>) consumerFactory;
-		@Nullable String @Nullable [] topics = containerProperties.getTopics();
+		String @Nullable [] topics = containerProperties.getTopics();
 		if (topics != null) {
 			this.containerProperties = new ContainerProperties(topics);
 		}
@@ -167,7 +167,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 				this.containerProperties = new ContainerProperties(topicPattern);
 			}
 			else {
-				@Nullable TopicPartitionOffset @Nullable [] topicPartitions = containerProperties.getTopicPartitions();
+				TopicPartitionOffset @Nullable [] topicPartitions = containerProperties.getTopicPartitions();
 				if (topicPartitions != null) {
 					this.containerProperties = new ContainerProperties(topicPartitions);
 				}

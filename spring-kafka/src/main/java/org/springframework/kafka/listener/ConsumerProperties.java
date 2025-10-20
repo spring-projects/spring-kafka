@@ -52,7 +52,7 @@ public class ConsumerProperties {
 	/**
 	 * Topic names.
 	 */
-	private final @Nullable String @Nullable [] topics;
+	private final String @Nullable [] topics;
 
 	/**
 	 * Topic pattern.
@@ -62,7 +62,7 @@ public class ConsumerProperties {
 	/**
 	 * Topics/partitions/initial offsets.
 	 */
-	private final @Nullable TopicPartitionOffset @Nullable [] topicPartitions;
+	private final TopicPartitionOffset @Nullable [] topicPartitions;
 
 	/**
 	 * The max time to block in the consumer waiting for records.
@@ -160,7 +160,6 @@ public class ConsumerProperties {
 	 * Return the configured topics.
 	 * @return the topics.
 	 */
-	@Nullable
 	public String @Nullable [] getTopics() {
 		return this.topics != null
 				? Arrays.copyOf(this.topics, this.topics.length)
@@ -181,7 +180,6 @@ public class ConsumerProperties {
 	 * @return the topics/partitions.
 	 * @since 2.5
 	 */
-	@Nullable
 	public TopicPartitionOffset @Nullable [] getTopicPartitions() {
 		return this.topicPartitions != null
 				? Arrays.copyOf(this.topicPartitions, this.topicPartitions.length)
