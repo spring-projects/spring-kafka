@@ -32,13 +32,17 @@ import org.springframework.kafka.support.Acknowledgment;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Chaedong Im
  *
  */
 public class FilteringMessageListenerAdapter<K, V>
 		extends AbstractFilteringMessageListener<K, V, MessageListener<K, V>>
-		implements AcknowledgingConsumerAwareMessageListener<K, V> {
+		implements AcknowledgingConsumerAwareMessageListener<K, V>, FilteringAware<K, V> {
 
 	private final boolean ackDiscarded;
+
+	@SuppressWarnings("rawtypes")
+	private static final ThreadLocal<FilterResult> LAST = new ThreadLocal<>();
 
 	/**
 	 * Create an instance with the supplied strategy and delegate listener.
@@ -68,7 +72,11 @@ public class FilteringMessageListenerAdapter<K, V>
 	public void onMessage(ConsumerRecord<K, V> consumerRecord, @Nullable Acknowledgment acknowledgment,
 			@Nullable Consumer<?, ?> consumer) {
 
-		if (!filter(consumerRecord)) {
+		boolean filtered = filter(consumerRecord);
+		LAST.set(new FilterResult<>(consumerRecord, filtered));
+
+
+		if (!filtered) {
 			switch (this.delegateType) {
 				case ACKNOWLEDGING_CONSUMER_AWARE -> this.delegate.onMessage(consumerRecord, acknowledgment, consumer);
 				case ACKNOWLEDGING -> this.delegate.onMessage(consumerRecord, acknowledgment);
@@ -93,6 +101,17 @@ public class FilteringMessageListenerAdapter<K, V>
 		}
 	}
 
+	@Override
+	public boolean wasFiltered(ConsumerRecord<K, V> record) {
+		@SuppressWarnings("unchecked")
+		FilterResult<K, V> result = (FilterResult<K, V>) LAST.get();
+		return result != null
+				&& result.record.topic().equals(record.topic())
+				&& result.record.partition() == record.partition()
+				&& result.record.offset() == record.offset()
+				&& result.wasFiltered;
+	}
+
 	/*
 	 * Since the container uses the delegate's type to determine which method to call, we
 	 * must implement them all.
@@ -113,4 +132,16 @@ public class FilteringMessageListenerAdapter<K, V>
 		onMessage(data, null, consumer);
 	}
 
+	private static class FilterResult<K, V> {
+
+		final ConsumerRecord<K, V> record;
+
+		final boolean wasFiltered;
+
+		FilterResult(ConsumerRecord<K, V> record, boolean wasFiltered) {
+			this.record = record;
+			this.wasFiltered = wasFiltered;
+		}
+
+	}
 }
