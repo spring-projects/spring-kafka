@@ -32,6 +32,7 @@ import org.springframework.kafka.support.converter.BatchMessageConverter;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.converter.SmartMessageConverter;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.util.Assert;
 
@@ -80,7 +81,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	 * @param errorHandler the error handler.
 	 */
 	public BatchMessagingMessageListenerAdapter(@Nullable Object bean, @Nullable Method method,
-			@Nullable KafkaListenerErrorHandler errorHandler) {
+												@Nullable KafkaListenerErrorHandler errorHandler) {
 
 		super(bean, method, errorHandler);
 	}
@@ -105,6 +106,24 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	 */
 	public void setBatchToRecordAdapter(BatchToRecordAdapter<K, V> batchToRecordAdapter) {
 		this.batchToRecordAdapter = batchToRecordAdapter;
+	}
+
+	/**
+	 * Set the {@link SmartMessageConverter} to use with both the default record converter
+	 * and the batch message converter.
+	 * <p>
+	 * When a {@code SmartMessageConverter} is configured via
+	 * {@code @KafkaListener(contentTypeConverter = "...")}, this method ensures it is
+	 * properly propagated to both the record converter (via the parent class) and the
+	 * batch converter to support message conversion in batch listeners.
+	 * @param messageConverter the converter to set
+	 */
+	@Override
+	public void setMessagingConverter(SmartMessageConverter messageConverter) {
+		super.setMessagingConverter(messageConverter);
+		if (this.batchMessageConverter instanceof BatchMessagingMessageConverter batchConverter) {
+			batchConverter.setMessagingConverter(messageConverter);
+		}
 	}
 
 	/**
@@ -170,7 +189,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	protected Message<?> toMessagingMessage(List records, @Nullable Acknowledgment acknowledgment,
-			@Nullable Consumer<?, ?> consumer) {
+											@Nullable Consumer<?, ?> consumer) {
 
 		return getBatchMessageConverter().toMessage(records, acknowledgment, consumer, getType());
 	}

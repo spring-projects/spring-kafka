@@ -43,6 +43,7 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.serializer.SerializationUtils;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.converter.SmartMessageConverter;
 import org.springframework.messaging.support.MessageBuilder;
 
 /**
@@ -77,6 +78,8 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
 	@Nullable
 	private final RecordMessageConverter recordConverter;
+
+	private @Nullable SmartMessageConverter messagingConverter;
 
 	private boolean generateMessageId = false;
 
@@ -143,6 +146,20 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 	}
 
 	/**
+	 * Set a spring-messaging {@link SmartMessageConverter} to convert the record value to
+	 * the desired type.
+	 * @param messagingConverter the converter.
+	 * @since 3.3.11
+	 */
+	public void setMessagingConverter(@Nullable SmartMessageConverter messagingConverter) {
+		this.messagingConverter = messagingConverter;
+
+		if (this.recordConverter instanceof MessagingMessageConverter messagingRecordConverter) {
+			messagingRecordConverter.setMessagingConverter(messagingConverter);
+		}
+	}
+
+	/**
 	 * Set to true to add the raw {@code List<ConsumerRecord<?, ?>>} as a header
 	 * {@link KafkaHeaders#RAW_DATA}.
 	 * @param rawRecordHeader true to add the header.
@@ -154,7 +171,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
 	@Override // NOSONAR
 	public Message<?> toMessage(List<ConsumerRecord<?, ?>> records, @Nullable Acknowledgment acknowledgment,
-			@Nullable Consumer<?, ?> consumer, Type type) {
+								@Nullable Consumer<?, ?> consumer, Type type) {
 
 		KafkaMessageHeaders kafkaMessageHeaders =
 				new KafkaMessageHeaders(this.generateMessageId, this.generateTimestamp);
@@ -275,13 +292,14 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 	 * @param type the type - must be a {@link ParameterizedType} with a single generic
 	 * type parameter.
 	 * @param conversionFailures Conversion failures.
-	 * @return the converted payload.
+	 * @return the converted payload, potentially further processed by a {@link SmartMessageConverter}.
 	 */
 	protected @Nullable Object convert(ConsumerRecord<?, ?> record, Type type, List<ConversionException> conversionFailures) {
 		try {
 			if (this.recordConverter != null) {
+				Type actualType = ((ParameterizedType) type).getActualTypeArguments()[0];
 				Object payload = this.recordConverter
-						.toMessage(record, null, null, ((ParameterizedType) type).getActualTypeArguments()[0]).getPayload();
+						.toMessage(record, null, null, actualType).getPayload();
 				conversionFailures.add(null);
 				return payload;
 			}
