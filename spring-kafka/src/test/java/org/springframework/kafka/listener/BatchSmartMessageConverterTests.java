@@ -16,95 +16,172 @@
 
 package org.springframework.kafka.listener;
 
-import java.lang.reflect.Type;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
-import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.apache.kafka.common.serialization.IntegerDeserializer;
+import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.config.KafkaListenerContainerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.converter.SmartMessageConverter;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Tests for SmartMessageConverter support in batch listeners.
- * Reproduces the issue described in GH-4097.
+ * Integration tests for SmartMessageConverter support in batch listeners.
+ * Reproduces and verifies the fix for the issue described in GH-4097.
  *
- * @author Jujuwryy
+ * @author George Mahfoud
  * @since 3.3.11
  */
+@SpringJUnitConfig
+@DirtiesContext
+@EmbeddedKafka(partitions = 1, topics = { "smartBatchTopic" })
 class BatchSmartMessageConverterTests {
 
+	@Autowired
+	private KafkaTemplate<Integer, byte[]> template;
+
+	@Autowired
+	private Config config;
+
 	@Test
-	void testSmartMessageConverterWorksInBatchConversion() {
-		// Given: A BatchMessagingMessageConverter with a record converter and SmartMessageConverter
-		MessagingMessageConverter recordConverter = new MessagingMessageConverter();
-		BatchMessagingMessageConverter batchConverter = new BatchMessagingMessageConverter(recordConverter);
+	void testContentTypeConverterWithBatchListener() throws Exception {
+		// Given: A batch listener with contentTypeConverter configured
+		BatchListener listener = this.config.batchListener();
 
-		// Set up SmartMessageConverter that converts byte[] to String
-		TestStringMessageConverter smartConverter = new TestStringMessageConverter();
-		batchConverter.setMessagingConverter(smartConverter);
+		// When: Send byte[] messages that should be converted to String
+		this.template.send("smartBatchTopic", "hello".getBytes());
+		this.template.send("smartBatchTopic", "world".getBytes());
 
-		// Create test records with byte[] values that need conversion to String
-		List<ConsumerRecord<?, ?>> records = Arrays.asList(
-				new ConsumerRecord<>("topic", 0, 0, "key", "hello".getBytes()),
-				new ConsumerRecord<>("topic", 0, 1, "key", "world".getBytes())
-		);
-
-		// When: Convert batch with List<String> target type
-		Type targetType = new TestParameterizedType(List.class, new Type[]{String.class});
-		Message<?> result = batchConverter.toMessage(records, null, null, targetType);
-
-		// Then: Verify the SmartMessageConverter was applied and byte[] was converted to String
-		assertThat(result).isNotNull();
-		assertThat(result.getPayload()).isInstanceOf(List.class);
-
-		List<?> payloads = (List<?>) result.getPayload();
-		assertThat(payloads).hasSize(2);
-		assertThat(payloads.get(0)).isEqualTo("hello");
-		assertThat(payloads.get(1)).isEqualTo("world");
+		// Then: SmartMessageConverter should convert byte[] to String for batch listener
+		assertThat(listener.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(listener.received).hasSize(2).containsExactly("hello", "world");
 	}
 
-	@Test
-	void testBatchConversionWithoutSmartMessageConverter() {
-		// Given: A BatchMessagingMessageConverter without SmartMessageConverter
-		MessagingMessageConverter recordConverter = new MessagingMessageConverter();
-		BatchMessagingMessageConverter batchConverter = new BatchMessagingMessageConverter(recordConverter);
+	@Configuration
+	@EnableKafka
+	public static class Config {
 
-		// Create test records with byte[] values
-		List<ConsumerRecord<?, ?>> records = Arrays.asList(
-				new ConsumerRecord<>("topic", 0, 0, "key", "test".getBytes())
-		);
+		@Bean
+		public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory(EmbeddedKafkaBroker embeddedKafka) {
+			ConcurrentKafkaListenerContainerFactory<Integer, byte[]> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
+			factory.setConsumerFactory(consumerFactory(embeddedKafka));
+			factory.setBatchListener(true);
+			// Set up batch converter with record converter - framework will propagate SmartMessageConverter
+			factory.setBatchMessageConverter(new BatchMessagingMessageConverter(new MessagingMessageConverter()));
+			return factory;
+		}
 
-		// When: Convert batch
-		Type targetType = new TestParameterizedType(List.class, new Type[]{String.class});
-		Message<?> result = batchConverter.toMessage(records, null, null, targetType);
+		@Bean
+		public DefaultKafkaConsumerFactory<Integer, byte[]> consumerFactory(EmbeddedKafkaBroker embeddedKafka) {
+			return new DefaultKafkaConsumerFactory<>(consumerConfigs(embeddedKafka));
+		}
 
-		// Then: Should work but payloads remain as byte[]
-		assertThat(result).isNotNull();
-		List<?> payloads = (List<?>) result.getPayload();
-		assertThat(payloads.get(0)).isInstanceOf(byte[].class);
+		@Bean
+		public Map<String, Object> consumerConfigs(EmbeddedKafkaBroker embeddedKafka) {
+			Map<String, Object> consumerProps =
+					KafkaTestUtils.consumerProps(embeddedKafka, "smartBatchGroup", false);
+			consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
+			consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, IntegerDeserializer.class);
+			return consumerProps;
+		}
+
+		@Bean
+		public KafkaTemplate<Integer, byte[]> template(EmbeddedKafkaBroker embeddedKafka) {
+			return new KafkaTemplate<>(producerFactory(embeddedKafka));
+		}
+
+		@Bean
+		public ProducerFactory<Integer, byte[]> producerFactory(EmbeddedKafkaBroker embeddedKafka) {
+			return new DefaultKafkaProducerFactory<>(producerConfigs(embeddedKafka));
+		}
+
+		@Bean
+		public Map<String, Object> producerConfigs(EmbeddedKafkaBroker embeddedKafka) {
+			Map<String, Object> props = KafkaTestUtils.producerProps(embeddedKafka);
+			props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
+			props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, IntegerSerializer.class);
+			return props;
+		}
+
+		@Bean
+		public SmartMessageConverter byteArrayToStringConverter() {
+			return new ByteArrayToStringConverter();
+		}
+
+		@Bean
+		public BatchListener batchListener() {
+			return new BatchListener();
+		}
+
+	}
+
+	public static class BatchListener {
+
+		private final CountDownLatch latch = new CountDownLatch(2);
+
+		private final List<String> received = new ArrayList<>();
+
+		@KafkaListener(
+				id = "batchSmartListener",
+				topics = "smartBatchTopic",
+				groupId = "smartBatchGroup",
+				contentTypeConverter = "byteArrayToStringConverter",
+				batch = "true"
+		)
+		public void listen(List<String> messages) {
+			messages.forEach(message -> {
+				this.received.add(message);
+				this.latch.countDown();
+			});
+		}
+
 	}
 
 	/**
-	 * Test SmartMessageConverter that converts byte[] to String.
+	 * Simple SmartMessageConverter for testing that converts byte[] to String.
 	 */
-	static class TestStringMessageConverter implements SmartMessageConverter {
+	static class ByteArrayToStringConverter implements SmartMessageConverter {
 
 		@Override
 		public Object fromMessage(Message<?> message, Class<?> targetClass) {
-			return convertPayload(message.getPayload());
+			Object payload = message.getPayload();
+			return (payload instanceof byte[] bytes) ? new String(bytes) : payload;
 		}
 
 		@Override
 		public Object fromMessage(Message<?> message, Class<?> targetClass, Object conversionHint) {
-			return convertPayload(message.getPayload());
+			return fromMessage(message, targetClass);
 		}
 
 		@Override
@@ -117,39 +194,5 @@ class BatchSmartMessageConverterTests {
 			return toMessage(payload, headers);
 		}
 
-		private Object convertPayload(Object payload) {
-			// Convert byte[] to String - this is the core functionality being tested
-			if (payload instanceof byte[] bytes) {
-				return new String(bytes);
-			}
-			return payload;
-		}
-	}
-
-	/**
-	 * Helper class for creating parameterized types for testing.
-	 */
-	static class TestParameterizedType implements java.lang.reflect.ParameterizedType {
-
-		private final Type rawType;
-
-		private final Type[] typeArguments;
-
-		TestParameterizedType(Type rawType, Type[] typeArguments) {
-			this.rawType = rawType;
-			this.typeArguments = typeArguments;
-		}
-
-		public Type[] getActualTypeArguments() {
-			return typeArguments;
-		}
-
-		public Type getRawType() {
-			return rawType;
-		}
-
-		public Type getOwnerType() {
-			return null;
-		}
 	}
 }

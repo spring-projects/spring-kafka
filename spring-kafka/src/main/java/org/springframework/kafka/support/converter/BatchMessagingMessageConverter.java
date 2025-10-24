@@ -68,6 +68,7 @@ import org.springframework.messaging.support.MessageBuilder;
  * @author Borahm Lee
  * @author Artem Bilan
  * @author Soby Chacko
+ * @author George Mahfoud
  *
  * @since 1.1
  */
@@ -78,8 +79,6 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
 	@Nullable
 	private final RecordMessageConverter recordConverter;
-
-	private @Nullable SmartMessageConverter messagingConverter;
 
 	private boolean generateMessageId = false;
 
@@ -152,8 +151,6 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 	 * @since 3.3.11
 	 */
 	public void setMessagingConverter(@Nullable SmartMessageConverter messagingConverter) {
-		this.messagingConverter = messagingConverter;
-
 		if (this.recordConverter instanceof MessagingMessageConverter messagingRecordConverter) {
 			messagingRecordConverter.setMessagingConverter(messagingConverter);
 		}

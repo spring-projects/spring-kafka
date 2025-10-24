@@ -56,6 +56,7 @@ import org.springframework.util.Assert;
  * @author Venil Noronha
  * @author Wang ZhiYang
  * @author Sanghyeok An
+ * @author George Mahfoud
  * @since 1.1
  */
 public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessageListenerAdapter<K, V>
@@ -109,20 +110,24 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	}
 
 	/**
-	 * Set the {@link SmartMessageConverter} to use with both the default record converter
-	 * and the batch message converter.
+	 * Set the {@link SmartMessageConverter} to use with the batch message converter.
 	 * <p>
 	 * When a {@code SmartMessageConverter} is configured via
 	 * {@code @KafkaListener(contentTypeConverter = "...")}, this method ensures it is
-	 * properly propagated to both the record converter (via the parent class) and the
-	 * batch converter to support message conversion in batch listeners.
+	 * properly propagated to the batch converter, which will then propagate it to the
+	 * record converter for message conversion in batch listeners.
+	 * <p>
+	 * This override does not call the parent implementation because the parent's validation
+	 * (checking {@code converterSet}) blocks setting the SmartMessageConverter after
+	 * {@code setBatchMessageConverter} has been called, which is the normal workflow for
+	 * batch listeners.
 	 * @param messageConverter the converter to set
 	 */
 	@Override
 	public void setMessagingConverter(SmartMessageConverter messageConverter) {
-		super.setMessagingConverter(messageConverter);
-		if (this.batchMessageConverter instanceof BatchMessagingMessageConverter batchConverter) {
-			batchConverter.setMessagingConverter(messageConverter);
+		if (this.batchMessageConverter instanceof BatchMessagingMessageConverter) {
+			((BatchMessagingMessageConverter) this.batchMessageConverter)
+					.setMessagingConverter(messageConverter);
 		}
 	}
 
