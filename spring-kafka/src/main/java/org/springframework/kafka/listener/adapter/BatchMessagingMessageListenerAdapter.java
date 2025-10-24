@@ -82,7 +82,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	 * @param errorHandler the error handler.
 	 */
 	public BatchMessagingMessageListenerAdapter(@Nullable Object bean, @Nullable Method method,
-												@Nullable KafkaListenerErrorHandler errorHandler) {
+			@Nullable KafkaListenerErrorHandler errorHandler) {
 
 		super(bean, method, errorHandler);
 	}
@@ -125,9 +125,8 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	 */
 	@Override
 	public void setMessagingConverter(SmartMessageConverter messageConverter) {
-		if (this.batchMessageConverter instanceof BatchMessagingMessageConverter) {
-			((BatchMessagingMessageConverter) this.batchMessageConverter)
-					.setMessagingConverter(messageConverter);
+		if (this.batchMessageConverter instanceof BatchMessagingMessageConverter messagingConverter) {
+			messagingConverter.setMessagingConverter(messageConverter);
 		}
 	}
 
