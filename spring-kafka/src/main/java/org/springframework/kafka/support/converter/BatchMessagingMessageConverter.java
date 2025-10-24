@@ -168,7 +168,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 
 	@Override // NOSONAR
 	public Message<?> toMessage(List<ConsumerRecord<?, ?>> records, @Nullable Acknowledgment acknowledgment,
-								@Nullable Consumer<?, ?> consumer, Type type) {
+			@Nullable Consumer<?, ?> consumer, Type type) {
 
 		KafkaMessageHeaders kafkaMessageHeaders =
 				new KafkaMessageHeaders(this.generateMessageId, this.generateTimestamp);

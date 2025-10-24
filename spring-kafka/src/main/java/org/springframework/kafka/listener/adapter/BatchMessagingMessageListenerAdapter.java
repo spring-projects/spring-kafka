@@ -193,7 +193,7 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	protected Message<?> toMessagingMessage(List records, @Nullable Acknowledgment acknowledgment,
-											@Nullable Consumer<?, ?> consumer) {
+			@Nullable Consumer<?, ?> consumer) {
 
 		return getBatchMessageConverter().toMessage(records, acknowledgment, consumer, getType());
 	}
