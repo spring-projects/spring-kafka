@@ -48,7 +48,7 @@ jobs:
 
       - name: Capture Test Results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: test-results
           path: '**/target/surefire-reports/**/*.*'
