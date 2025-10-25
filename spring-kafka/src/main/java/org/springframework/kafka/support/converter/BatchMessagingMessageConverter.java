@@ -43,6 +43,7 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaNull;
 import org.springframework.kafka.support.serializer.SerializationUtils;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.converter.SmartMessageConverter;
 import org.springframework.messaging.support.MessageBuilder;
 
 /**
@@ -67,6 +68,7 @@ import org.springframework.messaging.support.MessageBuilder;
  * @author Borahm Lee
  * @author Artem Bilan
  * @author Soby Chacko
+ * @author George Mahfoud
  *
  * @since 1.1
  */
@@ -140,6 +142,18 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 	@Override
 	public RecordMessageConverter getRecordMessageConverter() {
 		return this.recordConverter;
+	}
+
+	/**
+	 * Set a spring-messaging {@link SmartMessageConverter} to convert the record value to
+	 * the desired type.
+	 * @param messagingConverter the converter.
+	 * @since 3.3.11
+	 */
+	public void setMessagingConverter(@Nullable SmartMessageConverter messagingConverter) {
+		if (this.recordConverter instanceof MessagingMessageConverter messagingRecordConverter) {
+			messagingRecordConverter.setMessagingConverter(messagingConverter);
+		}
 	}
 
 	/**
@@ -275,13 +289,14 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 	 * @param type the type - must be a {@link ParameterizedType} with a single generic
 	 * type parameter.
 	 * @param conversionFailures Conversion failures.
-	 * @return the converted payload.
+	 * @return the converted payload, potentially further processed by a {@link SmartMessageConverter}.
 	 */
 	protected @Nullable Object convert(ConsumerRecord<?, ?> record, Type type, List<ConversionException> conversionFailures) {
 		try {
 			if (this.recordConverter != null) {
+				Type actualType = ((ParameterizedType) type).getActualTypeArguments()[0];
 				Object payload = this.recordConverter
-						.toMessage(record, null, null, ((ParameterizedType) type).getActualTypeArguments()[0]).getPayload();
+						.toMessage(record, null, null, actualType).getPayload();
 				conversionFailures.add(null);
 				return payload;
 			}
