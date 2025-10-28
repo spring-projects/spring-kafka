@@ -68,6 +68,7 @@ ext {
 	micrometerTracingVersion = '1.6.0-RC1'
 	mockitoVersion = '5.19.0'
 	reactorVersion = '2025.0.0-RC1'
+	slf4jVersion = '2.0.17'
 	springBootVersion = '3.5.0' // docs module
 	springDataVersion = '2025.1.0-RC1'
 	springVersion = '7.0.0-RC1'
@@ -314,7 +315,7 @@ project ('spring-kafka-test') {
 	description = 'Spring Kafka Test Support'
 
 	dependencies {
-		api "org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion"
+		api "org.slf4j:slf4j-api:$slf4jVersion"
 		api 'org.springframework:spring-context'
 		api 'org.springframework:spring-test'
 
