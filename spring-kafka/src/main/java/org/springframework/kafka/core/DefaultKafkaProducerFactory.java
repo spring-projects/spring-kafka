@@ -117,6 +117,7 @@ import org.springframework.util.StringUtils;
  * @author Adrian Gygax
  * @author Soby Chacko
  * @author Jaeyeon Kim
+ * @author Alexandros Papadakis
  */
 public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		implements ProducerFactory<K, V>, ApplicationContextAware,
@@ -947,13 +948,30 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	}
 
 	protected Producer<K, V> createRawProducer(Map<String, Object> rawConfigs) {
-		Producer<K, V> kafkaProducer =
-				new KafkaProducer<>(rawConfigs, this.keySerializerSupplier == null ? null : this.keySerializerSupplier.get(),
-						this.valueSerializerSupplier == null ? null : this.valueSerializerSupplier.get());
-		for (ProducerPostProcessor<K, V> pp : this.postProcessors) {
-			kafkaProducer = pp.apply(kafkaProducer);
+		ClassLoader original = Thread.currentThread().getContextClassLoader();
+		// Use application context classloader if available, otherwise fallback to this class's classloader
+		// to ensure classes in BOOT-INF/lib (Spring Boot fat JAR) are accessible when loading SASL handlers
+		ClassLoader target = (this.applicationContext != null && this.applicationContext.getClassLoader() != null)
+				? this.applicationContext.getClassLoader()
+				: this.getClass().getClassLoader();
+
+		try {
+			if (target != original) {
+				Thread.currentThread().setContextClassLoader(target);
+			}
+			Producer<K, V> kafkaProducer =
+					new KafkaProducer<>(rawConfigs, this.keySerializerSupplier == null ? null : this.keySerializerSupplier.get(),
+							this.valueSerializerSupplier == null ? null : this.valueSerializerSupplier.get());
+			for (ProducerPostProcessor<K, V> pp : this.postProcessors) {
+				kafkaProducer = pp.apply(kafkaProducer);
+			}
+			return kafkaProducer;
 		}
-		return kafkaProducer;
+		finally {
+			if (target != original) {
+				Thread.currentThread().setContextClassLoader(original);
+			}
+		}
 	}
 
 	@Nullable
