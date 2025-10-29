@@ -117,6 +117,7 @@ import org.springframework.util.StringUtils;
  * @author Adrian Gygax
  * @author Soby Chacko
  * @author Jaeyeon Kim
+ * @author Alexandros Papadakis
  */
 public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 		implements ProducerFactory<K, V>, ApplicationContextAware,
@@ -947,13 +948,34 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	}
 
 	protected Producer<K, V> createRawProducer(Map<String, Object> rawConfigs) {
-		Producer<K, V> kafkaProducer =
-				new KafkaProducer<>(rawConfigs, this.keySerializerSupplier == null ? null : this.keySerializerSupplier.get(),
-						this.valueSerializerSupplier == null ? null : this.valueSerializerSupplier.get());
-		for (ProducerPostProcessor<K, V> pp : this.postProcessors) {
-			kafkaProducer = pp.apply(kafkaProducer);
+		// store and restore the context class loader
+		ClassLoader original = Thread.currentThread().getContextClassLoader();
+
+		// Safely pick a loader (applicationContext is @Nullable)
+		ClassLoader target = null;
+		if (this.applicationContext != null) {               // @Nullable guard
+			target = this.applicationContext.getClassLoader(); // from ResourceLoader
 		}
-		return kafkaProducer;
+		boolean switched = false;
+
+		try {
+			if (target != null && target != original) {
+				Thread.currentThread().setContextClassLoader(target);
+				switched = true;
+			}
+			Producer<K, V> kafkaProducer =
+					new KafkaProducer<>(rawConfigs, this.keySerializerSupplier == null ? null : this.keySerializerSupplier.get(),
+							this.valueSerializerSupplier == null ? null : this.valueSerializerSupplier.get());
+			for (ProducerPostProcessor<K, V> pp : this.postProcessors) {
+				kafkaProducer = pp.apply(kafkaProducer);
+			}
+			return kafkaProducer;
+		}
+		finally {
+			if (switched) {
+				Thread.currentThread().setContextClassLoader(original);
+			}
+		}
 	}
 
 	@Nullable
