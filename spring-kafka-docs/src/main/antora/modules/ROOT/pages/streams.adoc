@@ -165,7 +165,7 @@ When constructing the serializer/deserializer programmatically for use in the pr
 [source, java]
 ----
 stream.through(
-    new JackonJsonSerde<>(MyKeyType.class)
+    new JacksonJsonSerde<>(MyKeyType.class)
         .forKeys()
         .noTypeInfo(),
     new JacksonJsonSerde<>(MyValueType.class)
@@ -225,7 +225,7 @@ If there are multiple such beans, they will be applied according to their `Order
 
 When the factory is stopped, the `KafkaStreams.close()` is called with 2 parameters :
 
-* closeTimeout : how long to to wait for the threads to shutdown (defaults to `DEFAULT_CLOSE_TIMEOUT` set to 10 seconds). Can be configured using `StreamsBuilderFactoryBean.setCloseTimeout()`.
+* closeTimeout : how long to wait for the threads to shutdown (defaults to `DEFAULT_CLOSE_TIMEOUT` set to 10 seconds). Can be configured using `StreamsBuilderFactoryBean.setCloseTimeout()`.
 * leaveGroupOnClose : to trigger consumer leave call from the group (defaults to `false`). Can be configured using `StreamsBuilderFactoryBean.setLeaveGroupOnClose()`.
 
 By default, when the factory bean is stopped, the `KafkaStreams.cleanUp()` method is called.
@@ -352,7 +352,7 @@ public KafkaStreamsInteractiveQueryService kafkaStreamsInteractiveQueryService(S
 }
 ----
 
-Assuming that a Kafka Streams application has a state store called `app-store`, then that store can be retrieved via the `KafkStreamsInteractiveQuery` API as show below.
+Assuming that a Kafka Streams application has a state store called `app-store`, then that store can be retrieved via the `KafkaStreamsInteractiveQuery` API as shown below.
 
 [source, java]
 ----
