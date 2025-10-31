@@ -265,7 +265,7 @@ class ListenerContainerFactoryResolverTests {
 	}
 
 	@Test
-	void shouldGetFromCacheForMainEndpont() {
+	void shouldGetFromCacheForMainEndpoint() {
 
 		// setup
 		given(beanFactory.getBean(factoryName,

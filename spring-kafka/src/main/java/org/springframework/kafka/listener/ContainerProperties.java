@@ -798,7 +798,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * @param consumerStartTimeout the consumer start timeout.
 	 */
 	public void setConsumerStartTimeout(Duration consumerStartTimeout) {
-		Assert.notNull(consumerStartTimeout, "'consumerStartTimout' cannot be null");
+		Assert.notNull(consumerStartTimeout, "'consumerStartTimeout' cannot be null");
 		this.consumerStartTimeout = consumerStartTimeout;
 	}
 
