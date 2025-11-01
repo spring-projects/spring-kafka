@@ -38,7 +38,7 @@ public void configureRecordInterceptor(AbstractKafkaListenerContainerFactory<Int
         compositeInterceptor = new CompositeRecordInterceptor<>();
         containerFactory.setRecordInterceptor(compositeInterceptor);
         if (previousInterceptor != null) {
-            compositeRecordInterceptor.addRecordInterceptor(previousInterceptor);
+            compositeInterceptor.addRecordInterceptor(previousInterceptor);
         }
     }
 
