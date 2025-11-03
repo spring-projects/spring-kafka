@@ -41,8 +41,6 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
-import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
-import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -64,7 +62,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringJUnitConfig
 @DirtiesContext
-@EmbeddedKafka(partitions = 1, topics = { "smartBatchTopic" })
+@EmbeddedKafka(partitions = 1, topics = { "smartBatchTopic", "smartBatchTopic2" })
 class BatchSmartMessageConverterTests {
 
 	@Autowired
@@ -75,16 +73,30 @@ class BatchSmartMessageConverterTests {
 
 	@Test
 	void testContentTypeConverterWithBatchListener() throws Exception {
-		// Given: A batch listener with contentTypeConverter configured
 		BatchListener listener = this.config.batchListener();
+		listener.reset(2);
 
-		// When: Send byte[] messages that should be converted to String
 		this.template.send("smartBatchTopic", "hello".getBytes());
 		this.template.send("smartBatchTopic", "world".getBytes());
 
-		// Then: SmartMessageConverter should convert byte[] to String for batch listener
 		assertThat(listener.latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(listener.received).hasSize(2).containsExactly("hello", "world");
+	}
+
+	@Test
+	void testMultipleListenersWithDifferentConverters() throws Exception {
+		BatchListener listener1 = this.config.batchListener();
+		BatchListener2 listener2 = this.config.batchListener2();
+		listener1.reset(1);
+		listener2.reset(1);
+
+		this.template.send("smartBatchTopic", "foo".getBytes());
+		this.template.send("smartBatchTopic2", "bar".getBytes());
+
+		assertThat(listener1.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(listener2.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(listener1.received).hasSize(1).containsExactly("foo");
+		assertThat(listener2.received).hasSize(1).containsExactly("BAR");
 	}
 
 	@Configuration
@@ -97,8 +109,6 @@ class BatchSmartMessageConverterTests {
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory(embeddedKafka));
 			factory.setBatchListener(true);
-			// Set up batch converter with record converter - framework will propagate SmartMessageConverter
-			factory.setBatchMessageConverter(new BatchMessagingMessageConverter(new MessagingMessageConverter()));
 			return factory;
 		}
 
@@ -136,7 +146,12 @@ class BatchSmartMessageConverterTests {
 
 		@Bean
 		public SmartMessageConverter byteArrayToStringConverter() {
-			return new ByteArrayToStringConverter();
+			return new ByteArrayConverter(bytes -> new String(bytes));
+		}
+
+		@Bean
+		public SmartMessageConverter byteArrayToUpperCaseConverter() {
+			return new ByteArrayConverter(bytes -> new String(bytes).toUpperCase());
 		}
 
 		@Bean
@@ -144,11 +159,16 @@ class BatchSmartMessageConverterTests {
 			return new BatchListener();
 		}
 
+		@Bean
+		public BatchListener2 batchListener2() {
+			return new BatchListener2();
+		}
+
 	}
 
 	public static class BatchListener {
 
-		private final CountDownLatch latch = new CountDownLatch(2);
+		private CountDownLatch latch = new CountDownLatch(2);
 
 		private final List<String> received = new ArrayList<>();
 
@@ -166,17 +186,55 @@ class BatchSmartMessageConverterTests {
 			});
 		}
 
+		void reset(int expectedCount) {
+			this.received.clear();
+			this.latch = new CountDownLatch(expectedCount);
+		}
+
+	}
+
+	public static class BatchListener2 {
+
+		private CountDownLatch latch = new CountDownLatch(1);
+
+		private final List<String> received = new ArrayList<>();
+
+		@KafkaListener(
+				id = "batchSmartListener2",
+				topics = "smartBatchTopic2",
+				groupId = "smartBatchGroup2",
+				contentTypeConverter = "byteArrayToUpperCaseConverter",
+				batch = "true"
+		)
+		public void listen(List<String> messages) {
+			messages.forEach(message -> {
+				this.received.add(message);
+				this.latch.countDown();
+			});
+		}
+
+		void reset(int expectedCount) {
+			this.received.clear();
+			this.latch = new CountDownLatch(expectedCount);
+		}
+
 	}
 
 	/**
-	 * Simple SmartMessageConverter for testing that converts byte[] to String.
+	 * Simple SmartMessageConverter for testing that converts byte[] to String using a function.
 	 */
-	static class ByteArrayToStringConverter implements SmartMessageConverter {
+	static class ByteArrayConverter implements SmartMessageConverter {
+
+		private final java.util.function.Function<byte[], String> converter;
+
+		ByteArrayConverter(java.util.function.Function<byte[], String> converter) {
+			this.converter = converter;
+		}
 
 		@Override
 		public Object fromMessage(Message<?> message, Class<?> targetClass) {
 			Object payload = message.getPayload();
-			return (payload instanceof byte[] bytes) ? new String(bytes) : payload;
+			return (payload instanceof byte[] bytes) ? this.converter.apply(bytes) : payload;
 		}
 
 		@Override

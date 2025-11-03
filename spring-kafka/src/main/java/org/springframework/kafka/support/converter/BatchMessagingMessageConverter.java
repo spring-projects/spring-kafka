@@ -89,10 +89,11 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 	private boolean rawRecordHeader;
 
 	/**
-	 * Create an instance that does not convert the record values.
+	 * Create an instance with a default {@link MessagingMessageConverter} for record conversion.
+	 * @since 3.3.11
 	 */
 	public BatchMessagingMessageConverter() {
-		this(null);
+		this(new MessagingMessageConverter());
 	}
 
 	/**
