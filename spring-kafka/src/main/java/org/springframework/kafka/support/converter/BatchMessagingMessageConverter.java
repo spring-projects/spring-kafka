@@ -146,7 +146,7 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 	}
 
 	/**
-	 * Set a spring-messaging {@link SmartMessageConverter} to convert the record value to
+	 * Set a {@link SmartMessageConverter} to convert the record value to
 	 * the desired type.
 	 * @param messagingConverter the converter.
 	 * @since 3.3.11

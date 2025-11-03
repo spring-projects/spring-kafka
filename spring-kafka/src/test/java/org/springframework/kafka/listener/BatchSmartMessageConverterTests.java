@@ -55,7 +55,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Integration tests for SmartMessageConverter support in batch listeners.
- * Reproduces and verifies the fix for the issue described in GH-4097.
  *
  * @author George Mahfoud
  * @since 3.3.11
@@ -80,7 +79,7 @@ class BatchSmartMessageConverterTests {
 		this.template.send("smartBatchTopic", "world".getBytes());
 
 		assertThat(listener.latch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(listener.received).hasSize(2).containsExactly("hello", "world");
+		assertThat(listener.received).containsExactly("hello", "world");
 	}
 
 	@Test
@@ -90,13 +89,15 @@ class BatchSmartMessageConverterTests {
 		listener1.reset(1);
 		listener2.reset(1);
 
-		this.template.send("smartBatchTopic", "foo".getBytes());
-		this.template.send("smartBatchTopic2", "bar".getBytes());
+		String listener1Data = "listener1Data";
+		String listener2Data = "listener2Data";
+		this.template.send("smartBatchTopic", listener1Data.getBytes());
+		this.template.send("smartBatchTopic2", listener2Data.getBytes());
 
 		assertThat(listener1.latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(listener2.latch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(listener1.received).hasSize(1).containsExactly("foo");
-		assertThat(listener2.received).hasSize(1).containsExactly("BAR");
+		assertThat(listener1.received).containsExactly(listener1Data);
+		assertThat(listener2.received).containsExactly(listener2Data.toUpperCase());
 	}
 
 	@Configuration
