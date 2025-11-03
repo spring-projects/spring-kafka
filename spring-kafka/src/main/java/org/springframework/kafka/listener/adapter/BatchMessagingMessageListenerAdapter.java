@@ -117,10 +117,10 @@ public class BatchMessagingMessageListenerAdapter<K, V> extends MessagingMessage
 	 * properly propagated to the batch converter's record converter for message conversion
 	 * in batch listeners.
 	 * <p>
-	 * This method cannot be called after {@link #setBatchMessageConverter(BatchMessageConverter)
-	 * setBatchMessageConverter()} as it would cause a mutation of the internal
-	 * batchMessageConverter. Instead, the SmartMessageConverter has to be provided on the
-	 * external BatchMessageConverter. Since {@link BatchMessagingMessageConverter} now
+	 * This method cannot be called after {@link #setBatchMessageConverter(BatchMessageConverter)}
+	 * as it would cause a mutation of the internal {@code batchMessageConverter}. Instead, the
+	 * {@link SmartMessageConverter} has to be provided on the external {@link BatchMessageConverter}.
+	 * Since {@link BatchMessagingMessageConverter} now
 	 * always has a default {@link org.springframework.kafka.support.converter.MessagingMessageConverter},
 	 * users can configure the converter via the annotation without needing to set it on the factory.
 	 * @param messageConverter the converter to set
