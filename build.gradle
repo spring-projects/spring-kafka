@@ -17,12 +17,13 @@ buildscript {
 plugins {
 	id 'base'
 	id 'idea'
-	id 'org.ajoberstar.grgit' version '5.3.0'
+	id 'org.ajoberstar.grgit' version '5.3.3'
 	id 'io.spring.nohttp' version '0.0.11'
 	id 'io.spring.dependency-management' version '1.1.7' apply false
 	id 'io.freefair.aggregate-javadoc' version '8.11'
 	id 'net.ltgt.errorprone' version '4.1.0' apply false
 	id 'org.owasp.dependencycheck' version '10.0.4'
+	id 'io.spring.nullability' version '0.0.6' apply false
 }
 
 apply plugin: 'io.spring.nohttp'
