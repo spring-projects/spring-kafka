@@ -1203,14 +1203,28 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 		@Override
 		public void registerMetricForSubscription(KafkaMetric kafkaMetric) {
-			//TODO - INVESTIGATE IF WE ARE MISSING SOMETHING
-			this.delegate.registerMetricForSubscription(kafkaMetric);
+			LOGGER.trace(() -> toString() + " registerMetricForSubscription(" + kafkaMetric + ")");
+			try {
+				this.delegate.registerMetricForSubscription(kafkaMetric);
+			}
+			catch (RuntimeException e) {
+				LOGGER.error(e, () -> "Metric registration failed: " + this);
+				this.producerFailed = e;
+				throw e;
+			}
 		}
 
 		@Override
 		public void unregisterMetricFromSubscription(KafkaMetric kafkaMetric) {
-			//TODO - INVESTIGATE IF WE ARE MISSING SOMETHING
-			this.delegate.unregisterMetricFromSubscription(kafkaMetric);
+			LOGGER.trace(() -> toString() + " unregisterMetricFromSubscription(" + kafkaMetric + ")");
+			try {
+				this.delegate.unregisterMetricFromSubscription(kafkaMetric);
+			}
+			catch (RuntimeException e) {
+				LOGGER.error(e, () -> "Metric unregistration failed: " + this);
+				this.producerFailed = e;
+				throw e;
+			}
 		}
 
 		@Override

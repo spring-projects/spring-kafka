@@ -19,6 +19,7 @@ package org.springframework.kafka.support;
 import java.lang.reflect.Method;
 import java.util.List;
 
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -52,6 +53,7 @@ public class EndpointHandlerMultiMethod extends EndpointHandlerMethod {
 	 * Return the method list.
 	 * @return the method list.
 	 */
+	@NonNull
 	public List<Method> getMethods() {
 		return this.methods;
 	}

@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.apache.commons.logging.LogFactory;
+import org.jspecify.annotations.NonNull;
 
 import org.springframework.context.Lifecycle;
 import org.springframework.core.log.LogAccessor;
@@ -78,6 +79,7 @@ public class ContainerGroup implements Lifecycle {
 	 * Return the group name.
 	 * @return the name.
 	 */
+	@NonNull
 	public String getName() {
 		return this.name;
 	}
@@ -86,6 +88,7 @@ public class ContainerGroup implements Lifecycle {
 	 * Return the listener ids of the containers in this group.
 	 * @return the listener ids.
 	 */
+	@NonNull
 	public Collection<String> getListenerIds() {
 		return this.containers.stream()
 				.map(container -> container.getListenerId())

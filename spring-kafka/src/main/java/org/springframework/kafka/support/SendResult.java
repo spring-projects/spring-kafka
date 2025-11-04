@@ -18,6 +18,7 @@ package org.springframework.kafka.support;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Result for a {@link java.util.concurrent.CompletableFuture} after a send.
@@ -39,10 +40,12 @@ public class SendResult<K, V> {
 		this.recordMetadata = recordMetadata;
 	}
 
+	@NonNull
 	public ProducerRecord<K, V> getProducerRecord() {
 		return this.producerRecord;
 	}
 
+	@NonNull
 	public RecordMetadata getRecordMetadata() {
 		return this.recordMetadata;
 	}

@@ -19,6 +19,7 @@ package org.springframework.kafka.support;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.factory.BeanCurrentlyInCreationException;
@@ -80,6 +81,7 @@ public class EndpointHandlerMethod {
 	 * Return the method.
 	 * @return the method.
 	 */
+	@NonNull
 	public Method getMethod() {
 		if (this.beanOrClass instanceof Class<?> clazz) {
 			return forClass(clazz);
@@ -100,6 +102,7 @@ public class EndpointHandlerMethod {
 	 * @return the name.
 	 * @since 2.8
 	 */
+	@NonNull
 	public String getMethodName() {
 		Assert.state(this.methodName != null, "Unexpected call to getMethodName()");
 		return this.methodName;

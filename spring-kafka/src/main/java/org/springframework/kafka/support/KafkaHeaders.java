@@ -306,7 +306,7 @@ public abstract class KafkaHeaders {
 	 * Consumer group that failed to consumer a record published to another topic.
 	 * @since 2.8
 	 */
-	public static final String ORIGINAL_CONSUMER_GROUP = PREFIX + "dlt-original-consumer-group";
+	public static final String ORIGINAL_CONSUMER_GROUP = PREFIX + "original-consumer-group";
 
 	/**
 	 * Original timestamp for a record published to another topic.

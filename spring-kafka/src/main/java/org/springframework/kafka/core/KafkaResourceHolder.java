@@ -19,6 +19,7 @@ package org.springframework.kafka.core;
 import java.time.Duration;
 
 import org.apache.kafka.clients.producer.Producer;
+import org.jspecify.annotations.NonNull;
 
 import org.springframework.transaction.support.ResourceHolderSupport;
 import org.springframework.util.Assert;
@@ -52,6 +53,7 @@ public class KafkaResourceHolder<K, V> extends ResourceHolderSupport {
 		this.closeTimeout = closeTimeout;
 	}
 
+	@NonNull
 	public Producer<K, V> getProducer() {
 		return this.producer;
 	}

@@ -161,6 +161,12 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 		this.seekAfterError = seekAfterError;
 	}
 
+	/**
+	 * Return the delivery attempt for the given topic/partition/offset.
+	 * @param topicPartitionOffset the topic/partition/offset.
+	 * @return the delivery attempt.
+	 * @since 2.5
+	 */
 	@Override
 	public int deliveryAttempt(TopicPartitionOffset topicPartitionOffset) {
 		return this.failureTracker.deliveryAttempt(topicPartitionOffset);
@@ -175,6 +181,12 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 		return this.failureTracker;
 	}
 
+	/**
+	 * Clear the thread-local state maintained by the failure tracker.
+	 * This method should be called when the thread is being returned to a pool
+	 * to prevent memory leaks from thread-local storage.
+	 * @since 2.3.1
+	 */
 	public void clearThreadState() {
 		this.failureTracker.clearThreadState();
 	}

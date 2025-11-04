@@ -39,38 +39,74 @@ public class ConsumerRecordMetadata {
 		this.timestampType = timestampType;
 	}
 
+	/**
+	 * Return true if the offset is valid.
+	 * @return true if the offset is valid.
+	 */
 	public boolean hasOffset() {
 		return this.delegate.hasOffset();
 	}
 
+	/**
+	 * Return the offset of the record in the topic partition.
+	 * @return the offset.
+	 */
 	public long offset() {
 		return this.delegate.offset();
 	}
 
+	/**
+	 * Return true if the timestamp is valid.
+	 * @return true if the timestamp is valid.
+	 */
 	public boolean hasTimestamp() {
 		return this.delegate.hasTimestamp();
 	}
 
+	/**
+	 * Return the timestamp of the record.
+	 * @return the timestamp.
+	 */
 	public long timestamp() {
 		return this.delegate.timestamp();
 	}
 
+	/**
+	 * Return the size of the serialized, uncompressed key in bytes.
+	 * @return the size of the serialized key.
+	 */
 	public int serializedKeySize() {
 		return this.delegate.serializedKeySize();
 	}
 
+	/**
+	 * Return the size of the serialized, uncompressed value in bytes.
+	 * @return the size of the serialized value.
+	 */
 	public int serializedValueSize() {
 		return this.delegate.serializedValueSize();
 	}
 
+	/**
+	 * Return the topic name the record was appended to.
+	 * @return the topic name.
+	 */
 	public String topic() {
 		return this.delegate.topic();
 	}
 
+	/**
+	 * Return the partition the record was sent to.
+	 * @return the partition.
+	 */
 	public int partition() {
 		return this.delegate.partition();
 	}
 
+	/**
+	 * Return the timestamp type for this record.
+	 * @return the timestamp type.
+	 */
 	public TimestampType timestampType() {
 		return this.timestampType;
 	}
