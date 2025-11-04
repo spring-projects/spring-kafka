@@ -1,0 +1,51 @@
+name: PR Security Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+      - '*.x'
+
+jobs:
+  quick-security-scan:
+    name: Quick Security Validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Run Gitleaks - Secret Detection
+      uses: gitleaks/gitleaks-action@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITLEAKS_ENABLE_SUMMARY: true
+
+    - name: Run Trivy - Quick Vulnerability Scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'table'
+        severity: 'CRITICAL,HIGH'
+        scanners: 'vuln,secret,config'
+        exit-code: '0'
+
+    - name: Security scan summary
+      if: always()
+      run: |
+        echo "## 🔒 Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Secret scanning completed (Gitleaks)" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Vulnerability scanning completed (Trivy)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "For detailed security reports, check:" >> $GITHUB_STEP_SUMMARY
+        echo "- CodeQL analysis (runs on push)" >> $GITHUB_STEP_SUMMARY
+        echo "- OWASP Dependency Check (scheduled)" >> $GITHUB_STEP_SUMMARY
+        echo "- Full Trivy scan (scheduled)" >> $GITHUB_STEP_SUMMARY
