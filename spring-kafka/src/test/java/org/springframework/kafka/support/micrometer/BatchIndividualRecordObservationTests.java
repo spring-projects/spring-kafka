@@ -146,8 +146,6 @@ public class BatchIndividualRecordObservationTests {
 				.containsEntry("foo", "some foo value")
 				.containsEntry("bar", "some bar value")
 				.containsEntry("message-id", "msg-3");
-
-		assertThat(listener.processedRecords).hasSize(3);
 	}
 
 	@Test
@@ -170,8 +168,6 @@ public class BatchIndividualRecordObservationTests {
 		assertThat(observationHandler.getStartedObservations())
 				.as("No individual observations should be created when batch individual observation is disabled")
 				.isZero();
-
-		assertThat(batchListener.processedRecords).hasSize(2);
 	}
 
 	@Configuration
@@ -328,36 +324,29 @@ public class BatchIndividualRecordObservationTests {
 
 	static class BatchListener {
 
-		final CountDownLatch latch = new CountDownLatch(1);
-
-		final List<String> processedRecords = new ArrayList<>();
+		CountDownLatch latch = new CountDownLatch(3);
 
 		@KafkaListener(topics = BATCH_INDIVIDUAL_OBSERVATION_TOPIC,
 				containerFactory = "observationListenerContainerFactory")
 		public void listen(List<ConsumerRecord<Integer, String>> records) {
-
 			for (ConsumerRecord<Integer, String> record : records) {
-				processedRecords.add(record.value());
+				latch.countDown();
 			}
-			latch.countDown();
 		}
 
 	}
 
 	static class BatchListenerWithoutIndividualObservation {
 
-		final CountDownLatch latch = new CountDownLatch(1);
-
-		final List<String> processedRecords = new ArrayList<>();
+		CountDownLatch latch = new CountDownLatch(2);
 
 		@KafkaListener(topics = BATCH_ONLY_OBSERVATION_TOPIC,
 				containerFactory = "batchOnlyObservationListenerContainerFactory")
 
 		public void listen(List<ConsumerRecord<Integer, String>> records) {
 			for (ConsumerRecord<Integer, String> record : records) {
-				processedRecords.add(record.value());
+				latch.countDown();
 			}
-			latch.countDown();
 		}
 
 	}
