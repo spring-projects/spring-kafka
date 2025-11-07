@@ -104,7 +104,7 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 				? handleDltProcessingFailure(destinationTopicHolder, e)
 				: destinationTopicHolder.getSourceDestination().shouldRetryOn(attempt, maybeUnwrapException(e))
 						&& isNotFatalException(e)
-						&& !isPastTimout(originalTimestamp, destinationTopicHolder)
+						&& !isPastTimeout(originalTimestamp, destinationTopicHolder)
 					? resolveRetryDestination(mainListenerId, destinationTopicHolder, e)
 					: getDltOrNoOpsDestination(mainListenerId, topic, e);
 	}
@@ -123,7 +123,7 @@ public class DefaultDestinationTopicResolver extends ExceptionClassifier
 				.orElse(e);
 	}
 
-	private boolean isPastTimout(long originalTimestamp, DestinationTopicHolder destinationTopicHolder) {
+	private boolean isPastTimeout(long originalTimestamp, DestinationTopicHolder destinationTopicHolder) {
 		long timeout = destinationTopicHolder.getNextDestination().getDestinationTimeout();
 		return timeout != RetryTopicConstants.NOT_SET &&
 				Instant.now(this.clock).toEpochMilli() > originalTimestamp + timeout;

@@ -724,7 +724,7 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(illegal.get()).isNotNull();
 	}
 
-	private static Stream<Arguments> testInOrderAckPauseUntilAckedParamters() {
+	private static Stream<Arguments> testInOrderAckPauseUntilAckedParameters() {
 		return Stream.of(
 				Arguments.of(AckMode.MANUAL, false),
 				Arguments.of(AckMode.MANUAL, true),
@@ -733,7 +733,7 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	@ParameterizedTest(name = "{index} AckMode.{0} batch:{1}")
-	@MethodSource("testInOrderAckPauseUntilAckedParamters")
+	@MethodSource("testInOrderAckPauseUntilAckedParameters")
 	@SuppressWarnings("unchecked")
 	void testInOrderAckPauseUntilAcked(AckMode ackMode, boolean batch) throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
@@ -2491,7 +2491,7 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	@Test
-	void enforceRabalanceOnTheConsumer() throws Exception {
+	void enforceRebalanceOnTheConsumer() throws Exception {
 		ConsumerFactory<Integer, String> cf = mock();
 		ContainerProperties containerProps = new ContainerProperties("enforce-rebalance-test-topic");
 		containerProps.setGroupId("grp");
