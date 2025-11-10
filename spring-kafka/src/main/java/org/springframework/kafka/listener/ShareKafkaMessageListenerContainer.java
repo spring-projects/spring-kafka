@@ -573,6 +573,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 				acknowledgeInternal(AcknowledgeType.REJECT);
 			}
 
+			@SuppressWarnings("NullAway") // Dataflow analysis limitation
 			private void acknowledgeInternal(AcknowledgeType type) {
 				if (!this.acknowledgmentType.compareAndSet(null, type)) {
 					throw new IllegalStateException(
