@@ -275,7 +275,7 @@ class KafkaStreamsInteractiveQueryServiceTests {
 			final KafkaStreamsInteractiveQueryService kafkaStreamsInteractiveQueryService =
 					new KafkaStreamsInteractiveQueryService(streamsBuilderFactoryBean);
 			RetryTemplate retryTemplate = new RetryTemplate();
-			retryTemplate.setRetryPolicy(RetryPolicy.builder().maxAttempts(2).delay(Duration.ZERO).build());
+			retryTemplate.setRetryPolicy(RetryPolicy.builder().maxRetries(2).delay(Duration.ZERO).build());
 			kafkaStreamsInteractiveQueryService.setRetryTemplate(retryTemplate);
 			return kafkaStreamsInteractiveQueryService;
 		}

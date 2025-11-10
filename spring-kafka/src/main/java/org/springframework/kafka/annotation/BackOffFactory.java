@@ -67,7 +67,7 @@ final class BackOffFactory {
 					() -> "Invalid delay (%dms): must be >= 0.".formatted(delay.toMillis()));
 			return new FixedBackOff(delay.toMillis());
 		}
-		RetryPolicy.Builder retryPolicyBuilder = RetryPolicy.builder().maxAttempts(Long.MAX_VALUE);
+		RetryPolicy.Builder retryPolicyBuilder = RetryPolicy.builder().maxRetries(Long.MAX_VALUE);
 		retryPolicyBuilder.delay(delay);
 		if (maxDelay != Duration.ZERO) {
 			retryPolicyBuilder.maxDelay(maxDelay);
