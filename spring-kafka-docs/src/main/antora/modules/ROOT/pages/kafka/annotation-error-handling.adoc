@@ -300,8 +300,190 @@ Starting with version 2.9, this is now `true` by default.
 
 Also see xref:kafka/annotation-error-handling.adoc#delivery-header[Delivery Attempts Header].
 
+[[batch-listener-error-handling-dlt]]
+== Batch Listener Error Handling with Dead Letter Topics
+
+IMPORTANT: xref:retrytopic.adoc[Non-Blocking Retries] (the `@RetryableTopic` annotation) are NOT supported with batch listeners.
+For Dead Letter Topic functionality with batch listeners, use `DefaultErrorHandler` with `DeadLetterPublishingRecoverer`.
+
+[[batch-listener-failed-exception]]
+=== Using BatchListenerFailedException
+
+To indicate which specific record in a batch failed, throw a `BatchListenerFailedException`:
+
+[source, java]
+----
+@KafkaListener(id = "batch-listener", topics = "myTopic", containerFactory = "batchFactory")
+public void listen(List<ConsumerRecord<String, Order>> records) {
+    for (ConsumerRecord<String, Order> record : records) {
+        try {
+            process(record.value());
+        }
+        catch (Exception e) {
+            // Identifies the failed record for error handling
+            throw new BatchListenerFailedException("Failed to process", e, record);
+        }
+    }
+}
+----
+
+For POJO batch listeners where you don't have the `ConsumerRecord`, use the index instead:
+
+[source, java]
+----
+@KafkaListener(id = "batch-listener", topics = "myTopic", containerFactory = "batchFactory")
+public void listen(List<Order> orders) {
+    for (int i = 0; i < orders.size(); i++) {
+        try {
+            process(orders.get(i));
+        }
+        catch (Exception e) {
+            throw new BatchListenerFailedException("Failed to process", e, i);
+        }
+    }
+}
+----
+
+[[batch-listener-dlt-config]]
+=== Configuring Dead Letter Topics for Batch Listeners
+
+Configure a `DefaultErrorHandler` with a `DeadLetterPublishingRecoverer` on your batch listener container factory:
+
+[source, java]
+----
+@Bean
+public ConcurrentKafkaListenerContainerFactory<String, Order> batchFactory(
+        ConsumerFactory<String, Order> consumerFactory,
+        KafkaTemplate<String, Order> kafkaTemplate) {
+
+    ConcurrentKafkaListenerContainerFactory<String, Order> factory =
+        new ConcurrentKafkaListenerContainerFactory<>();
+    factory.setConsumerFactory(consumerFactory);
+    factory.setBatchListener(true);
+
+    // Configure Dead Letter Publishing
+    DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate,
+            (record, ex) -> new TopicPartition(record.topic() + "-dlt", record.partition()));
+
+    // Configure retries: 3 attempts with 1 second between each
+    DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer,
+            new FixedBackOff(1000L, 2L)); // 2 retries = 3 total attempts
+
+    factory.setCommonErrorHandler(errorHandler);
+    return factory;
+}
+----
+
+[[batch-listener-error-flow]]
+=== How Batch Error Handling Works
+
+When a `BatchListenerFailedException` is thrown, the `DefaultErrorHandler`:
+
+1. **Commits offsets** for all records before the failed record
+2. **Retries** the failed record (and subsequent records) according to the `BackOff` configuration
+3. **Publishes to DLT** when retries are exhausted - only the failed record is sent to the DLT
+4. **Commits the failed record's offset** and redelivers remaining records for processing
+
+Example flow with a batch of 6 records where record at index 2 fails:
+
+* First attempt: Records 0, 1 processed successfully; record 2 fails
+* Container commits offsets for records 0, 1
+* Retry attempt 1: Records 2, 3, 4, 5 are retried
+* Retry attempt 2: Records 2, 3, 4, 5 are retried again
+* After retries exhausted: Record 2 is published to DLT and its offset is committed
+* Container continues with records 3, 4, 5
+
+[[batch-listener-skip-retries]]
+=== Skipping Retries for Specific Exceptions
+
+By default, the `DefaultErrorHandler` retries all exceptions except for fatal ones (like `DeserializationException`, `MessageConversionException`, etc.).
+To skip retries for your own exception types, configure the error handler with exception classifications.
+
+The error handler examines the **cause** of the `BatchListenerFailedException` to determine if it should skip retries:
+
+[source, java]
+----
+@Bean
+public ConcurrentKafkaListenerContainerFactory<String, Order> batchFactory(
+        ConsumerFactory<String, Order> consumerFactory,
+        KafkaTemplate<String, Order> kafkaTemplate) {
+
+    ConcurrentKafkaListenerContainerFactory<String, Order> factory =
+        new ConcurrentKafkaListenerContainerFactory<>();
+    factory.setConsumerFactory(consumerFactory);
+    factory.setBatchListener(true);
+
+    DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate);
+    DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer,
+            new FixedBackOff(1000L, 2L));
+
+    // Add custom exception types that should skip retries and go directly to DLT
+    errorHandler.addNotRetryableExceptions(ValidationException.class, InvalidFormatException.class);
+
+    factory.setCommonErrorHandler(errorHandler);
+    return factory;
+}
+----
+
+Now in your listener:
+
+[source, java]
+----
+@KafkaListener(id = "batch-listener", topics = "orders", containerFactory = "batchFactory")
+public void processOrders(List<ConsumerRecord<String, Order>> records) {
+    for (ConsumerRecord<String, Order> record : records) {
+        try {
+            process(record.value());
+        }
+        catch (DatabaseException e) {
+            // Will be retried 3 times (according to BackOff configuration)
+            throw new BatchListenerFailedException("Database error", e, record);
+        }
+        catch (ValidationException e) {
+            // Skips retries - goes directly to DLT
+            // (because ValidationException is configured as not retryable)
+            throw new BatchListenerFailedException("Validation failed", e, record);
+        }
+    }
+}
+----
+
+IMPORTANT: The error handler checks the **cause** (the second parameter) of the `BatchListenerFailedException`.
+If the cause is classified as not retryable, the record is immediately sent to the DLT without retries.
+
+[[batch-listener-offset-commits]]
+=== Offset Commit Behavior
+
+Understanding offset commits is important for batch error handling:
+
+* **AckMode.BATCH** (most common for batch listeners):
+  - Offsets before the failed record are committed before error handling
+  - The failed record's offset is committed after successful recovery (DLT publishing)
+
+* **AckMode.MANUAL_IMMEDIATE**:
+  - Set `errorHandler.setCommitRecovered(true)` to commit recovered record offsets
+  - You control acknowledgment timing in your listener
+
+Example with manual acknowledgment:
+
+[source, java]
+----
+@KafkaListener(id = "manual-batch", topics = "myTopic", containerFactory = "manualBatchFactory")
+public void listen(List<ConsumerRecord<String, Order>> records, Acknowledgment ack) {
+    for (ConsumerRecord<String, Order> record : records) {
+        try {
+            process(record.value());
+        }
+        catch (Exception e) {
+            throw new BatchListenerFailedException("Processing failed", e, record);
+        }
+    }
+    ack.acknowledge();
+}
+----
+
 [[batch-listener-conv-errors]]
-== Conversion Errors with Batch Error Handlers
+=== Conversion Errors with Batch Error Handlers
 
 Starting with version 2.8, batch listeners can now properly handle conversion errors, when using a `MessageConverter` with a `ByteArrayDeserializer`, a `BytesDeserializer` or a `StringDeserializer`, as well as a `DefaultErrorHandler`.
 When a conversion error occurs, the payload is set to null and a deserialization exception is added to the record headers, similar to the `ErrorHandlingDeserializer`.
@@ -322,6 +504,46 @@ void listen(List<Thing> in, @Header(KafkaHeaders.CONVERSION_FAILURES) List<Conve
     }
 }
 ----
+
+[[batch-listener-deser-errors]]
+=== Deserialization Errors with Batch Listeners
+
+Use `ErrorHandlingDeserializer` to handle deserialization failures gracefully:
+
+[source, java]
+----
+@Bean
+public ConsumerFactory<String, Order> consumerFactory() {
+    Map<String, Object> props = new HashMap<>();
+    props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+
+    // Wrap your deserializer with ErrorHandlingDeserializer
+    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
+    props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JsonDeserializer.class.getName());
+
+    return new DefaultKafkaConsumerFactory<>(props);
+}
+----
+
+In your listener, check for `null` values which indicate deserialization failures:
+
+[source, java]
+----
+@KafkaListener(id = "batch-deser", topics = "orders", containerFactory = "batchFactory")
+public void listen(List<ConsumerRecord<String, Order>> records) {
+    for (ConsumerRecord<String, Order> record : records) {
+        if (record.value() == null) {
+            // Deserialization failed - throw exception to send to DLT
+            // The DeadLetterPublishingRecoverer will restore the original byte[] value
+            throw new BatchListenerFailedException("Deserialization failed", record);
+        }
+        process(record.value());
+    }
+}
+----
+
+When `DeadLetterPublishingRecoverer` publishes deserialization failures to the DLT, it automatically restores the original `byte[]` value that failed to deserialize.
 
 [[retrying-batch-eh]]
 == Retrying Complete Batches
