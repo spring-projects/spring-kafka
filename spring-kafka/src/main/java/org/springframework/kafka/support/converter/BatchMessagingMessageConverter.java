@@ -169,17 +169,18 @@ public class BatchMessagingMessageConverter implements BatchMessageConverter {
 				new KafkaMessageHeaders(this.generateMessageId, this.generateTimestamp);
 
 		Map<String, Object> rawHeaders = kafkaMessageHeaders.getRawHeaders();
-		List<Object> payloads = new ArrayList<>();
-		List<Object> keys = new ArrayList<>();
-		List<String> topics = new ArrayList<>();
-		List<Integer> partitions = new ArrayList<>();
-		List<Long> offsets = new ArrayList<>();
-		List<String> timestampTypes = new ArrayList<>();
-		List<Long> timestamps = new ArrayList<>();
-		List<Map<String, Object>> convertedHeaders = new ArrayList<>();
-		List<Headers> natives = new ArrayList<>();
-		List<ConsumerRecord<?, ?>> raws = new ArrayList<>();
-		List<ConversionException> conversionFailures = new ArrayList<>();
+		int batchSize = records.size();
+		List<Object> payloads = new ArrayList<>(batchSize);
+		List<Object> keys = new ArrayList<>(batchSize);
+		List<String> topics = new ArrayList<>(batchSize);
+		List<Integer> partitions = new ArrayList<>(batchSize);
+		List<Long> offsets = new ArrayList<>(batchSize);
+		List<String> timestampTypes = new ArrayList<>(batchSize);
+		List<Long> timestamps = new ArrayList<>(batchSize);
+		List<Map<String, Object>> convertedHeaders = new ArrayList<>(batchSize);
+		List<Headers> natives = new ArrayList<>(batchSize);
+		List<ConsumerRecord<?, ?>> raws = new ArrayList<>(batchSize);
+		List<ConversionException> conversionFailures = new ArrayList<>(batchSize);
 
 		addToRawHeaders(rawHeaders, convertedHeaders, natives, raws, conversionFailures);
 		commonHeaders(acknowledgment, consumer, rawHeaders, keys, topics, partitions, offsets, timestampTypes,
