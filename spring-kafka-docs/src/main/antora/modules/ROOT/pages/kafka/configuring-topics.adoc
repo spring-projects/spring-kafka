@@ -73,11 +73,13 @@ The context then fails to initialize.
 NOTE: If the broker supports it (1.0.0 or higher), the admin increases the number of partitions if it is found that an existing topic has fewer partitions than the `NewTopic.numPartitions`.
 
 Starting with version 2.7, the `KafkaAdmin` provides methods to create and examine topics at runtime.
+Starting with version 4.0, it also provides a method to delete topics.
 
 * `createOrModifyTopics`
 * `describeTopics`
+* `deleteTopics` (since 4.0)
 
-For more advanced features, you can use the `AdminClient` directly.
+For more advanced administrative features, you can use the `AdminClient` directly.
 The following example shows how to do so:
 
 [source, java]
