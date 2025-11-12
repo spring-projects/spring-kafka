@@ -51,6 +51,13 @@ public interface KafkaAdminOperations {
 	Map<String, TopicDescription> describeTopics(String... topicNames);
 
 	/**
+	 * Delete topics from the Kafka cluster.
+	 * @param topicNames the topic names to delete.
+	 * @since 4.0
+	 */
+	void deleteTopics(String... topicNames);
+
+	/**
 	 * Return the cluster id, if available.
 	 * @return the describe cluster id.
 	 * @since 3.0

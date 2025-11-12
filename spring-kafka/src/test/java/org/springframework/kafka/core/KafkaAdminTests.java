@@ -339,6 +339,65 @@ public class KafkaAdminTests {
 		assertThat(kafkaAdmin.getAdminConfig()).containsOnly(Map.entry(AdminClientConfig.CLIENT_ID_CONFIG, "appname-admin-0"));
 	}
 
+	@Test
+	void testDeleteTopics() {
+		NewTopic testTopic1 = TopicBuilder.name("test-delete-1")
+				.partitions(1)
+				.replicas(1)
+				.build();
+		NewTopic testTopic2 = TopicBuilder.name("test-delete-2")
+				.partitions(1)
+				.replicas(1)
+				.build();
+
+		this.admin.createOrModifyTopics(testTopic1, testTopic2);
+
+		await().atMost(10, TimeUnit.SECONDS).until(() -> {
+			try {
+				Map<String, TopicDescription> topics =
+						this.admin.describeTopics("test-delete-1", "test-delete-2");
+				return topics.size() == 2;
+			}
+			catch (Exception e) {
+				return false;
+			}
+		});
+
+		Map<String, TopicDescription> beforeDelete = this.admin.describeTopics("test-delete-1", "test-delete-2");
+		assertThat(beforeDelete).hasSize(2);
+		assertThat(beforeDelete).containsKeys("test-delete-1", "test-delete-2");
+
+		this.admin.deleteTopics("test-delete-1", "test-delete-2");
+
+		await().atMost(10, TimeUnit.SECONDS).until(() -> {
+			try (AdminClient adminClient = AdminClient.create(this.admin.getConfigurationProperties())) {
+				DescribeTopicsResult result = adminClient.describeTopics(Arrays.asList("test-delete-1", "test-delete-2"));
+				try {
+					result.allTopicNames().get(5, TimeUnit.SECONDS);
+					return false;
+				}
+				catch (ExecutionException ex) {
+					return ex.getCause() instanceof UnknownTopicOrPartitionException;
+				}
+			}
+			catch (InterruptedException | TimeoutException e) {
+				return false;
+			}
+		});
+	}
+
+	@Test
+	void testDeleteNonExistentTopic() {
+		assertThat(org.assertj.core.api.Assertions.catchThrowable(() ->
+				this.admin.deleteTopics("non-existent-topic-12345")
+		)).isInstanceOf(org.springframework.kafka.KafkaException.class);
+	}
+
+	@Test
+	void testDeleteTopicsWithEmptyArray() {
+		this.admin.deleteTopics();
+	}
+
 	@Configuration
 	public static class Config {
 
