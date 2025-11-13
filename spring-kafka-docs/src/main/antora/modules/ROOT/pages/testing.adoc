@@ -505,6 +505,7 @@ The following example brings together most of the topics covered in this chapter
 public class KafkaTemplateTests {
 
     public static final String TEMPLATE_TOPIC = "templateTopic";
+    public static EmbeddedKafkaBroker embeddedKafka;
 
     @BeforeAll
 	public static void setUp() {
