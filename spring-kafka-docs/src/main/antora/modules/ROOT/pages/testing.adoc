@@ -149,7 +149,7 @@ The following example configuration creates topics called `cat` and `hat` with f
 public class MyTests {
 
     @ClassRule
-    private static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, false, 5, "cat", "hat");
+    public static EmbeddedKafkaRule embeddedKafka = new EmbeddedKafkaRule(1, false, 5, "cat", "hat");
 
     @Test
     public void test() {
