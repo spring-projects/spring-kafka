@@ -81,6 +81,7 @@ import org.springframework.util.Assert;
  * @author Anders Swanson
  * @author Omer Celik
  * @author Choi Wang Gyu
+ * @author Go Beom Jun
  *
  * @since 1.3
  */
@@ -388,6 +389,35 @@ public class KafkaAdmin extends KafkaResourceFactory
 			catch (TimeoutException | ExecutionException ex) {
 				throw new KafkaException("Failed to obtain topic descriptions", ex);
 			}
+		}
+	}
+
+	/**
+	 * Delete topics from the Kafka cluster.
+	 * @param topicNames the topic names to delete.
+	 * @throws KafkaException if the operation fails.
+	 * @since 4.0
+	 */
+	@Override
+	public void deleteTopics(String... topicNames) {
+		if (topicNames.length == 0) {
+			return;
+		}
+		try (Admin admin = createAdmin()) {
+			admin.deleteTopics(Arrays.asList(topicNames))
+					.all()
+					.get(this.operationTimeout, TimeUnit.SECONDS);
+			LOGGER.debug(() -> "Deleted topics: " + Arrays.toString(topicNames));
+		}
+		catch (InterruptedException ex) {
+			Thread.currentThread().interrupt();
+			throw new KafkaException("Interrupted while deleting topics", ex);
+		}
+		catch (TimeoutException ex) {
+			throw new KafkaException("Timed out waiting to delete topics", ex);
+		}
+		catch (ExecutionException ex) {
+			throw new KafkaException("Failed to delete topics", ex.getCause());
 		}
 	}
 
