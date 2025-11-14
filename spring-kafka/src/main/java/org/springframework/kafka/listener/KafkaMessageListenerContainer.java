@@ -236,9 +236,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	KafkaMessageListenerContainer(@Nullable AbstractMessageListenerContainer<K, V> container,
 			ConsumerFactory<? super K, ? super V> consumerFactory,
 			ContainerProperties containerProperties, @Nullable TopicPartitionOffset @Nullable ... topicPartitions) {
-
-		super(consumerFactory, containerProperties);
 		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
+		super(consumerFactory, containerProperties);
 		this.thisOrParentContainer = container == null ? this : container;
 		if (topicPartitions != null) {
 			this.topicPartitions = Arrays.copyOf(topicPartitions, topicPartitions.length);

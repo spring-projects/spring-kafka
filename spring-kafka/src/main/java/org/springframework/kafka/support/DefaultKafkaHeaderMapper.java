@@ -156,9 +156,9 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	}
 
 	private DefaultKafkaHeaderMapper(boolean outbound, ObjectMapper objectMapper, String... patterns) {
-		super(outbound, patterns);
 		Assert.notNull(objectMapper, "'objectMapper' must not be null");
 		Assert.noNullElements(patterns, "'patterns' must not have null elements");
+		super(outbound, patterns);
 		this.objectMapper = objectMapper;
 	}
 

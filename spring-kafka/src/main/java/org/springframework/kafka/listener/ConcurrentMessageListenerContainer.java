@@ -85,9 +85,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	 */
 	public ConcurrentMessageListenerContainer(@Nullable ConsumerFactory<? super K, ? super V> consumerFactory,
 			ContainerProperties containerProperties) {
-
-		super(consumerFactory, containerProperties);
 		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
+		super(consumerFactory, containerProperties);
 	}
 
 	public int getConcurrency() {
