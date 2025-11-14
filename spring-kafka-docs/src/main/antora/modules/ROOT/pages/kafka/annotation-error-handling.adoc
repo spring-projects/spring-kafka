@@ -508,7 +508,11 @@ void listen(List<Thing> in, @Header(KafkaHeaders.CONVERSION_FAILURES) List<Conve
 [[batch-listener-deser-errors]]
 === Deserialization Errors with Batch Listeners
 
-Use `ErrorHandlingDeserializer` to handle deserialization failures gracefully:
+IMPORTANT: Batch listeners require **manual handling** of deserialization errors.
+Unlike record listeners, there is no automatic error handler that detects and routes deserialization failures to the DLT.
+You must explicitly check for failed records and throw `BatchListenerFailedException`.
+
+Use `ErrorHandlingDeserializer` to prevent deserialization failures from stopping the entire batch:
 
 [source, java]
 ----
@@ -526,7 +530,7 @@ public ConsumerFactory<String, Order> consumerFactory() {
 }
 ----
 
-In your listener, check for `null` values which indicate deserialization failures:
+In your listener, you must manually check for `null` values which indicate deserialization failures:
 
 [source, java]
 ----
@@ -535,7 +539,6 @@ public void listen(List<ConsumerRecord<String, Order>> records) {
     for (ConsumerRecord<String, Order> record : records) {
         if (record.value() == null) {
             // Deserialization failed - throw exception to send to DLT
-            // The DeadLetterPublishingRecoverer will restore the original byte[] value
             throw new BatchListenerFailedException("Deserialization failed", record);
         }
         process(record.value());
@@ -543,7 +546,11 @@ public void listen(List<ConsumerRecord<String, Order>> records) {
 }
 ----
 
-When `DeadLetterPublishingRecoverer` publishes deserialization failures to the DLT, it automatically restores the original `byte[]` value that failed to deserialize.
+When `DeadLetterPublishingRecoverer` publishes a deserialization failure to the DLT:
+
+* The original `byte[]` data that failed to deserialize is restored as the record value
+* Exception information (class name, message, stacktrace) is added to standard DLT exception headers
+* The original `ErrorHandlingDeserializer` exception header is removed by default (set `setRetainExceptionHeader(true)` on the recoverer to keep it)
 
 [[retrying-batch-eh]]
 == Retrying Complete Batches
