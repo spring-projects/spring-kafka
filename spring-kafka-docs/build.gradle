@@ -14,7 +14,7 @@ description = 'Spring Kafka Code Snippets For Docs'
 
 
 tasks.withType(JavaCompile).configureEach {
-    sourceCompatibility = JavaVersion.VERSION_17
+    sourceCompatibility = JavaVersion.VERSION_25
     options.encoding = 'UTF-8'
 }
 
