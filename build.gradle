@@ -37,7 +37,7 @@ ext {
 	linkScmDevConnection = 'git@github.com:spring-projects/spring-kafka.git'
 
 	javadocLinks = [
-		'https://docs.oracle.com/en/java/javase/17/docs/api/',
+		'https://docs.oracle.com/en/java/javase/25/docs/api/',
 		'https://jakarta.ee/specifications/platform/11/apidocs/',
 		'https://docs.spring.io/spring-framework/docs/current/javadoc-api/'
 	] as String[]
@@ -144,7 +144,7 @@ configure(javaProjects) { subproject ->
 	}
 
 	tasks.withType(JavaCompile).configureEach {
-		sourceCompatibility = JavaVersion.VERSION_17
+		sourceCompatibility = JavaVersion.VERSION_25
 		options.encoding = 'UTF-8'
 	}
 
