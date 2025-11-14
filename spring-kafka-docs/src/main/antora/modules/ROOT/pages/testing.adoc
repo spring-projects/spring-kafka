@@ -158,21 +158,19 @@ public final class EmbeddedKafkaHolder {
     private static EmbeddedKafkaBroker embeddedKafka = new EmbeddedKafkaZKBroker(1, false)
             .brokerListProperty("spring.kafka.bootstrap-servers");
 
-    private static boolean started;
+    private static volatile boolean started;
 
     public static EmbeddedKafkaBroker getEmbeddedKafka() {
         if (!started) {
-            synchronized (this) {
-		if (!started) {
-		    try {
-	                embeddedKafka.afterPropertiesSet();
-		    }
-	            catch (Exception e) {
-	                throw new KafkaException("Embedded broker failed to start", e);
-		    }
-	            started = true;
-		}
-	    }
+            synchronized (EmbeddedKafkaBroker.class) {
+		    	try {
+	        		embeddedKafka.afterPropertiesSet();
+		    	}
+	        	catch (Exception e) {
+	        		throw new KafkaException("Embedded broker failed to start", e);
+		    	}
+	        	started = true;
+			}
         }
         return embeddedKafka;
     }
