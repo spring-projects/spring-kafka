@@ -172,6 +172,7 @@ import org.springframework.util.StringUtils;
  * @author Christian Fredriksson
  * @author Timofey Barabanov
  * @author Janek Lasocki-Biczysko
+ * @author Su Ko
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -842,6 +843,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private boolean receivedSome;
 
 		private @Nullable ConsumerRecords<K, V> remainingRecords;
+
+		// use to fix tx marker
+		private @Nullable ConsumerRecords<K, V> lastRecords;
 
 		private boolean pauseForPending;
 
@@ -1530,9 +1534,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void invokeIfHaveRecords(@Nullable ConsumerRecords<K, V> records) {
+			saveLastRecordsIfNeeded(records);
+
 			if (records != null && records.count() > 0) {
 				this.receivedSome = true;
-				savePositionsIfNeeded(records);
 				notIdle();
 				notIdlePartitions(records.partitions());
 				invokeListener(records);
@@ -1604,49 +1609,68 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void savePositionsIfNeeded(ConsumerRecords<K, V> records) {
-			if (this.fixTxOffsets) {
-				this.savedPositions.clear();
-				records.partitions().forEach(tp -> this.savedPositions.put(tp, this.consumer.position(tp)));
+		private void saveLastRecordsIfNeeded(@Nullable ConsumerRecords<K, V> records) {
+			if (this.fixTxOffsets && records != null && !records.nextOffsets().isEmpty()) {
+				this.lastRecords = records;
 			}
 		}
 
+		/**
+		 * Fix transactional offsets using ConsumerRecords#nextOffsets() API.
+		 * This method addresses the issue where Kafka transaction markers can cause
+		 * incorrect offset tracking. By using nextOffsets() instead of position(),
+		 * we ensure:
+		 * - Transaction markers are automatically filtered out
+		 * - Partition-leader epoch information is correctly captured
+		 * - Empty poll() cases are properly handled
+		 */
 		private void fixTxOffsetsIfNeeded() {
-			if (this.fixTxOffsets) {
-				try {
-					Map<TopicPartition, OffsetAndMetadata> toFix = new HashMap<>();
-					this.lastCommits.forEach((tp, oamd) -> {
-						long position = this.consumer.position(tp);
-						Long saved = this.savedPositions.get(tp);
-						if (saved != null && saved != position) {
-							this.logger.debug(() -> "Skipping TX offset correction - seek(s) have been performed; "
-									+ "saved: " + this.savedPositions + ", "
-									+ "committed: " + oamd + ", "
-									+ "current: " + tp + "@" + position);
-							return;
-						}
-						if (position > oamd.offset()) {
-							toFix.put(tp, createOffsetAndMetadata(position));
-						}
-					});
-					if (!toFix.isEmpty()) {
-						this.logger.debug(() -> "Fixing TX offsets: " + toFix);
-						if (this.kafkaTxManager == null) {
-							commitOffsets(toFix);
-						}
-						else {
-							Objects.requireNonNull(this.transactionTemplate).executeWithoutResult(
-									status -> doSendOffsets(getTxProducer(), toFix));
-						}
+			if (!this.fixTxOffsets) {
+				return;
+			}
+
+			try {
+				if (this.lastRecords == null) {
+					this.logger.trace(() -> "No previous records available for TX offset fix.");
+					return;
+				}
+
+				Map<TopicPartition, OffsetAndMetadata> nextOffsets = this.lastRecords.nextOffsets();
+				Map<TopicPartition, OffsetAndMetadata> toFix = new HashMap<>();
+
+				// Fix offset only if records were actually processed
+				nextOffsets.forEach((tp, nextOffset) -> {
+					OffsetAndMetadata committed = this.lastCommits.get(tp);
+
+					if (committed == null) {
+						this.logger.debug(() -> "No committed offset for " + tp + "; skipping TX offset fix.");
+						return;
 					}
-				}
-				catch (Exception e) {
-					this.logger.error(e, () -> "Failed to correct transactional offset(s): "
-							+ ListenerConsumer.this.lastCommits);
-				}
-				finally {
+
+					// Only fix if we have processed records and the next offset is greater than committed
+					if (this.lastRecords.nextOffsets().get(tp) != null  && nextOffset.offset() > committed.offset()) {
+						toFix.put(tp, nextOffset);
+					}
+				});
+
+				if (!toFix.isEmpty()) {
+					this.logger.debug(() ->
+							String.format("Fixing TX offsets for %d partitions: %s", toFix.size(), toFix));
+					if (this.kafkaTxManager == null) {
+						commitOffsets(toFix);
+					}
+					else {
+						Objects.requireNonNull(this.transactionTemplate)
+								.executeWithoutResult(status -> doSendOffsets(getTxProducer(), toFix));
+					}
+
 					ListenerConsumer.this.lastCommits.clear();
+					this.lastRecords = null;
 				}
+			}
+			catch (Exception e) {
+				this.logger.error(e, () -> "Failed to correct transactional offset(s): "
+						+ ListenerConsumer.this.lastCommits);
 			}
 		}
 
