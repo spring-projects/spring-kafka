@@ -547,15 +547,13 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	}
 
 	private String[] getTopicsFromTopicPartitionOffset(String[] topics, TopicPartitionOffset[] tps) {
-		String[] retryableCandidates = topics;
-		if (retryableCandidates.length == 0 && tps.length > 0) {
-			retryableCandidates = Arrays.stream(tps)
+		if (topics.length == 0 && tps.length > 0) {
+			return Arrays.stream(tps)
 					.map(TopicPartitionOffset::getTopic)
 					.distinct()
-					.toList()
-					.toArray(new String[0]);
+					.toArray(String[]::new);
 		}
-		return retryableCandidates;
+		return topics;
 	}
 
 	private RetryTopicConfigurer getRetryTopicConfigurer() {
