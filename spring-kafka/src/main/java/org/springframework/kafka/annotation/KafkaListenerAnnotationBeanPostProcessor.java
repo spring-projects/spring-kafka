@@ -665,6 +665,8 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		endpoint.setBean(bean);
 		endpoint.setMessageHandlerMethodFactory(this.messageHandlerMethodFactory);
 		endpoint.setGroupId(getEndpointGroupId(kafkaListener, endpoint.getId()));
+
+		Assert.state((topics.length > 0) ^ (tps.length > 0), "Only one of @Topic or @TopicPartition is allowed");
 		endpoint.setTopicPartitions(tps);
 		endpoint.setTopics(topics);
 		endpoint.setTopicPattern(resolvePattern(kafkaListener));
