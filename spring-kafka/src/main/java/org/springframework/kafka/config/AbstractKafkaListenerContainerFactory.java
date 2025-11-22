@@ -457,6 +457,12 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 				.acceptIfNotNull(endpoint.getConsumerProperties(),
 						instance.getContainerProperties()::setKafkaConsumerProperties)
 				.acceptIfNotNull(endpoint.getListenerInfo(), instance::setListenerInfo);
+
+		// Set ackMode if specified in endpoint (overrides factory default)
+		String ackMode = endpoint.getAckMode();
+		if (ackMode != null) {
+			properties.setAckMode(ContainerProperties.AckMode.valueOf(ackMode.toUpperCase()));
+		}
 	}
 
 	@Override
