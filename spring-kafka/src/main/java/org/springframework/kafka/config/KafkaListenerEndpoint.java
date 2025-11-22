@@ -33,6 +33,7 @@ import org.springframework.kafka.support.converter.MessageConverter;
  *
  * @author Stephane Nicoll
  * @author Gary Russell
+ * @author Go BeomJun
  */
 public interface KafkaListenerEndpoint {
 
@@ -186,5 +187,14 @@ public interface KafkaListenerEndpoint {
 	default ContainerPostProcessor<?, ?, ?> getContainerPostProcessor() {
 		return null;
 	}
+
+	/**
+	 * Return the ackMode for this endpoint, or null if not explicitly set.
+	 * @return the ack mode string.
+	 * @since 4.1
+	 * @see org.springframework.kafka.listener.ContainerProperties.AckMode
+	 */
+	@Nullable
+	String getAckMode();
 
 }

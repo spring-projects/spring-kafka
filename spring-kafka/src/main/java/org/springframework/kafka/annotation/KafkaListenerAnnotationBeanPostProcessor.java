@@ -149,6 +149,7 @@ import org.springframework.validation.Validator;
  * @author Sanghyeok An
  * @author Soby Chacko
  * @author Omer Celik
+ * @author Go BeomJun
  *
  * @see KafkaListener
  * @see KafkaListenerErrorHandler
@@ -696,6 +697,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		resolveErrorHandler(endpoint, kafkaListener);
 		resolveContentTypeConverter(endpoint, kafkaListener);
 		resolveFilter(endpoint, kafkaListener);
+		resolveAckMode(endpoint, kafkaListener);
 		resolveContainerPostProcessor(endpoint, kafkaListener);
 	}
 
@@ -739,6 +741,16 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			if (StringUtils.hasText(filterBeanName)) {
 				endpoint.setRecordFilterStrategy(
 						this.beanFactory.getBean(filterBeanName, RecordFilterStrategy.class));
+			}
+		}
+	}
+
+	private void resolveAckMode(MethodKafkaListenerEndpoint<?, ?> endpoint, KafkaListener kafkaListener) {
+		String ackMode = kafkaListener.ackMode();
+		if (StringUtils.hasText(ackMode)) {
+			String ackModeValue = resolveExpressionAsString(ackMode, "ackMode");
+			if (StringUtils.hasText(ackModeValue)) {
+				endpoint.setAckMode(ackModeValue);
 			}
 		}
 	}

@@ -216,6 +216,21 @@ public void listen(String data, Acknowledgment ack) {
 }
 ----
 
+Starting with version 4.1, you can override the container factory's default `AckMode` directly on the `@KafkaListener` annotation using the `ackMode` attribute:
+
+[source, java]
+----
+@KafkaListener(id = "manual", topics = "myTopic", ackMode = "MANUAL")
+public void listen(String data, Acknowledgment ack) {
+    ...
+    ack.acknowledge();
+}
+----
+
+The `ackMode` attribute accepts string values corresponding to `ContainerProperties.AckMode` enum values.
+This eliminates the need to create separate container factories solely for different acknowledgment modes.
+The attribute can also be configured as SpEL expression (`#{...}`) or property placeholders (`${...}`).
+
 [[consumer-record-metadata]]
 == Consumer Record Metadata
 

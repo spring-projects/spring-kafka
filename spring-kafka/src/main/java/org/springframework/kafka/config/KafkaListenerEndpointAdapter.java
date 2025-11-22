@@ -30,6 +30,8 @@ import org.springframework.kafka.support.converter.MessageConverter;
  * Adapter to avoid having to implement all methods.
  *
  * @author Gary Russell
+ * @author Artem Bilan
+ *
  * @since 2.2
  *
  */
@@ -91,6 +93,11 @@ class KafkaListenerEndpointAdapter implements KafkaListenerEndpoint {
 	@Override
 	public boolean isSplitIterables() {
 		return true;
+	}
+
+	@Override
+	public @Nullable String getAckMode() {
+		return null;
 	}
 
 }
