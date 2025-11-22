@@ -125,6 +125,8 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	@Nullable
 	private String mainListenerId;
 
+	private @Nullable String ackMode;
+
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
 		this.beanFactory = beanFactory;
@@ -385,6 +387,25 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 */
 	public void setAutoStartup(@Nullable Boolean autoStartup) {
 		this.autoStartup = autoStartup;
+	}
+
+	/**
+	 * Return the ackMode for this endpoint's container.
+	 * @return the ackMode.
+	 * @since 4.1
+	 */
+	public @Nullable String getAckMode() {
+		return this.ackMode;
+	}
+
+	/**
+	 * Set the ackMode for this endpoint's container to override the factory's default.
+	 * @param ackMode the ackMode string (case-insensitive).
+	 * @since 4.1
+	 * @see org.springframework.kafka.listener.ContainerProperties.AckMode
+	 */
+	public void setAckMode(@Nullable String ackMode) {
+		this.ackMode = ackMode;
 	}
 
 	/**
