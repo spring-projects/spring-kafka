@@ -46,7 +46,6 @@ public class DefaultDestinationTopicProcessor implements DestinationTopicProcess
 												Context context) {
 		context
 				.properties
-				.stream()
 				.forEach(destinationPropertiesProcessor);
 	}
 
