@@ -172,6 +172,7 @@ import org.springframework.util.StringUtils;
  * @author Christian Fredriksson
  * @author Timofey Barabanov
  * @author Janek Lasocki-Biczysko
+ * @author Mikhail Polivakha
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -340,7 +341,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	}
 
 	private void consumerWakeIfNecessary() {
-		KafkaMessageListenerContainer<K, V>.ListenerConsumer consumer = this.listenerConsumer;
+		ListenerConsumer consumer = this.listenerConsumer;
 		if (consumer != null) {
 			consumer.wakeIfNecessary();
 		}
@@ -913,14 +914,23 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.pollThreadStateProcessor = setUpPollProcessor(false);
 				this.observationEnabled = this.containerProperties.isObservationEnabled();
 
-				if (!AopUtils.isAopProxy(this.genericListener) &&
-						this.genericListener instanceof KafkaBackoffAwareMessageListenerAdapter<?, ?>) {
+				if (!AopUtils.isAopProxy(this.genericListener)) {
 
-					KafkaBackoffAwareMessageListenerAdapter<K, V> genListener =
-							(KafkaBackoffAwareMessageListenerAdapter<K, V>) this.genericListener;
-					if (genListener.getDelegate() instanceof RecordMessagingMessageListenerAdapter<K, V> adapterListener) {
-						// This means that the async retry feature is supported only for SingleRecordListener with @RetryableTopic.
-						adapterListener.setCallbackForAsyncFailure(this::callbackForAsyncFailure);
+					if (this.genericListener instanceof KafkaBackoffAwareMessageListenerAdapter<?, ?>) {
+						KafkaBackoffAwareMessageListenerAdapter<K, V> genListener =
+								(KafkaBackoffAwareMessageListenerAdapter<K, V>) this.genericListener;
+
+						if (genListener.getDelegate() instanceof RecordMessagingMessageListenerAdapter<K, V> adapterListener) {
+							// This means that the async retry feature is supported only for SingleRecordListener when used with @RetryableTopic.
+							adapterListener.setCallbackForAsyncFailure(this::callbackForAsyncFailure);
+						}
+					}
+
+					if (this.genericListener instanceof RecordMessagingMessageListenerAdapter<?, ?>) {
+						RecordMessagingMessageListenerAdapter<K, V> recordListnener =
+								(RecordMessagingMessageListenerAdapter<K, V>) this.genericListener;
+
+						recordListnener.setCallbackForAsyncFailure(this::callbackForAsyncFailure);
 					}
 				}
 			}
