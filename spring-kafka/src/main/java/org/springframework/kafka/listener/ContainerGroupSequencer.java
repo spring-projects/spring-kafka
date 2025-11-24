@@ -201,7 +201,7 @@ public class ContainerGroupSequencer implements ApplicationContextAware,
 			this.currentGroup = this.iterator.next();
 			this.groups.forEach(grp -> {
 				Collection<String> ids = grp.getListenerIds();
-				ids.stream().forEach(id -> {
+				ids.forEach(id -> {
 					MessageListenerContainer container = this.registry.getListenerContainer(id);
 					if (Objects.requireNonNull(container).getContainerProperties().getIdleEventInterval() == null) {
 						container.getContainerProperties().setIdleEventInterval(this.defaultIdleEventInterval);
