@@ -344,7 +344,7 @@ public @interface KafkaListener {
 	 * <p>
 	 * Supports SpEL {@code #{...}} and property placeholders {@code ${...}}.
 	 * @return the ack mode (case-insensitive), or empty string to use factory default.
-	 * @since 4.1
+	 * @since 4.0.1
 	 * @see org.springframework.kafka.listener.ContainerProperties.AckMode
 	 */
 	String ackMode() default "";
