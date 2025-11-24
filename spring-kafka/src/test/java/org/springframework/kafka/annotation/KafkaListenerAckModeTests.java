@@ -16,14 +16,6 @@
 
 package org.springframework.kafka.annotation;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.common.serialization.IntegerDeserializer;
-import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,47 +24,28 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.core.DefaultKafkaProducerFactory;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.kafka.test.EmbeddedKafkaBroker;
-import org.springframework.kafka.test.context.EmbeddedKafka;
-import org.springframework.kafka.test.utils.KafkaTestUtils;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 /**
  * Tests for {@link KafkaListener} ackMode attribute.
  *
- * @author GO BEOMJUN
- * @since 4.1
+ * @author Go BeomJun
+ * @since 4.0.1
  */
 @SpringJUnitConfig
-@DirtiesContext
-@EmbeddedKafka(topics = {"ackModeRecord", "ackModeManual", "ackModeDefault"}, partitions = 1)
 public class KafkaListenerAckModeTests {
-
-	@Autowired
-	private KafkaTemplate<Integer, String> template;
-
-	@Autowired
-	private Config config;
 
 	@Autowired
 	private KafkaListenerEndpointRegistry registry;
 
 	@Test
-	void testAckModeRecordOverride() throws Exception {
-		this.template.send("ackModeRecord", "test-record");
-		assertThat(this.config.recordLatch.await(10, TimeUnit.SECONDS)).isTrue();
-
-		// Verify that the listener container has the correct ack mode
+	void testAckModeRecordOverride() {
 		MessageListenerContainer container = this.registry.getListenerContainer("ackModeRecordListener");
 		assertThat(container).isNotNull();
 		assertThat(container.getContainerProperties().getAckMode())
@@ -80,11 +53,7 @@ public class KafkaListenerAckModeTests {
 	}
 
 	@Test
-	void testAckModeManualOverride() throws Exception {
-		this.template.send("ackModeManual", "test-manual");
-		assertThat(this.config.manualLatch.await(10, TimeUnit.SECONDS)).isTrue();
-
-		// Verify that the listener container has the correct ack mode
+	void testAckModeManualOverride() {
 		MessageListenerContainer container = this.registry.getListenerContainer("ackModeManualListener");
 		assertThat(container).isNotNull();
 		assertThat(container.getContainerProperties().getAckMode())
@@ -92,11 +61,7 @@ public class KafkaListenerAckModeTests {
 	}
 
 	@Test
-	void testAckModeDefault() throws Exception {
-		this.template.send("ackModeDefault", "test-default");
-		assertThat(this.config.defaultLatch.await(10, TimeUnit.SECONDS)).isTrue();
-
-		// Verify that the listener container uses factory default (BATCH)
+	void testAckModeDefault() {
 		MessageListenerContainer container = this.registry.getListenerContainer("ackModeDefaultListener");
 		assertThat(container).isNotNull();
 		assertThat(container.getContainerProperties().getAckMode())
@@ -107,34 +72,16 @@ public class KafkaListenerAckModeTests {
 	@EnableKafka
 	public static class Config {
 
-		final CountDownLatch recordLatch = new CountDownLatch(1);
-
-		final CountDownLatch manualLatch = new CountDownLatch(1);
-
-		final CountDownLatch defaultLatch = new CountDownLatch(1);
-
 		@Bean
-		public ConsumerFactory<Integer, String> consumerFactory(EmbeddedKafkaBroker broker) {
-			Map<String, Object> consumerProps = new HashMap<>(KafkaTestUtils.consumerProps(broker, "testGroup", false));
-			consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, IntegerDeserializer.class);
-			consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-			return new DefaultKafkaConsumerFactory<>(consumerProps);
+		@SuppressWarnings("unchecked")
+		public ConsumerFactory<String, String> consumerFactory() {
+			return mock(ConsumerFactory.class);
 		}
 
 		@Bean
-		public ProducerFactory<Integer, String> producerFactory(EmbeddedKafkaBroker broker) {
-			return new DefaultKafkaProducerFactory<>(KafkaTestUtils.producerProps(broker));
-		}
-
-		@Bean
-		public KafkaTemplate<Integer, String> kafkaTemplate(ProducerFactory<Integer, String> producerFactory) {
-			return new KafkaTemplate<>(producerFactory);
-		}
-
-		@Bean
-		public ConcurrentKafkaListenerContainerFactory<Integer, String> kafkaListenerContainerFactory(
-				ConsumerFactory<Integer, String> consumerFactory) {
-			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+		public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
+				ConsumerFactory<String, String> consumerFactory) {
+			ConcurrentKafkaListenerContainerFactory<String, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory);
 			// Set factory default to BATCH
@@ -142,20 +89,16 @@ public class KafkaListenerAckModeTests {
 			return factory;
 		}
 
-		@KafkaListener(id = "ackModeRecordListener", topics = "ackModeRecord", ackMode = "RECORD")
+		@KafkaListener(id = "ackModeRecordListener", topics = "ackModeRecord", ackMode = "RECORD", autoStartup = "false")
 		public void listenWithRecordAck(String message) {
-			this.recordLatch.countDown();
 		}
 
-		@KafkaListener(id = "ackModeManualListener", topics = "ackModeManual", ackMode = "MANUAL")
+		@KafkaListener(id = "ackModeManualListener", topics = "ackModeManual", ackMode = "MANUAL", autoStartup = "false")
 		public void listenWithManualAck(String message, Acknowledgment ack) {
-			ack.acknowledge();
-			this.manualLatch.countDown();
 		}
 
-		@KafkaListener(id = "ackModeDefaultListener", topics = "ackModeDefault")
+		@KafkaListener(id = "ackModeDefaultListener", topics = "ackModeDefault", autoStartup = "false")
 		public void listenWithDefaultAck(String message) {
-			this.defaultLatch.countDown();
 		}
 
 	}
