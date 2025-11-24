@@ -189,6 +189,20 @@ public void listen(String data, Acknowledgment ack) {
 }
 ----
 
+Starting with version 4.0.1, you can override the container factory's default `AckMode` directly on the `@KafkaListener` annotation using the `ackMode` attribute:
+
+[source, java]
+----
+@KafkaListener(id = "manual", topics = "myTopic", ackMode = "MANUAL")
+public void listen(String data, Acknowledgment ack) {
+    ...
+    ack.acknowledge();
+}
+----
+
+The `ackMode` attribute accepts string values corresponding to `ContainerProperties.AckMode` enum values: `RECORD`, `BATCH`, `TIME`, `COUNT`, `COUNT_TIME`, `MANUAL`, or `MANUAL_IMMEDIATE`.
+This eliminates the need to create separate container factories solely for different acknowledgment modes.
+
 [[consumer-record-metadata]]
 == Consumer Record Metadata
 
