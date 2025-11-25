@@ -187,4 +187,15 @@ public interface KafkaListenerEndpoint {
 		return null;
 	}
 
+	/**
+	 * Return the ackMode for this endpoint, or null if not explicitly set.
+	 * @return the ack mode string.
+	 * @since 4.1
+	 * @see org.springframework.kafka.listener.ContainerProperties.AckMode
+	 */
+	@Nullable
+	default String getAckMode() {
+		return null;
+	}
+
 }
