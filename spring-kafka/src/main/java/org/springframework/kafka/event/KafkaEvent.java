@@ -29,6 +29,8 @@ public abstract class KafkaEvent extends ApplicationEvent {
 
 	private static final long serialVersionUID = 1L;
 
+	private static final String UNCHECKED = "unchecked";
+
 	private transient final Object container;
 
 	public KafkaEvent(Object source, Object container) {
@@ -47,7 +49,7 @@ public abstract class KafkaEvent extends ApplicationEvent {
 	 * @since 2.2.1
 	 * @see #getSource(Class)
 	 */
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings(UNCHECKED)
 	public <T> T getContainer(Class<T> type) {
 		Assert.isInstanceOf(type, this.container);
 		return (T) this.container;
@@ -65,7 +67,7 @@ public abstract class KafkaEvent extends ApplicationEvent {
 	 * @see #getContainer(Class)
 	 * @see #getSource()
 	 */
-	@SuppressWarnings("unchecked")
+	@SuppressWarnings(UNCHECKED)
 	public <T> T getSource(Class<T> type) {
 		Assert.isInstanceOf(type, getSource());
 		return (T) getSource();
