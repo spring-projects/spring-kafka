@@ -111,6 +111,7 @@ import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.listener.ContainerProperties.EOSMode;
 import org.springframework.kafka.listener.adapter.AsyncRepliesAware;
+import org.springframework.kafka.listener.adapter.FilteringAware;
 import org.springframework.kafka.listener.adapter.KafkaBackoffAwareMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
@@ -172,6 +173,7 @@ import org.springframework.util.StringUtils;
  * @author Christian Fredriksson
  * @author Timofey Barabanov
  * @author Janek Lasocki-Biczysko
+ * @author Chaedong Im
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -677,6 +679,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final boolean isRecordAck;
 
+		private final boolean isRecordFilteredAck;
+
 		private final BlockingQueue<ConsumerRecord<K, V>> acks = new LinkedBlockingQueue<>();
 
 		private final BlockingQueue<TopicPartitionOffset> seeks = new LinkedBlockingQueue<>();
@@ -871,6 +875,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.isManualImmediateAck = AckMode.MANUAL_IMMEDIATE.equals(this.ackMode);
 			this.isAnyManualAck = this.isManualAck || this.isManualImmediateAck;
 			this.isRecordAck = this.ackMode.equals(AckMode.RECORD);
+			this.isRecordFilteredAck = this.ackMode.equals(AckMode.RECORD_FILTERED);
 			boolean isOutOfCommit = this.isAnyManualAck && this.asyncReplies;
 			this.offsetsInThisBatch = isOutOfCommit ? new ConcurrentHashMap<>() : null;
 			this.deferredOffsets = isOutOfCommit ? new ConcurrentHashMap<>() : null;
@@ -933,8 +938,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.isConsumerAwareListener = listenerType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
 					|| listenerType.equals(ListenerType.CONSUMER_AWARE);
 			this.commonErrorHandler = determineCommonErrorHandler();
-			Assert.state(!this.isBatchListener || !this.isRecordAck,
-					"Cannot use AckMode.RECORD with a batch listener");
+			Assert.state(!this.isBatchListener || (!this.isRecordAck && !this.isRecordFilteredAck),
+					"Cannot use AckMode.RECORD or AckMode.RECORD_FILTERED with a batch listener");
 			if (this.containerProperties.getScheduler() != null) {
 				this.taskScheduler = this.containerProperties.getScheduler();
 				this.taskSchedulerExplicitlySet = true;
@@ -1510,7 +1515,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void doProcessCommits() {
-			if (!this.autoCommit && !this.isRecordAck) {
+			if (!this.autoCommit && !this.isRecordAck && !this.isRecordFilteredAck) {
 				try {
 					processCommits();
 				}
@@ -2260,7 +2265,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					}
 					getAfterRollbackProcessor().clearThreadState();
 				}
-				if (!this.autoCommit && !this.isRecordAck) {
+				if (!this.autoCommit && !this.isRecordAck && !this.isRecordFilteredAck) {
 					processCommits();
 				}
 			}
@@ -2710,7 +2715,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void handleNack(final ConsumerRecords<K, V> records, final ConsumerRecord<K, V> cRecord) {
-			if (!this.autoCommit && !this.isRecordAck) {
+			if (!this.autoCommit && !this.isRecordAck && !this.isRecordFilteredAck) {
 				processCommits();
 			}
 			List<ConsumerRecord<?, ?>> list = new ArrayList<>();
@@ -3060,12 +3065,26 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		private boolean isRecordFiltered(ConsumerRecord<K, V> cRecord) {
+			Object listener = KafkaMessageListenerContainer.this.getContainerProperties().getMessageListener();
+			if (listener instanceof FilteringAware<?, ?>) {
+				@SuppressWarnings("unchecked")
+				FilteringAware<K, V> filteringAware = (FilteringAware<K, V>) listener;
+				return filteringAware.wasFiltered(cRecord);
+			}
+			return false;
+		}
+
 		public void ackCurrent(final ConsumerRecord<K, V> cRecord) {
 			ackCurrent(cRecord, false);
 		}
 
 		public void ackCurrent(final ConsumerRecord<K, V> cRecord, boolean commitRecovered) {
-			if (this.isRecordAck && this.producer == null) {
+			if (this.isRecordFilteredAck && isRecordFiltered(cRecord)) {
+				return;
+			}
+
+			if ((this.isRecordAck || this.isRecordFilteredAck) && this.producer == null) {
 				Map<TopicPartition, OffsetAndMetadata> offsetsToCommit = buildSingleCommits(cRecord);
 				this.commitLogger.log(() -> COMMITTING + offsetsToCommit);
 				commitOffsets(offsetsToCommit);
