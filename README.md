@@ -71,10 +71,10 @@ Please help out on the [StackOverflow](https://stackoverflow.com/questions/tagge
 * Create [GitHub issues](https://github.com/spring-projects/spring-kafka/issues) for bugs and new features and comment and vote on the ones that you are interested in.
 * GitHub is for social coding: if you want to write code, we encourage contributions through pull requests from [forks of this repository](https://help.github.com/forking/).  
 If you want to contribute code this way, please reference a GitHub issue as well covering the specific issue you are addressing.
-* Watch for upcoming articles on Spring by [subscribing](https://www.springsource.org/node/feed) to springframework.org
 
-Before we accept a non-trivial patch or pull request we will need you to sign the [contributor's agreement](https://support.springsource.com/spring_committer_signup).
-Signing the contributor's agreement does not grant anyone commit rights to the main repository, but it does mean that we can accept your contributions, and you will get an author credit if we do.
+All commits must include a _Signed-off-by_ trailer at the end of each commit message to indicate that the contributor agrees to the Developer Certificate of Origin.
+For additional details, please refer to the blog post [Hello DCO, Goodbye CLA: Simplifying Contributions to Spring](https://spring.io/blog/2025/01/06/hello-dco-goodbye-cla-simplifying-contributions-to-spring).
+The DCO does not grant anyone commit rights to the main repository, but it does mean that we can accept your contributions, and you will get an author credit if we do.
 Active contributors might be asked to join the core team and given the ability to merge pull requests.
 
 ## Code Conventions and Housekeeping
@@ -95,4 +95,4 @@ Use the [`spring-kafka` tag on Stack Overflow](https://stackoverflow.com/questio
 
 # License
 
-Spring Kafka is released under the terms of the Apache Software License Version 2.0 (see LICENSE.txt).
+Spring Kafka is released under the terms of the Apache Software License Version 2.0 (see [LICENSE.txt](LICENCE.txt)).
