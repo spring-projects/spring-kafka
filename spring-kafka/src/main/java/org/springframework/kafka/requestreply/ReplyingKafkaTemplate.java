@@ -577,8 +577,8 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	 * deserialization; null otherwise. If you need to determine whether it was the key or
 	 * value, call
 	 * {@link SerializationUtils#getExceptionFromHeader(ConsumerRecord, String, LogAccessor)}
-	 * with {@link SerializationUtils#KEY_DESERIALIZER_EXCEPTION_HEADER} and
-	 * {@link SerializationUtils#VALUE_DESERIALIZER_EXCEPTION_HEADER} instead.
+	 * with {@link KafkaUtils#KEY_DESERIALIZER_EXCEPTION_HEADER} and
+	 * {@link KafkaUtils#VALUE_DESERIALIZER_EXCEPTION_HEADER} instead.
 	 * @param record the record.
 	 * @param logger a {@link LogAccessor}.
 	 * @return the {@link DeserializationException} or {@code null}.
@@ -587,14 +587,14 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	@Nullable
 	public static DeserializationException checkDeserialization(ConsumerRecord<?, ?> record, LogAccessor logger) {
 		DeserializationException exception = SerializationUtils.getExceptionFromHeader(record,
-				SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER, logger);
+				KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER, logger);
 		if (exception != null) {
 			logger.error(exception, () -> "Reply value deserialization failed for " + record.topic() + "-"
 					+ record.partition() + "@" + record.offset());
 			return exception;
 		}
 		exception = SerializationUtils.getExceptionFromHeader(record,
-				SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER, logger);
+				KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER, logger);
 		if (exception != null) {
 			logger.error(exception, () -> "Reply key deserialization failed for " + record.topic() + "-"
 					+ record.partition() + "@" + record.offset());

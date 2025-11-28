@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import org.springframework.core.log.LogAccessor;
+import org.springframework.kafka.support.KafkaUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
@@ -46,7 +47,7 @@ public class SerializationUtilsTests {
 	@Test
 	void foreignDeserEx() {
 		RecordHeaders headers = new RecordHeaders(
-				List.of(new RecordHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER, "junk".getBytes())));
+				List.of(new RecordHeader(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER, "junk".getBytes())));
 		ConsumerRecord<String, String> rec = mock(ConsumerRecord.class);
 		willReturn(headers).given(rec).headers();
 		given(rec.topic()).willReturn("foo");
@@ -56,7 +57,7 @@ public class SerializationUtilsTests {
 		ArgumentCaptor<Supplier<String>> captor = ArgumentCaptor.forClass(Supplier.class);
 		willAnswer(inv -> null).given(logger).warn(captor.capture());
 		assertThat(SerializationUtils.getExceptionFromHeader(rec,
-				SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER, logger)).isNull();
+				KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER, logger)).isNull();
 		assertThat(captor.getValue().get())
 				.isEqualTo("Foreign deserialization exception header in (foo-1@0) ignored; possible attack?");
 	}

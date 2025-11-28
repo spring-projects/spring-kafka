@@ -582,17 +582,17 @@ public class JsonKafkaHeaderMapperTests {
 		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
 
 		byte[] keyDeserExceptionBytes = SerializationTestUtils.header(true);
-		Header keyHeader = SerializationTestUtils.deserializationHeader(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER,
+		Header keyHeader = SerializationTestUtils.deserializationHeader(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER,
 				keyDeserExceptionBytes);
 		byte[] valueDeserExceptionBytes = SerializationTestUtils.header(false);
-		Header valueHeader = SerializationTestUtils.deserializationHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER,
+		Header valueHeader = SerializationTestUtils.deserializationHeader(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER,
 				valueDeserExceptionBytes);
 		Headers headers = new RecordHeaders(
 				new Header[] { keyHeader, valueHeader });
 		Map<String, Object> springHeaders = new HashMap<>();
 		mapper.toHeaders(headers, springHeaders);
-		assertThat(springHeaders.get(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER)).isEqualTo(keyHeader);
-		assertThat(springHeaders.get(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER)).isEqualTo(valueHeader);
+		assertThat(springHeaders.get(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER)).isEqualTo(keyHeader);
+		assertThat(springHeaders.get(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER)).isEqualTo(valueHeader);
 
 		LogAccessor logger = new LogAccessor(this.getClass());
 
@@ -605,8 +605,8 @@ public class JsonKafkaHeaderMapperTests {
 
 		headers = new RecordHeaders();
 		mapper.fromHeaders(new MessageHeaders(springHeaders), headers);
-		assertThat(headers.lastHeader(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER)).isNull();
-		assertThat(headers.lastHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER)).isNull();
+		assertThat(headers.lastHeader(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER)).isNull();
+		assertThat(headers.lastHeader(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER)).isNull();
 	}
 
 	@Test

@@ -23,6 +23,7 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
 import org.springframework.validation.Validator;
@@ -208,10 +209,10 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 	public @Nullable T deserialize(String topic, Headers headers, byte[] data) {
 		try {
 			if (this.isForKey) {
-				headers.remove(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER);
+				headers.remove(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER);
 			}
 			else {
-				headers.remove(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER);
+				headers.remove(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER);
 			}
 			return this.delegate == null ? null : validate(this.delegate.deserialize(topic, headers, data));
 		}

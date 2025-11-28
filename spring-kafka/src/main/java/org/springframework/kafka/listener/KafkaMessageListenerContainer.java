@@ -2869,10 +2869,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				throw ex;
 			}
 			if (cRecord.value() == null && this.checkNullValueForExceptions) {
-				checkDeser(cRecord, SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER);
+				checkDeser(cRecord, KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER);
 			}
 			if (cRecord.key() == null && this.checkNullKeyForExceptions) {
-				checkDeser(cRecord, SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER);
+				checkDeser(cRecord, KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER);
 			}
 			doInvokeOnMessage(cRecord);
 			if (this.nackSleepDurationMillis < 0 && !this.isManualImmediateAck) {

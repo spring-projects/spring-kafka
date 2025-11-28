@@ -49,11 +49,11 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer.HeaderNames;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer.SingleRecordHeader;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.converter.ConversionException;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.SerializationTestUtils;
-import org.springframework.kafka.support.serializer.SerializationUtils;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -170,9 +170,9 @@ public class DeadLetterPublishingRecovererTests {
 		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
 		Headers headers = new RecordHeaders();
-		headers.add(SerializationTestUtils.deserializationHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER,
+		headers.add(SerializationTestUtils.deserializationHeader(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER,
 				SerializationTestUtils.header(false)));
-		headers.add(SerializationTestUtils.deserializationHeader(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER,
+		headers.add(SerializationTestUtils.deserializationHeader(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER,
 				SerializationTestUtils.header(true)));
 		Headers custom = new RecordHeaders();
 		custom.add(new RecordHeader("foo", "bar".getBytes()));
@@ -189,8 +189,8 @@ public class DeadLetterPublishingRecovererTests {
 		assertThat(recovered.key()).isEqualTo("key".getBytes());
 		assertThat(recovered.value()).isEqualTo("value".getBytes());
 		headers = recovered.headers();
-		assertThat(headers.lastHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER)).isNull();
-		assertThat(headers.lastHeader(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER)).isNull();
+		assertThat(headers.lastHeader(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER)).isNull();
+		assertThat(headers.lastHeader(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER)).isNull();
 		assertThat(headers.lastHeader("foo")).isNotNull();
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_KEY_EXCEPTION_MESSAGE).value()).isEqualTo("testK".getBytes());
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE).value()).isEqualTo("testV".getBytes());
@@ -202,7 +202,7 @@ public class DeadLetterPublishingRecovererTests {
 		KafkaOperations<?, ?> template = mock(KafkaOperations.class);
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
 		Headers headers = new RecordHeaders();
-		headers.add(SerializationTestUtils.deserializationHeader(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER,
+		headers.add(SerializationTestUtils.deserializationHeader(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER,
 				SerializationTestUtils.header(true)));
 		CompletableFuture future = new CompletableFuture();
 		future.complete(new Object());
@@ -213,7 +213,7 @@ public class DeadLetterPublishingRecovererTests {
 		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
 		verify(template).send(captor.capture());
 		headers = captor.getValue().headers();
-		assertThat(headers.lastHeader(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER)).isNull();
+		assertThat(headers.lastHeader(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER)).isNull();
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
@@ -223,7 +223,7 @@ public class DeadLetterPublishingRecovererTests {
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
 		Headers headers = new RecordHeaders();
 		DeserializationException deserEx = SerializationTestUtils.createDeserEx(true);
-		headers.add(SerializationTestUtils.deserializationHeader(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER,
+		headers.add(SerializationTestUtils.deserializationHeader(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER,
 				SerializationTestUtils.header(deserEx)));
 		CompletableFuture future = new CompletableFuture();
 		future.complete(new Object());
@@ -246,9 +246,9 @@ public class DeadLetterPublishingRecovererTests {
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template);
 		recoverer.setRetainExceptionHeader(true);
 		Headers headers = new RecordHeaders();
-		headers.add(SerializationTestUtils.deserializationHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER,
+		headers.add(SerializationTestUtils.deserializationHeader(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER,
 				SerializationTestUtils.header(false)));
-		headers.add(SerializationTestUtils.deserializationHeader(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER,
+		headers.add(SerializationTestUtils.deserializationHeader(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER,
 				SerializationTestUtils.header(true)));
 		CompletableFuture future = new CompletableFuture();
 		future.complete(new Object());
@@ -259,8 +259,8 @@ public class DeadLetterPublishingRecovererTests {
 		ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
 		verify(template).send(captor.capture());
 		headers = captor.getValue().headers();
-		assertThat(headers.lastHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER)).isNotNull();
-		assertThat(headers.lastHeader(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER)).isNotNull();
+		assertThat(headers.lastHeader(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER)).isNotNull();
+		assertThat(headers.lastHeader(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER)).isNotNull();
 		assertThat(new String(headers.lastHeader(KafkaHeaders.DLT_KEY_EXCEPTION_MESSAGE).value())).isEqualTo("testK");
 		assertThat(headers.lastHeader(KafkaHeaders.DLT_EXCEPTION_MESSAGE).value()).isEqualTo("testV".getBytes());
 	}

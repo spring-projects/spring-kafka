@@ -527,9 +527,9 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 			tp = checkPartition(tp, consumer);
 		}
 		DeserializationException vDeserEx = SerializationUtils.getExceptionFromHeader(record,
-				SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER, this.logger);
+				KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER, this.logger);
 		DeserializationException kDeserEx = SerializationUtils.getExceptionFromHeader(record,
-				SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER, this.logger);
+				KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER, this.logger);
 		Headers headers = new RecordHeaders(record.headers().toArray());
 		addAndEnhanceHeaders(record, exception, vDeserEx, kDeserEx, headers);
 		ProducerRecord<Object, Object> outRecord = createProducerRecord(record, tp, headers,
@@ -546,13 +546,13 @@ public class DeadLetterPublishingRecoverer extends ExceptionClassifier implement
 		}
 		if (kDeserEx != null) {
 			if (!this.retainExceptionHeader) {
-				headers.remove(SerializationUtils.KEY_DESERIALIZER_EXCEPTION_HEADER);
+				headers.remove(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER);
 			}
 			this.exceptionHeadersCreator.create(headers, kDeserEx, true, this.headerNames);
 		}
 		if (vDeserEx != null) {
 			if (!this.retainExceptionHeader) {
-				headers.remove(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER);
+				headers.remove(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER);
 			}
 			this.exceptionHeadersCreator.create(headers, vDeserEx, false, this.headerNames);
 		}
