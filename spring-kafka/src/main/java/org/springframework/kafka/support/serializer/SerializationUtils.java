@@ -49,19 +49,25 @@ public final class SerializationUtils {
 	/**
 	 * Header name for deserialization exceptions.
 	 * @since 2.8
+	 * @deprecated for removal in favor of {@link KafkaUtils#DESERIALIZER_EXCEPTION_HEADER_PREFIX}
 	 */
+	@Deprecated(forRemoval = true)
 	public static final String DESERIALIZER_EXCEPTION_HEADER_PREFIX = KafkaUtils.DESERIALIZER_EXCEPTION_HEADER_PREFIX;
 
 	/**
 	 * Header name for deserialization exceptions.
 	 * @since 2.8
+	 * @deprecated for removal in favor of {@link KafkaUtils#KEY_DESERIALIZER_EXCEPTION_HEADER}
 	 */
+	@Deprecated(forRemoval = true)
 	public static final String KEY_DESERIALIZER_EXCEPTION_HEADER = KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER;
 
 	/**
 	 * Header name for deserialization exceptions.
 	 * @since 2.8
+	 * @deprecated for removal in favor of {@link KafkaUtils#VALUE_DESERIALIZER_EXCEPTION_HEADER}
 	 */
+	@Deprecated(forRemoval = true)
 	public static final String VALUE_DESERIALIZER_EXCEPTION_HEADER = KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER;
 
 	private SerializationUtils() {
@@ -175,8 +181,8 @@ public final class SerializationUtils {
 		}
 		headers.add(
 				new DeserializationExceptionHeader(isForKeyArg
-						? KEY_DESERIALIZER_EXCEPTION_HEADER
-						: VALUE_DESERIALIZER_EXCEPTION_HEADER,
+						? KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER
+						: KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER,
 						stream.toByteArray()));
 	}
 
