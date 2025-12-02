@@ -674,39 +674,14 @@ Every time a record is acquired by a consumer in a share group, the broker incre
 The first acquisition sets the delivery count to 1, and each subsequent acquisition increments it.
 When the delivery count reaches the configured limit (default: 5), the record moves to **Archived** state and is not eligible for additional delivery attempts.
 
-=== Configuration
-
-The maximum delivery attempts can be configured per share group using the Admin API:
-
-[source,java]
-----
-private void configureMaxDeliveryAttempts(String bootstrapServers, String groupId) throws Exception {
-    Map<String, Object> adminProps = new HashMap<>();
-    adminProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-
-    try (Admin admin = Admin.create(adminProps)) {
-        ConfigResource configResource = new ConfigResource(ConfigResource.Type.GROUP, groupId);
-
-        // Default is 5, adjust based on your retry tolerance
-        ConfigEntry maxAttempts = new ConfigEntry("group.share.delivery.attempt.limit", "10");
-
-        Map<ConfigResource, Collection<AlterConfigOp>> configs = Map.of(
-            configResource, List.of(new AlterConfigOp(maxAttempts, AlterConfigOp.OpType.SET))
-        );
-
-        admin.incrementalAlterConfigs(configs).all().get();
-    }
-}
-----
-
 [IMPORTANT]
 ====
 **Delivery Count is Not Exposed to Applications**
-
 The delivery count is maintained internally by the broker and is **not exposed to consumer applications**.
 This is an intentional design decision in KIP-932.
 The delivery count is approximate and serves as a poison message protection mechanism, not a precise redelivery counter.
 Applications cannot query or access this value through any API.
+====
 
 For application-level retry logic, use the acknowledgment types:
 
@@ -714,10 +689,11 @@ For application-level retry logic, use the acknowledgment types:
 * `REJECT` - Mark as permanently failed (does not cause redelivery)
 * `ACCEPT` - Successfully processed (does not cause redelivery)
 
-The broker automatically prevents endless redelivery once `group.share.delivery.attempt.limit` is reached, moving the record to Archived state.
-====
+The broker automatically prevents endless redelivery once `group.share.delivery.count.limit` is reached, moving the record to Archived state.
 
 === Retry Strategy Recommendations
+
+Here is an example of how to use the various acknowledgement types based exception types.
 
 [source,java]
 ----
@@ -731,7 +707,7 @@ public void processOrder(ConsumerRecord<String, String> record, ShareAcknowledgm
     catch (TransientException e) {
         // Temporary failure (network issue, service unavailable, etc.)
         // Release the record for redelivery
-        // Broker will retry up to group.share.delivery.attempt.limit times
+        // Broker will retry up to group.share.delivery.count.limit times
         logger.warn("Transient error processing order, will retry: {}", e.getMessage());
         ack.release(); // RELEASE - make available for retry
     }
