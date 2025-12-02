@@ -274,14 +274,6 @@ public class KafkaListenerEndpointRegistrar implements BeanFactoryAware, Initial
 
 	private record KafkaListenerEndpointDescriptor(KafkaListenerEndpoint endpoint,
 				@Nullable KafkaListenerContainerFactory<?> containerFactory) {
-
-		private KafkaListenerEndpointDescriptor(KafkaListenerEndpoint endpoint,
-				@Nullable KafkaListenerContainerFactory<?> containerFactory) {
-
-			this.endpoint = endpoint;
-			this.containerFactory = containerFactory;
-		}
-
 	}
 
 }

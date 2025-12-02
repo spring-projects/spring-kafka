@@ -46,24 +46,6 @@ public interface EndpointCustomizer<T extends MethodKafkaListenerEndpoint<?, ?>>
 	 */
 	Collection<TopicNamesHolder> customizeEndpointAndCollectTopics(T listenerEndpoint);
 
-	class TopicNamesHolder {
-
-		private final String mainTopic;
-
-		private final @Nullable String customizedTopic;
-
-		TopicNamesHolder(String mainTopic, @Nullable String customizedTopic) {
-			this.mainTopic = mainTopic;
-			this.customizedTopic = customizedTopic;
-		}
-
-		String getMainTopic() {
-			return this.mainTopic;
-		}
-
-		@Nullable
-		String getCustomizedTopic() {
-			return this.customizedTopic;
-		}
+	record TopicNamesHolder(String mainTopic, @Nullable String customizedTopic) {
 	}
 }
