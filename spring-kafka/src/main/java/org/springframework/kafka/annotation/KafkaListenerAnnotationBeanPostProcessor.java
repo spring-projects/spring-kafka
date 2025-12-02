@@ -666,10 +666,11 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		endpoint.setMessageHandlerMethodFactory(this.messageHandlerMethodFactory);
 		endpoint.setGroupId(getEndpointGroupId(kafkaListener, endpoint.getId()));
 
-		Assert.state((topics.length > 0) ^ (tps.length > 0), "Only one of @Topic or @TopicPartition is allowed");
+		assertTopic(kafkaListener);
 		endpoint.setTopicPartitions(tps);
 		endpoint.setTopics(topics);
 		endpoint.setTopicPattern(resolvePattern(kafkaListener));
+
 		endpoint.setClientIdPrefix(resolveExpressionAsString(kafkaListener.clientIdPrefix(), "clientIdPrefix"));
 		endpoint.setListenerInfo(resolveExpressionAsBytes(kafkaListener.info(), "info"));
 		String group = kafkaListener.containerGroup();
@@ -858,6 +859,20 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 			groupId = id;
 		}
 		return groupId;
+	}
+
+	private void assertTopic(KafkaListener kafkaListener) {
+		int count = 0;
+		if (!kafkaListener.topicPattern().isEmpty()) {
+			count++;
+		}
+		if (kafkaListener.topics().length > 0) {
+			count++;
+		}
+		if (kafkaListener.topicPartitions().length > 0) {
+			count++;
+		}
+		Assert.state(count == 1, "Only one of @Topic or @TopicPartition or @TopicPattern must be provided");
 	}
 
 	private TopicPartitionOffset[] resolveTopicPartitions(KafkaListener kafkaListener) {
