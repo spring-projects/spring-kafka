@@ -209,7 +209,7 @@ The following example shows how to use the headers:
 
 [source, java]
 ----
-@KafkaListener(id = "qux", topicPattern = "myTopic1")
+@KafkaListener(id = "qux", topics = "myTopic1")
 public void listen(@Payload String foo,
         @Header(name = KafkaHeaders.RECEIVED_KEY, required = false) Integer key,
         @Header(KafkaHeaders.RECEIVED_PARTITION) int partition,
