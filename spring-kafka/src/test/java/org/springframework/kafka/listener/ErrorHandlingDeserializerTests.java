@@ -47,6 +47,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.SerializationUtils;
@@ -110,7 +111,7 @@ public class ErrorHandlingDeserializerTests {
 		Headers headers = new RecordHeaders();
 		Object result = ehd.deserialize("topic", headers, "foo".getBytes());
 		assertThat(result).isNull();
-		Header deser = headers.lastHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER);
+		Header deser = headers.lastHeader(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER);
 		assertThat(new ObjectInputStream(new ByteArrayInputStream(deser.value())).readObject()).isInstanceOf(DeserializationException.class);
 		ehd.close();
 	}
@@ -135,7 +136,7 @@ public class ErrorHandlingDeserializerTests {
 		Headers headers = new RecordHeaders();
 		ehd.deserialize("foo", headers, new byte[1]);
 		DeserializationException dex = SerializationUtils.byteArrayToDeserializationException(null,
-				headers.lastHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER));
+				headers.lastHeader(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER));
 		assertThat(dex.getCause().getMessage())
 				.contains("Could not serialize")
 				.contains("original exception message");
@@ -150,7 +151,7 @@ public class ErrorHandlingDeserializerTests {
 		assertThat(ehd.deserialize("foo", headers, "foo".getBytes())).isEqualTo("foo");
 		ehd.deserialize("foo", headers, "bar".getBytes());
 		DeserializationException ex = SerializationUtils.byteArrayToDeserializationException(null,
-				headers.lastHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER));
+				headers.lastHeader(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER));
 		assertThat(ex.getCause()).isInstanceOf(IllegalStateException.class)
 				.extracting("message", InstanceOfAssertFactories.STRING)
 				.contains("validation failure");
@@ -170,7 +171,7 @@ public class ErrorHandlingDeserializerTests {
 		});
 		ehd.deserialize("foo", headers, "baz".getBytes());
 		ex = SerializationUtils.byteArrayToDeserializationException(null,
-				headers.lastHeader(SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER));
+				headers.lastHeader(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER));
 		assertThat(ex.getCause()).isInstanceOf(IllegalArgumentException.class)
 				.extracting("message")
 				.isEqualTo("test validation");

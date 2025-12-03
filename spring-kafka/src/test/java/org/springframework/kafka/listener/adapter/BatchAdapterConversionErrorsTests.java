@@ -34,6 +34,7 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.BatchListenerFailedException;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.converter.BatchMessagingMessageConverter;
 import org.springframework.kafka.support.converter.ConversionException;
 import org.springframework.kafka.support.converter.JacksonJsonMessageConverter;
@@ -74,7 +75,7 @@ public class BatchAdapterConversionErrorsTests {
 				.isEqualTo(1);
 		assertThat(listener.values).containsExactly(new Foo("baz"), null, new Foo("qux"));
 		DeserializationException vDeserEx = SerializationUtils.getExceptionFromHeader(junkRecord,
-				SerializationUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER, null);
+				KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER, null);
 		assertThat(vDeserEx).isNotNull();
 		assertThat(vDeserEx.getData()).isEqualTo("JUNK".getBytes());
 	}
