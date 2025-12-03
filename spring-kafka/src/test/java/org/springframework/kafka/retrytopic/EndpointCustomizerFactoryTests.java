@@ -170,11 +170,11 @@ class EndpointCustomizerFactoryTests {
 		String topic1WithSuffix = topics[0] + suffix;
 		String topic2WithSuffix = topics[1] + suffix;
 		assertThat(holders).hasSize(2).element(0)
-				.matches(holder -> holder.getMainTopic().equals(topics[0])
-						&& holder.getCustomizedTopic().equals(topic1WithSuffix));
+				.matches(holder -> holder.mainTopic().equals(topics[0])
+						&& holder.customizedTopic().equals(topic1WithSuffix));
 		assertThat(holders).hasSize(2).element(1)
-				.matches(holder -> holder.getMainTopic().equals(topics[1])
-						&& holder.getCustomizedTopic().equals(topic2WithSuffix));
+				.matches(holder -> holder.mainTopic().equals(topics[1])
+						&& holder.customizedTopic().equals(topic2WithSuffix));
 
 		String testStringSuffix = testString + suffix;
 		assertThat(endpoint.getTopics()).contains(topic1WithSuffix, topic2WithSuffix);
@@ -191,11 +191,11 @@ class EndpointCustomizerFactoryTests {
 				(List<EndpointCustomizer.TopicNamesHolder>) endpointCustomizer.customizeEndpointAndCollectTopics(endpointTPO);
 
 		assertThat(holdersTPO).hasSize(2).element(0)
-				.matches(holder -> holder.getMainTopic().equals(topics[0])
-						&& holder.getCustomizedTopic().equals(topic1WithSuffix));
+				.matches(holder -> holder.mainTopic().equals(topics[0])
+						&& holder.customizedTopic().equals(topic1WithSuffix));
 		assertThat(holdersTPO).hasSize(2).element(1)
-				.matches(holder -> holder.getMainTopic().equals(topics[1])
-						&& holder.getCustomizedTopic().equals(topic2WithSuffix));
+				.matches(holder -> holder.mainTopic().equals(topics[1])
+						&& holder.customizedTopic().equals(topic2WithSuffix));
 
 		assertThat(endpointTPO.getTopics()).isEmpty();
 		TopicPartitionOffset[] topicPartitionsToAssign = endpointTPO.getTopicPartitionsToAssign();
@@ -226,8 +226,8 @@ class EndpointCustomizerFactoryTests {
 	}
 
 	private Predicate<EndpointCustomizer.TopicNamesHolder> assertMainTopic(int index) {
-		return holder -> holder.getCustomizedTopic().equals(topics[index])
-				&& holder.getMainTopic().equals(topics[index]);
+		return holder -> holder.customizedTopic().equals(topics[index])
+				&& holder.mainTopic().equals(topics[index]);
 	}
 
 	private boolean equalsTopicPartitionOffset(TopicPartitionOffset tpo1, TopicPartitionOffset tpo2) {

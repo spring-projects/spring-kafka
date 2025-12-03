@@ -384,8 +384,8 @@ public class RetryTopicConfigurer implements BeanFactoryAware {
 				.customizeEndpointAndCollectTopics(endpoint)
 				.forEach(topicNamesHolder ->
 						this.destinationTopicProcessor
-								.registerDestinationTopic(topicNamesHolder.getMainTopic(),
-										topicNamesHolder.getCustomizedTopic(),
+								.registerDestinationTopic(topicNamesHolder.mainTopic(),
+										topicNamesHolder.customizedTopic(),
 										destinationTopicProperties, context));
 
 		registrar.registerEndpoint(endpoint, resolvedFactory);
