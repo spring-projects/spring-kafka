@@ -554,7 +554,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 			List<String> missing = null;
 			try (AdminClient client = AdminClient.create(configs)) { // NOSONAR - false positive null check
 				if (client != null) {
-					@Nullable String @Nullable[] topics = this.containerProperties.getTopics();
+					@Nullable String[] topics = this.containerProperties.getTopics();
 					if (topics == null) {
 						topics = Arrays.stream(this.containerProperties.getTopicPartitions())
 								.map(TopicPartitionOffset::getTopic)
@@ -578,7 +578,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 								}
 							})
 							.map(Entry::getKey)
-							.collect(Collectors.toList());
+							.toList();
 				}
 			}
 			catch (Exception e) {
@@ -586,7 +586,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 			}
 			if (missing != null && !missing.isEmpty()) {
 				throw new IllegalStateException(
-						"Topic(s) " + missing.toString()
+						"Topic(s) " + missing
 								+ " is/are not present and missingTopicsFatal is true");
 			}
 		}
@@ -626,7 +626,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 				final CountDownLatch latch = new CountDownLatch(1);
 				this.lifecycleLock.lock();
 				try {
-
 					doStop(latch::countDown);
 				}
 				finally {
@@ -648,7 +647,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 				finally {
 					this.lifecycleLock.unlock();
 				}
-
 			}
 		}
 	}
