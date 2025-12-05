@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -35,7 +36,10 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory
 import org.springframework.kafka.core.DefaultKafkaProducerFactory
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.core.ProducerFactory
+import org.springframework.kafka.listener.CommonErrorHandler
+import org.springframework.kafka.listener.DefaultErrorHandler
 import org.springframework.kafka.listener.KafkaListenerErrorHandler
+import org.springframework.kafka.listener.MessageListenerContainer
 import org.springframework.kafka.support.Acknowledgment
 import org.springframework.kafka.test.EmbeddedKafkaBroker
 import org.springframework.kafka.test.context.EmbeddedKafka
@@ -53,12 +57,13 @@ import java.util.concurrent.TimeUnit
  *
  * @author Wang ZhiYang
  * @author Artem Bilan
+ * @author Mikhail Polivakha
  *
  * @since 3.1
  */
 @SpringJUnitConfig
 @DirtiesContext
-@EmbeddedKafka(topics = ["kotlinAsyncTestTopic1", "kotlinAsyncTestTopic2",
+@EmbeddedKafka(topics = ["kotlinAsyncTestTopic1", "kotlinAsyncTestTopic2", "kotlinAsyncTestTopicContainerLevelHandler",
 		"kotlinAsyncBatchTestTopic1", "kotlinAsyncBatchTestTopic2", "kotlinReplyTopic1"], partitions = 1)
 class EnableKafkaKotlinCoroutinesTests {
 
@@ -85,6 +90,12 @@ class EnableKafkaKotlinCoroutinesTests {
 		this.template.send("kotlinAsyncTestTopic2", "fail")
 		assertThat(this.config.latch2.await(10, TimeUnit.SECONDS)).isTrue()
 		assertThat(this.config.error).isTrue()
+	}
+
+	@Test
+	fun `test checked ex - container level handler should be invoked`() {
+		this.template.send("kotlinAsyncTestTopicContainerLevelHandler", "fail")
+		assertThat(this.config.latchForCommonHandler.await(10, TimeUnit.SECONDS)).isTrue()
 	}
 
 	@Test
@@ -142,6 +153,8 @@ class EnableKafkaKotlinCoroutinesTests {
 
 		val latch2 = CountDownLatch(1)
 
+		val latchForCommonHandler = CountDownLatch(1)
+
 		val batchLatch1 = CountDownLatch(1)
 
 		val batchLatch2 = CountDownLatch(1)
@@ -191,6 +204,21 @@ class EnableKafkaKotlinCoroutinesTests {
 		}
 
 		@Bean
+		fun defaultErrorHandler(): CommonErrorHandler {
+			return object : CommonErrorHandler {
+				override fun handleOne(
+					thrownException: java.lang.Exception,
+					record: ConsumerRecord<*, *>,
+					consumer: Consumer<*, *>,
+					container: MessageListenerContainer
+				): Boolean {
+					latchForCommonHandler.countDown()
+					return super.handleOne(thrownException, record, consumer, container)
+				}
+			}
+		}
+
+		@Bean
 		fun errorHandlerBatch() : KafkaListenerErrorHandler {
 			return KafkaListenerErrorHandler { message, _ ->
 				batchError = true;
@@ -200,11 +228,12 @@ class EnableKafkaKotlinCoroutinesTests {
 		}
 
 		@Bean
-		fun kafkaListenerContainerFactory(): ConcurrentKafkaListenerContainerFactory<String, String> {
+		fun kafkaListenerContainerFactory(commonErrorHandler: CommonErrorHandler): ConcurrentKafkaListenerContainerFactory<String, String> {
 			val factory: ConcurrentKafkaListenerContainerFactory<String, String>
 				= ConcurrentKafkaListenerContainerFactory()
 			factory.setConsumerFactory(kcf())
 			factory.setReplyTemplate(kt())
+			factory.setCommonErrorHandler(commonErrorHandler)
 			return factory
 		}
 
@@ -244,6 +273,16 @@ class EnableKafkaKotlinCoroutinesTests {
 		suspend fun batchListenEx(values: List<ConsumerRecord<String, String>>) {
 			if (values.first().value() == "fail") {
 				throw Exception("checked")
+			}
+		}
+
+		@KafkaListener(
+			id = "kotlin-ex-container-level-handler",
+			topics = ["kotlinAsyncTestTopicContainerLevelHandler"],
+			containerFactory = "kafkaListenerContainerFactory")
+		suspend fun listenExContainerLevelHandlerInvoked(value: String) {
+			if (value == "fail") {
+				throw RuntimeException("checked")
 			}
 		}
 
