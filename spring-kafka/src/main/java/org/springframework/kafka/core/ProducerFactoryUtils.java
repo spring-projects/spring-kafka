@@ -103,7 +103,7 @@ public final class ProducerFactoryUtils {
 				throw e;
 			}
 
-			resourceHolder = new KafkaResourceHolder<K, V>(producer, closeTimeout);
+			resourceHolder = new KafkaResourceHolder<>(producer, closeTimeout);
 			bindResourceToTransaction(resourceHolder, producerFactory);
 		}
 		return resourceHolder;
@@ -121,7 +121,7 @@ public final class ProducerFactoryUtils {
 		resourceHolder.setSynchronizedWithTransaction(true);
 		if (TransactionSynchronizationManager.isSynchronizationActive()) {
 			TransactionSynchronizationManager
-					.registerSynchronization(new KafkaResourceSynchronization<K, V>(resourceHolder, producerFactory));
+					.registerSynchronization(new KafkaResourceSynchronization<>(resourceHolder, producerFactory));
 		}
 	}
 
