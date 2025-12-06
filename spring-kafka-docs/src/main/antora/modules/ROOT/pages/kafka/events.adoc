@@ -176,7 +176,7 @@ You can also use `@EventListener`, introduced in Spring Framework 4.2.
 
 The next example combines `@KafkaListener` and `@EventListener` into a single class.
 You should understand that the application listener gets events for all containers, so you may need to check the listener ID if you want to take specific action based on which container is idle.
-You can also use the `@EventListener`+++'+++s `condition` for this purpose.
+You can also use the ``@EventListener``'s `condition` for this purpose.
 
 See xref:kafka/events.adoc[Application Events] for information about event properties.
 
