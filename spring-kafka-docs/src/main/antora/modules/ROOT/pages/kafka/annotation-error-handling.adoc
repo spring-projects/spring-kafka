@@ -50,7 +50,7 @@ It has a sub-interface (`ConsumerAwareListenerErrorHandler`) that has access to 
 Object handleError(Message<?> message, ListenerExecutionFailedException exception, Consumer<?, ?> consumer);
 ----
 
-Another sub-interface (`ManualAckListenerErrorHandler`) provides access to the `Acknowledgment` object when using manual `AckMode`+++s+++.
+Another sub-interface (`ManualAckListenerErrorHandler`) provides access to the `Acknowledgment` object when using manual ``AckMode``s.
 
 [source, java]
 ----
@@ -250,7 +250,7 @@ Always ensure that exceptions thrown in message processing code explicitly exten
 In other words, if the application throws an exception, ensure that it is extended from `RuntimeException` and not inadvertently inherited from `Error`.
 Standard errors like `OutOfMemoryError`, `IllegalAccessError`, and other errors beyond the control of the application are still treated as ``Error``s and not retried.
 
-The error handler can be configured with one or more `RetryListener`+++s+++, receiving notifications of retry and recovery progress.
+The error handler can be configured with one or more ``RetryListener``s, receiving notifications of retry and recovery progress.
 Starting with version 2.8.10, methods for batch listeners were added.
 
 [source, java]
@@ -487,7 +487,7 @@ public void listen(List<ConsumerRecord<String, Order>> records, Acknowledgment a
 
 Starting with version 2.8, batch listeners can now properly handle conversion errors, when using a `MessageConverter` with a `ByteArrayDeserializer`, a `BytesDeserializer` or a `StringDeserializer`, as well as a `DefaultErrorHandler`.
 When a conversion error occurs, the payload is set to null and a deserialization exception is added to the record headers, similar to the `ErrorHandlingDeserializer`.
-A list of `ConversionException`+++s+++ is available in the listener so the listener can throw a `BatchListenerFailedException` indicating the first index at which a conversion exception occurred.
+A list of ``ConversionException``s is available in the listener so the listener can throw a `BatchListenerFailedException` indicating the first index at which a conversion exception occurred.
 
 Example:
 
@@ -756,7 +756,7 @@ Since the event also has a reference to the container, you can restart the conta
 
 Starting with version 2.7, while waiting for a `BackOff` interval, the error handler will loop with a short sleep until the desired delay is reached, while checking to see if the container has been stopped, allowing the sleep to exit soon after the `stop()` rather than causing a delay.
 
-Starting with version 2.7, the processor can be configured with one or more `RetryListener`+++s+++, receiving notifications of retry and recovery progress.
+Starting with version 2.7, the processor can be configured with one or more ``RetryListener``s, receiving notifications of retry and recovery progress.
 
 [source, java]
 ----
@@ -838,7 +838,7 @@ public void listen(@Payload Thing thing,
 }
 ----
 
-When used in a `RecordInterceptor` or `RecordFilterStrategy` implementation, the header is in the consumer record as a byte array, converted using the `KafkaListenerAnnotationBeanPostProcessor`+++'+++s `charSet` property.
+When used in a `RecordInterceptor` or `RecordFilterStrategy` implementation, the header is in the consumer record as a byte array, converted using the ``KafkaListenerAnnotationBeanPostProcessor``'s `charSet` property.
 
 The header mappers also convert to `String` when creating `MessageHeaders` from the consumer record and never map this header on an outbound record.
 
@@ -911,7 +911,7 @@ The record sent to the dead-letter topic is enhanced with the following headers:
 * `KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE`: The original timestamp type.
 * `KafkaHeaders.DLT_ORIGINAL_CONSUMER_GROUP`: The original consumer group that failed to process the record (since version 2.8).
 
-Key exceptions are only caused by `DeserializationException`+++s+++ so there is no `DLT_KEY_EXCEPTION_CAUSE_FQCN`.
+Key exceptions are only caused by ``DeserializationException``s so there is no `DLT_KEY_EXCEPTION_CAUSE_FQCN`.
 
 There are two mechanisms to add more headers.
 
@@ -923,8 +923,8 @@ The second is simpler to implement but the first has more information available,
 
 Starting with version 2.3, when used in conjunction with an `ErrorHandlingDeserializer`, the publisher will restore the record `value()`, in the dead-letter producer record, to the original value that failed to be deserialized.
 Previously, the `value()` was null and user code had to decode the `DeserializationException` from the message headers.
-In addition, you can provide multiple `KafkaTemplate`+++s+++ to the publisher; this might be needed, for example, if you want to publish the `byte[]` from a `DeserializationException`, as well as values using a different serializer from records that were deserialized successfully.
-Here is an example of configuring the publisher with `KafkaTemplate`+++s+++ that use a `String` and `byte[]` serializer:
+In addition, you can provide multiple ``KafkaTemplate``s to the publisher; this might be needed, for example, if you want to publish the `byte[]` from a `DeserializationException`, as well as values using a different serializer from records that were deserialized successfully.
+Here is an example of configuring the publisher with ``KafkaTemplate``s that use a `String` and `byte[]` serializer:
 
 [source, java]
 ----
