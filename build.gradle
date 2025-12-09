@@ -286,6 +286,10 @@ project ('spring-kafka') {
 			exclude group: 'org.mockito'
 		}
 	}
+
+	tasks.withType(JavaForkOptions) {
+		jvmArgs '--enable-native-access=ALL-UNNAMED'
+	}
 }
 
 project('spring-kafka-bom') {
