@@ -85,5 +85,5 @@ public void listen(List<Thing> things) {
     ...
 }
 ----
-However, in this case, `IgnoreEmptyBatchRecordFilterStrategy` always returns empty list and return `false` as result of `ignoreEmptyBatch()`.
+However, in this case, `NotIgnoreEmptyBatchRecordFilterStrategy` always returns empty list and return `false` as result of `ignoreEmptyBatch()`.
 Thus `KafkaListener#listen(...)` always will be invoked.
