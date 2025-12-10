@@ -54,6 +54,7 @@ import org.springframework.util.StringUtils;
  * @author Wang Zhiyang
  * @author Omer Celik
  * @author Soby Chacko
+ * @author Trond Ziarkowski
  *
  * @since 4.0
  */
@@ -202,9 +203,8 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 		return mappingsMap;
 	}
 
-	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	@Override
-	public byte[] serialize(String topic, Headers headers, @Nullable T data) {
+	public byte @Nullable [] serialize(String topic, Headers headers, @Nullable T data) {
 		if (data == null) {
 			return null;
 		}
@@ -214,9 +214,8 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 		return serialize(topic, data);
 	}
 
-	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	@Override
-	public byte[] serialize(String topic, @Nullable T data) {
+	public byte @Nullable [] serialize(String topic, @Nullable T data) {
 		if (data == null) {
 			return null;
 		}

@@ -65,6 +65,7 @@ import org.springframework.util.StringUtils;
  * @author Ivan Ponomarev
  * @author Omer Celik
  * @author Soby Chacko
+ * @author Trond Ziarkowski
  *
  * @since 4.0
  */
@@ -566,7 +567,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 	}
 
 	@Override
-	public @Nullable T deserialize(String topic, Headers headers, byte[] data) {
+	public @Nullable T deserialize(String topic, Headers headers, byte @Nullable [] data) {
 		if (data == null) {
 			return null;
 		}
@@ -597,7 +598,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 	}
 
 	@Override
-	public @Nullable T deserialize(String topic, byte[] data) {
+	public @Nullable T deserialize(String topic, byte @Nullable [] data) {
 		if (data == null) {
 			return null;
 		}
