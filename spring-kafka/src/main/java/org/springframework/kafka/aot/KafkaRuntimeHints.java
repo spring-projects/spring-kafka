@@ -25,6 +25,7 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.message.CreateTopicsRequestData.CreatableTopic;
 import org.apache.kafka.common.protocol.Message;
 import org.apache.kafka.common.security.oauthbearer.DefaultJwtRetriever;
+import org.apache.kafka.common.security.oauthbearer.DefaultJwtValidator;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.utils.AppInfoParser.AppInfo;
 import org.apache.kafka.common.utils.ImplicitLinkedHashCollection;
@@ -90,6 +91,7 @@ public class KafkaRuntimeHints implements RuntimeHintsRegistrar {
 		Stream.of(
 						// Following Kafka classes need to be ideally part of Oracle's reachability metadata repository.
 						DefaultJwtRetriever.class,
+						DefaultJwtValidator.class,
 						Message.class,
 						ImplicitLinkedHashCollection.Element.class,
 						NewTopic.class,
