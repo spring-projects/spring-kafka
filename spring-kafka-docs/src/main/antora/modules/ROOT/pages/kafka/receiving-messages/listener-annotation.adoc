@@ -83,7 +83,8 @@ public void listen(String data) {
 [[topic-partition-assignment]]
 == Topic Partition Assignment
 
-You can configure the topic for `@KafkaListener` in three ways. You must configure the topic in one of these ways.
+You can configure the topic for `@KafkaListener` in three ways.
+You must configure the topic in one of these ways.
 [source, java]
 ----
 @KafkaListener(id = "myListener", topics = "myTopic")
@@ -103,11 +104,13 @@ public void listen(String data) {
 ----
 
 
-You can simply configure the topic directly by name. In this case, you can also configure the multiple topics like `topics = {"myTopic1", myTopic2"}`.
+You can simply configure the topic directly by name.
+In this case, you can also configure the multiple topics like `topics = {"myTopic1", myTopic2"}`.
 
 You can also configure topics using topicPattern, which enables topic subscription based on a regular expression.
 
-When you configure topics using either of these ways (topic or topic pattern), Kafka automatically assigns partitions according to the consumer group. Alternatively, you can configure POJO listeners with explicit topics and partitions (and, optionally, their initial offsets).
+When you configure topics using either of these ways (topic or topic pattern), Kafka automatically assigns partitions according to the consumer group.
+Alternatively, you can configure POJO listeners with explicit topics and partitions (and, optionally, their initial offsets).
 The following example shows how to do so:
 
 [source, java]
