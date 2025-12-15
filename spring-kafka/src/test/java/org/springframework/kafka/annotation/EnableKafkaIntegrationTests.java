@@ -1171,7 +1171,7 @@ public class EnableKafkaIntegrationTests {
 	}
 
 	@Test
-	public void testCustomMethodArgumentResovlerListener() throws InterruptedException {
+	public void testCustomMethodArgumentResolverListener() throws InterruptedException {
 		template.send("annotated39", "foo");
 		assertThat(this.listener.customMethodArgumentResolverLatch.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.listener.customMethodArgument.body).isEqualTo("foo");
@@ -2516,7 +2516,9 @@ public class EnableKafkaIntegrationTests {
 		}
 
 		@KafkaListener(id = "customMethodArgumentResolver", topics = "annotated39")
-		public void customMethodArgumentResolverListener(String data, CustomMethodArgument customMethodArgument) {
+		public void customMethodArgumentResolverListener(CustomMethodArgument customMethodArgument,
+				@Payload String data) {
+
 			this.customMethodArgument = customMethodArgument;
 			this.customMethodArgumentResolverLatch.countDown();
 		}
