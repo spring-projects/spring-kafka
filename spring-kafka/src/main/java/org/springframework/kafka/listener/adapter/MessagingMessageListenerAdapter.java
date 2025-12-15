@@ -903,8 +903,13 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 					genericParameterType = extractGenericParameterTypFromMethodParameter(methodParameter);
 				}
 				else {
-					this.logger.debug(() -> "Ambiguous parameters for target payload for method " + method
-							+ "; no inferred type available");
+					if (methodParameter.hasParameterAnnotation(Payload.class)) {
+						genericParameterType = parameterType;
+					}
+					else {
+						this.logger.debug(() -> "Ambiguous parameters for target payload for method " + method
+								+ "; no inferred type available");
+					}
 					break;
 				}
 			}
