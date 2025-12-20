@@ -8,6 +8,6 @@ on:
 
 jobs:
   cherry-pick-commit:
-    uses: spring-io/spring-github-workflows/.github/workflows/spring-cherry-pick.yml@v6
+    uses: spring-io/spring-github-workflows/.github/workflows/spring-cherry-pick.yml@v7
     secrets:
       GH_ACTIONS_REPO_TOKEN: ${{ secrets.GH_ACTIONS_REPO_TOKEN }}
