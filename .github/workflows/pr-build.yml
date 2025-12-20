@@ -8,4 +8,4 @@ on:
 
 jobs:
   build-pull-request:
-    uses: spring-io/spring-github-workflows/.github/workflows/spring-gradle-pull-request-build.yml@v6
+    uses: spring-io/spring-github-workflows/.github/workflows/spring-gradle-pull-request-build.yml@v7
