@@ -4,8 +4,8 @@
 [[monitoring-listener-performance]]
 == Monitoring Listener Performance
 
-Starting with version 2.3, the listener container will automatically create and update Micrometer `Timer`+++s+++ for the listener, if `Micrometer` is detected on the classpath, and a single `MeterRegistry` is present in the application context.
-The timers can be disabled by setting the `ContainerProperty`+++'+++s `micrometerEnabled` to `false`.
+Starting with version 2.3, the listener container will automatically create and update Micrometer ``Timer``s for the listener, if `Micrometer` is detected on the classpath, and a single `MeterRegistry` is present in the application context.
+The timers can be disabled by setting the ``ContainerProperty``'s `micrometerEnabled` to `false`.
 
 Two timers are maintained - one for successful calls to the listener and one for failures.
 
@@ -15,16 +15,16 @@ The timers are named `spring.kafka.listener` and have the following tags:
 * `result` : `success` or `failure`
 * `exception` : `none` or `ListenerExecutionFailedException`
 
-You can add additional tags using the `ContainerProperties`+++'+++s `micrometerTags` property.
+You can add additional tags using the ``ContainerProperties``'s `micrometerTags` property.
 
-Starting with versions 2.9.8, 3.0.6, you can provide a function in `ContainerProperties`+++'+++s `micrometerTagsProvider`; the function receives the `ConsumerRecord<?, ?>` and returns tags which can be based on that record, and merged with any static tags in `micrometerTags`.
+Starting with versions 2.9.8, 3.0.6, you can provide a function in ``ContainerProperties``'s `micrometerTagsProvider`; the function receives the `ConsumerRecord<?, ?>` and returns tags which can be based on that record, and merged with any static tags in `micrometerTags`.
 
 NOTE: With the concurrent container, timers are created for each thread and the `name` tag is suffixed with `-n` where n is `0` to `concurrency-1`.
 
 [[monitoring-kafkatemplate-performance]]
 == Monitoring KafkaTemplate Performance
 
-Starting with version 2.5, the template will automatically create and update Micrometer `Timer`+++s+++ for send operations, if `Micrometer` is detected on the classpath, and a single `MeterRegistry` is present in the application context.
+Starting with version 2.5, the template will automatically create and update Micrometer ``Timer``s for send operations, if `Micrometer` is detected on the classpath, and a single `MeterRegistry` is present in the application context.
 The timers can be disabled by setting the template's `micrometerEnabled` property to `false`.
 
 Two timers are maintained - one for successful calls to the listener and one for failures.

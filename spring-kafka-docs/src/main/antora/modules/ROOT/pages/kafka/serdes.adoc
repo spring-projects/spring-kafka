@@ -23,7 +23,7 @@ For more complex or particular cases, the `KafkaConsumer` (and, therefore, `Kafk
 constructors to accept `Serializer` and `Deserializer` instances for `keys` and `values`, respectively.
 
 When you use this API, the `DefaultKafkaProducerFactory` and `DefaultKafkaConsumerFactory` also provide properties (through constructors or setter methods) to inject custom `Serializer` and `Deserializer` instances into the target `Producer` or `Consumer`.
-Also, you can pass in `Supplier<Serializer>` or `Supplier<Deserializer>` instances through constructors - these `Supplier`+++s+++ are called on creation of each `Producer` or `Consumer`.
+Also, you can pass in `Supplier<Serializer>` or `Supplier<Deserializer>` instances through constructors - these ``Supplier``s are called on creation of each `Producer` or `Consumer`.
 
 [[string-serde]]
 == String serialization
@@ -355,7 +355,7 @@ In this case, if there are ambiguous matches, an ordered `Map`, such as a `Linke
 === By Topic
 
 Starting with version 2.8, the `DelegatingByTopicSerializer` and `DelegatingByTopicDeserializer` allow selection of a serializer/deserializer based on the topic name.
-Regex `Pattern`+++s+++ are used to lookup the instance to use.
+Regex ``Pattern``s are used to lookup the instance to use.
 The map can be configured using a constructor, or via properties (a comma delimited list of `pattern:serializer`).
 
 [source, java]

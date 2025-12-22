@@ -616,13 +616,13 @@ Here are examples:
 ----
 @Bean
 ProducerFactory<String, String> nonTransFactory() {
-    return new MockProducerFactory<>(() -> 
+    return new MockProducerFactory<>(() ->
             new MockProducer<>(true, new StringSerializer(), new StringSerializer()));
 }
 
 @Bean
 ProducerFactory<String, String> transFactory() {
-    MockProducer<String, String> mockProducer = 
+    MockProducer<String, String> mockProducer =
             new MockProducer<>(true, new StringSerializer(), new StringSerializer());
     mockProducer.initTransactions();
     return new MockProducerFactory<String, String>((tx, id) -> mockProducer, "defaultTxId");
@@ -635,7 +635,7 @@ The transactional id is provided in case you wish to use a different `MockProduc
 
 If you are using producers in a multi-threaded environment, the `BiFunction` should return multiple producers (perhaps thread-bound using a `ThreadLocal`).
 
-IMPORTANT: Transactional `MockProducer`+++s+++ must be initialized for transactions by calling `initTransaction()`.
+IMPORTANT: Transactional ``MockProducer``s must be initialized for transactions by calling `initTransaction()`.
 
 When using the `MockProducer`, if you do not want to close the producer after each send, then you can provide a custom `MockProducer` implementation that overrides the `close` method that does not call the `close` method from the super class.
 This is convenient for testing, when verifying multiple publishing on the same producer without closing it.
