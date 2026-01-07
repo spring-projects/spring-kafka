@@ -24,7 +24,8 @@ import java.lang.reflect.Method;
 
 import org.junit.jupiter.api.Test;
 
-import org.springframework.beans.factory.config.EmbeddedValueResolver;
+import org.springframework.beans.factory.config.BeanExpressionContext;
+import org.springframework.context.expression.StandardBeanExpressionResolver;
 import org.springframework.context.support.StaticApplicationContext;
 import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.mock.env.MockEnvironment;
@@ -39,10 +40,11 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
  * Tests for {@link BackOffFactory}.
  *
  * @author Stephane Nicoll
+ * @author Ngoc Nhan
  */
 class BackOffFactoryTests {
 
-	private final BackOffFactory backOffFactory = new BackOffFactory(null);
+	private final BackOffFactory backOffFactory = new BackOffFactory();
 
 	@Test
 	void createFromAnnotationWithDefaults() {
@@ -193,7 +195,8 @@ class BackOffFactoryTests {
 		StaticApplicationContext context = new StaticApplicationContext();
 		context.setEnvironment(environment);
 		context.refresh();
-		return new BackOffFactory(new EmbeddedValueResolver(context.getBeanFactory())).createFromAnnotation(annotation);
+		return new BackOffFactory(new StandardBeanExpressionResolver(), new BeanExpressionContext(context.getBeanFactory(), null))
+				.createFromAnnotation(annotation);
 	}
 
 	private BackOff getAnnotation(String methodName) {

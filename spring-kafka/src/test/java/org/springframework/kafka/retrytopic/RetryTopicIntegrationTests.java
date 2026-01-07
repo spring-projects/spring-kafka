@@ -17,6 +17,7 @@
 package org.springframework.kafka.retrytopic;
 
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -95,6 +96,7 @@ import static org.awaitility.Awaitility.await;
  * @author Gary Russell
  * @author Wang Zhiyang
  * @author Sanghyeok An
+ * @author Ngoc Nhan
  * @since 2.7
  */
 @SpringJUnitConfig
@@ -353,8 +355,10 @@ public class RetryTopicIntegrationTests {
 		@Autowired
 		CountDownLatchContainer container;
 
+		public Duration backOffDelay = Duration.ofMillis(250);
+
 		@RetryableTopic(attempts = "${five.attempts}",
-				backOff = @BackOff(delay = 250, maxDelay = 1000, multiplier = 1.5),
+				backOff = @BackOff(delayString = "#{__listener.backOffDelay.toMillis()}", maxDelay = 1000, multiplier = 1.5),
 				numPartitions = "#{3}",
 				timeout = "${missing.property:2000}",
 				include = MyRetryException.class, kafkaTemplate = "${kafka.template}",
