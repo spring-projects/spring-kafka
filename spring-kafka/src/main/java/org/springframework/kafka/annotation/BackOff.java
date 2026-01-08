@@ -95,7 +95,7 @@ public @interface BackOff {
 	 * <li>any of the known {@link DurationFormat.Style}: the {@link DurationFormat.Style#ISO8601 ISO8601}
 	 * style or the {@link DurationFormat.Style#SIMPLE SIMPLE} style &mdash; using
 	 * milliseconds as fallback if the string doesn't contain an explicit unit</li>
-	 * <li>Regular expressions, such as {@code ${example.property}} to use the
+	 * <li>Regular expressions, such as {@code ${example.property}} or {@code #{example.property}} to use the
 	 * {@code example.property} from the environment</li>
 	 * </ul>
 	 *
@@ -125,7 +125,7 @@ public @interface BackOff {
 	 * <li>any of the known {@link DurationFormat.Style}: the {@link DurationFormat.Style#ISO8601 ISO8601}
 	 * style or the {@link DurationFormat.Style#SIMPLE SIMPLE} style &mdash; using
 	 * milliseconds as fallback if the string doesn't contain an explicit unit</li>
-	 * <li>Regular expressions, such as {@code ${example.property}} to use the
+	 * <li>Regular expressions, such as {@code ${example.property}} or {@code #{example.property}} to use the
 	 * {@code example.property} from the environment</li>
 	 * </ul>
 	 *
@@ -151,7 +151,7 @@ public @interface BackOff {
 	 * <p>The multiplier String can be in several formats:
 	 * <ul>
 	 * <li>a plain double</li>
-	 * <li>Regular expressions, such as {@code ${example.property}} to use the
+	 * <li>Regular expressions, such as {@code ${example.property}} or {@code #{example.property}} to use the
 	 * {@code example.property} from the environment</li>
 	 * </ul>
 	 *
@@ -188,7 +188,7 @@ public @interface BackOff {
 	 * <li>any of the known {@link DurationFormat.Style}: the {@link DurationFormat.Style#ISO8601 ISO8601}
 	 * style or the {@link DurationFormat.Style#SIMPLE SIMPLE} style &mdash; using
 	 * milliseconds as fallback if the string doesn't contain an explicit unit</li>
-	 * <li>Regular expressions, such as {@code ${example.property}} to use the
+	 * <li>Regular expressions, such as {@code ${example.property}} or {@code #{example.property}} to use the
 	 * {@code example.property} from the environment</li>
 	 * </ul>
 	 *

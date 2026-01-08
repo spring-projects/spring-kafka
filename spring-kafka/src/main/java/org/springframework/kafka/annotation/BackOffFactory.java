@@ -22,12 +22,13 @@ import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.beans.factory.config.BeanExpressionContext;
+import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.core.retry.RetryPolicy;
 import org.springframework.format.annotation.DurationFormat;
 import org.springframework.format.datetime.standard.DurationFormatterUtils;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
-import org.springframework.util.StringValueResolver;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
@@ -35,6 +36,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * {@link BackOff @BackOff} annotation.
  *
  * @author Stephane Nicoll
+ * @author Ngoc Nhan
  *
  * @since 4.0
  */
@@ -42,10 +44,18 @@ final class BackOffFactory {
 
 	private static final long DEFAULT_DELAY = 1000;
 
-	private final @Nullable StringValueResolver embeddedValueResolver;
+	private final @Nullable BeanExpressionResolver beanExpressionResolver;
 
-	BackOffFactory(@Nullable StringValueResolver embeddedValueResolver) {
-		this.embeddedValueResolver = embeddedValueResolver;
+	private final @Nullable BeanExpressionContext expressionContext;
+
+	BackOffFactory() {
+		this(null, null);
+	}
+
+	BackOffFactory(@Nullable BeanExpressionResolver beanExpressionResolver,
+				@Nullable BeanExpressionContext expressionContext) {
+		this.beanExpressionResolver = beanExpressionResolver;
+		this.expressionContext = expressionContext;
 	}
 
 	/**
@@ -113,8 +123,12 @@ final class BackOffFactory {
 	}
 
 	private @Nullable String resolve(String valueString) {
-		if (StringUtils.hasLength(valueString) && this.embeddedValueResolver != null) {
-			return this.embeddedValueResolver.resolveStringValue(valueString);
+		if (StringUtils.hasLength(valueString) && this.expressionContext != null) {
+			String value = this.expressionContext.getBeanFactory().resolveEmbeddedValue(valueString);
+			if (this.beanExpressionResolver != null && value != null) {
+				Object evaluated = this.beanExpressionResolver.evaluate(value, this.expressionContext);
+				return evaluated != null ? evaluated.toString() : null;
+			}
 		}
 		return valueString;
 	}

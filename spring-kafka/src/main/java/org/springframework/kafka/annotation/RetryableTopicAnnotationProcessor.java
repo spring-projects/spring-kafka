@@ -35,7 +35,6 @@ import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
-import org.springframework.beans.factory.config.EmbeddedValueResolver;
 import org.springframework.context.expression.StandardBeanExpressionResolver;
 import org.springframework.core.MethodIntrospector;
 import org.springframework.core.annotation.AnnotationUtils;
@@ -61,6 +60,7 @@ import org.springframework.util.StringUtils;
  * @author Adrian Chlebosz
  * @author Wang Zhiyang
  * @author Artem Bilan
+ * @author Ngoc Nhan
  *
  * @since 2.7
  *
@@ -179,10 +179,7 @@ public class RetryableTopicAnnotationProcessor {
 	}
 
 	private BackOffFactory createBackOffFactory() {
-		if (this.beanFactory != null && this.beanFactory instanceof ConfigurableBeanFactory cbf) {
-			return new BackOffFactory(new EmbeddedValueResolver(cbf));
-		}
-		return new BackOffFactory(null);
+		return new BackOffFactory(this.resolver, this.expressionContext);
 	}
 
 	private Map<String, Set<Class<? extends Throwable>>> createDltRoutingSpecFromAnnotation(ExceptionBasedDltDestination[] routingRules) {
