@@ -25,7 +25,7 @@ Gradle::
 +
 [source,groovy,subs="+attributes",role="secondary"]
 ----
-compile 'org.springframework.kafka:spring-kafka:{project-version}'
+implementation 'org.springframework.kafka:spring-kafka:{project-version}'
 ----
 ======
 
