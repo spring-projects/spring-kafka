@@ -45,6 +45,26 @@ New methods from the Kafka Producer interface have been implemented:
 * `registerMetricForSubscription`
 * `unregisterMetricFromSubscription`
 
+[[x40-retry-topic-builder-default]]
+=== RetryTopicConfigurationBuilder Default Strategy Change
+
+The default value of `sameIntervalTopicReuseStrategy` in `RetryTopicConfigurationBuilder` has been changed from `MULTIPLE_TOPICS` to `SINGLE_TOPIC` to align with the `@RetryableTopic` annotation default behavior.
+
+This means that, by default, a single retry topic will be used for the same delay intervals instead of creating separate topics for each attempt.
+
+To restore the previous behavior, explicitly set the strategy:
+
+[source,java]
+----
+@Bean
+public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .sameIntervalTopicReuseStrategy(SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS)
+            .create(template);
+}
+----
+
 [[x40-removed-deprecated-functionality]]
 === Removed Deprecated Functionality
 
