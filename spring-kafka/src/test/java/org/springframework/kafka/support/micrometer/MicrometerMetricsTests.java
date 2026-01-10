@@ -32,6 +32,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
@@ -46,10 +47,12 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * @author Soby Chacko
- * @since 3.2.7
+ * @author Hyoungjune Kim
+ * @since 4.0.2
  */
 @SpringJUnitConfig
 @EmbeddedKafka(topics = { MicrometerMetricsTests.METRICS_TEST_TOPIC }, partitions = 1)
@@ -98,6 +101,24 @@ public class MicrometerMetricsTests {
 		});
 	}
 
+	@Test
+	void verifyMetricsWithRetryBackOffObservation(@Autowired RetryBackOffObservationListener retryBackOffObservationListener,
+									  @Autowired MeterRegistry meterRegistry,
+									  @Autowired KafkaTemplate<Integer, String> template)
+			throws Exception {
+
+		template.send(METRICS_TEST_TOPIC, "test").get(10, TimeUnit.SECONDS);
+		assertThat(retryBackOffObservationListener.latch.await(10, TimeUnit.SECONDS)).isTrue();
+
+		await().untilAsserted(() -> {
+			long count = meterRegistry.find("spring.kafka.listener")
+					.tags("spring.kafka.listener.id", "retryBackOffObservationTest-0")
+					.timer().count();
+
+			assertEquals(1, count);
+		});
+	}
+
 	@Configuration
 	@EnableKafka
 	static class Config {
@@ -142,6 +163,17 @@ public class MicrometerMetricsTests {
 		}
 
 		@Bean
+		ConcurrentKafkaListenerContainerFactory<Integer, String> retryBackOffObservationListenerContainerFactory(
+				ConsumerFactory<Integer, String> cf, ObservationRegistry observationRegistry) {
+			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
+			factory.setConsumerFactory(cf);
+			factory.getContainerProperties().setObservationEnabled(true);
+			factory.getContainerProperties().setObservationRegistry(observationRegistry);
+			return factory;
+		}
+
+		@Bean
 		MetricsListener metricsListener() {
 			return new MetricsListener();
 		}
@@ -154,6 +186,11 @@ public class MicrometerMetricsTests {
 		@Bean
 		ObservationListener observationListener() {
 			return new ObservationListener();
+		}
+
+		@Bean
+		RetryBackOffObservationListener retryBackOffObservationListener() {
+			return new RetryBackOffObservationListener();
 		}
 
 		@Bean
@@ -188,6 +225,23 @@ public class MicrometerMetricsTests {
 		void listen(ConsumerRecord<Integer, String> in) {
 			try {
 				throw new IllegalStateException("observation test exception");
+			}
+			finally {
+				latch.countDown();
+			}
+		}
+	}
+
+	static class RetryBackOffObservationListener {
+		final CountDownLatch latch = new CountDownLatch(1);
+
+		@RetryableTopic(attempts = "1")
+		@KafkaListener(id = "retryBackOffObservationTest",
+				topics = METRICS_TEST_TOPIC,
+				containerFactory = "retryBackOffObservationListenerContainerFactory")
+		void listen(ConsumerRecord<String, String> record) {
+			try {
+				// NOTHING
 			}
 			finally {
 				latch.countDown();
