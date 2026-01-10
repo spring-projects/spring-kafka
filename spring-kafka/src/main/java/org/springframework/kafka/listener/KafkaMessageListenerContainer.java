@@ -106,6 +106,7 @@ import org.springframework.kafka.event.ListenerContainerNoLongerIdleEvent;
 import org.springframework.kafka.event.ListenerContainerPartitionIdleEvent;
 import org.springframework.kafka.event.ListenerContainerPartitionNoLongerIdleEvent;
 import org.springframework.kafka.event.NonResponsiveConsumerEvent;
+import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
@@ -847,6 +848,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private boolean firstPoll;
 
+		private boolean isListenerAdapterAware;
+
 		private volatile boolean consumerPaused;
 
 		private volatile @Nullable Thread consumerThread;
@@ -977,11 +980,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.wasIdlePartition = new HashMap<>();
 			this.kafkaAdmin = obtainAdmin();
 
-			if (isListenerAdapterObservationAware()) {
-				RecordMessagingMessageListenerAdapter<?, ?> recordMessagingMessageListenerAdapter =
-						(RecordMessagingMessageListenerAdapter<?, ?>) this.listener;
-				if (recordMessagingMessageListenerAdapter != null) {
+			if (this.listener != null) {
+				MessageListener<?, ?> listener = this.listener;
+				if (this.listener instanceof KafkaBackoffAwareMessageListenerAdapter<?, ?> kafkaBackoffAwareMessageListenerAdapter) {
+					listener = kafkaBackoffAwareMessageListenerAdapter.getDelegate();
+				}
+				if (RecordMessagingMessageListenerAdapter.class.equals(listener.getClass())) {
+					var recordMessagingMessageListenerAdapter = (RecordMessagingMessageListenerAdapter<?, ?>) listener;
 					recordMessagingMessageListenerAdapter.setObservationRegistry(observationRegistry);
+					this.isListenerAdapterAware = true;
 				}
 			}
 		}
@@ -1242,7 +1249,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private boolean isListenerAdapterObservationAware() {
-			return this.listener != null && RecordMessagingMessageListenerAdapter.class.equals(this.listener.getClass());
+			return this.isListenerAdapterAware;
 		}
 
 		private void subscribeOrAssignTopics(final Consumer<? super K, ? super V> subscribingConsumer) {
