@@ -36,8 +36,8 @@ import org.springframework.context.annotation.Import;
  * &#064;EnableKafka
  * public class AppConfig {
  * 	&#064;Bean
- * 	public ConcurrentKafkaListenerContainerFactory myKafkaListenerContainerFactory() {
- * 		ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
+ * 	public ConcurrentKafkaListenerContainerFactory&lt;?, ?&gt; myKafkaListenerContainerFactory() {
+ * 		ConcurrentKafkaListenerContainerFactory&lt;?, ?&gt; factory = new ConcurrentKafkaListenerContainerFactory&lt;&gt;();
  * 		factory.setConsumerFactory(consumerFactory());
  * 		factory.setConcurrency(4);
  * 		return factory;
@@ -137,24 +137,24 @@ import org.springframework.context.annotation.Import;
  * specify an explicit default {@code KafkaListenerContainerFactory}
  *
  * <pre class="code">
- * 	&#064;Configuration
- * 	&#064;EnableKafka
- * 	public class AppConfig implements KafkaListenerConfigurer {
- * 		&#064;Override
- * 		public void configureKafkaListeners(KafkaListenerEndpointRegistrar registrar) {
- * 			registrar.setContainerFactory(myKafkaListenerContainerFactory());
- * 		}
- *
- * 		&#064;Bean
- * 		public KafkaListenerContainerFactory&lt;?, ?&gt; myKafkaListenerContainerFactory() {
- * 			// factory settings
- * 		}
- *
- * 		&#064;Bean
- * 		public MyService myService() {
- * 			return new MyService();
- * 		}
+ * &#064;Configuration
+ * &#064;EnableKafka
+ * public class AppConfig implements KafkaListenerConfigurer {
+ * 	&#064;Override
+ * 	public void configureKafkaListeners(KafkaListenerEndpointRegistrar registrar) {
+ * 		registrar.setContainerFactory(myKafkaListenerContainerFactory());
  * 	}
+ *
+ * 	&#064;Bean
+ * 	public KafkaListenerContainerFactory&lt;?&gt; myKafkaListenerContainerFactory() {
+ * 		// factory settings
+ * 	}
+ *
+ * 	&#064;Bean
+ * 	public MyService myService() {
+ * 		return new MyService();
+ * 	}
+ * }
  * </pre>
  *
  * It is also possible to specify a custom
@@ -168,33 +168,33 @@ import org.springframework.context.annotation.Import;
  * validated against a custom {@code Validator}.
  *
  * <pre class="code">
- * 	&#064;Configuration
- * 	&#064;EnableKafka
- * 	public class AppConfig implements KafkaListenerConfigurer {
- * 		&#064;Override
- * 		public void configureKafkaListeners(KafkaListenerEndpointRegistrar registrar) {
- * 			registrar.setEndpointRegistry(myKafkaListenerEndpointRegistry());
- * 			registrar.setMessageHandlerMethodFactory(myMessageHandlerMethodFactory());
- * 			registrar.setValidator(new MyValidator());
- * 		}
- *
- * 		&#064;Bean
- * 		public KafkaListenerEndpointRegistry myKafkaListenerEndpointRegistry() {
- * 			// registry configuration
- * 		}
- *
- * 		&#064;Bean
- * 		public MessageHandlerMethodFactory myMessageHandlerMethodFactory() {
- * 			DefaultMessageHandlerMethodFactory factory = new DefaultMessageHandlerMethodFactory();
- * 			// factory configuration
- * 			return factory;
- * 		}
- *
- * 		&#064;Bean
- * 		public MyService myService() {
- * 			return new MyService();
- * 		}
+ * &#064;Configuration
+ * &#064;EnableKafka
+ * public class AppConfig implements KafkaListenerConfigurer {
+ * 	&#064;Override
+ * 	public void configureKafkaListeners(KafkaListenerEndpointRegistrar registrar) {
+ * 		registrar.setEndpointRegistry(myKafkaListenerEndpointRegistry());
+ * 		registrar.setMessageHandlerMethodFactory(myMessageHandlerMethodFactory());
+ * 		registrar.setValidator(new MyValidator());
  * 	}
+ *
+ * 	&#064;Bean
+ * 	public KafkaListenerEndpointRegistry myKafkaListenerEndpointRegistry() {
+ * 		// registry configuration
+ * 	}
+ *
+ * 	&#064;Bean
+ * 	public MessageHandlerMethodFactory myMessageHandlerMethodFactory() {
+ * 		DefaultMessageHandlerMethodFactory factory = new DefaultMessageHandlerMethodFactory();
+ * 		// factory configuration
+ * 		return factory;
+ * 	}
+ *
+ * 	&#064;Bean
+ * 	public MyService myService() {
+ * 		return new MyService();
+ * 	}
+ * }
  * </pre>
  *
  * Implementing {@code KafkaListenerConfigurer} also allows for fine-grained control over
@@ -202,28 +202,28 @@ import org.springframework.context.annotation.Import;
  * following configures an extra endpoint:
  *
  * <pre class="code">
- * 	&#064;Configuration
- * 	&#064;EnableKafka
- * 	public class AppConfig implements KafkaListenerConfigurer {
- * 		&#064;Override
- * 		public void configureKafkaListeners(KafkaListenerEndpointRegistrar registrar) {
- * 			SimpleKafkaListenerEndpoint myEndpoint = new SimpleKafkaListenerEndpoint();
- * 			// ... configure the endpoint
- * 			registrar.registerEndpoint(endpoint, anotherKafkaListenerContainerFactory());
- * 		}
- *
- * 		&#064;Bean
- * 		public MyService myService() {
- * 			return new MyService();
- * 		}
- *
- * 		&#064;Bean
- * 		public KafkaListenerContainerFactory&lt;?, ?&gt; anotherKafkaListenerContainerFactory() {
- * 			// ...
- * 		}
- *
- * 		// Kafka infrastructure setup
+ * &#064;Configuration
+ * &#064;EnableKafka
+ * public class AppConfig implements KafkaListenerConfigurer {
+ * &#064;Override
+ * 	public void configureKafkaListeners(KafkaListenerEndpointRegistrar registrar) {
+ * 		MethodKafkaListenerEndpoint&lt;?, ?&gt; endpoint = new MethodKafkaListenerEndpoint&lt;&gt;();
+ * 		// ... configure the endpoint
+ * 		registrar.registerEndpoint(endpoint, anotherKafkaListenerContainerFactory());
  * 	}
+ *
+ * 	&#064;Bean
+ * 	public MyService myService() {
+ * 		return new MyService();
+ * 	}
+ *
+ * 	&#064;Bean
+ * 	public KafkaListenerContainerFactory&lt;?&gt; anotherKafkaListenerContainerFactory() {
+ * 		// ...
+ * 	}
+ *
+ * 	// Kafka infrastructure setup
+ * }
  * </pre>
  *
  * Note that all beans implementing {@code KafkaListenerConfigurer} will be detected and
