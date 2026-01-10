@@ -172,6 +172,7 @@ import org.springframework.util.StringUtils;
  * @author Christian Fredriksson
  * @author Timofey Barabanov
  * @author Janek Lasocki-Biczysko
+ * @author Hyoungjune Kim
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -978,9 +979,20 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.kafkaAdmin = obtainAdmin();
 
 			if (isListenerAdapterObservationAware()) {
+				setObservationRegistry(observationRegistry);
+			}
+		}
+
+		private void setObservationRegistry(ObservationRegistry observationRegistry) {
+			if (this.listener != null && RecordMessagingMessageListenerAdapter.class.equals(this.listener.getClass())) {
 				RecordMessagingMessageListenerAdapter<?, ?> recordMessagingMessageListenerAdapter =
 						(RecordMessagingMessageListenerAdapter<?, ?>) this.listener;
-				if (recordMessagingMessageListenerAdapter != null) {
+				recordMessagingMessageListenerAdapter.setObservationRegistry(observationRegistry);
+			}
+			else if (this.listener != null && KafkaBackoffAwareMessageListenerAdapter.class.equals(this.listener.getClass())) {
+				KafkaBackoffAwareMessageListenerAdapter<?, ?> kafkaBackoffAwareMessageListenerAdapter = (KafkaBackoffAwareMessageListenerAdapter<?, ?>) this.listener;
+				if (RecordMessagingMessageListenerAdapter.class.equals(kafkaBackoffAwareMessageListenerAdapter.getDelegate().getClass())) {
+					RecordMessagingMessageListenerAdapter<?, ?> recordMessagingMessageListenerAdapter = (RecordMessagingMessageListenerAdapter<?, ?>) kafkaBackoffAwareMessageListenerAdapter.getDelegate();
 					recordMessagingMessageListenerAdapter.setObservationRegistry(observationRegistry);
 				}
 			}
@@ -1242,7 +1254,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private boolean isListenerAdapterObservationAware() {
-			return this.listener != null && RecordMessagingMessageListenerAdapter.class.equals(this.listener.getClass());
+			if (this.listener == null) {
+				return false;
+			}
+			if (KafkaBackoffAwareMessageListenerAdapter.class.equals(this.listener.getClass())) {
+				KafkaBackoffAwareMessageListenerAdapter<?, ?> kafkaBackoffAwareMessageListenerAdapter = (KafkaBackoffAwareMessageListenerAdapter<?, ?>) this.listener;
+				return RecordMessagingMessageListenerAdapter.class.equals(kafkaBackoffAwareMessageListenerAdapter.getDelegate().getClass());
+			}
+			else {
+				return RecordMessagingMessageListenerAdapter.class.equals(this.listener.getClass());
+			}
 		}
 
 		private void subscribeOrAssignTopics(final Consumer<? super K, ? super V> subscribingConsumer) {
