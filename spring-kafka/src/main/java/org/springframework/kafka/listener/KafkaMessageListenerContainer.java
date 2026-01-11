@@ -855,6 +855,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private volatile long lastPoll = System.currentTimeMillis();
 
 		private final ConcurrentLinkedDeque<FailedRecordTuple<K, V>> failedRecords = new ConcurrentLinkedDeque<>();
+		private boolean isListenerAdapterObservationAware = false;
 
 		@SuppressWarnings(UNCHECKED)
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType,
@@ -978,24 +979,25 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.wasIdlePartition = new HashMap<>();
 			this.kafkaAdmin = obtainAdmin();
 
-			if (isListenerAdapterObservationAware()) {
-				setObservationRegistry(observationRegistry);
+			setupObservationRegistry(observationRegistry);
+		}
+
+		private void setupObservationRegistry(ObservationRegistry observationRegistry) {
+			if (this.listener == null) {
+				return;
+			}
+			MessageListener<?, ?> target = unwrapDelegateIfAny(this.listener);
+			if (target instanceof RecordMessagingMessageListenerAdapter<?, ?> adapter) {
+				adapter.setObservationRegistry(observationRegistry);
+				this.isListenerAdapterObservationAware = true;
 			}
 		}
 
-		private void setObservationRegistry(ObservationRegistry observationRegistry) {
-			if (this.listener != null && RecordMessagingMessageListenerAdapter.class.equals(this.listener.getClass())) {
-				RecordMessagingMessageListenerAdapter<?, ?> recordMessagingMessageListenerAdapter =
-						(RecordMessagingMessageListenerAdapter<?, ?>) this.listener;
-				recordMessagingMessageListenerAdapter.setObservationRegistry(observationRegistry);
+		private MessageListener<?, ?> unwrapDelegateIfAny(MessageListener<?, ?> listener) {
+			if (listener instanceof KafkaBackoffAwareMessageListenerAdapter<?, ?> backoffAware) {
+				return backoffAware.getDelegate();
 			}
-			else if (this.listener != null && KafkaBackoffAwareMessageListenerAdapter.class.equals(this.listener.getClass())) {
-				KafkaBackoffAwareMessageListenerAdapter<?, ?> kafkaBackoffAwareMessageListenerAdapter = (KafkaBackoffAwareMessageListenerAdapter<?, ?>) this.listener;
-				if (RecordMessagingMessageListenerAdapter.class.equals(kafkaBackoffAwareMessageListenerAdapter.getDelegate().getClass())) {
-					RecordMessagingMessageListenerAdapter<?, ?> recordMessagingMessageListenerAdapter = (RecordMessagingMessageListenerAdapter<?, ?>) kafkaBackoffAwareMessageListenerAdapter.getDelegate();
-					recordMessagingMessageListenerAdapter.setObservationRegistry(observationRegistry);
-				}
-			}
+			return listener;
 		}
 
 		private AckMode determineAckMode() {
@@ -1250,19 +1252,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					return defaultApiTimeout == null ? null : Duration
 							.ofMillis((int) defaultApiTimeout);
 				}
-			}
-		}
-
-		private boolean isListenerAdapterObservationAware() {
-			if (this.listener == null) {
-				return false;
-			}
-			if (KafkaBackoffAwareMessageListenerAdapter.class.equals(this.listener.getClass())) {
-				KafkaBackoffAwareMessageListenerAdapter<?, ?> kafkaBackoffAwareMessageListenerAdapter = (KafkaBackoffAwareMessageListenerAdapter<?, ?>) this.listener;
-				return RecordMessagingMessageListenerAdapter.class.equals(kafkaBackoffAwareMessageListenerAdapter.getDelegate().getClass());
-			}
-			else {
-				return RecordMessagingMessageListenerAdapter.class.equals(this.listener.getClass());
 			}
 		}
 
@@ -2812,7 +2801,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			catch (RuntimeException e) {
 				failureTimer(sample, cRecord, e);
 				recordInterceptAfter(cRecord, e);
-				if (!isListenerAdapterObservationAware()) {
+				if (!this.isListenerAdapterObservationAware) {
 					observation.error(e);
 				}
 				if (this.commonErrorHandler == null) {
@@ -2840,7 +2829,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			finally {
-				if (!isListenerAdapterObservationAware()) {
+				if (!this.isListenerAdapterObservationAware) {
 					observation.stop();
 				}
 				observationScope.close();
