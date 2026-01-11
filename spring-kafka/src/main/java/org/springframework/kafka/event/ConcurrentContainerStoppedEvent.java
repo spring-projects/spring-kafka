@@ -16,8 +16,6 @@
 
 package org.springframework.kafka.event;
 
-import java.io.Serial;
-
 /**
  * An event published when a concurrent container is stopped.
  *
@@ -27,7 +25,6 @@ import java.io.Serial;
  */
 public class ConcurrentContainerStoppedEvent extends KafkaEvent {
 
-	@Serial
 	private static final long serialVersionUID = 1L;
 
 	private final ConsumerStoppedEvent.Reason reason;
