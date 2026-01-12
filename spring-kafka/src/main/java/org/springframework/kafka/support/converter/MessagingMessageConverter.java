@@ -161,7 +161,7 @@ public class MessagingMessageConverter implements RecordMessageConverter {
 	 * The {@link SmartMessageConverter#toMessage(Object, MessageHeaders)} method is
 	 * called to create a new outbound {@link Message} from the {@link Message} passed to
 	 * {@link #fromMessage(Message, String)}. Similarly, in
-	 * {@link #toMessage(ConsumerRecord, Acknowledgment, Consumer, Type)}, after this
+	 * {@link #toMessage(ConsumerRecord, Object, Object, Type)}, after this
 	 * converter has created a new {@link Message} from the {@link ConsumerRecord} the
 	 * {@link SmartMessageConverter#fromMessage(Message, Class)} method is called and then
 	 * the final inbound message is created with the newly converted payload.
