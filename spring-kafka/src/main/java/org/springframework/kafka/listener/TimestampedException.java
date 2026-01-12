@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import java.io.Serial;
 import java.time.Instant;
 
 import org.springframework.kafka.KafkaException;
@@ -29,6 +30,7 @@ import org.springframework.kafka.KafkaException;
  */
 public class TimestampedException extends KafkaException {
 
+	@Serial
 	private static final long serialVersionUID = -2544217643924234282L;
 
 	private final long timestamp;

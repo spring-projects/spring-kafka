@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.event;
 
+import java.io.Serial;
+
 /**
  * An event published when a consumer is initializing.
  *
@@ -25,6 +27,7 @@ package org.springframework.kafka.event;
  */
 public class ConsumerStartingEvent extends KafkaEvent {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
 
 	/**

@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.event;
 
+import java.io.Serial;
+
 import org.springframework.context.ApplicationEvent;
 import org.springframework.util.Assert;
 
@@ -27,6 +29,7 @@ import org.springframework.util.Assert;
  */
 public abstract class KafkaEvent extends ApplicationEvent {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
 
 	private static final String UNCHECKED = "unchecked";

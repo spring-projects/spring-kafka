@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.core;
 
+import java.io.Serial;
+
 import org.springframework.kafka.KafkaException;
 
 /**
@@ -28,6 +30,7 @@ import org.springframework.kafka.KafkaException;
  */
 public class NoProducerAvailableException extends KafkaException {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
 
 	private final String txIdPrefix;

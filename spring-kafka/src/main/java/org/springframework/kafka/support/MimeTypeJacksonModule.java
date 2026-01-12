@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.support;
 
+import java.io.Serial;
+
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.databind.SerializationContext;
 import tools.jackson.databind.ValueSerializer;
@@ -33,6 +35,7 @@ import org.springframework.util.MimeType;
  */
 public final class MimeTypeJacksonModule extends SimpleModule {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
 
 	public MimeTypeJacksonModule() {

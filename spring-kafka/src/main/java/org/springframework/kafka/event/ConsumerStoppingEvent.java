@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.event;
 
+import java.io.Serial;
 import java.util.Collection;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -34,6 +35,7 @@ import org.jspecify.annotations.Nullable;
  */
 public class ConsumerStoppingEvent extends KafkaEvent {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
 
 	private transient final Consumer<?, ?> consumer;

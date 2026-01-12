@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.event;
 
+import java.io.Serial;
 import java.util.Collection;
 
 import org.apache.kafka.common.TopicPartition;
@@ -29,6 +30,7 @@ import org.apache.kafka.common.TopicPartition;
  */
 public class ConsumerResumedEvent extends KafkaEvent {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
 
 	private transient Collection<TopicPartition> partitions;

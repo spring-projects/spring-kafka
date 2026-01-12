@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.event;
 
+import java.io.Serial;
+
 /**
  * An event published when a consumer is stopped. While it is best practice to use
  * stateless listeners, you can consume this event to clean up any thread-based resources
@@ -30,6 +32,7 @@ package org.springframework.kafka.event;
  */
 public class ConsumerStoppedEvent extends KafkaEvent {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
 
 	/**

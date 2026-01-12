@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.listener;
 
+import java.io.Serial;
+
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.jspecify.annotations.Nullable;
 
@@ -32,6 +34,7 @@ import org.springframework.kafka.KafkaException;
  */
 public class BatchListenerFailedException extends KafkaException {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
 
 	private final int index;

@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.test.utils;
 
+import java.io.Serial;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collection;
@@ -132,6 +133,7 @@ public final class ContainerTestUtils {
 
 	private static class ContainerTestUtilsException extends RuntimeException {
 
+		@Serial
 		private static final long serialVersionUID = 1L;
 
 		ContainerTestUtilsException(String message, Throwable cause) {

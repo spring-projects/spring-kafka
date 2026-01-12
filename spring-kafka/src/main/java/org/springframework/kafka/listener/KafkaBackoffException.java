@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.listener;
 
+import java.io.Serial;
+
 import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.KafkaException;
@@ -28,6 +30,7 @@ import org.springframework.kafka.KafkaException;
  */
 public class KafkaBackoffException extends KafkaException {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
 
 	private final String listenerId;
