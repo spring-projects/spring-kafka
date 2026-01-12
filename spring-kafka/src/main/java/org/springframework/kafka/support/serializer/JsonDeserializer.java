@@ -611,7 +611,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 			return deserReader.readValue(data);
 		}
 		catch (IOException ex) {
-			throw new SerializationException("Can't deserialize data  from topic [" + topic + "]", ex);
+			throw new SerializationException("Can't deserialize data from topic [" + topic + "]", ex);
 		}
 	}
 
