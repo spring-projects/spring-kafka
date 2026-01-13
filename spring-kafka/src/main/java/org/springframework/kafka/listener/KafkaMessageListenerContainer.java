@@ -172,6 +172,7 @@ import org.springframework.util.StringUtils;
  * @author Christian Fredriksson
  * @author Timofey Barabanov
  * @author Janek Lasocki-Biczysko
+ * @author Hyoungjune Kim
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -855,6 +856,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final ConcurrentLinkedDeque<FailedRecordTuple<K, V>> failedRecords = new ConcurrentLinkedDeque<>();
 
+		private boolean isListenerAdapterObservationAware = false;
+
 		@SuppressWarnings(UNCHECKED)
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType,
 				ObservationRegistry observationRegistry) {
@@ -977,11 +980,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.wasIdlePartition = new HashMap<>();
 			this.kafkaAdmin = obtainAdmin();
 
-			if (isListenerAdapterObservationAware()) {
-				RecordMessagingMessageListenerAdapter<?, ?> recordMessagingMessageListenerAdapter =
-						(RecordMessagingMessageListenerAdapter<?, ?>) this.listener;
-				if (recordMessagingMessageListenerAdapter != null) {
-					recordMessagingMessageListenerAdapter.setObservationRegistry(observationRegistry);
+			setupObservationRegistry(observationRegistry);
+		}
+
+		private void setupObservationRegistry(ObservationRegistry observationRegistry) {
+			if (this.listener != null) {
+				MessageListener<?, ?> target = unwrapDelegateIfAny(this.listener);
+				if (RecordMessagingMessageListenerAdapter.class.equals(target.getClass())) {
+					((RecordMessagingMessageListenerAdapter<?, ?>) target).setObservationRegistry(observationRegistry);
+					this.isListenerAdapterObservationAware = true;
 				}
 			}
 		}
@@ -1239,10 +1246,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							.ofMillis((int) defaultApiTimeout);
 				}
 			}
-		}
-
-		private boolean isListenerAdapterObservationAware() {
-			return this.listener != null && RecordMessagingMessageListenerAdapter.class.equals(this.listener.getClass());
 		}
 
 		private void subscribeOrAssignTopics(final Consumer<? super K, ? super V> subscribingConsumer) {
@@ -2791,7 +2794,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			catch (RuntimeException e) {
 				failureTimer(sample, cRecord, e);
 				recordInterceptAfter(cRecord, e);
-				if (!isListenerAdapterObservationAware()) {
+				if (!this.isListenerAdapterObservationAware) {
 					observation.error(e);
 				}
 				if (this.commonErrorHandler == null) {
@@ -2819,7 +2822,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			finally {
-				if (!isListenerAdapterObservationAware()) {
+				if (!this.isListenerAdapterObservationAware) {
 					observation.stop();
 				}
 				observationScope.close();
@@ -3521,6 +3524,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private OffsetAndMetadata createOffsetAndMetadata(long offset) {
 			return this.offsetAndMetadataProvider.provide(this.listenerMetadata, offset);
+		}
+
+		private static MessageListener<?, ?> unwrapDelegateIfAny(MessageListener<?, ?> listener) {
+			if (listener instanceof DelegatingMessageListener<?> delegatingMessageListener) {
+				return (MessageListener<?, ?>) delegatingMessageListener.getDelegate();
+			}
+			return listener;
 		}
 
 		private final class ConsumerAcknowledgment implements Acknowledgment {
