@@ -52,7 +52,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * @author Soby Chacko
  * @author Hyoungjune Kim
- * @since 4.0.2
+ * @since 3.2.7
  */
 @SpringJUnitConfig
 @EmbeddedKafka(topics = { MicrometerMetricsTests.METRICS_TEST_TOPIC }, partitions = 1)
