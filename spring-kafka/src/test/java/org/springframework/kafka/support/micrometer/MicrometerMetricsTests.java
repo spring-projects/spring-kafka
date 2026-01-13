@@ -47,7 +47,6 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * @author Soby Chacko
@@ -103,8 +102,8 @@ public class MicrometerMetricsTests {
 
 	@Test
 	void verifyMetricsWithRetryBackOffObservation(@Autowired RetryBackOffObservationListener retryBackOffObservationListener,
-									  @Autowired MeterRegistry meterRegistry,
-									  @Autowired KafkaTemplate<Integer, String> template)
+			@Autowired MeterRegistry meterRegistry,
+			@Autowired KafkaTemplate<Integer, String> template)
 			throws Exception {
 
 		template.send(METRICS_TEST_TOPIC, "test").get(10, TimeUnit.SECONDS);
@@ -115,7 +114,7 @@ public class MicrometerMetricsTests {
 					.tags("spring.kafka.listener.id", "retryBackOffObservationTest-0")
 					.timer().count();
 
-			assertEquals(1, count);
+			assertThat(count).isEqualTo(1);
 		});
 	}
 
