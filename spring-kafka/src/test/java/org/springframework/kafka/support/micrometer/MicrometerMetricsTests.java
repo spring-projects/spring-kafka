@@ -107,6 +107,7 @@ public class MicrometerMetricsTests {
 			throws Exception {
 
 		template.send(METRICS_TEST_TOPIC, "test").get(10, TimeUnit.SECONDS);
+		assertThat(retryBackOffObservationListener.latch.await(10, TimeUnit.SECONDS)).isTrue();
 
 		await().untilAsserted(() -> {
 			long count = meterRegistry.find("spring.kafka.listener")
@@ -237,12 +238,14 @@ public class MicrometerMetricsTests {
 
 	static class RetryBackOffObservationListener {
 
+		final CountDownLatch latch = new CountDownLatch(1);
+
 		@RetryableTopic(attempts = "1")
 		@KafkaListener(id = "retryBackOffObservationTest",
 				topics = METRICS_TEST_TOPIC,
 				containerFactory = "retryBackOffObservationListenerContainerFactory")
 		void listen(ConsumerRecord<String, String> record) {
-
+			latch.countDown();
 		}
 
 	}
