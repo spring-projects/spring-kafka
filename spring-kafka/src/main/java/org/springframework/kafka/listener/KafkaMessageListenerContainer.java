@@ -984,13 +984,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void setupObservationRegistry(ObservationRegistry observationRegistry) {
-			if (this.listener == null) {
-				return;
-			}
-			MessageListener<?, ?> target = unwrapDelegateIfAny(this.listener);
-			if (target instanceof RecordMessagingMessageListenerAdapter<?, ?> adapter) {
-				adapter.setObservationRegistry(observationRegistry);
-				this.isListenerAdapterObservationAware = true;
+			if (this.listener != null) {
+				MessageListener<?, ?> target = unwrapDelegateIfAny(this.listener);
+				if (target instanceof RecordMessagingMessageListenerAdapter<?, ?> adapter) {
+					adapter.setObservationRegistry(observationRegistry);
+					this.isListenerAdapterObservationAware = true;
+				}
 			}
 		}
 
