@@ -993,13 +993,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private static MessageListener<?, ?> unwrapDelegateIfAny(MessageListener<?, ?> listener) {
-			if (listener instanceof KafkaBackoffAwareMessageListenerAdapter<?, ?> backoffAware) {
-				return backoffAware.getDelegate();
-			}
-			return listener;
-		}
-
 		private AckMode determineAckMode() {
 			AckMode ackMode = this.containerProperties.getAckMode();
 			if (this.consumerGroupId == null && KafkaMessageListenerContainer.this.topicPartitions != null) {
@@ -3531,6 +3524,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private OffsetAndMetadata createOffsetAndMetadata(long offset) {
 			return this.offsetAndMetadataProvider.provide(this.listenerMetadata, offset);
+		}
+
+		private static MessageListener<?, ?> unwrapDelegateIfAny(MessageListener<?, ?> listener) {
+			if (listener instanceof DelegatingMessageListener<?> delegatingMessageListener) {
+				return (MessageListener<?, ?>) delegatingMessageListener.getDelegate();
+			}
+			return listener;
 		}
 
 		private final class ConsumerAcknowledgment implements Acknowledgment {
