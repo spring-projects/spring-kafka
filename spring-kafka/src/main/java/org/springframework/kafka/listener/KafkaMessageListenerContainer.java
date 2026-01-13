@@ -855,6 +855,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private volatile long lastPoll = System.currentTimeMillis();
 
 		private final ConcurrentLinkedDeque<FailedRecordTuple<K, V>> failedRecords = new ConcurrentLinkedDeque<>();
+
 		private boolean isListenerAdapterObservationAware = false;
 
 		@SuppressWarnings(UNCHECKED)
