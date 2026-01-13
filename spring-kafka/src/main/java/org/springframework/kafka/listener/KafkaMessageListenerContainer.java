@@ -993,7 +993,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private MessageListener<?, ?> unwrapDelegateIfAny(MessageListener<?, ?> listener) {
+		private static MessageListener<?, ?> unwrapDelegateIfAny(MessageListener<?, ?> listener) {
 			if (listener instanceof KafkaBackoffAwareMessageListenerAdapter<?, ?> backoffAware) {
 				return backoffAware.getDelegate();
 			}
