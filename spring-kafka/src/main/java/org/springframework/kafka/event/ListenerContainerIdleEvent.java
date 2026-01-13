@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.event;
 
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -34,6 +35,7 @@ import org.jspecify.annotations.Nullable;
  */
 public class ListenerContainerIdleEvent extends KafkaEvent {
 
+	@Serial
 	private static final long serialVersionUID = 1L;
 
 	private final long idleTime;
