@@ -56,6 +56,7 @@ import org.springframework.util.CollectionUtils;
  * @author Kyuhyeok Park
  * @author Wang Zhiyang
  * @author Choi Wang Gyu
+ * @author Chaedong Im
  */
 public class ContainerProperties extends ConsumerProperties {
 
@@ -68,6 +69,16 @@ public class ContainerProperties extends ConsumerProperties {
 		 * Commit the offset after each record is processed by the listener.
 		 */
 		RECORD,
+
+		/**
+		 * Commit the offset after each record is processed by the listener, but only
+		 * for records that are not filtered out by a {@code RecordFilterStrategy}.
+		 * When a record is filtered (not passed to the listener), no offset commit
+		 * occurs for that record. This mode provides better performance when using
+		 * filtering strategies that filter out a significant portion of records.
+		 * @since 4.0
+		 */
+		RECORD_FILTERED,
 
 		/**
 		 * Commit the offsets of all records returned by the previous poll after they all
