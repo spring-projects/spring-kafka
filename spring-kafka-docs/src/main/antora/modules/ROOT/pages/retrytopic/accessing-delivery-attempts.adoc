@@ -9,7 +9,7 @@ To access blocking and non-blocking delivery attempts, add these headers to your
 @Header(name = RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS, required = false) Integer nonBlockingAttempts
 ----
 
-Blocking delivery attempts are only provided if you set `ContainerProperties`+++'+++s xref:kafka/container-props.adoc#deliveryAttemptHeader[deliveryAttemptHeader] to `true`.
+Blocking delivery attempts are only provided if you set ``ContainerProperties``'s xref:kafka/container-props.adoc#deliveryAttemptHeader[deliveryAttemptHeader] to `true`.
 
 Note that the non blocking attempts will be `null` for the initial delivery.
 

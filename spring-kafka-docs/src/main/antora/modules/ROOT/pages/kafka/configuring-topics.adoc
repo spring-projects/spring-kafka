@@ -43,7 +43,7 @@ include::{kotlin-examples}/topics/Config.kt[tag=brokerProps]
 ----
 ======
 
-Starting with version 2.7, you can declare multiple `NewTopic`+++s+++ in a single `KafkaAdmin.NewTopics` bean definition:
+Starting with version 2.7, you can declare multiple ``NewTopic``s in a single `KafkaAdmin.NewTopics` bean definition:
 
 [tabs]
 ======
@@ -63,7 +63,7 @@ include::{kotlin-examples}/topics/Config.kt[tag=newTopicsBean]
 ======
 
 
-IMPORTANT: When using Spring Boot, a `KafkaAdmin` bean is automatically registered so you only need the `NewTopic` (and/or `NewTopics`) `@Bean`+++s+++.
+IMPORTANT: When using Spring Boot, a `KafkaAdmin` bean is automatically registered so you only need the `NewTopic` (and/or `NewTopics`) ``@Bean``s.
 
 By default, if the broker is not available, a message is logged, but the context continues to load.
 You can programmatically invoke the admin's `initialize()` method to try again later.
