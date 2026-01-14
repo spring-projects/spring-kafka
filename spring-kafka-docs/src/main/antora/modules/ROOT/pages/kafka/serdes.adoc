@@ -420,7 +420,7 @@ public KafkaListenerContainerFactory<?> kafkaJsonListenerContainerFactory() {
     ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
         new ConcurrentKafkaListenerContainerFactory<>();
     factory.setConsumerFactory(consumerFactory());
-    factory.setRecordMessageConverter(new JsonMessageConverter());
+    factory.setRecordMessageConverter(new JacksonJsonMessageConverter());
     return factory;
 }
 ...
@@ -696,8 +696,8 @@ public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory() {
 }
 
 @Bean
-public JsonMessageConverter converter() {
-    return new JsonMessageConverter();
+public JacksonJsonMessageConverter converter() {
+    return new JacksonJsonMessageConverter();
 }
 ----
 
