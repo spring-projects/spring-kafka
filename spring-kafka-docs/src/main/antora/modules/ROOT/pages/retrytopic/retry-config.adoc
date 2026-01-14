@@ -136,7 +136,7 @@ One technique is to use the `DelegatingByTypeSerializer`; an example follows:
 public ProducerFactory<String, Object> producerFactory() {
     return new DefaultKafkaProducerFactory<>(producerConfiguration(), new StringSerializer(),
         new DelegatingByTypeSerializer(Map.of(byte[].class, new ByteArraySerializer(),
-               MyNormalObject.class, new JsonSerializer<Object>())));
+               MyNormalObject.class, new JacksonJsonSerializer<Object>())));
 }
 
 @Bean

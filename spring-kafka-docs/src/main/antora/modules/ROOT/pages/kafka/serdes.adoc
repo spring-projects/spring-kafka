@@ -194,7 +194,7 @@ The following example shows how to do so:
 [source, java]
 ----
 DefaultKafkaConsumerFactory<Integer, Cat1> cf = new DefaultKafkaConsumerFactory<>(props,
-        new IntegerDeserializer(), new JsonDeserializer<>(Cat1.class, false));
+        new IntegerDeserializer(), new JacksonJsonDeserializer<>(Cat1.class, false));
 ----
 
 [[serdes-type-methods]]
@@ -234,7 +234,7 @@ The following is an example of creating the deserializer programmatically (when 
 
 [source, java]
 ----
-JsonDeserializer<Object> deser = new JsonDeserializer<>()
+JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>()
         .trustedPackages("*")
         .typeResolver(SomeClass::thing1Thing2JavaTypeForTopic);
 
@@ -258,10 +258,10 @@ public ProducerFactory<MyKeyType, MyValueType> pf() {
     // props.put(..., ...)
     // ...
     DefaultKafkaProducerFactory<MyKeyType, MyValueType> pf = new DefaultKafkaProducerFactory<>(props,
-        new JsonSerializer<MyKeyType>()
+        new JacksonJsonSerializer<MyKeyType>()
             .forKeys()
             .noTypeInfo(),
-        new JsonSerializer<MyValueType>()
+        new JacksonJsonSerializer<MyValueType>()
             .noTypeInfo());
     return pf;
 }
@@ -272,10 +272,10 @@ public ConsumerFactory<MyKeyType, MyValueType> cf() {
     // props.put(..., ...)
     // ...
     DefaultKafkaConsumerFactory<MyKeyType, MyValueType> cf = new DefaultKafkaConsumerFactory<>(props,
-        new JsonDeserializer<>(MyKeyType.class)
+        new JacksonJsonDeserializer<>(MyKeyType.class)
             .forKeys()
             .ignoreTypeHeaders(),
-        new JsonDeserializer<>(MyValueType.class)
+        new JacksonJsonDeserializer<>(MyValueType.class)
             .ignoreTypeHeaders());
     return cf;
 }
@@ -285,7 +285,7 @@ To provide type mapping programmatically, similar to xref:kafka/serdes.adoc#serd
 
 [source, java]
 ----
-JsonDeserializer<Object> deser = new JsonDeserializer<>()
+JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>()
         .trustedPackages("*")
         .typeFunction(MyUtils::thingOneOrThingTwo);
 ----
@@ -380,7 +380,7 @@ public ProducerFactory<Integer, Object> producerFactory(Map<String, Object> conf
             new DelegatingByTopicSerializer(Map.of(
                     Pattern.compile("topic[0-4]"), new ByteArraySerializer(),
                     Pattern.compile("topic[5-9]"), new StringSerializer())),
-                    new JsonSerializer<Object>());  // default
+                    new JacksonJsonSerializer<Object>());  // default
 }
 ----
 
@@ -420,7 +420,7 @@ public KafkaListenerContainerFactory<?> kafkaJsonListenerContainerFactory() {
     ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
         new ConcurrentKafkaListenerContainerFactory<>();
     factory.setConsumerFactory(consumerFactory());
-    factory.setRecordMessageConverter(new JsonMessageConverter());
+    factory.setRecordMessageConverter(new JacksonJsonMessageConverter());
     return factory;
 }
 ...
@@ -602,7 +602,7 @@ One technique is to use the `DelegatingByTypeSerializer`; an example follows:
 public ProducerFactory<String, Object> producerFactory() {
   return new DefaultKafkaProducerFactory<>(producerConfiguration(), new StringSerializer(),
     new DelegatingByTypeSerializer(Map.of(byte[].class, new ByteArraySerializer(),
-          MyNormalObject.class, new JsonSerializer<Object>())));
+          MyNormalObject.class, new JacksonJsonSerializer<Object>())));
 }
 
 @Bean
@@ -696,8 +696,8 @@ public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory() {
 }
 
 @Bean
-public JsonMessageConverter converter() {
-    return new JsonMessageConverter();
+public JacksonJsonMessageConverter converter() {
+    return new JacksonJsonMessageConverter();
 }
 ----
 
