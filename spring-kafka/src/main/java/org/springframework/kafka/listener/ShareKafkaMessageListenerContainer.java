@@ -186,7 +186,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		Object messageListener = containerProperties.getMessageListener();
 		AsyncTaskExecutor consumerExecutor = containerProperties.getListenerTaskExecutor();
 		if (consumerExecutor == null) {
-			consumerExecutor = new SimpleAsyncTaskExecutor((getBeanName() == null ? "" : getBeanName()) + "-C-");
+			consumerExecutor = new SimpleAsyncTaskExecutor(getBeanName() + "-C-");
 			containerProperties.setListenerTaskExecutor(consumerExecutor);
 		}
 		GenericMessageListener<?> listener = (GenericMessageListener<?>) messageListener;

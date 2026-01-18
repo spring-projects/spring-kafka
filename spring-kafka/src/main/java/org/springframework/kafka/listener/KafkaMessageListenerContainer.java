@@ -371,7 +371,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		AsyncTaskExecutor consumerExecutor = containerProperties.getListenerTaskExecutor();
 		if (consumerExecutor == null) {
 			consumerExecutor = new SimpleAsyncTaskExecutor(
-					(getBeanName() == null ? "" : getBeanName()) + "-C-");
+					getBeanName() + "-C-");
 			containerProperties.setListenerTaskExecutor(consumerExecutor);
 		}
 		GenericMessageListener<?> listener = (GenericMessageListener<?>) messageListener;
