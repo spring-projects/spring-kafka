@@ -135,6 +135,18 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 	}
 
 	@Test
+	void shouldSupportDefaultBeanNameSetting() {
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		assertThat(container.getBeanName()).isEqualTo("noBeanNameSet");
+		assertThat(container.getListenerId()).isEqualTo("noBeanNameSet");
+	}
+
+	@Test
 	void shouldReportRunningStateBeforeStart() {
 		ContainerProperties containerProperties = new ContainerProperties("test-topic");
 		containerProperties.setMessageListener(messageListener);
