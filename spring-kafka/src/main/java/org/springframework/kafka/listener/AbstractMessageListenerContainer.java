@@ -214,7 +214,6 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * Return the bean name.
 	 * @return the bean name.
 	 */
-	@NonNull
 	public String getBeanName() {
 		return this.beanName;
 	}
