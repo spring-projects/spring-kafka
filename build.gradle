@@ -55,7 +55,7 @@ ext {
 	awaitilityVersion = '4.3.0'
 	hamcrestVersion = '3.0'
 	hibernateValidationVersion = '9.0.1.Final'
-	jacksonBomVersion = '2.20.1'
+	jacksonBomVersion = '2.20.2'
 	jackson3Version = '3.0.3'
 	jaywayJsonPathVersion = '2.9.0'
 	junit4Version = '4.13.2'
