@@ -2115,7 +2115,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					ConsumerRecord<K, V> recordToAck = cRecord;
 					if (!CollectionUtils.isEmpty(deferred)) {
 						deferred.sort(Comparator.comparingLong(ConsumerRecord::offset));
-						while (!ObjectUtils.isEmpty(deferred) && deferred.get(0).offset() == recordToAck.offset() + 1) {
+						while (!ObjectUtils.isEmpty(deferred)) {
 							recordToAck = deferred.remove(0);
 							offs.remove(0);
 						}

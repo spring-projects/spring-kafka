@@ -724,6 +724,75 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(illegal.get()).isNotNull();
 	}
 
+	@ParameterizedTest(name = "{index} AckMode.{0}")
+	@EnumSource(value = AckMode.class, names = { "MANUAL", "MANUAL_IMMEDIATE" })
+	@SuppressWarnings("unchecked")
+	void testInOrderAckOffsetGapLargerThan1(AckMode ackMode) throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), Arrays.asList(
+				// Simulate offset gap in transaction context, the gap is often larger than 1, an additional offset for control record offset
+				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
+				new ConsumerRecord<>("foo", 0, 2L, 1, "bar"),
+				new ConsumerRecord<>("foo", 0, 4L, 1, "baz"),
+				new ConsumerRecord<>("foo", 0, 6L, 1, "qux")));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return consumerRecords;
+		});
+		TopicPartitionOffset topicPartition = new TopicPartitionOffset("foo", 0);
+		ContainerProperties containerProps = new ContainerProperties(topicPartition);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(ackMode);
+		containerProps.setAsyncAcks(true);
+		final CountDownLatch latch = new CountDownLatch(4);
+		final List<Acknowledgment> acks = new ArrayList<>();
+		final AtomicReference<IllegalStateException> illegal = new AtomicReference<>();
+		AcknowledgingMessageListener<Integer, String> messageListener = (data, ack) -> {
+			if (latch.getCount() == 4) {
+				try {
+					ack.nack(Duration.ofSeconds(1));
+				}
+				catch (IllegalStateException ex) {
+					illegal.set(ex);
+				}
+			}
+			latch.countDown();
+			acks.add(ack);
+			if (latch.getCount() == 0) {
+				records.clear();
+				acks.get(0).acknowledge();
+				acks.get(1).acknowledge();
+				acks.get(3).acknowledge();
+				acks.get(2).acknowledge();
+			}
+		};
+
+		final CountDownLatch commitLatch = new CountDownLatch(1);
+
+		willAnswer(i -> {
+					commitLatch.countDown();
+					return null;
+				}
+		).given(consumer).commitSync(anyMap(), any());
+
+		containerProps.setMessageListener(messageListener);
+		containerProps.setClientId("clientId");
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		// Assume that all async messages are acked
+		verify(consumer).commitSync(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(7L)),
+				Duration.ofMinutes(1));
+		container.stop();
+		assertThat(illegal.get()).isNotNull();
+	}
+
 	private static Stream<Arguments> testInOrderAckPauseUntilAckedParameters() {
 		return Stream.of(
 				Arguments.of(AckMode.MANUAL, false),
