@@ -2114,12 +2114,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					offs.remove(0);
 					ConsumerRecord<K, V> recordToAck = cRecord;
 					if (!CollectionUtils.isEmpty(deferred)) {
-						deferred.sort(Comparator.comparingLong(ConsumerRecord::offset));
-						while (!ObjectUtils.isEmpty(deferred) && deferred.get(0).offset() == recordToAck.offset() + 1) {
-							recordToAck = deferred.remove(0);
-							offs.remove(0);
-						}
-					}
+              deferred.sort(Comparator.comparingLong(ConsumerRecord::offset));
+              // Fix for non-contiguous offsets in transactional/read_committed mode
+              // Check if next offset exists in batch, not if it's exactly +1
+              while (!ObjectUtils.isEmpty(deferred) && !offs.isEmpty()
+                      && offs.get(0).equals(deferred.get(0).offset())) {
+
+                  recordToAck = deferred.remove(0);
+                  offs.remove(0);
+              }
+          }
 					processAck(recordToAck);
 					if (offs.isEmpty()) {
 						this.deferredOffsets.remove(part);
