@@ -1340,7 +1340,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	 * @since 2.7.2
 	 *
 	 */
-	public interface AnnotationEnhancer extends BiFunction<Map<String, @Nullable Object>, AnnotatedElement, Map<String, Object>> {
+	public interface AnnotationEnhancer extends BiFunction<Map<String, Object>, AnnotatedElement, Map<String, Object>> {
 
 	}
 
