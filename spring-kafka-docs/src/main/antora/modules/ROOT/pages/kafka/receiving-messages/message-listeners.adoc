@@ -13,7 +13,7 @@ public interface MessageListener<K, V> { <1>
 
 }
 
-public interface AcknowledgingMessageListener<K, V> { <2>
+public interface AcknowledgingMessageListener<K, V> extends MessageListener<K, V> { <2>
 
     void onMessage(ConsumerRecord<K, V> data, Acknowledgment acknowledgment);
 
