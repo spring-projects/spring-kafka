@@ -80,18 +80,12 @@ public class GlobalEmbeddedKafkaTestExecutionListener implements TestExecutionLi
 	public static final String PARTITIONS_PROPERTY_NAME = "spring.kafka.embedded.partitions";
 
 	/**
-	 * The number of partitions on topics to create on the embedded broker(s).
-	 */
-	public static final String KRAFT_PROPERTY_NAME = "spring.kafka.embedded.kraft";
-
-	/**
 	 * The location for a properties file with Kafka broker configuration.
 	 */
 	public static final String BROKER_PROPERTIES_LOCATION_PROPERTY_NAME =
 			"spring.kafka.embedded.broker.properties.location";
 
-	@Nullable
-	private EmbeddedKafkaBroker embeddedKafkaBroker;
+	private @Nullable EmbeddedKafkaBroker embeddedKafkaBroker;
 
 	@SuppressWarnings("NullAway.Init")
 	private Log logger;
@@ -160,8 +154,8 @@ public class GlobalEmbeddedKafkaTestExecutionListener implements TestExecutionLi
 	public void testPlanExecutionFinished(TestPlan testPlan) {
 		if (this.embeddedKafkaBroker != null) {
 			this.embeddedKafkaBroker.destroy();
+			this.logger.info("Stopped global Embedded Kafka.");
 		}
-		this.logger.info("Stopped global Embedded Kafka.");
 	}
 
 }
