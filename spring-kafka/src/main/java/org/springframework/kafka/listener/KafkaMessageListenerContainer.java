@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -2110,9 +2111,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (offs.get(0) == cRecord.offset()) {
 					offs.remove(0);
 					ConsumerRecord<K, V> recordToAck = cRecord;
-					if (!deferred.isEmpty()) {
-						deferred.sort((a, b) -> Long.compare(a.offset(), b.offset()));
-						while (!ObjectUtils.isEmpty(deferred) && deferred.get(0).offset() == recordToAck.offset() + 1) {
+					if (!CollectionUtils.isEmpty(deferred)) {
+						deferred.sort(Comparator.comparingLong(ConsumerRecord::offset));
+						while (!ObjectUtils.isEmpty(deferred)) {
 							recordToAck = deferred.remove(0);
 							offs.remove(0);
 						}
