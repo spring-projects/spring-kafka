@@ -136,7 +136,7 @@ public static class Config {
 
 }
 ----
-When setting `maxCache` to 5, `transactional.id` is `my.txid.`++`{0-4}`+.
+When setting `maxCache` to 5, `transactional.id` is `my.txid.`+`{0-4}`.
 
 IMPORTANT: When using `KafkaTransactionManager` with the `ConcurrentMessageListenerContainer` and enabling `maxCache`, it is necessary to set `maxCache` to a value greater than or equal to `concurrency`.
 If a `MessageListenerContainer` is unable to acquire a `transactional.id` suffix, it will throw a `NoProducerAvailableException`.
