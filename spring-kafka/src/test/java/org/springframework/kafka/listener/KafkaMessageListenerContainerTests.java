@@ -738,7 +738,7 @@ public class KafkaMessageListenerContainerTests {
 				new ConsumerRecord<>("foo", 0, 2L, 1, "bar"),
 				new ConsumerRecord<>("foo", 0, 4L, 1, "baz"),
 				new ConsumerRecord<>("foo", 0, 6L, 1, "qux")));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			return consumerRecords;
@@ -808,7 +808,7 @@ public class KafkaMessageListenerContainerTests {
 				new ConsumerRecord<>("foo", 0, 2L, 1, "bar"),
 				new ConsumerRecord<>("foo", 0, 4L, 1, "baz"),
 				new ConsumerRecord<>("foo", 0, 6L, 1, "qux")));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			return consumerRecords;
@@ -874,7 +874,7 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	@ParameterizedTest(name = "{index} AckMode.{0} batch:{1}")
-	@MethodSource("testInOrderAckPauseUntilAckedParamters")
+	@MethodSource("testInOrderAckPauseUntilAckedParameters")
 	@SuppressWarnings("unchecked")
 	void testInOrderAckPauseUntilAcked(AckMode ackMode, boolean batch) throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
