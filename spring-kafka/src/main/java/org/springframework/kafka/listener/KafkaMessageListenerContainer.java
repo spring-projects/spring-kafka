@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
@@ -638,6 +639,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private final Map<TopicPartition, OffsetAndMetadata> lastCommits = new HashMap<>();
 
 		private final Map<TopicPartition, Long> savedPositions = new HashMap<>();
+
+		private final Map<TopicPartition, OffsetAndMetadata> lastPollNextOffsets = new HashMap<>();
 
 		private final GenericMessageListener<?> genericListener;
 
@@ -1532,7 +1535,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void invokeIfHaveRecords(@Nullable ConsumerRecords<K, V> records) {
 			if (records != null && records.count() > 0) {
 				this.receivedSome = true;
-				savePositionsIfNeeded(records);
 				notIdle();
 				notIdlePartitions(records.partitions());
 				invokeListener(records);
@@ -1607,7 +1609,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void savePositionsIfNeeded(ConsumerRecords<K, V> records) {
 			if (this.fixTxOffsets) {
 				this.savedPositions.clear();
-				records.partitions().forEach(tp -> this.savedPositions.put(tp, this.consumer.position(tp)));
+				this.consumer.assignment()
+						.forEach(tp -> this.savedPositions.put(tp, this.consumer.position(tp)));
+				Map<TopicPartition, OffsetAndMetadata> nextOffsets = records.nextOffsets();
+				if (!nextOffsets.isEmpty()) {
+					this.lastPollNextOffsets.putAll(nextOffsets);
+				}
+				else {
+					this.lastPollNextOffsets.clear();
+				}
 			}
 		}
 
@@ -1615,7 +1625,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.fixTxOffsets) {
 				try {
 					Map<TopicPartition, OffsetAndMetadata> toFix = new HashMap<>();
+					Map<TopicPartition, OffsetAndMetadata> committedByBroker = null;
+					Set<TopicPartition> toFetch = null;
 					this.lastCommits.forEach((tp, oamd) -> {
+						OffsetAndMetadata nextOffset = this.lastPollNextOffsets.get(tp);
 						long position = this.consumer.position(tp);
 						Long saved = this.savedPositions.get(tp);
 						if (saved != null && saved != position) {
@@ -1626,9 +1639,41 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							return;
 						}
 						if (position > oamd.offset()) {
-							toFix.put(tp, createOffsetAndMetadata(position));
+							toFix.put(tp, buildFixOffset(oamd, position, nextOffset));
 						}
 					});
+					if (!this.lastPollNextOffsets.isEmpty()) {
+						for (TopicPartition tp : this.lastPollNextOffsets.keySet()) {
+							if (!this.lastCommits.containsKey(tp)) {
+								if (toFetch == null) {
+									toFetch = new HashSet<>();
+								}
+								toFetch.add(tp);
+							}
+						}
+						if (!CollectionUtils.isEmpty(toFetch)) {
+							committedByBroker = this.consumer.committed(toFetch);
+							for (TopicPartition tp : toFetch) {
+								OffsetAndMetadata committed = committedByBroker.get(tp);
+								if (committed == null) {
+									continue;
+								}
+								OffsetAndMetadata nextOffset = this.lastPollNextOffsets.get(tp);
+								long position = this.consumer.position(tp);
+								Long saved = this.savedPositions.get(tp);
+								if (saved != null && saved != position) {
+									this.logger.debug(() -> "Skipping TX offset correction - seek(s) have been "
+											+ "performed; saved: " + this.savedPositions + ", "
+											+ "committed: " + committed + ", "
+											+ "current: " + tp + "@" + position);
+									continue;
+								}
+								if (position > committed.offset()) {
+									toFix.put(tp, buildFixOffset(committed, position, nextOffset));
+								}
+							}
+						}
+					}
 					if (!toFix.isEmpty()) {
 						this.logger.debug(() -> "Fixing TX offsets: " + toFix);
 						if (this.kafkaTxManager == null) {
@@ -1650,11 +1695,24 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		private OffsetAndMetadata buildFixOffset(OffsetAndMetadata committed, long position,
+				@Nullable OffsetAndMetadata nextOffset) {
+
+			if (nextOffset != null) {
+				Optional<Integer> leaderEpoch = nextOffset.leaderEpoch();
+				if (leaderEpoch.isPresent()) {
+					return new OffsetAndMetadata(position, leaderEpoch, committed.metadata());
+				}
+			}
+			return new OffsetAndMetadata(position, committed.metadata());
+		}
+
 		private @Nullable ConsumerRecords<K, V> doPoll() {
 			ConsumerRecords<K, V> records;
 			if (this.isBatchListener && this.subBatchPerPartition) {
 				if (this.batchIterator == null) {
 					this.lastBatch = pollConsumer();
+					savePositionsIfNeeded(this.lastBatch);
 					captureOffsets(this.lastBatch);
 					if (this.lastBatch.count() == 0) {
 						return this.lastBatch;
@@ -1672,6 +1730,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			else {
 				records = pollConsumer();
+				savePositionsIfNeeded(records);
 				if (this.remainingRecords != null) {
 					int howManyRecords = records.count();
 					if (howManyRecords > 0) {
@@ -3711,6 +3770,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				ListenerConsumer.this.pausedForNack.removeAll(partitions);
 				partitions.forEach(ListenerConsumer.this.lastCommits::remove);
+				partitions.forEach(ListenerConsumer.this.savedPositions::remove);
+				partitions.forEach(ListenerConsumer.this.lastPollNextOffsets::remove);
 				synchronized (ListenerConsumer.this) {
 					Map<TopicPartition, List<Long>> pendingOffsets = ListenerConsumer.this.offsetsInThisBatch;
 					if (pendingOffsets != null) {
