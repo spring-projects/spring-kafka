@@ -282,10 +282,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		ListenerConsumer partitionsListenerConsumer = this.listenerConsumer;
 		if (partitionsListenerConsumer != null) {
 			if (partitionsListenerConsumer.definedPartitions != null) {
-				return Collections.unmodifiableCollection(partitionsListenerConsumer.definedPartitions.keySet());
+				synchronized (partitionsListenerConsumer.definedPartitions) {
+					return List.copyOf(partitionsListenerConsumer.definedPartitions.keySet());
+				}
 			}
 			else if (partitionsListenerConsumer.assignedPartitions != null) {
-				return Collections.unmodifiableCollection(partitionsListenerConsumer.assignedPartitions);
+				synchronized (partitionsListenerConsumer.assignedPartitions) {
+					return List.copyOf(partitionsListenerConsumer.assignedPartitions);
+				}
 			}
 		}
 		return null;
@@ -1978,7 +1982,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.commonErrorHandler.clearThreadState();
 			}
 			if (this.consumerSeekAwareListener != null) {
-				this.consumerSeekAwareListener.onPartitionsRevoked(partitions);
+				this.consumerSeekAwareListener.onPartitionsRevoked(Collections.emptyList());
 				this.consumerSeekAwareListener.unregisterSeekCallback();
 			}
 			this.logger.info(() -> this.consumerGroupId + ": Consumer stopped");
