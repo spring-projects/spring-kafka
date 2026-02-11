@@ -9,8 +9,7 @@ Examples:
 
 "my-other-topic" -> "my-topic-myRetrySuffix-1000", "my-topic-myRetrySuffix-2000", ..., "my-topic-myDltSuffix"
 
-NOTE: The default behavior is to create separate retry topics for each attempt, appended with an index value: retry-0, retry-1, ..., retry-n.
-Therefore, by default the number of retry topics is the configured `maxAttempts` minus 1.
+NOTE: Starting with version 4.0, the default behavior is to reuse a single retry topic for the same delay intervals. To create separate retry topics for each attempt, set `sameIntervalTopicReuseStrategy` to `MULTIPLE_TOPICS`.
 
 You can xref:retrytopic/topic-naming.adoc#retry-topics-and-dlt-suffixes[configure the suffixes], choose whether to append xref:retrytopic/topic-naming.adoc#append-index-or-delay[the attempt index or delay], use a xref:retrytopic/topic-naming.adoc#single-topic-fixed-delay[single retry topic when using fixed backoff], and use a xref:retrytopic/topic-naming.adoc#single-topic-maxinterval-delay[single retry topic for the attempts with the maxInterval] when using exponential backoffs.
 
@@ -99,7 +98,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
 }
 ----
 
-NOTE: The default behavior is creating separate retry topics for each attempt, appended with their index values: retry-0, retry-1, ...
+NOTE: Starting with version 4.0, the default behavior is to use a single topic for fixed delay retries. To use multiple topics, set `sameIntervalTopicReuseStrategy` to `MULTIPLE_TOPICS`.
 
 
 [[single-topic-maxinterval-delay]]
