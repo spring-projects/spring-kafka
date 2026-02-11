@@ -1,6 +1,188 @@
 [[history]]
 = Change History
 
+[[whats-new-in-4-0-since-3-3]]
+== What's New in 4.0 Since 3.3
+:page-section-summary-toc: 1
+
+This section covers the changes made from version 3.3 to version 4.0.
+For changes in earlier versions, see xref:appendix/change-history.adoc[Change History].
+
+[[x40-apache-kafka-4-0-upgrade]]
+=== Apache Kafka 4.0 Client Upgrade
+
+Spring for Apache Kafka has been upgraded to use Apache Kafka client version `4.0.0`.
+This upgrade brings several important changes:
+
+* All ZooKeeper-based functionality has been removed as Kafka 4.0 fully transitions to KRaft mode
+* The ZooKeeper dependency has been removed from the project
+* The embedded Kafka test framework now exclusively uses KRaft mode
+* The `EmbeddedKafkaZKBroker` class has been removed, and all functionality is now handled by `EmbeddedKafkaKraftBroker`
+
+[[x40-embedded-kafka-test-changes]]
+=== Embedded Kafka Test Framework Changes
+
+The test infrastructure has been significantly updated:
+
+* The `EmbeddedKafkaRule` JUnit 4 rule has been removed
+* The `@EmbeddedKafka` annotation has been simplified with the removal of ZooKeeper-related properties:
+* The `kraft` property has been removed as KRaft mode is now the only option
+* ZooKeeper-specific properties like `zookeeperPort`, `zkConnectionTimeout`, and `zkSessionTimeout` have been removed
+* KafkaClusterTestKit imports now use new packages for KRaft mode
+* Some tests have been updated to address limitations with static port assignments in KRaft mode
+* Adjustments have been made to replication factors in tests to accommodate KRaft requirements
+
+[[x40-consumer-records-constructor-changes]]
+=== ConsumerRecords Constructor Changes
+
+The `ConsumerRecords` constructor now requires an additional `Map` parameter, which has been addressed throughout the framework.
+Applications that directly use this constructor will need to update their code.
+
+[[x40-producer-interface-updates]]
+=== Producer Interface Updates
+
+New methods from the Kafka Producer interface have been implemented:
+
+* `registerMetricForSubscription`
+* `unregisterMetricFromSubscription`
+
+[[x40-removed-deprecated-functionality]]
+=== Removed Deprecated Functionality
+
+Several deprecated items have been removed:
+
+* The deprecated `partitioner` classes have been removed from runtime hints
+* The deprecated `sendOffsetsToTransaction` method that used `String consumerGroupId` has been removed
+
+[[x40-kafka-streams-updates]]
+=== Kafka Streams API Changes
+
+* `KafkaStreamBrancher` has been updated to use the new `split()` and `branch()` methods instead of the deprecated `branch()` method
+* The `DeserializationExceptionHandler` has been updated to use the new `ErrorHandlerContext`
+
+[[x40-internal-api-updates]]
+=== Internal API Updates related to Apache Kafka 4.0.0
+
+* The `BrokerAddress` class now uses `org.apache.kafka.server.network.BrokerEndPoint` instead of the deprecated `kafka.cluster.BrokerEndPoint`
+* The `GlobalEmbeddedKafkaTestExecutionListener` has been updated to work solely with KRaft mode
+
+[[x40-new-consumer-rebalance-protocol]]
+=== New Consumer Rebalance Protocol
+
+Spring for Apache Kafka 4.0 supports Kafka 4.0’s new consumer rebalance protocol - https://cwiki.apache.org/confluence/display/KAFKA/KIP-848%3A+The+Next+Generation+of+the+Consumer+Rebalance+Protocol[KIP-848].
+For details, see xref:kafka/receiving-messages/rebalance-listeners.adoc#new-rebalance-protocol[New Consumer Rebalance Protocol docs].
+
+[[x40-multi-value-header]]
+=== Support multi-value header
+
+The `JsonKafkaHeaderMapper` and `SimpleKafkaHeaderMapper` support multi-value header mapping for Kafka records.
+More details are available in xref:kafka/headers.adoc#multi-value-header[Support multi-value header mapping].
+
+[[x40-add-record-interceptor]]
+=== Configure additional `RecordInterceptor`
+
+Listener containers now support interceptor customization via `getRecordInterceptor()`.
+See the xref:kafka/receiving-messages/message-listener-container.adoc#message-listener-container[Message Listener Containers] section for details.
+
+[[x40-batch-observability]]
+=== Per-Record Observation in Batch Listeners
+
+It is now possible to get an observation for each record when using a batch listener.
+See xref:kafka/micrometer.adoc#batch-listener-obs[Observability for Batch Listeners] for more information.
+
+[[x40-kafka-queues]]
+=== Kafka Queues (Share Consumer) Support
+
+Spring for Apache Kafka now provides early access support for Kafka Queues through share consumers, which are part of Apache Kafka 4.0.0 and implement KIP-932.
+This enables cooperative consumption where multiple consumers can consume from the same partitions simultaneously, providing better load distribution compared to traditional consumer groups.
+See xref:kafka/kafka-queues.adoc[] for more information.
+
+[[x40-jackson3-support]]
+=== Jackson 3 Support
+
+Spring for Apache Kafka now provides comprehensive support for Jackson 3 alongside existing Jackson 2 support.
+Jackson 3 is automatically detected and preferred when available, providing enhanced performance and modern JSON processing capabilities.
+
+All Jackson 2 classes now have Jackson 3 counterparts with consistent naming and improved type safety:
+
+* `JsonKafkaHeaderMapper` replaces `DefaultKafkaHeaderMapper`
+* `JacksonJsonSerializer/Deserializer` replaces `JsonSerializer/Deserializer`
+* `JacksonJsonSerde` replaces `JsonSerde`
+* `JacksonJsonMessageConverter` family replaces `JsonMessageConverter` family
+* `JacksonProjectingMessageConverter` replaces `ProjectingMessageConverter`
+* `DefaultJacksonJavaTypeMapper` replaces `DefaultJackson2JavaTypeMapper`
+
+The new Jackson 3 classes use `JsonMapper` instead of generic `ObjectMapper` for enhanced type safety and leverage Jackson 3's improved module system and performance optimizations.
+
+**Migration Path**: Existing applications continue to work unchanged with Jackson 2.
+To migrate to Jackson 3, simply add Jackson 3 to your classpath and update class references to use the new Jackson 3 equivalents.
+The framework automatically detects and prefers Jackson 3 when both versions are present.
+
+**Backward Compatibility**: All Jackson 2 classes are deprecated but remain fully functional.
+They will be removed in a future major version.
+
+See xref:kafka/serdes.adoc[Serialization, Deserialization, and Message Conversion] for configuration examples.
+
+[[x40-spring-retry-replacement]]
+=== Spring Retry Dependency Removal
+
+Spring for Apache Kafka has removed its dependency on Spring Retry in favor of the core retry support introduced in Spring Framework 7.
+This is a breaking change that affects retry configuration and APIs throughout the framework.
+
+`BackOffValuesGenerator` that generates the required `BackOff` values upfront, now works directly with Spring Framework's `BackOff` interface instead of `BackOffPolicy`.
+These values are then managed by the listener infrastructure and Spring Retry is no longer involved.
+
+From a configuration standpoint, Spring Kafka relied heavily on Spring Retry's `@Backoff` annotation.
+As there is no equivalent in Spring Framework, the annotation has been moved to Spring Kafka as `@BackOff` with the following improvements:
+
+* Harmonized naming: Uses `@BackOff` instead of `@Backoff` for consistency
+* Expression evaluation: All string attributes support SpEL expressions and property placeholders
+* Duration format support: String attributes accept `java.util.Duration` formats (e.g., "2s", "500ms")
+* Enhanced documentation: Improved Javadoc with clearer explanations
+
+Migration example:
+[source,java]
+----
+// Before
+@RetryableTopic(backoff = @Backoff(delay = 2000, maxDelay = 10000, multiplier = 2))
+
+// After
+@RetryableTopic(backOff = @BackOff(delay = 2000, maxDelay = 10000, multiplier = 2))
+
+// With new duration format support
+@RetryableTopic(backOff = @BackOff(delayString = "2s", maxDelayString = "10s", multiplier = 2))
+
+// With property placeholders
+@RetryableTopic(backOff = @BackOff(delayString = "${retry.delay}", multiplierString = "${retry.multiplier}"))
+----
+
+`RetryingDeserializer` no longer offers a `RecoveryCallback` but an equivalent function that takes `RetryException` as input.
+This contains the exceptions thrown as well as the number of retry attempts:
+
+[source,java]
+----
+// Before
+retryingDeserializer.setRecoveryCallback(context -> {
+    return fallbackValue;
+});
+
+// After
+retryingDeserializer.setRecoveryCallback(retryException -> {
+    return fallbackValue;
+});
+----
+
+The use of `BinaryExceptionClassifier` has been replaced by the newly introduced `ExceptionMatcher`, which provides a polished API.
+
+Additional changes include:
+
+* `DestinationTopicPropertiesFactory` uses `ExceptionMatcher` instead of `BinaryExceptionClassifier`
+* The `uniformRandomBackoff` method in `RetryTopicConfigurationBuilder` has been deprecated in favor of jitter support
+* Error handling utilities have been updated to work with the new exception matching system
+* Kafka Streams retry templates now use Spring Framework's retry support
+
+Applications must update their configuration to use the new Spring Framework retry APIs, but the retry behavior and functionality remain the same.
+
 [[what-s-new-in-3-3-since-3-2]]
 == What's New in 3.3 Since 3.2
 :page-section-summary-toc: 1
