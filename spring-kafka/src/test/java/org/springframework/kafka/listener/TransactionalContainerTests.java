@@ -108,6 +108,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
  * @author Wang Zhiyang
  * @author Soby Chacko
  * @author Raphael Rösch
+ * @author Su Ko
  *
  * @since 1.3
  *
