@@ -638,8 +638,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Map<TopicPartition, OffsetAndMetadata> lastCommits = new HashMap<>();
 
+		// savedPositions is for detecting user seeks;
 		private final Map<TopicPartition, Long> savedPositions = new HashMap<>();
 
+		// lastPollNextOffsets is for TX offset correction with leader epoch
 		private final Map<TopicPartition, OffsetAndMetadata> lastPollNextOffsets = new HashMap<>();
 
 		private final GenericMessageListener<?> genericListener;
@@ -1615,9 +1617,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (!nextOffsets.isEmpty()) {
 					this.lastPollNextOffsets.putAll(nextOffsets);
 				}
-				else {
-					this.lastPollNextOffsets.clear();
-				}
 			}
 		}
 
@@ -1632,6 +1631,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						long position = this.consumer.position(tp);
 						Long saved = this.savedPositions.get(tp);
 						if (saved != null && saved != position) {
+							this.lastPollNextOffsets.remove(tp);
 							this.logger.debug(() -> "Skipping TX offset correction - seek(s) have been performed; "
 									+ "saved: " + this.savedPositions + ", "
 									+ "committed: " + oamd + ", "
@@ -1662,6 +1662,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 								long position = this.consumer.position(tp);
 								Long saved = this.savedPositions.get(tp);
 								if (saved != null && saved != position) {
+									this.lastPollNextOffsets.remove(tp);
 									this.logger.debug(() -> "Skipping TX offset correction - seek(s) have been "
 											+ "performed; saved: " + this.savedPositions + ", "
 											+ "committed: " + committed + ", "
@@ -1683,6 +1684,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							Objects.requireNonNull(this.transactionTemplate).executeWithoutResult(
 									status -> doSendOffsets(getTxProducer(), toFix));
 						}
+						toFix.keySet().forEach(this.lastPollNextOffsets::remove);
 					}
 				}
 				catch (Exception e) {
