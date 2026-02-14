@@ -71,7 +71,7 @@ ext {
 	springDataVersion = '2024.1.13'
 	springRetryVersion = '2.0.12'
 	springVersion = '6.2.15'
-	zookeeperVersion = '3.8.5'
+	zookeeperVersion = '3.8.6'
 
 	idPrefix = 'kafka'
 
