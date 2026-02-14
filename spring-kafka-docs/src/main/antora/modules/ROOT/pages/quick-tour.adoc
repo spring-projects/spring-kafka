@@ -29,7 +29,7 @@ implementation 'org.springframework.kafka:spring-kafka:{project-version}'
 ----
 ======
 
-IMPORTANT: When using Spring Boot, (and you haven't used start.spring.io to create your project), omit the version and Boot will automatically bring in the correct version that is compatible with your Boot version:
+IMPORTANT: When using Spring Boot, (and you haven't used start.spring.io to create your project), use the `spring-boot-starter-kafka` dependency and omit the version; Boot will automatically bring in the correct version that is compatible with your Boot version:
 
 [tabs]
 ======
@@ -38,8 +38,8 @@ Maven::
 [source,xml,subs="+attributes",role="primary"]
 ----
 <dependency>
-  <groupId>org.springframework.kafka</groupId>
-  <artifactId>spring-kafka</artifactId>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-kafka</artifactId>
 </dependency>
 ----
 
@@ -47,7 +47,7 @@ Gradle::
 +
 [source,groovy,subs="+attributes",role="secondary"]
 ----
-implementation 'org.springframework.kafka:spring-kafka'
+implementation 'org.springframework.boot:spring-boot-starter-kafka'
 ----
 ======
 
