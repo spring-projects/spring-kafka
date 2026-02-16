@@ -51,7 +51,7 @@ ext {
 					}
 	modifiedFiles.finalizeValueOnRead()
 
-	assertjVersion = '3.27.6'
+	assertjVersion = '3.27.7'
 	awaitilityVersion = '4.3.0'
 	hamcrestVersion = '3.0'
 	hibernateValidationVersion = '9.0.1.Final'
