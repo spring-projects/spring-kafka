@@ -58,31 +58,6 @@ updates:
           - com.github.spotbugs
           - org.springframework.boot*
 
-  - package-ecosystem: github-actions
-    directory: /
-    schedule:
-      interval: weekly
-      day: saturday
-    labels:
-      - 'type: task'
-    groups:
-      development-dependencies:
-        patterns:
-          - '*'
-
-  - package-ecosystem: github-actions
-    target-branch: 4.0.x
-    directory: /
-    schedule:
-      interval: weekly
-      day: saturday
-    labels:
-      - 'type: task'
-    groups:
-      development-dependencies:
-        patterns:
-          - '*'
-
   - package-ecosystem: gradle
     target-branch: 3.3.x
     directory: /
@@ -114,6 +89,19 @@ updates:
           - org.springframework.boot*
 
   - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: saturday
+    labels:
+      - 'type: task'
+    groups:
+      development-dependencies:
+        patterns:
+          - '*'
+
+  - package-ecosystem: github-actions
+    target-branch: 4.0.x
     directory: /
     schedule:
       interval: weekly
