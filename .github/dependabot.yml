@@ -27,7 +27,7 @@ updates:
           - org.hibernate.validator:hibernate-validator
           - org.awaitility:awaitility
           - org.springframework.boot*
-          -
+
   - package-ecosystem: gradle
     target-branch: 4.0.x
     directory: /
