@@ -3,6 +3,29 @@
 
 The `spring-kafka-test` jar contains some useful utilities to assist with testing your applications.
 
+IMPORTANT: When using Spring Boot, use the `spring-boot-starter-kafka-test` dependency instead:
+
+[tabs]
+======
+Maven::
++
+[source,xml,subs="+attributes",role="primary"]
+----
+<dependency>
+  <groupId>org.springframework.boot</groupId>
+  <artifactId>spring-boot-starter-kafka-test</artifactId>
+  <scope>test</scope>
+</dependency>
+----
+
+Gradle::
++
+[source,groovy,subs="+attributes",role="secondary"]
+----
+testImplementation 'org.springframework.boot:spring-boot-starter-kafka-test'
+----
+======
+
 [[ekb]]
 == Embedded Kafka Broker
 
