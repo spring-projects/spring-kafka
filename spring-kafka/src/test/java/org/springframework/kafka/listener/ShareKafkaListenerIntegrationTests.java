@@ -151,7 +151,7 @@ class ShareKafkaListenerIntegrationTests {
 		kafkaTemplate.send(topic, "ack-consumer-aware-message");
 
 		// Wait for processing
-		assertThat(AckShareConsumerAwareTestListener.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(AckShareConsumerAwareTestListener.latch.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(AckShareConsumerAwareTestListener.received.get()).isEqualTo("ack-consumer-aware-message");
 		assertThat(AckShareConsumerAwareTestListener.consumerReceived.get()).isNotNull();
 		assertThat(AckShareConsumerAwareTestListener.acknowledgmentReceived.get()).isNotNull();

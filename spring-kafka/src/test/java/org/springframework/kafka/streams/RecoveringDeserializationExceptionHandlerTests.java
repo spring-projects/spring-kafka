@@ -33,7 +33,8 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.errors.DeserializationExceptionHandler.DeserializationHandlerResponse;
+import org.apache.kafka.streams.errors.DeserializationExceptionHandler.Response;
+import org.apache.kafka.streams.errors.DeserializationExceptionHandler.Result;
 import org.apache.kafka.streams.errors.ErrorHandlerContext;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.processor.WallclockTimestampExtractor;
@@ -94,10 +95,10 @@ public class RecoveringDeserializationExceptionHandlerTests {
 				Recoverer.class.getName());
 		handler.configure(configs);
 		assertThat(KafkaTestUtils.getPropertyValue(handler, "recoverer")).isInstanceOf(Recoverer.class);
-		assertThat(handler.handle((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
-				new IllegalArgumentException())).isEqualTo(DeserializationHandlerResponse.CONTINUE);
-		assertThat(handler.handle((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
-				new IllegalStateException())).isEqualTo(DeserializationHandlerResponse.FAIL);
+		assertThat(handler.handleError((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
+				new IllegalArgumentException())).extracting(Response::result).isEqualTo(Result.RESUME);
+		assertThat(handler.handleError((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
+				new IllegalStateException())).extracting(Response::result).isEqualTo(Result.FAIL);
 	}
 
 	@Test
@@ -107,10 +108,10 @@ public class RecoveringDeserializationExceptionHandlerTests {
 		configs.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER, Recoverer.class);
 		handler.configure(configs);
 		assertThat(KafkaTestUtils.getPropertyValue(handler, "recoverer")).isInstanceOf(Recoverer.class);
-		assertThat(handler.handle((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
-				new IllegalArgumentException())).isEqualTo(DeserializationHandlerResponse.CONTINUE);
-		assertThat(handler.handle((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
-				new IllegalStateException())).isEqualTo(DeserializationHandlerResponse.FAIL);
+		assertThat(handler.handleError((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
+				new IllegalArgumentException())).extracting(Response::result).isEqualTo(Result.RESUME);
+		assertThat(handler.handleError((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
+				new IllegalStateException())).extracting(Response::result).isEqualTo(Result.FAIL);
 	}
 
 	@Test
@@ -121,17 +122,17 @@ public class RecoveringDeserializationExceptionHandlerTests {
 		configs.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER, rec);
 		handler.configure(configs);
 		assertThat(KafkaTestUtils.getPropertyValue(handler, "recoverer")).isSameAs(rec);
-		assertThat(handler.handle((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
-				new IllegalArgumentException())).isEqualTo(DeserializationHandlerResponse.CONTINUE);
-		assertThat(handler.handle((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
-				new IllegalStateException())).isEqualTo(DeserializationHandlerResponse.FAIL);
+		assertThat(handler.handleError((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
+				new IllegalArgumentException())).extracting(Response::result).isEqualTo(Result.RESUME);
+		assertThat(handler.handleError((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
+				new IllegalStateException())).extracting(Response::result).isEqualTo(Result.FAIL);
 	}
 
 	@Test
 	void withNoRecoverer() {
 		RecoveringDeserializationExceptionHandler handler = new RecoveringDeserializationExceptionHandler();
-		assertThat(handler.handle((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
-				new IllegalArgumentException())).isEqualTo(DeserializationHandlerResponse.FAIL);
+		assertThat(handler.handleError((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
+				new IllegalArgumentException())).extracting(Response::result).isEqualTo(Result.FAIL);
 	}
 
 	@Test

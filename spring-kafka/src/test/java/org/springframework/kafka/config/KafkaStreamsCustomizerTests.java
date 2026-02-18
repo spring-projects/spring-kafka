@@ -61,6 +61,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Artem Bilan
  * @author Almog Gavra
  * @author Sanghyeok An
+ * @author Soby Chacko
  *
  * @since 2.1.5
  */
@@ -236,9 +237,9 @@ public class KafkaStreamsCustomizerTests {
 		}
 
 		@Override
-		public DeserializationHandlerResponse handle(ErrorHandlerContext context, ConsumerRecord<byte[], byte[]> record,
+		public Response handleError(ErrorHandlerContext context, ConsumerRecord<byte[], byte[]> record,
 				Exception exception) {
-			return null;
+			return Response.fail();
 		}
 
 	}
