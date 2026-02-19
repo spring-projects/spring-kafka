@@ -34,6 +34,7 @@ import org.springframework.util.ClassUtils;
  * and continues.
  *
  * @author Gary Russell
+ * @author Soby Chacko
  * @since 2.3
  *
  */
@@ -55,20 +56,36 @@ public class RecoveringDeserializationExceptionHandler implements Deserializatio
 		this.recoverer = recoverer;
 	}
 
+	/**
+	 * Handle the deserialization exception by delegating to the configured recoverer.
+	 * @deprecated since 4.1 in favor of {@link #handleError(ErrorHandlerContext, ConsumerRecord, Exception)}.
+	 */
+	@Deprecated(since = "4.1", forRemoval = true)
 	@Override
+	@SuppressWarnings("deprecation")
 	public DeserializationHandlerResponse handle(ErrorHandlerContext context, ConsumerRecord<byte[], byte[]> record,
 			Exception exception) {
 
+		Response response = handleError(context, record, exception);
+		return response.result() == Result.RESUME
+				? DeserializationHandlerResponse.CONTINUE
+				: DeserializationHandlerResponse.FAIL;
+	}
+
+	@Override
+	public Response handleError(ErrorHandlerContext context, ConsumerRecord<byte[], byte[]> record,
+			Exception exception) {
+
 		if (this.recoverer == null) {
-			return DeserializationHandlerResponse.FAIL;
+			return Response.fail();
 		}
 		try {
 			this.recoverer.accept(record, exception);
-			return DeserializationHandlerResponse.CONTINUE;
+			return Response.resume();
 		}
 		catch (RuntimeException e) {
 			LOGGER.error("Recoverer threw an exception; recovery failed", e);
-			return DeserializationHandlerResponse.FAIL;
+			return Response.fail();
 		}
 	}
 

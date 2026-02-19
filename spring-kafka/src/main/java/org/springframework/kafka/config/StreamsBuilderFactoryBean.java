@@ -24,6 +24,7 @@ import java.util.Properties;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.streams.CloseOptions;
 import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -399,9 +400,11 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 			if (this.running) {
 				try {
 					if (this.kafkaStreams != null) {
-						this.kafkaStreams.close(new KafkaStreams.CloseOptions()
-								.timeout(this.closeTimeout)
-								.leaveGroup(this.leaveGroupOnClose)
+						this.kafkaStreams.close(
+								CloseOptions.timeout(this.closeTimeout)
+										.withGroupMembershipOperation(this.leaveGroupOnClose
+												? CloseOptions.GroupMembershipOperation.LEAVE_GROUP
+												: CloseOptions.GroupMembershipOperation.REMAIN_IN_GROUP)
 						);
 						if (this.cleanupConfig.cleanupOnStop()) {
 							this.kafkaStreams.cleanUp();
