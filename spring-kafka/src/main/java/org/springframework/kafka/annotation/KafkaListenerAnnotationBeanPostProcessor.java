@@ -882,7 +882,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		if (kafkaListener.topicPartitions().length > 0) {
 			count++;
 		}
-		Assert.state(count == 1, "Only one of @Topic or @TopicPartition or @TopicPattern must be provided");
+		Assert.state(count <= 1, "Only one of @Topic or @TopicPartition or @TopicPattern must be provided");
 	}
 
 	private TopicPartitionOffset[] resolveTopicPartitions(KafkaListener kafkaListener) {

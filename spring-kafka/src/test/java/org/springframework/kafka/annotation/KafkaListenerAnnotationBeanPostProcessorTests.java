@@ -16,14 +16,27 @@
 
 package org.springframework.kafka.annotation;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.config.AbstractKafkaListenerEndpoint;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.config.KafkaListenerEndpoint;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.stereotype.Component;
 
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatNoException;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Sanghyeok An
@@ -47,6 +60,26 @@ class KafkaListenerAnnotationBeanPostProcessorTests {
 
 	}
 
+	@Test
+	void shouldRejectMultipleTopicSpecifications() {
+		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+		ctx.register(MultipleTopicSpecConfig.class);
+
+		assertThatExceptionOfType(BeanCreationException.class)
+				.isThrownBy(ctx::refresh)
+				.withRootCauseInstanceOf(IllegalStateException.class)
+				.withMessageContaining("Only one of @Topic or @TopicPartition or @TopicPattern must be provided");
+	}
+
+	@Test
+	void shouldAllowNoTopicSpecificationForProgrammaticResolution() {
+		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+		ctx.register(NoTopicSpecConfig.class);
+
+		assertThatNoException().isThrownBy(ctx::refresh);
+		ctx.close();
+	}
+
 	@EnableKafka
 	@Configuration
 	static class TestConfig {
@@ -57,6 +90,77 @@ class KafkaListenerAnnotationBeanPostProcessorTests {
 
 			public void listen(String message) {
 			}
+		}
+
+	}
+
+	@EnableKafka
+	@Configuration
+	static class MultipleTopicSpecConfig {
+
+		@SuppressWarnings("unchecked")
+		@Bean
+		ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory() {
+			ConcurrentKafkaListenerContainerFactory<String, Object> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
+			factory.setConsumerFactory(mock(ConsumerFactory.class));
+			return factory;
+		}
+
+		@Component
+		static class MultipleTopicSpecListener {
+
+			@KafkaListener(topics = "topic1", topicPattern = "topic.*")
+			public void listen(String message) {
+			}
+		}
+
+	}
+
+	@EnableKafka
+	@Configuration
+	static class NoTopicSpecConfig {
+
+		@SuppressWarnings("unchecked")
+		@Bean
+		TopicResolvingContainerFactory myFactory() {
+			TopicResolvingContainerFactory factory = new TopicResolvingContainerFactory();
+			factory.setConsumerFactory(mock(ConsumerFactory.class));
+			factory.setAutoStartup(false);
+			return factory;
+		}
+
+		@Component
+		static class MetaAnnotatedListener {
+
+			@MyCustomKafkaListener
+			public void listen(String message) {
+			}
+		}
+
+	}
+
+	@Target(ElementType.METHOD)
+	@Retention(RetentionPolicy.RUNTIME)
+	@KafkaListener(containerFactory = "myFactory")
+	@interface MyCustomKafkaListener {
+	}
+
+	/**
+	 * Custom container factory that resolves topics programmatically,
+	 * simulating the use case where a meta-annotated @KafkaListener
+	 * does not specify topics in the annotation.
+	 */
+	static class TopicResolvingContainerFactory extends ConcurrentKafkaListenerContainerFactory<String, Object> {
+
+		@Override
+		public ConcurrentMessageListenerContainer<String, Object> createListenerContainer(
+				KafkaListenerEndpoint endpoint) {
+
+			if (endpoint instanceof AbstractKafkaListenerEndpoint<?, ?> akle) {
+				akle.setTopics("programmatically-resolved-topic");
+			}
+			return super.createListenerContainer(endpoint);
 		}
 
 	}
