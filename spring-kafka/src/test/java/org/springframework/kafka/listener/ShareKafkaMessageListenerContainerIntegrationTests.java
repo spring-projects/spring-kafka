@@ -318,9 +318,13 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		ContainerProperties containerProps = new ContainerProperties(topic);
 		containerProps.setExplicitShareAcknowledgment(true);
 
-		CountDownLatch batchLatch = new CountDownLatch(4);
+		// The 4th record's ack is held back to verify poll-blocking behavior;
+		// all other records are acknowledged immediately in the listener to
+		// comply with the explicit mode contract (per-record acknowledgment
+		// within the poll batch).
+		AtomicReference<ShareAcknowledgment> heldAck = new AtomicReference<>();
+		CountDownLatch heldAckLatch = new CountDownLatch(1);
 		CountDownLatch nextPollLatch = new CountDownLatch(1);
-		List<ShareAcknowledgment> batchAcks = Collections.synchronizedList(new ArrayList<>());
 		AtomicInteger totalProcessed = new AtomicInteger();
 
 		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
@@ -328,16 +332,25 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 
 			int count = totalProcessed.incrementAndGet();
 
-			if (count <= 4) {
-				batchAcks.add(acknowledgment);
-				batchLatch.countDown();
+			if (count < 4) {
+				// Acknowledge immediately — required in explicit mode
+				acknowledgment.acknowledge();
+			}
+			else if (count == 4) {
+				// Hold the 4th record's ack to test poll-blocking
+				heldAck.set(acknowledgment);
+				heldAckLatch.countDown();
 			}
 			else {
-				// This should only happen after all previous records acknowledged
+				// This should only happen after the held ack is acknowledged
 				acknowledgment.acknowledge();
 				nextPollLatch.countDown();
 			}
 		});
+
+		// Produce records before starting the container so they are available
+		// on the first poll, reducing timing sensitivity.
+		produceTestRecords(bootstrapServers, topic, 4);
 
 		ShareKafkaMessageListenerContainer<String, String> container =
 				new ShareKafkaMessageListenerContainer<>(factory, containerProps);
@@ -351,17 +364,10 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		DirectFieldAccessor accessor = new DirectFieldAccessor(container);
 		accessor.setPropertyValue("consumers[0].logger", logAccessor);
 
-		produceTestRecords(bootstrapServers, topic, 4);
-
 		try {
-			// Wait for batch to be processed
-			assertThat(batchLatch.await(15, TimeUnit.SECONDS)).isTrue();
-			assertThat(batchAcks).hasSize(4);
-
-			// Acknowledge only first 3 records
-			for (int i = 0; i < 3; i++) {
-				batchAcks.get(i).acknowledge();
-			}
+			// Wait for the 4th record to be received (its ack is held)
+			assertThat(heldAckLatch.await(15, TimeUnit.SECONDS)).isTrue();
+			assertThat(heldAck.get()).isNotNull();
 
 			// Produce more records
 			produceTestRecords(bootstrapServers, topic, 1);
@@ -375,8 +381,8 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 
 			assertThat(totalProcessed.get()).isEqualTo(4);
 
-			// Acknowledge the last pending record
-			batchAcks.get(3).acknowledge();
+			// Acknowledge the held record
+			heldAck.get().acknowledge();
 
 			// Now should process new records
 			assertThat(nextPollLatch.await(15, TimeUnit.SECONDS)).isTrue();
