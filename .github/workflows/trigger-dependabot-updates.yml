@@ -1,0 +1,9 @@
+name: Trigger Dependabot Updates
+on:
+  workflow_dispatch:
+
+jobs:
+  trigget-dependabot:
+    uses: spring-io/spring-github-workflows/.github/workflows/spring-trigger-dependabot-updates.yml@main
+    secrets:
+      GH_ACTIONS_REPO_TOKEN: ${{ secrets.GH_ACTIONS_REPO_TOKEN }}
