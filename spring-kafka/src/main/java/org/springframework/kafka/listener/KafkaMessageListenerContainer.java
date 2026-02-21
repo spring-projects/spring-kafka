@@ -946,6 +946,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.isConsumerAwareListener = listenerType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
 					|| listenerType.equals(ListenerType.CONSUMER_AWARE);
 			this.commonErrorHandler = determineCommonErrorHandler();
+			// Setup async failure callback for suspend functions when CommonErrorHandler is explicitly configured
+			if (getCommonErrorHandler() != null && this.listener != null) {
+				MessageListener<?, ?> target = unwrapDelegateIfAny(this.listener);
+				if (target instanceof RecordMessagingMessageListenerAdapter<?, ?>) {
+					@SuppressWarnings("unchecked")
+					RecordMessagingMessageListenerAdapter<K, V> adapter =
+							(RecordMessagingMessageListenerAdapter<K, V>) target;
+					adapter.setCallbackForAsyncFailure(this::callbackForAsyncFailure);
+				}
+			}
 			Assert.state(!this.isBatchListener || !this.isRecordAck,
 					"Cannot use AckMode.RECORD with a batch listener");
 			if (this.containerProperties.getScheduler() != null) {
