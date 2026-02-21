@@ -34,7 +34,7 @@ import org.jspecify.annotations.Nullable;
 public interface ConsumerAwareMessageListener<K, V> extends MessageListener<K, V> {
 
 	/**
-	 * Invoked with data from kafka. Containers should never call this since it they
+	 * Invoked with data from kafka. Containers should never call this since they
 	 * will detect we are a consumer aware acknowledging listener.
 	 * @param data the data to be processed.
 	 */
