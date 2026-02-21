@@ -40,7 +40,7 @@ import org.springframework.kafka.support.Acknowledgment;
 public interface BatchAcknowledgingMessageListener<K, V> extends BatchMessageListener<K, V> {
 
 	/**
-	 * Invoked with data from kafka. Containers should never call this since it they
+	 * Invoked with data from kafka. Containers should never call this since they
 	 * will detect that we are an acknowledging listener.
 	 * @param data the data to be processed.
 	 */
