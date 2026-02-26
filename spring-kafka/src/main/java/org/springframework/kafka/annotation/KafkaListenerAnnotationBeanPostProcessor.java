@@ -147,6 +147,8 @@ import org.springframework.validation.Validator;
  * @author Sanghyeok An
  * @author Soby Chacko
  * @author Omer Celik
+ * @author Go BeomJun
+ * @author Maxim Ceban
  *
  * @see KafkaListener
  * @see KafkaListenerErrorHandler
@@ -873,7 +875,7 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 		if (kafkaListener.topicPartitions().length > 0) {
 			count++;
 		}
-		Assert.state(count == 1, "Only one of @Topic or @TopicPartition or @TopicPattern must be provided");
+		Assert.state(count <= 1, "Only one of @Topic or @TopicPartition or @TopicPattern must be provided");
 	}
 
 	private TopicPartitionOffset[] resolveTopicPartitions(KafkaListener kafkaListener) {
