@@ -30,12 +30,13 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.AbstractKafkaListenerEndpoint;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpoint;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.stereotype.Component;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -75,8 +76,14 @@ class KafkaListenerAnnotationBeanPostProcessorTests {
 	void shouldAllowNoTopicSpecificationForProgrammaticResolution() {
 		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
 		ctx.register(NoTopicSpecConfig.class);
+		ctx.refresh();
 
-		assertThatNoException().isThrownBy(ctx::refresh);
+		KafkaListenerEndpointRegistry registry = ctx.getBean(KafkaListenerEndpointRegistry.class);
+		assertThat(registry.getAllListenerContainers()).hasSize(1);
+		assertThat(registry.getAllListenerContainers().iterator().next()
+				.getContainerProperties().getTopics())
+				.containsExactly("programmatically-resolved-topic");
+
 		ctx.close();
 	}
 
