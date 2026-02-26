@@ -150,6 +150,7 @@ import org.springframework.validation.Validator;
  * @author Soby Chacko
  * @author Omer Celik
  * @author Go BeomJun
+ * @author Maxim Ceban
  *
  * @see KafkaListener
  * @see KafkaListenerErrorHandler

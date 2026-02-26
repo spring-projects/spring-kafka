@@ -41,6 +41,7 @@ import static org.mockito.Mockito.mock;
 
 /**
  * @author Sanghyeok An
+ * @author Maxim Ceban
  *
  * @since 4.0.0
  */
