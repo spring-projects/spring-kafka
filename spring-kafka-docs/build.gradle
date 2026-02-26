@@ -30,7 +30,6 @@ dependencies {
     implementation "org.springframework.boot:spring-boot-starter:$springBootVersion"
     implementation project (':spring-kafka')
     implementation 'org.jetbrains.kotlin:kotlin-stdlib'
-    implementation 'com.fasterxml.jackson.core:jackson-core'
-    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'tools.jackson.core:jackson-databind'
 }
 
