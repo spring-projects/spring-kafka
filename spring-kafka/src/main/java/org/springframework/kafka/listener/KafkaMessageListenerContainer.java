@@ -1511,26 +1511,23 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		protected void handleAsyncFailure() {
-			List<FailedRecordTuple<K, V>> copyFailedRecords = new ArrayList<>(this.failedRecords);
-
-			// If we use failedRecords.clear() to remove copied record from failed records,
-			// We may encounter race condition during this operation.
-			// Other, the thread which execute this block, may miss one failed record.
-			int capturedRecordsCount = copyFailedRecords.size();
+			int capturedRecordsCount = this.failedRecords.size();
 			for (int i = 0; i < capturedRecordsCount; i++) {
-				this.failedRecords.pollFirst();
-			}
-
-			// If any copied and failed record fails to complete due to an unexpected error,
-			// We will give up on retrying with the remaining copied and failed Records.
-			for (FailedRecordTuple<K, V> copyFailedRecord : copyFailedRecords) {
+				FailedRecordTuple<K, V> failedRecord = this.failedRecords.pollFirst();
+				if (failedRecord == null) {
+					break;
+				}
 				try {
-					copyFailedRecord.observation.scoped(() -> invokeErrorHandlerBySingleRecord(copyFailedRecord));
+					failedRecord.observation.scoped(() -> invokeErrorHandlerBySingleRecord(failedRecord));
+				}
+				catch (RecordInRetryException e) {
+					// Keep retryable async failures for the next poll loop.
+					this.failedRecords.addLast(failedRecord);
 				}
 				catch (Exception e) {
 					this.logger.warn(() ->
 							"Async failed record failed to complete, thus skip it. record :"
-									+ copyFailedRecord.toString()
+									+ failedRecord
 									+ ", Exception : "
 									+ e.getMessage());
 				}
@@ -2584,20 +2581,32 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (Objects.requireNonNull(this.commonErrorHandler).seeksAfterHandling() || this.transactionManager != null
 					|| rte instanceof CommitFailedException) {
 
-				this.commonErrorHandler.handleBatch(rte, records, this.consumer,
-						KafkaMessageListenerContainer.this.thisOrParentContainer,
-						() -> invokeBatchOnMessageWithRecordsOrList(records, list));
-			}
-			else {
-				ConsumerRecords<K, V> afterHandling = this.commonErrorHandler.handleBatchAndReturnRemaining(rte,
-						records, this.consumer, KafkaMessageListenerContainer.this.thisOrParentContainer,
-						() -> invokeBatchOnMessageWithRecordsOrList(records, list));
-				if (afterHandling != null && !afterHandling.isEmpty()) {
-					this.remainingRecords = afterHandling;
-					this.pauseForPending = true;
+				try {
+					this.commonErrorHandler.handleBatch(rte, records, this.consumer,
+							KafkaMessageListenerContainer.this.thisOrParentContainer,
+							() -> invokeBatchOnMessageWithRecordsOrList(records, list));
+				}
+				catch (RecordInRetryException e) {
+					removeOffsetsInBatch(list);
+					throw e;
+				}
+				}
+				else {
+					try {
+						ConsumerRecords<K, V> afterHandling = this.commonErrorHandler.handleBatchAndReturnRemaining(rte,
+								records, this.consumer, KafkaMessageListenerContainer.this.thisOrParentContainer,
+								() -> invokeBatchOnMessageWithRecordsOrList(records, list));
+						if (afterHandling != null && !afterHandling.isEmpty()) {
+							this.remainingRecords = afterHandling;
+							this.pauseForPending = true;
+						}
+					}
+					catch (RecordInRetryException e) {
+						removeOffsetsInBatch(list);
+						throw e;
+					}
 				}
 			}
-		}
 
 		private void invokeRecordListener(final ConsumerRecords<K, V> records) {
 			if (this.transactionTemplate != null) {
@@ -3009,10 +3018,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				catch (Exception ex) { // NO SONAR
 					this.logger.error(ex, "Failed to commit before handling error");
 				}
-				List<ConsumerRecord<?, ?>> records = new ArrayList<>();
-				records.add(cRecord);
-				this.commonErrorHandler.handleRemaining(rte, records, this.consumer,
-						KafkaMessageListenerContainer.this.thisOrParentContainer);
+				try {
+					List<ConsumerRecord<?, ?>> records = new ArrayList<>();
+					records.add(cRecord);
+					this.commonErrorHandler.handleRemaining(rte, records, this.consumer,
+							KafkaMessageListenerContainer.this.thisOrParentContainer);
+				}
+				catch (RecordInRetryException e) {
+					removeOffsetsInBatch(List.of(cRecord));
+					throw e;
+				}
 			}
 			else {
 				boolean handled = false;
@@ -3049,13 +3064,19 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				catch (Exception ex) { // NO SONAR
 					this.logger.error(ex, "Failed to commit before handling error");
 				}
-				List<ConsumerRecord<?, ?>> records = new ArrayList<>();
-				records.add(cRecord);
+				List<ConsumerRecord<K, V>> retryRecords = new ArrayList<>();
+				retryRecords.add(cRecord);
 				while (iterator.hasNext()) {
-					records.add(iterator.next());
+					retryRecords.add(iterator.next());
 				}
-				this.commonErrorHandler.handleRemaining(rte, records, this.consumer,
-						KafkaMessageListenerContainer.this.thisOrParentContainer);
+				try {
+					this.commonErrorHandler.handleRemaining(rte, new ArrayList<>(retryRecords), this.consumer,
+							KafkaMessageListenerContainer.this.thisOrParentContainer);
+				}
+				catch (RecordInRetryException e) {
+					removeOffsetsInBatch(retryRecords);
+					throw e;
+				}
 			}
 			else {
 				boolean handled = false;
@@ -3079,6 +3100,28 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (!records.isEmpty()) {
 					this.remainingRecords = new ConsumerRecords<>(records, Map.of());
 					this.pauseForPending = true;
+				}
+			}
+		}
+
+		private synchronized void removeOffsetsInBatch(Iterable<ConsumerRecord<K, V>> records) {
+			if (this.offsetsInThisBatch == null || this.deferredOffsets == null) {
+				return;
+			}
+			for (ConsumerRecord<K, V> record : records) {
+				TopicPartition part = new TopicPartition(record.topic(), record.partition());
+				List<Long> offsets = this.offsetsInThisBatch.get(part);
+				if (ObjectUtils.isEmpty(offsets)) {
+					continue;
+				}
+				offsets.remove(record.offset());
+				List<ConsumerRecord<K, V>> deferred = this.deferredOffsets.get(part);
+				if (deferred != null) {
+					deferred.removeIf(deferredRecord -> deferredRecord.offset() == record.offset());
+				}
+				if (offsets.isEmpty()) {
+					this.offsetsInThisBatch.remove(part);
+					this.deferredOffsets.remove(part);
 				}
 			}
 		}
