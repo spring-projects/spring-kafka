@@ -1511,6 +1511,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		protected void handleAsyncFailure() {
+			// Process only the records present at loop start; failures added concurrently
+			// are handled in the next loop iteration.
 			int capturedRecordsCount = this.failedRecords.size();
 			for (int i = 0; i < capturedRecordsCount; i++) {
 				FailedRecordTuple<K, V> failedRecord = this.failedRecords.pollFirst();
