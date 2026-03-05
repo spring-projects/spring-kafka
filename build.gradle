@@ -1,12 +1,8 @@
 buildscript {
-	ext.kotlinVersion = '2.2.21'
-	ext.isCI = System.getenv('GITHUB_ACTION')
+	ext.kotlinVersion = '2.3.10'
 	repositories {
 		gradlePluginPortal()
 		mavenCentral()
-		if (version.endsWith('SNAPSHOT')) {
-			maven { url 'https://repo.spring.io/snapshot' }
-		}
 	}
 	dependencies {
 		classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
@@ -17,30 +13,19 @@ buildscript {
 plugins {
 	id 'base'
 	id 'idea'
-	id 'org.ajoberstar.grgit' version '5.3.3'
-	id 'io.spring.nohttp' version '0.0.11'
-	id 'io.spring.dependency-management' version '1.1.7' apply false
 	id 'io.freefair.aggregate-javadoc' version '9.2.0'
 	id 'io.spring.nullability' version '0.0.12' apply false
 }
-
-apply plugin: 'io.spring.nohttp'
 
 description = 'Spring for Apache Kafka'
 
 ext {
 	linkHomepage = 'https://github.com/spring-projects/spring-kafka'
-	linkCi = 'https://build.spring.io/browse/SK'
+	linkCi = 'https://github.com/spring-projects/spring-kafka/actions/workflows/ci-snapshot.yml'
 	linkIssue = 'https://github.com/spring-projects/spring-kafka/issues'
 	linkScmUrl = 'https://github.com/spring-projects/spring-kafka'
 	linkScmConnection = 'https://github.com/spring-projects/spring-kafka.git'
 	linkScmDevConnection = 'git@github.com:spring-projects/spring-kafka.git'
-
-	javadocLinks = [
-		'https://docs.oracle.com/en/java/javase/17/docs/api/',
-		'https://jakarta.ee/specifications/platform/11/apidocs/',
-		'https://docs.spring.io/spring-framework/docs/current/javadoc-api/'
-	] as String[]
 
 	assertjVersion = '3.27.7'
 	awaitilityVersion = '4.3.0'
@@ -69,15 +54,8 @@ ext {
 
 }
 
-nohttp {
-	source.include '**/src/**'
-	source.exclude '**/*.gif', '**/*.ks', '**/.gradle/**'
-}
-
 allprojects {
 	group = 'org.springframework.kafka'
-
-	apply plugin: 'io.spring.dependency-management'
 
 	repositories {
 		mavenCentral()
@@ -89,25 +67,27 @@ allprojects {
 //		maven { url 'https://repository.apache.org/content/groups/staging/' }
 	}
 
-	dependencyManagement {
-		resolutionStrategy {
-			cacheChangingModulesFor 0, 'seconds'
-		}
-		applyMavenExclusions = false
-		generatedPomCustomization {
-			enabled = false
+	configurations {
+		dependencyManagement {
+			canBeConsumed = false
+			canBeResolved = false
 		}
 
-		imports {
-			mavenBom "com.fasterxml.jackson:jackson-bom:$jacksonBomVersion"
-			mavenBom "tools.jackson:jackson-bom:$jackson3Version"
-			mavenBom "org.junit:junit-bom:$junitJupiterVersion"
-			mavenBom "io.micrometer:micrometer-bom:$micrometerVersion"
-			mavenBom "io.micrometer:micrometer-tracing-bom:$micrometerTracingVersion"
-			mavenBom "io.projectreactor:reactor-bom:$reactorVersion"
-			mavenBom "org.springframework.data:spring-data-bom:$springDataVersion"
-			mavenBom "org.springframework:spring-framework-bom:$springVersion"
+		configureEach {
+			resolutionStrategy.cacheChangingModulesFor 0, 'minutes'
 		}
+	}
+
+	dependencies {
+		dependencyManagement(platform("com.fasterxml.jackson:jackson-bom:$jacksonBomVersion"))
+		dependencyManagement(platform("tools.jackson:jackson-bom:$jackson3Version"))
+		dependencyManagement(platform("org.junit:junit-bom:$junitJupiterVersion"))
+		dependencyManagement(platform("org.springframework:spring-framework-bom:$springVersion"))
+		dependencyManagement(platform("io.projectreactor:reactor-bom:$reactorVersion"))
+		dependencyManagement(platform("org.apache.logging.log4j:log4j-bom:$log4jVersion"))
+		dependencyManagement(platform("org.springframework.data:spring-data-bom:$springDataVersion"))
+		dependencyManagement(platform("io.micrometer:micrometer-bom:$micrometerVersion"))
+		dependencyManagement(platform("io.micrometer:micrometer-tracing-bom:$micrometerTracingVersion"))
 	}
 }
 
@@ -146,28 +126,31 @@ configure(javaProjects) { subproject ->
 		}
 	}
 
-
 	eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
+
+	configurations {
+		[compileClasspath, runtimeClasspath, testCompileClasspath, testRuntimeClasspath].each {
+			it.extendsFrom(dependencyManagement)
+		}
+	}
 
 	// dependencies that are common across all java projects
 	dependencies {
+		def spotBugs = 'com.github.spotbugs:spotbugs-annotations:4.9.8'
+		runtimeOnly spotBugs
+		testRuntimeOnly spotBugs
+
 		testImplementation 'org.junit.jupiter:junit-jupiter-api'
 		testImplementation 'org.junit.jupiter:junit-jupiter-params'
-		testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
-		testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-
-		// To avoid compiler warnings about @API annotations in JUnit code
-		testCompileOnly 'org.apiguardian:apiguardian-api:1.0.0'
-
-		testRuntimeOnly "org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion"
-
 		testImplementation 'org.jetbrains.kotlin:kotlin-reflect'
 		testImplementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
-		testImplementation("org.awaitility:awaitility:$awaitilityVersion") {
-			exclude group: 'org.hamcrest'
-		}
+		testImplementation "org.awaitility:awaitility:$awaitilityVersion"
 		testImplementation "org.hamcrest:hamcrest-core:$hamcrestVersion"
-		optionalApi "org.assertj:assertj-core:$assertjVersion"
+		testImplementation "org.assertj:assertj-core:$assertjVersion"
+
+		testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+		testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+		testRuntimeOnly 'org.apache.logging.log4j:log4j-slf4j-impl'
 	}
 
 	// enable all compiler warnings; individual projects may customize further
@@ -240,6 +223,7 @@ project ('spring-kafka') {
 		api 'org.springframework:spring-tx'
 		api "org.apache.kafka:kafka-clients:$kafkaVersion"
 		api 'io.micrometer:micrometer-observation'
+
 		optionalApi "org.apache.kafka:kafka-streams:$kafkaVersion"
 		optionalApi "org.jetbrains.kotlinx:kotlinx-coroutines-reactor:$kotlinCoroutinesVersion"
 		optionalApi 'com.fasterxml.jackson.core:jackson-core'
@@ -247,23 +231,12 @@ project ('spring-kafka') {
 		optionalApi 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
 		optionalApi 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 		optionalApi 'com.fasterxml.jackson.datatype:jackson-datatype-joda'
-		optionalApi ('com.fasterxml.jackson.module:jackson-module-kotlin') {
-			exclude group: 'org.jetbrains.kotlin'
-		}
-
+		optionalApi 'com.fasterxml.jackson.module:jackson-module-kotlin'
 		optionalApi 'tools.jackson.core:jackson-databind'
 		optionalApi 'tools.jackson.datatype:jackson-datatype-joda'
-		optionalApi('tools.jackson.module:jackson-module-kotlin') {
-			exclude group: 'org.jetbrains.kotlin'
-		}
-
-		// Spring Data projection message binding support
-		optionalApi ('org.springframework.data:spring-data-commons') {
-			exclude group: 'org.springframework'
-			exclude group: 'io.micrometer'
-		}
+		optionalApi 'tools.jackson.module:jackson-module-kotlin'
+		optionalApi 'org.springframework.data:spring-data-commons'
 		optionalApi "com.jayway.jsonpath:json-path:$jaywayJsonPathVersion"
-
 		optionalApi 'io.projectreactor:reactor-core'
 		optionalApi 'io.micrometer:micrometer-core'
 		optionalApi 'io.micrometer:micrometer-tracing'
@@ -272,9 +245,7 @@ project ('spring-kafka') {
 		testImplementation 'io.projectreactor:reactor-test'
 		testImplementation "org.mockito:mockito-junit-jupiter:$mockitoVersion"
 		testImplementation "org.hibernate.validator:hibernate-validator:$hibernateValidationVersion"
-		testImplementation ('io.micrometer:micrometer-tracing-integration-test') {
-			exclude group: 'org.mockito'
-		}
+		testImplementation 'io.micrometer:micrometer-tracing-integration-test'
 	}
 
 	tasks.withType(JavaForkOptions) {
@@ -290,7 +261,7 @@ project('spring-kafka-bom') {
 
 	dependencies {
 		constraints {
-			javaProjects.sort { "$it.name" }.each {
+			javaProjects.sort { it.name }.each {
 				api it
 			}
 		}
@@ -312,7 +283,6 @@ project ('spring-kafka-test') {
 		api "org.slf4j:slf4j-api:$slf4jVersion"
 		api 'org.springframework:spring-context'
 		api 'org.springframework:spring-test'
-
 		api "org.apache.kafka:kafka-clients:$kafkaVersion:test"
 		api "org.apache.kafka:kafka-server:$kafkaVersion"
 		api "org.apache.kafka:kafka-test-common-runtime:$kafkaVersion"
@@ -322,9 +292,11 @@ project ('spring-kafka-test') {
 		api "org.apache.kafka:kafka-streams-test-utils:$kafkaVersion"
 		api 'org.junit.jupiter:junit-jupiter-api'
 		api 'org.junit.platform:junit-platform-launcher'
+
 		optionalApi "org.hamcrest:hamcrest-core:$hamcrestVersion"
 		optionalApi "org.mockito:mockito-core:$mockitoVersion"
-		optionalApi "org.apache.logging.log4j:log4j-core:$log4jVersion"
+		optionalApi 'org.apache.logging.log4j:log4j-core'
+		optionalApi "org.assertj:assertj-core:$assertjVersion"
 	}
 }
 
@@ -362,6 +334,8 @@ dependencies {
 	}
 }
 
+configurations.javadocClasspath.extendsFrom(configurations.dependencyManagement)
+
 javadoc {
 	title = "${rootProject.description} ${version} API"
 	options {
@@ -372,12 +346,19 @@ javadoc {
 		use = true
 		overview = 'src/api/overview.html'
 		splitIndex = true
-		links(project.ext.javadocLinks)
+		links('https://docs.oracle.com/en/java/javase/17/docs/api/',
+				'https://jakarta.ee/specifications/platform/11/apidocs/',
+				'https://docs.spring.io/spring-framework/docs/current/javadoc-api/')
 		addBooleanOption('Xdoclint:syntax', true) // only check syntax with doclint
 	}
 
 	destinationDir = file('build/api')
-	classpath = files().from { files(javaProjects.collect { it.sourceSets.main.compileClasspath }) }
+
+	notCompatibleWithConfigurationCache('Task requires resolving transitive dependencies from all subprojects')
+
+	doFirst {
+		classpath += files(javaProjects.collect { it.sourceSets.main.compileClasspath })
+	}
 }
 
 tasks.register('api') {
@@ -408,17 +389,17 @@ tasks.register('distZip', Zip) {
 	description = "Builds -${archiveClassifier} archive, containing all jars and docs, " +
 			"suitable for community download page."
 
-	ext.baseDir = "${project.name}-${project.version}"
+	def baseDir = "${project.name}-${project.version}"
 
 	from('src/dist') {
 		include 'readme.txt'
 		include 'notice.txt'
-		into "${baseDir}"
+		into baseDir
 	}
 
 	from("$project.rootDir") {
 		include 'LICENSE.txt'
-		into "${baseDir}"
+		into baseDir
 	}
 
 	from(zipTree(docsZip.archiveFile)) {

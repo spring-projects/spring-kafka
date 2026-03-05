@@ -20,7 +20,6 @@ updates:
         patterns:
           - org.gradle.*
           - io.spring.*
-          - org.ajoberstar.grgit
           - io.freefair.aggregate-javadoc
           - org.antora
           - io.micrometer:micrometer-docs-generator
@@ -49,13 +48,11 @@ updates:
         patterns:
           - org.gradle.*
           - io.spring.*
-          - org.ajoberstar.grgit
           - io.freefair.aggregate-javadoc
           - org.antora
           - io.micrometer:micrometer-docs-generator
           - org.hibernate.validator:hibernate-validator
           - org.awaitility:awaitility
-          - com.github.spotbugs
           - org.springframework.boot*
 
   - package-ecosystem: gradle
@@ -79,13 +76,11 @@ updates:
         patterns:
           - org.gradle.*
           - io.spring.*
-          - org.ajoberstar.grgit
           - io.freefair.aggregate-javadoc
           - org.antora
           - io.micrometer:micrometer-docs-generator
           - org.hibernate.validator:hibernate-validator
           - org.awaitility:awaitility
-          - com.github.spotbugs
           - org.springframework.boot*
 
   - package-ecosystem: github-actions
