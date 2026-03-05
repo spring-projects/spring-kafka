@@ -20,7 +20,6 @@ updates:
         patterns:
           - org.gradle.*
           - io.spring.*
-          - org.ajoberstar.grgit
           - io.freefair.aggregate-javadoc
           - org.antora
           - io.micrometer:micrometer-docs-generator

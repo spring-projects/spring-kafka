@@ -26,6 +26,12 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask).configur
     }
 }
 
+configurations {
+	[compileClasspath, runtimeClasspath, testCompileClasspath, testRuntimeClasspath].each {
+		it.extendsFrom(dependencyManagement)
+	}
+}
+
 dependencies {
     implementation "org.springframework.boot:spring-boot-starter:$springBootVersion"
     implementation project (':spring-kafka')
