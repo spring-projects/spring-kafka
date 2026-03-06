@@ -177,6 +177,7 @@ import org.springframework.util.StringUtils;
  * @author Hyoungjune Kim
  * @author Su Ko
  * @author Jinhui Kim
+ * @author Minchul Son
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
