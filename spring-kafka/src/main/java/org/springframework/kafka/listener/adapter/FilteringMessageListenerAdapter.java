@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.listener.adapter;
 
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.jspecify.annotations.Nullable;
@@ -23,6 +25,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.kafka.listener.AcknowledgingConsumerAwareMessageListener;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.util.Assert;
 
 /**
  * A {@link MessageListener} adapter that implements filter logic
@@ -32,6 +35,7 @@ import org.springframework.kafka.support.Acknowledgment;
  * @param <V> the value type.
  *
  * @author Gary Russell
+ * @author Jinhui Kim
  *
  */
 public class FilteringMessageListenerAdapter<K, V>
@@ -39,6 +43,8 @@ public class FilteringMessageListenerAdapter<K, V>
 		implements AcknowledgingConsumerAwareMessageListener<K, V> {
 
 	private final boolean ackDiscarded;
+
+	private ObservationRegistry observationRegistry = ObservationRegistry.NOOP;
 
 	/**
 	 * Create an instance with the supplied strategy and delegate listener.
@@ -64,6 +70,16 @@ public class FilteringMessageListenerAdapter<K, V>
 		this.ackDiscarded = ackDiscarded;
 	}
 
+	/**
+	 * Set the {@link ObservationRegistry} to stop observations for filtered records.
+	 * @param observationRegistry the observation registry.
+	 * @since 4.0.4
+	 */
+	public void setObservationRegistry(ObservationRegistry observationRegistry) {
+		Assert.notNull(observationRegistry, "'observationRegistry' must not be null");
+		this.observationRegistry = observationRegistry;
+	}
+
 	@Override
 	public void onMessage(ConsumerRecord<K, V> consumerRecord, @Nullable Acknowledgment acknowledgment,
 			@Nullable Consumer<?, ?> consumer) {
@@ -78,6 +94,14 @@ public class FilteringMessageListenerAdapter<K, V>
 		}
 		else {
 			ackFilteredIfNecessary(acknowledgment);
+			stopCurrentObservation();
+		}
+	}
+
+	private void stopCurrentObservation() {
+		Observation currentObservation = this.observationRegistry.getCurrentObservation();
+		if (currentObservation != null) {
+			currentObservation.stop();
 		}
 	}
 
