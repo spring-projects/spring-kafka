@@ -107,11 +107,7 @@ class AsyncMonoDefaultErrorHandlerRetryTests {
 		@Bean
 		CommonErrorHandler commonErrorHandler(Listener listener) {
 			DefaultErrorHandler errorHandler = new DefaultErrorHandler(new FixedBackOff(1L, 2L));
-			errorHandler.setRetryListeners((consumerRecord, ex, deliveryAttempt) -> {
-				if (TOPIC.equals(consumerRecord.topic())) {
-					listener.retryAttempts.countDown();
-				}
-			});
+			errorHandler.setRetryListeners((consumerRecord, ex, deliveryAttempt) -> listener.retryAttempts.countDown());
 			return errorHandler;
 		}
 

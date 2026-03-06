@@ -3021,14 +3021,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				catch (Exception ex) { // NO SONAR
 					this.logger.error(ex, "Failed to commit before handling error");
 				}
+				List<ConsumerRecord<?, ?>> retryRecords = new ArrayList<>();
+				retryRecords.add(cRecord);
 				try {
-					List<ConsumerRecord<?, ?>> records = new ArrayList<>();
-					records.add(cRecord);
-					this.commonErrorHandler.handleRemaining(rte, records, this.consumer,
+					this.commonErrorHandler.handleRemaining(rte, retryRecords, this.consumer,
 							KafkaMessageListenerContainer.this.thisOrParentContainer);
 				}
 				catch (RecordInRetryException e) {
-					removeOffsetsInBatch(List.of(cRecord));
+					removeOffsetsInBatch(retryRecords);
 					throw e;
 				}
 			}
@@ -3067,20 +3067,20 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				catch (Exception ex) { // NO SONAR
 					this.logger.error(ex, "Failed to commit before handling error");
 				}
-				List<ConsumerRecord<K, V>> retryRecords = new ArrayList<>();
-				retryRecords.add(cRecord);
-				while (iterator.hasNext()) {
-					retryRecords.add(iterator.next());
+					List<ConsumerRecord<?, ?>> retryRecords = new ArrayList<>();
+					retryRecords.add(cRecord);
+					while (iterator.hasNext()) {
+						retryRecords.add(iterator.next());
+					}
+					try {
+						this.commonErrorHandler.handleRemaining(rte, retryRecords, this.consumer,
+								KafkaMessageListenerContainer.this.thisOrParentContainer);
+					}
+					catch (RecordInRetryException e) {
+						removeOffsetsInBatch(retryRecords);
+						throw e;
+					}
 				}
-				try {
-					this.commonErrorHandler.handleRemaining(rte, new ArrayList<>(retryRecords), this.consumer,
-							KafkaMessageListenerContainer.this.thisOrParentContainer);
-				}
-				catch (RecordInRetryException e) {
-					removeOffsetsInBatch(retryRecords);
-					throw e;
-				}
-			}
 			else {
 				boolean handled = false;
 				try {
@@ -3107,11 +3107,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private synchronized void removeOffsetsInBatch(Iterable<ConsumerRecord<K, V>> records) {
+		private void removeOffsetsInBatch(Iterable<? extends ConsumerRecord<?, ?>> records) {
 			if (this.offsetsInThisBatch == null || this.deferredOffsets == null) {
 				return;
 			}
-			for (ConsumerRecord<K, V> record : records) {
+			for (ConsumerRecord<?, ?> record : records) {
 				TopicPartition part = new TopicPartition(record.topic(), record.partition());
 				List<Long> offsets = this.offsetsInThisBatch.get(part);
 				if (ObjectUtils.isEmpty(offsets)) {
