@@ -2581,35 +2581,28 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void invokeBatchErrorHandler(final ConsumerRecords<K, V> records,
 				List<ConsumerRecord<K, V>> list, RuntimeException rte) {
 
-			if (Objects.requireNonNull(this.commonErrorHandler).seeksAfterHandling() || this.transactionManager != null
-					|| rte instanceof CommitFailedException) {
-
-				try {
+			try {
+				if (Objects.requireNonNull(this.commonErrorHandler).seeksAfterHandling()
+						|| this.transactionManager != null || rte instanceof CommitFailedException) {
 					this.commonErrorHandler.handleBatch(rte, records, this.consumer,
 							KafkaMessageListenerContainer.this.thisOrParentContainer,
 							() -> invokeBatchOnMessageWithRecordsOrList(records, list));
 				}
-				catch (RecordInRetryException e) {
-					removeOffsetsInBatch(list);
-					throw e;
-				}
-				}
 				else {
-					try {
-						ConsumerRecords<K, V> afterHandling = this.commonErrorHandler.handleBatchAndReturnRemaining(rte,
-								records, this.consumer, KafkaMessageListenerContainer.this.thisOrParentContainer,
-								() -> invokeBatchOnMessageWithRecordsOrList(records, list));
-						if (afterHandling != null && !afterHandling.isEmpty()) {
-							this.remainingRecords = afterHandling;
-							this.pauseForPending = true;
-						}
-					}
-					catch (RecordInRetryException e) {
-						removeOffsetsInBatch(list);
-						throw e;
+					ConsumerRecords<K, V> afterHandling = this.commonErrorHandler.handleBatchAndReturnRemaining(rte,
+							records, this.consumer, KafkaMessageListenerContainer.this.thisOrParentContainer,
+							() -> invokeBatchOnMessageWithRecordsOrList(records, list));
+					if (afterHandling != null && !afterHandling.isEmpty()) {
+						this.remainingRecords = afterHandling;
+						this.pauseForPending = true;
 					}
 				}
 			}
+			catch (RecordInRetryException e) {
+				removeOffsetsInBatch(list);
+				throw e;
+			}
+		}
 
 		private void invokeRecordListener(final ConsumerRecords<K, V> records) {
 			if (this.transactionTemplate != null) {
@@ -3021,8 +3014,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				catch (Exception ex) { // NO SONAR
 					this.logger.error(ex, "Failed to commit before handling error");
 				}
-				List<ConsumerRecord<?, ?>> retryRecords = new ArrayList<>();
-				retryRecords.add(cRecord);
+				List<ConsumerRecord<?, ?>> retryRecords = List.of(cRecord);
 				try {
 					this.commonErrorHandler.handleRemaining(rte, retryRecords, this.consumer,
 							KafkaMessageListenerContainer.this.thisOrParentContainer);
@@ -3056,54 +3048,54 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void invokeErrorHandler(final ConsumerRecord<K, V> cRecord,
 				Iterator<ConsumerRecord<K, V>> iterator, RuntimeException rte) {
 
-			if (Objects.requireNonNull(this.commonErrorHandler).seeksAfterHandling()
-					|| rte instanceof CommitFailedException) {
-
-				try {
-					if (this.producer == null) {
-						processCommits();
+			List<ConsumerRecord<?, ?>> retryRecords = List.of(cRecord);
+			try {
+				if (Objects.requireNonNull(this.commonErrorHandler).seeksAfterHandling()
+						|| rte instanceof CommitFailedException) {
+					try {
+						if (this.producer == null) {
+							processCommits();
+						}
 					}
-				}
-				catch (Exception ex) { // NO SONAR
-					this.logger.error(ex, "Failed to commit before handling error");
-				}
-					List<ConsumerRecord<?, ?>> retryRecords = new ArrayList<>();
+					catch (Exception ex) { // NO SONAR
+						this.logger.error(ex, "Failed to commit before handling error");
+					}
+					retryRecords = new ArrayList<>();
 					retryRecords.add(cRecord);
 					while (iterator.hasNext()) {
 						retryRecords.add(iterator.next());
 					}
-					try {
-						this.commonErrorHandler.handleRemaining(rte, retryRecords, this.consumer,
-								KafkaMessageListenerContainer.this.thisOrParentContainer);
-					}
-					catch (RecordInRetryException e) {
-						removeOffsetsInBatch(retryRecords);
-						throw e;
-					}
-				}
-			else {
-				boolean handled = false;
-				try {
-					handled = this.commonErrorHandler.handleOne(rte, cRecord, this.consumer,
+					this.commonErrorHandler.handleRemaining(rte, retryRecords, this.consumer,
 							KafkaMessageListenerContainer.this.thisOrParentContainer);
 				}
-				catch (Exception ex) {
-					this.logger.error(ex, "ErrorHandler threw unexpected exception");
-				}
-				Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new LinkedHashMap<>();
-				if (!handled) {
-					records.computeIfAbsent(new TopicPartition(cRecord.topic(), cRecord.partition()),
-							tp -> new ArrayList<>()).add(cRecord);
-					while (iterator.hasNext()) {
-						ConsumerRecord<K, V> next = iterator.next();
-						records.computeIfAbsent(new TopicPartition(next.topic(), next.partition()),
-								tp -> new ArrayList<>()).add(next);
+				else {
+					boolean handled = false;
+					try {
+						handled = this.commonErrorHandler.handleOne(rte, cRecord, this.consumer,
+								KafkaMessageListenerContainer.this.thisOrParentContainer);
+					}
+					catch (Exception ex) {
+						this.logger.error(ex, "ErrorHandler threw unexpected exception");
+					}
+					Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new LinkedHashMap<>();
+					if (!handled) {
+						records.computeIfAbsent(new TopicPartition(cRecord.topic(), cRecord.partition()),
+								tp -> new ArrayList<>()).add(cRecord);
+						while (iterator.hasNext()) {
+							ConsumerRecord<K, V> next = iterator.next();
+							records.computeIfAbsent(new TopicPartition(next.topic(), next.partition()),
+									tp -> new ArrayList<>()).add(next);
+						}
+					}
+					if (!records.isEmpty()) {
+						this.remainingRecords = new ConsumerRecords<>(records, Map.of());
+						this.pauseForPending = true;
 					}
 				}
-				if (!records.isEmpty()) {
-					this.remainingRecords = new ConsumerRecords<>(records, Map.of());
-					this.pauseForPending = true;
-				}
+			}
+			catch (RecordInRetryException e) {
+				removeOffsetsInBatch(retryRecords);
+				throw e;
 			}
 		}
 

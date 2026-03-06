@@ -78,6 +78,7 @@ import static org.mockito.Mockito.verify;
  * @author Gary Russell
  * @author Wang Zhiyang
  * @author Soby Chacko
+ * @author Minchul Son
  *
  * @since 2.2.4
  *
@@ -1283,6 +1284,86 @@ public class ConcurrentMessageListenerContainerMockTests {
 		verify(consumer, times(2)).pause(any());
 		verify(consumer, never()).resume(any());
 		container.stop();
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void removeOffsetsInBatchForRetryRecords() throws InterruptedException {
+		TopicPartition topicPartition = new TopicPartition("foo", 0);
+		Map<TopicPartition, List<ConsumerRecord<String, String>>> recordMap = new LinkedHashMap<>();
+		recordMap.put(topicPartition,
+				List.of(new ConsumerRecord("foo", 0, 0, null, "bar-0"),
+						new ConsumerRecord("foo", 0, 1, null, "bar-1")));
+		ConsumerRecords polledRecords = new ConsumerRecords<>(recordMap, Map.of());
+		AtomicInteger pollCount = new AtomicInteger();
+
+		Consumer consumer = mock(Consumer.class);
+		AtomicReference<ConsumerRebalanceListener> rebal = new AtomicReference<>();
+		CountDownLatch subscribeLatch = new CountDownLatch(1);
+		willAnswer(invocation -> {
+			rebal.set(invocation.getArgument(1));
+			subscribeLatch.countDown();
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any());
+		willAnswer(invocation -> {
+			if (pollCount.getAndIncrement() == 0) {
+				rebal.get().onPartitionsAssigned(List.of(topicPartition));
+				return polledRecords;
+			}
+			Thread.sleep(50);
+			return ConsumerRecords.empty();
+		}).given(consumer).poll(any());
+		ConsumerFactory cf = mock(ConsumerFactory.class);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		given(cf.getConfigurationProperties())
+				.willReturn(Collections.singletonMap(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"));
+		ContainerProperties containerProperties = new ContainerProperties("foo");
+		containerProperties.setGroupId("grp");
+		containerProperties.setAckMode(AckMode.MANUAL);
+		containerProperties.setAsyncAcks(true);
+		containerProperties.setMessageListener((MessageListener) rec -> {
+			throw new RuntimeException("test");
+		});
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(cf, containerProperties);
+		CountDownLatch handleRemainingLatch = new CountDownLatch(1);
+		container.setCommonErrorHandler(new CommonErrorHandler() {
+
+			@Override
+			public boolean seeksAfterHandling() {
+				return true;
+			}
+
+			@Override
+			public void handleRemaining(Exception thrownException, List<ConsumerRecord<?, ?>> failedRecords,
+					Consumer<?, ?> kafkaConsumer, MessageListenerContainer listenerContainer) {
+
+				handleRemainingLatch.countDown();
+				throw new RecordInRetryException("retrying", thrownException);
+			}
+
+		});
+		container.start();
+		try {
+			assertThat(subscribeLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			assertThat(handleRemainingLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			KafkaMessageListenerContainer child = (KafkaMessageListenerContainer) KafkaTestUtils
+					.getPropertyValue(container, "containers", List.class).get(0);
+			Map offsets = null;
+			Map deferred = null;
+			for (int i = 0; i < 20; i++) {
+				offsets = KafkaTestUtils.getPropertyValue(child, "listenerConsumer.offsetsInThisBatch", Map.class);
+				deferred = KafkaTestUtils.getPropertyValue(child, "listenerConsumer.deferredOffsets", Map.class);
+				if ((offsets == null || offsets.isEmpty()) && (deferred == null || deferred.isEmpty())) {
+					break;
+				}
+				Thread.sleep(50);
+			}
+			assertThat(offsets).isNullOrEmpty();
+			assertThat(deferred).isNullOrEmpty();
+		}
+		finally {
+			container.stop();
+		}
 	}
 
 	@SuppressWarnings("rawtypes")

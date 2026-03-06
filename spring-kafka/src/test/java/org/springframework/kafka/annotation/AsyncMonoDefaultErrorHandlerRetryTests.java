@@ -91,13 +91,11 @@ class AsyncMonoDefaultErrorHandlerRetryTests {
 		}
 
 		@Bean
-		@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 		KafkaTemplate<String, String> kafkaTemplate(EmbeddedKafkaBroker embeddedKafka) {
 			return new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(KafkaTestUtils.producerProps(embeddedKafka)));
 		}
 
 		@Bean
-		@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 		DefaultKafkaConsumerFactory<String, String> consumerFactory(EmbeddedKafkaBroker embeddedKafka) {
 			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(embeddedKafka,
 					"async-mono-default-eh-group", false);
