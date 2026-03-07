@@ -61,6 +61,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.util.CollectionUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -1289,15 +1290,16 @@ public class ConcurrentMessageListenerContainerMockTests {
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Test
 	void removeOffsetsInBatchForRetryRecords() throws InterruptedException {
-		TopicPartition topicPartition = new TopicPartition("foo", 0);
+		String retryTopic = "retry-offsets-topic";
+		TopicPartition topicPartition = new TopicPartition(retryTopic, 0);
 		Map<TopicPartition, List<ConsumerRecord<String, String>>> recordMap = new LinkedHashMap<>();
 		recordMap.put(topicPartition,
-				List.of(new ConsumerRecord("foo", 0, 0, null, "bar-0"),
-						new ConsumerRecord("foo", 0, 1, null, "bar-1")));
-		ConsumerRecords polledRecords = new ConsumerRecords<>(recordMap, Map.of());
+				List.of(new ConsumerRecord<>(retryTopic, 0, 0, null, "failed-record-0"),
+						new ConsumerRecord<>(retryTopic, 0, 1, null, "failed-record-1")));
+		ConsumerRecords<String, String> polledRecords = new ConsumerRecords<>(recordMap, Map.of());
 		AtomicInteger pollCount = new AtomicInteger();
 
-		Consumer consumer = mock(Consumer.class);
+		Consumer<String, String> consumer = mock();
 		AtomicReference<ConsumerRebalanceListener> rebal = new AtomicReference<>();
 		CountDownLatch subscribeLatch = new CountDownLatch(1);
 		willAnswer(invocation -> {
@@ -1310,21 +1312,21 @@ public class ConcurrentMessageListenerContainerMockTests {
 				rebal.get().onPartitionsAssigned(List.of(topicPartition));
 				return polledRecords;
 			}
-			Thread.sleep(50);
 			return ConsumerRecords.empty();
 		}).given(consumer).poll(any());
-		ConsumerFactory cf = mock(ConsumerFactory.class);
+		ConsumerFactory<String, String> cf = mock();
 		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		given(cf.getConfigurationProperties())
 				.willReturn(Collections.singletonMap(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"));
-		ContainerProperties containerProperties = new ContainerProperties("foo");
+		ContainerProperties containerProperties = new ContainerProperties(retryTopic);
 		containerProperties.setGroupId("grp");
 		containerProperties.setAckMode(AckMode.MANUAL);
 		containerProperties.setAsyncAcks(true);
 		containerProperties.setMessageListener((MessageListener) rec -> {
 			throw new RuntimeException("test");
 		});
-		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(cf, containerProperties);
+		ConcurrentMessageListenerContainer<String, String> container = new ConcurrentMessageListenerContainer<>(cf,
+				containerProperties);
 		CountDownLatch handleRemainingLatch = new CountDownLatch(1);
 		container.setCommonErrorHandler(new CommonErrorHandler() {
 
@@ -1346,14 +1348,14 @@ public class ConcurrentMessageListenerContainerMockTests {
 		try {
 			assertThat(subscribeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 			assertThat(handleRemainingLatch.await(10, TimeUnit.SECONDS)).isTrue();
-			KafkaMessageListenerContainer child = (KafkaMessageListenerContainer) KafkaTestUtils
+			KafkaMessageListenerContainer<String, String> child = (KafkaMessageListenerContainer<String, String>) KafkaTestUtils
 					.getPropertyValue(container, "containers", List.class).get(0);
-			Map offsets = null;
-			Map deferred = null;
+			Map<?, ?> offsets = null;
+			Map<?, ?> deferred = null;
 			for (int i = 0; i < 20; i++) {
 				offsets = KafkaTestUtils.getPropertyValue(child, "listenerConsumer.offsetsInThisBatch", Map.class);
 				deferred = KafkaTestUtils.getPropertyValue(child, "listenerConsumer.deferredOffsets", Map.class);
-				if ((offsets == null || offsets.isEmpty()) && (deferred == null || deferred.isEmpty())) {
+				if (CollectionUtils.isEmpty(offsets) && CollectionUtils.isEmpty(deferred)) {
 					break;
 				}
 				Thread.sleep(50);
