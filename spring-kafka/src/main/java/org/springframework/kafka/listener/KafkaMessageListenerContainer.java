@@ -2196,7 +2196,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					ConsumerRecord<K, V> recordToAck = cRecord;
 					if (!CollectionUtils.isEmpty(deferred)) {
 						deferred.sort(Comparator.comparingLong(ConsumerRecord::offset));
-						while (!ObjectUtils.isEmpty(deferred)) {
+						while (!ObjectUtils.isEmpty(deferred) && !containsUnackedOffsets(offs, recordToAck.offset(), deferred.get(0).offset())) {
 							recordToAck = deferred.remove(0);
 							offs.remove(0);
 						}
@@ -2221,6 +2221,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				throw new IllegalStateException("Unexpected ack for " + KafkaUtils.format(cRecord)
 						+ "; offsets list is empty");
 			}
+		}
+
+		private boolean containsUnackedOffsets(final List<Long> offs, long recordToAckOffset, long deferredOffset) {
+			for (long off : offs) {
+				if (off > recordToAckOffset && off < deferredOffset) {
+					return true;
+				}
+			}
+			return false;
 		}
 
 		private void ackImmediate(ConsumerRecord<K, V> cRecord) {
