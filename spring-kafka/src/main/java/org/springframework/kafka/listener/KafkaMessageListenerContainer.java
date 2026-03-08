@@ -2223,9 +2223,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private boolean containsUnackedOffsets(final List<Long> offs, long recordToAckOffset, long deferredOffset) {
+		private boolean containsUnackedOffsets(final List<Long> offs, long startingOffest, long endingOffset) {
 			for (long off : offs) {
-				if (off > recordToAckOffset && off < deferredOffset) {
+				if (off > startingOffest && off < endingOffset) {
 					return true;
 				}
 			}
