@@ -905,11 +905,11 @@ public class KafkaMessageListenerContainerTests {
 			acks.add(ack);
 			if (latch.getCount() == 0) {
 				records.clear();
-				acks.get(3).acknowledge();
-				acks.get(4).acknowledge();
-				acks.get(0).acknowledge();
 				acks.get(2).acknowledge();
+				acks.get(3).acknowledge();
+				acks.get(0).acknowledge();
 				acks.get(1).acknowledge();
+				acks.get(4).acknowledge();
 			}
 		};
 
