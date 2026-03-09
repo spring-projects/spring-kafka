@@ -2581,9 +2581,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				List<ConsumerRecord<K, V>> list, RuntimeException rte) {
 
 			try {
-
 				if (Objects.requireNonNull(this.commonErrorHandler).seeksAfterHandling()
 						|| this.transactionManager != null || rte instanceof CommitFailedException) {
+
 					this.commonErrorHandler.handleBatch(rte, records, this.consumer,
 							KafkaMessageListenerContainer.this.thisOrParentContainer,
 							() -> invokeBatchOnMessageWithRecordsOrList(records, list));
