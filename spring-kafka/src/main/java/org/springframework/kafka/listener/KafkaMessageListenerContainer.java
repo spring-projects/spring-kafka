@@ -177,6 +177,7 @@ import org.springframework.util.StringUtils;
  * @author Hyoungjune Kim
  * @author Su Ko
  * @author Jinhui Kim
+ * @author Minchul Son
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -1511,26 +1512,24 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		protected void handleAsyncFailure() {
-			List<FailedRecordTuple<K, V>> copyFailedRecords = new ArrayList<>(this.failedRecords);
-
-			// If we use failedRecords.clear() to remove copied record from failed records,
-			// We may encounter race condition during this operation.
-			// Other, the thread which execute this block, may miss one failed record.
-			int capturedRecordsCount = copyFailedRecords.size();
-			for (int i = 0; i < capturedRecordsCount; i++) {
-				this.failedRecords.pollFirst();
-			}
-
-			// If any copied and failed record fails to complete due to an unexpected error,
-			// We will give up on retrying with the remaining copied and failed Records.
-			for (FailedRecordTuple<K, V> copyFailedRecord : copyFailedRecords) {
+			// Process only the records present at loop start; failures added concurrently
+			// are handled in the next loop iteration.
+			List<FailedRecordTuple<K, V>> failedRecordsSnapshot = new ArrayList<>(this.failedRecords);
+			for (FailedRecordTuple<K, V> failedRecord : failedRecordsSnapshot) {
+				if (!this.failedRecords.removeFirstOccurrence(failedRecord)) {
+					continue;
+				}
 				try {
-					copyFailedRecord.observation.scoped(() -> invokeErrorHandlerBySingleRecord(copyFailedRecord));
+					failedRecord.observation.scoped(() -> invokeErrorHandlerBySingleRecord(failedRecord));
+				}
+				catch (RecordInRetryException e) {
+					// Keep retryable async failures for the next poll loop.
+					this.failedRecords.addLast(failedRecord);
 				}
 				catch (Exception e) {
 					this.logger.warn(() ->
 							"Async failed record failed to complete, thus skip it. record :"
-									+ copyFailedRecord.toString()
+									+ failedRecord
 									+ ", Exception : "
 									+ e.getMessage());
 				}
@@ -2581,21 +2580,28 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void invokeBatchErrorHandler(final ConsumerRecords<K, V> records,
 				List<ConsumerRecord<K, V>> list, RuntimeException rte) {
 
-			if (Objects.requireNonNull(this.commonErrorHandler).seeksAfterHandling() || this.transactionManager != null
-					|| rte instanceof CommitFailedException) {
+			try {
+				if (Objects.requireNonNull(this.commonErrorHandler).seeksAfterHandling()
+						|| this.transactionManager != null || rte instanceof CommitFailedException) {
 
-				this.commonErrorHandler.handleBatch(rte, records, this.consumer,
-						KafkaMessageListenerContainer.this.thisOrParentContainer,
-						() -> invokeBatchOnMessageWithRecordsOrList(records, list));
-			}
-			else {
-				ConsumerRecords<K, V> afterHandling = this.commonErrorHandler.handleBatchAndReturnRemaining(rte,
-						records, this.consumer, KafkaMessageListenerContainer.this.thisOrParentContainer,
-						() -> invokeBatchOnMessageWithRecordsOrList(records, list));
-				if (afterHandling != null && !afterHandling.isEmpty()) {
-					this.remainingRecords = afterHandling;
-					this.pauseForPending = true;
+					this.commonErrorHandler.handleBatch(rte, records, this.consumer,
+							KafkaMessageListenerContainer.this.thisOrParentContainer,
+							() -> invokeBatchOnMessageWithRecordsOrList(records, list));
 				}
+				else {
+					ConsumerRecords<K, V> afterHandling = this.commonErrorHandler.handleBatchAndReturnRemaining(rte,
+							records, this.consumer, KafkaMessageListenerContainer.this.thisOrParentContainer,
+							() -> invokeBatchOnMessageWithRecordsOrList(records, list));
+
+					if (afterHandling != null && !afterHandling.isEmpty()) {
+						this.remainingRecords = afterHandling;
+						this.pauseForPending = true;
+					}
+				}
+			}
+			catch (RecordInRetryException e) {
+				removeOffsetsInBatch(list);
+				throw e;
 			}
 		}
 
@@ -3009,10 +3015,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				catch (Exception ex) { // NO SONAR
 					this.logger.error(ex, "Failed to commit before handling error");
 				}
-				List<ConsumerRecord<?, ?>> records = new ArrayList<>();
-				records.add(cRecord);
-				this.commonErrorHandler.handleRemaining(rte, records, this.consumer,
-						KafkaMessageListenerContainer.this.thisOrParentContainer);
+				List<ConsumerRecord<?, ?>> retryRecords = List.of(cRecord);
+				try {
+					this.commonErrorHandler.handleRemaining(rte, retryRecords, this.consumer,
+							KafkaMessageListenerContainer.this.thisOrParentContainer);
+				}
+				catch (RecordInRetryException e) {
+					removeOffsetsInBatch(retryRecords);
+					throw e;
+				}
 			}
 			else {
 				boolean handled = false;
@@ -3038,47 +3049,75 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void invokeErrorHandler(final ConsumerRecord<K, V> cRecord,
 				Iterator<ConsumerRecord<K, V>> iterator, RuntimeException rte) {
 
-			if (Objects.requireNonNull(this.commonErrorHandler).seeksAfterHandling()
-					|| rte instanceof CommitFailedException) {
+			List<ConsumerRecord<?, ?>> retryRecords = new ArrayList<>();
+			retryRecords.add(cRecord);
+			try {
+				if (Objects.requireNonNull(this.commonErrorHandler).seeksAfterHandling()
+						|| rte instanceof CommitFailedException) {
 
-				try {
-					if (this.producer == null) {
-						processCommits();
+					try {
+						if (this.producer == null) {
+							processCommits();
+						}
 					}
-				}
-				catch (Exception ex) { // NO SONAR
-					this.logger.error(ex, "Failed to commit before handling error");
-				}
-				List<ConsumerRecord<?, ?>> records = new ArrayList<>();
-				records.add(cRecord);
-				while (iterator.hasNext()) {
-					records.add(iterator.next());
-				}
-				this.commonErrorHandler.handleRemaining(rte, records, this.consumer,
-						KafkaMessageListenerContainer.this.thisOrParentContainer);
-			}
-			else {
-				boolean handled = false;
-				try {
-					handled = this.commonErrorHandler.handleOne(rte, cRecord, this.consumer,
+					catch (Exception ex) { // NO SONAR
+						this.logger.error(ex, "Failed to commit before handling error");
+					}
+					while (iterator.hasNext()) {
+						retryRecords.add(iterator.next());
+					}
+					this.commonErrorHandler.handleRemaining(rte, retryRecords, this.consumer,
 							KafkaMessageListenerContainer.this.thisOrParentContainer);
 				}
-				catch (Exception ex) {
-					this.logger.error(ex, "ErrorHandler threw unexpected exception");
-				}
-				Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new LinkedHashMap<>();
-				if (!handled) {
-					records.computeIfAbsent(new TopicPartition(cRecord.topic(), cRecord.partition()),
-							tp -> new ArrayList<>()).add(cRecord);
-					while (iterator.hasNext()) {
-						ConsumerRecord<K, V> next = iterator.next();
-						records.computeIfAbsent(new TopicPartition(next.topic(), next.partition()),
-								tp -> new ArrayList<>()).add(next);
+				else {
+					boolean handled = false;
+					try {
+						handled = this.commonErrorHandler.handleOne(rte, cRecord, this.consumer,
+								KafkaMessageListenerContainer.this.thisOrParentContainer);
+					}
+					catch (Exception ex) {
+						this.logger.error(ex, "ErrorHandler threw unexpected exception");
+					}
+					Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new LinkedHashMap<>();
+					if (!handled) {
+						records.computeIfAbsent(new TopicPartition(cRecord.topic(), cRecord.partition()),
+								tp -> new ArrayList<>()).add(cRecord);
+						while (iterator.hasNext()) {
+							ConsumerRecord<K, V> next = iterator.next();
+							records.computeIfAbsent(new TopicPartition(next.topic(), next.partition()),
+									tp -> new ArrayList<>()).add(next);
+						}
+					}
+					if (!records.isEmpty()) {
+						this.remainingRecords = new ConsumerRecords<>(records, Map.of());
+						this.pauseForPending = true;
 					}
 				}
-				if (!records.isEmpty()) {
-					this.remainingRecords = new ConsumerRecords<>(records, Map.of());
-					this.pauseForPending = true;
+			}
+			catch (RecordInRetryException e) {
+				removeOffsetsInBatch(retryRecords);
+				throw e;
+			}
+		}
+
+		private void removeOffsetsInBatch(Iterable<? extends ConsumerRecord<?, ?>> records) {
+			if (this.offsetsInThisBatch == null || this.deferredOffsets == null) {
+				return;
+			}
+			for (ConsumerRecord<?, ?> record : records) {
+				TopicPartition part = new TopicPartition(record.topic(), record.partition());
+				List<Long> offsets = this.offsetsInThisBatch.get(part);
+				if (ObjectUtils.isEmpty(offsets)) {
+					continue;
+				}
+				offsets.remove(record.offset());
+				List<ConsumerRecord<K, V>> deferred = this.deferredOffsets.get(part);
+				if (deferred != null) {
+					deferred.removeIf(deferredRecord -> deferredRecord.offset() == record.offset());
+				}
+				if (offsets.isEmpty()) {
+					this.offsetsInThisBatch.remove(part);
+					this.deferredOffsets.remove(part);
 				}
 			}
 		}
