@@ -1514,11 +1514,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		protected void handleAsyncFailure() {
 			// Process only the records present at loop start; failures added concurrently
 			// are handled in the next loop iteration.
-			int capturedRecordsCount = this.failedRecords.size();
-			for (int i = 0; i < capturedRecordsCount; i++) {
-				FailedRecordTuple<K, V> failedRecord = this.failedRecords.pollFirst();
-				if (failedRecord == null) {
-					break;
+			List<FailedRecordTuple<K, V>> failedRecordsSnapshot = new ArrayList<>(this.failedRecords);
+			for (FailedRecordTuple<K, V> failedRecord : failedRecordsSnapshot) {
+				if (!this.failedRecords.removeFirstOccurrence(failedRecord)) {
+					continue;
 				}
 				try {
 					failedRecord.observation.scoped(() -> invokeErrorHandlerBySingleRecord(failedRecord));
@@ -2582,6 +2581,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				List<ConsumerRecord<K, V>> list, RuntimeException rte) {
 
 			try {
+
 				if (Objects.requireNonNull(this.commonErrorHandler).seeksAfterHandling()
 						|| this.transactionManager != null || rte instanceof CommitFailedException) {
 					this.commonErrorHandler.handleBatch(rte, records, this.consumer,
@@ -2592,6 +2592,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					ConsumerRecords<K, V> afterHandling = this.commonErrorHandler.handleBatchAndReturnRemaining(rte,
 							records, this.consumer, KafkaMessageListenerContainer.this.thisOrParentContainer,
 							() -> invokeBatchOnMessageWithRecordsOrList(records, list));
+
 					if (afterHandling != null && !afterHandling.isEmpty()) {
 						this.remainingRecords = afterHandling;
 						this.pauseForPending = true;
@@ -3048,10 +3049,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void invokeErrorHandler(final ConsumerRecord<K, V> cRecord,
 				Iterator<ConsumerRecord<K, V>> iterator, RuntimeException rte) {
 
-			List<ConsumerRecord<?, ?>> retryRecords = List.of(cRecord);
+			List<ConsumerRecord<?, ?>> retryRecords = new ArrayList<>();
+			retryRecords.add(cRecord);
 			try {
 				if (Objects.requireNonNull(this.commonErrorHandler).seeksAfterHandling()
 						|| rte instanceof CommitFailedException) {
+
 					try {
 						if (this.producer == null) {
 							processCommits();
@@ -3060,8 +3063,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					catch (Exception ex) { // NO SONAR
 						this.logger.error(ex, "Failed to commit before handling error");
 					}
-					retryRecords = new ArrayList<>();
-					retryRecords.add(cRecord);
 					while (iterator.hasNext()) {
 						retryRecords.add(iterator.next());
 					}
