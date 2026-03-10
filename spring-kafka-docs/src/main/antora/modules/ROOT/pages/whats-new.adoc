@@ -13,3 +13,12 @@ For changes in earlier versions, see xref:appendix/change-history.adoc[Change Hi
 The `@KafkaListener` annotation now supports an `ackMode` attribute, allowing individual listeners to override the container factory's default acknowledgment mode without creating separate container factory beans.
 The attribute also supports SpEL expressions and property placeholders.
 See xref:kafka/receiving-messages/listener-annotation.adoc[`@KafkaListener` Annotation] for more information.
+
+[[x41-share-consumer-error-handling]]
+=== Share Consumer Error Handling
+
+Share consumer containers now provide configurable error handling:
+
+* **Poll-level**: `RecordDeserializationException` and `CorruptRecordException` from `poll()` are caught so the consumer thread continues; undeserializable records are REJECTed and the next poll proceeds.
+* **Listener-level**: A `ShareConsumerRecordRecoverer` interface decides whether to ACCEPT, RELEASE, or REJECT when the listener throws. The default implementation REJECTs all failures; you can set a custom recoverer on the factory or container to RELEASE transient errors for redelivery.
+* See xref:kafka/kafka-queues.adoc#share-error-handling[Share consumer error handling] in the Kafka Queues documentation.

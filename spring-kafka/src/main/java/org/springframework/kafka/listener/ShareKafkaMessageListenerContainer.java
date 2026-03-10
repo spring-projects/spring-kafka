@@ -34,6 +34,9 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.ShareConsumer;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.CorruptRecordException;
+import org.apache.kafka.common.errors.RecordDeserializationException;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -352,8 +355,31 @@ public class ShareKafkaMessageListenerContainer<K, V>
 					try {
 						records = this.consumer.poll(java.time.Duration.ofMillis(POLL_TIMEOUT));
 					}
+					catch (RecordDeserializationException e) {
+						// poll() throws when a record can't be deserialized. Override client's auto-release
+						// with REJECT so the record is archived and the consumer thread continues.
+						TopicPartition tp = e.topicPartition();
+						long offset = e.offset();
+						this.logger.warn(e, () -> "RecordDeserializationException at "
+								+ tp + " offset " + offset + "; rejecting record and continuing");
+						try {
+							this.consumer.acknowledge(tp.topic(), tp.partition(), offset,
+									AcknowledgeType.REJECT);
+						}
+						catch (Exception ackEx) {
+							this.logger.error(ackEx, () -> "Failed to reject undeserializable record at "
+									+ tp + " offset " + offset);
+						}
+						continue;
+					}
+					catch (CorruptRecordException e) {
+						// CRC check failure. The client automatically rejects the corrupt batch.
+						this.logger.error(e, () -> "CorruptRecordException during poll; "
+								+ "Kafka client has auto-rejected the corrupt batch");
+						continue;
+					}
 					catch (IllegalStateException e) {
-						// KIP-932: In explicit mode, poll() throws if unacknowledged records exist
+						// In explicit mode, poll() throws if unacknowledged records exist
 						if (this.isExplicitMode && !this.pendingAcknowledgments.isEmpty()) {
 							this.logger.trace(() -> "Poll blocked waiting for " + this.pendingAcknowledgments.size() +
 									" acknowledgments");
@@ -432,25 +458,53 @@ public class ShareKafkaMessageListenerContainer<K, V>
 
 		private void handleProcessingError(ConsumerRecord<K, V> record,
 				@Nullable ShareConsumerAcknowledgment acknowledgment, Exception e) {
-			this.logger.error(e, "Error processing record: " + record);
+
+			// Delegate to recoverer to decide ACCEPT, RELEASE, or REJECT
+			AcknowledgeType action;
+			try {
+				action = ShareKafkaMessageListenerContainer.this.getShareConsumerRecordRecoverer().recover(record, e);
+			}
+			catch (Exception recovererEx) {
+				// If the recoverer itself throws, fall back to REJECT
+				this.logger.error(recovererEx, () -> "ShareConsumerRecordRecoverer threw an exception; "
+						+ "falling back to REJECT for record from "
+						+ record.topic() + "-" + record.partition() + "@" + record.offset());
+				action = AcknowledgeType.REJECT;
+			}
+
+			// RENEW is not valid for error recovery (it extends lock during processing, not after failure)
+			if (action == AcknowledgeType.RENEW) {
+				this.logger.warn(() -> "ShareConsumerRecordRecoverer returned RENEW for record from "
+						+ record.topic() + "-" + record.partition() + "@" + record.offset()
+						+ "; RENEW is not valid for error recovery, using REJECT instead");
+				action = AcknowledgeType.REJECT;
+			}
+
+			final AcknowledgeType actionToLog = action;
 
 			if (this.isExplicitMode && acknowledgment != null) {
-				// Remove from pending and auto-reject on error
+				// Remove from pending and from timestamp tracking so timeout checker doesn't hold stale entries
 				this.pendingAcknowledgments.remove(record);
+				this.acknowledgmentTimestamps.remove(record);
 				try {
-					acknowledgment.reject();
+					switch (action) {
+						case ACCEPT -> acknowledgment.acknowledge();
+						case RELEASE -> acknowledgment.release();
+						case REJECT -> acknowledgment.reject();
+						default -> acknowledgment.reject();
+					}
 				}
 				catch (Exception ackEx) {
-					this.logger.error(ackEx, "Failed to reject record after processing error");
+					this.logger.error(ackEx, () -> "Failed to " + actionToLog + " record after processing error");
 				}
 			}
 			else {
-				// In implicit mode, auto-reject on error
+				// Implicit mode: apply recoverer's decision via consumer.acknowledge
 				try {
-					this.consumer.acknowledge(record, AcknowledgeType.REJECT);
+					this.consumer.acknowledge(record, action);
 				}
 				catch (Exception ackEx) {
-					this.logger.error(ackEx, "Failed to reject record after processing error");
+					this.logger.error(ackEx, () -> "Failed to " + actionToLog + " record after processing error");
 				}
 			}
 		}

@@ -22,6 +22,7 @@ import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.internals.ShareAcknowledgementMode;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.context.ApplicationContext;
@@ -30,6 +31,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.kafka.core.ShareConsumerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.ShareConsumerRecordRecoverer;
 import org.springframework.kafka.listener.ShareKafkaMessageListenerContainer;
 import org.springframework.kafka.support.JavaUtils;
 import org.springframework.kafka.support.TopicPartitionOffset;
@@ -67,6 +69,9 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	private int phase = 0;
 
 	private int concurrency = 1;
+
+	@Nullable
+	private ShareConsumerRecordRecoverer recordRecoverer;
 
 	@SuppressWarnings("NullAway.Init")
 	private ApplicationEventPublisher applicationEventPublisher;
@@ -117,6 +122,17 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	 */
 	public void setConcurrency(int concurrency) {
 		this.concurrency = concurrency;
+	}
+
+	/**
+	 * Set a {@link ShareConsumerRecordRecoverer} to use for all containers created
+	 * by this factory. If not set, the container's default
+	 * ({@link org.springframework.kafka.listener.DefaultShareConsumerRecordRecoverer}) is used.
+	 * @param recordRecoverer the recoverer
+	 * @since 4.1
+	 */
+	public void setShareConsumerRecordRecoverer(ShareConsumerRecordRecoverer recordRecoverer) {
+		this.recordRecoverer = recordRecoverer;
 	}
 
 	/**
@@ -186,6 +202,10 @@ public class ShareKafkaListenerContainerFactory<K, V>
 		instance.setPhase(this.phase);
 		instance.setApplicationContext(this.applicationContext);
 		instance.setApplicationEventPublisher(this.applicationEventPublisher);
+
+		if (this.recordRecoverer != null) {
+			instance.setShareConsumerRecordRecoverer(this.recordRecoverer);
+		}
 
 		JavaUtils.INSTANCE
 				.acceptIfNotNull(endpoint.getGroupId(), properties::setGroupId)
