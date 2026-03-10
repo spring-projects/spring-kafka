@@ -177,16 +177,14 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 	}
 
 	@Test
-	void shouldUseDefaultShareConsumerRecordRecovererByDefault() {
+	void shouldUseRejectingRecovererByDefault() {
 		ContainerProperties containerProperties = new ContainerProperties("test-topic");
 		containerProperties.setMessageListener(messageListener);
 
 		ShareKafkaMessageListenerContainer<String, String> container =
 				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
 
-		ShareConsumerRecordRecoverer recoverer = container.getShareConsumerRecordRecoverer();
-		assertThat(recoverer).isNotNull();
-		assertThat(recoverer).isInstanceOf(DefaultShareConsumerRecordRecoverer.class);
+		assertThat(container.getShareConsumerRecordRecoverer()).isSameAs(ShareConsumerRecordRecoverer.REJECTING);
 	}
 
 	@Test
@@ -201,19 +199,6 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		container.setShareConsumerRecordRecoverer(customRecoverer);
 
 		assertThat(container.getShareConsumerRecordRecoverer()).isSameAs(customRecoverer);
-	}
-
-	@Test
-	void shouldRejectNullShareConsumerRecordRecoverer() {
-		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		containerProperties.setMessageListener(messageListener);
-
-		ShareKafkaMessageListenerContainer<String, String> container =
-				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
-
-		assertThatExceptionOfType(IllegalArgumentException.class)
-				.isThrownBy(() -> container.setShareConsumerRecordRecoverer(null))
-				.withMessageContaining("'recoverer' must not be null");
 	}
 
 	@Test

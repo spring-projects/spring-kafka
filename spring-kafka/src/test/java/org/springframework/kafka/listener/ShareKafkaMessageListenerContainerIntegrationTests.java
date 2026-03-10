@@ -518,14 +518,11 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, false);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
-		AtomicInteger goodRecordsReceived = new AtomicInteger();
-		CountDownLatch twoGoodRecordsLatch = new CountDownLatch(1);
+		CountDownLatch twoGoodRecordsLatch = new CountDownLatch(2);
 		ContainerProperties containerProps = new ContainerProperties(topic);
 		containerProps.setMessageListener((MessageListener<String, String>) record -> {
 			if (goodRecordValue.equals(record.value())) {
-				if (goodRecordsReceived.incrementAndGet() == 2) {
-					twoGoodRecordsLatch.countDown();
-				}
+				twoGoodRecordsLatch.countDown();
 			}
 		});
 
@@ -536,8 +533,6 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 
 		try {
 			assertThat(twoGoodRecordsLatch.await(30, TimeUnit.SECONDS)).isTrue();
-			// Received both good records; the bad one caused RDE and was REJECTed at poll(), so only 2 records delivered
-			assertThat(goodRecordsReceived.get()).isEqualTo(2);
 		}
 		finally {
 			container.stop();

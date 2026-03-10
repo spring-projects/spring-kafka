@@ -70,8 +70,7 @@ public class ShareKafkaListenerContainerFactory<K, V>
 
 	private int concurrency = 1;
 
-	@Nullable
-	private ShareConsumerRecordRecoverer recordRecoverer;
+	private @Nullable ShareConsumerRecordRecoverer recordRecoverer;
 
 	@SuppressWarnings("NullAway.Init")
 	private ApplicationEventPublisher applicationEventPublisher;
@@ -127,7 +126,7 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	/**
 	 * Set a {@link ShareConsumerRecordRecoverer} to use for all containers created
 	 * by this factory. If not set, the container's default
-	 * ({@link org.springframework.kafka.listener.DefaultShareConsumerRecordRecoverer}) is used.
+	 * ({@link org.springframework.kafka.listener.ShareConsumerRecordRecoverer#REJECTING}) is used.
 	 * @param recordRecoverer the recoverer
 	 * @since 4.1
 	 */
@@ -203,11 +202,8 @@ public class ShareKafkaListenerContainerFactory<K, V>
 		instance.setApplicationContext(this.applicationContext);
 		instance.setApplicationEventPublisher(this.applicationEventPublisher);
 
-		if (this.recordRecoverer != null) {
-			instance.setShareConsumerRecordRecoverer(this.recordRecoverer);
-		}
-
 		JavaUtils.INSTANCE
+				.acceptIfNotNull(this.recordRecoverer, instance::setShareConsumerRecordRecoverer)
 				.acceptIfNotNull(endpoint.getGroupId(), properties::setGroupId)
 				.acceptIfNotNull(endpoint.getClientIdPrefix(), properties::setClientId);
 	}

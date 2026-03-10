@@ -374,7 +374,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 					}
 					catch (CorruptRecordException e) {
 						// CRC check failure. The client automatically rejects the corrupt batch.
-						this.logger.error(e, () -> "CorruptRecordException during poll; "
+						this.logger.error(e, "CorruptRecordException during poll; "
 								+ "Kafka client has auto-rejected the corrupt batch");
 						continue;
 					}

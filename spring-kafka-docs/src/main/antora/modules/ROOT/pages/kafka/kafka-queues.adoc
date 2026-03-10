@@ -630,7 +630,7 @@ Without this handling, a single bad record would terminate the consumer thread.
 ==== Listener-Level Error Handling: ShareConsumerRecordRecoverer
 
 When the listener throws an exception, the container delegates to a `ShareConsumerRecordRecoverer` to decide whether to ACCEPT, RELEASE, or REJECT the failed record.
-The default implementation (`DefaultShareConsumerRecordRecoverer`) REJECTs all exceptions, matching the behavior of implicitly rejecting every failure.
+The default is `ShareConsumerRecordRecoverer.REJECTING` (log and REJECT); `ShareConsumerRecordRecoverer.RELEASING` is also available (log and RELEASE for redelivery).
 
 You can provide a custom recoverer to RELEASE records for transient failures (for example, downstream timeouts) so they can be redelivered to another consumer, while REJECTing permanent failures.
 
