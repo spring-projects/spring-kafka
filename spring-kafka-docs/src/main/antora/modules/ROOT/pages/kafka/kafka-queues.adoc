@@ -573,7 +573,7 @@ In explicit acknowledgment mode, the container enforces important constraints:
 
  Poll Blocking: Subsequent polls are blocked until all records from the previous poll are acknowledged.
  One-time Acknowledgment: Each record can only be acknowledged once.
- Error Handling: If processing throws an exception, the record is automatically acknowledged as `REJECT`.
+ Error Handling: If processing throws an exception, the outcome is determined by the <<share-error-handling,ShareConsumerRecordRecoverer>> (default: `REJECT`).
 
 [WARNING]
 In explicit mode, failing to acknowledge records will block further message processing.
@@ -608,6 +608,75 @@ or ack.reject() for every record.
 ----
 
 This feature helps developers quickly identify when acknowledgment calls are missing from their code, preventing the common issue of "Spring Kafka does not consume new records any more" due to forgotten acknowledgments.
+
+[[share-error-handling]]
+=== Error Handling
+
+The share container handles errors at two levels: during `poll()` (poll-level) and when the listener throws (listener-level).
+
+==== Poll-Level Error Handling
+
+If `consumer.poll()` throws an exception, the container handles it so the consumer thread does not stop:
+
+* **RecordDeserializationException**: Thrown when a record cannot be deserialized (for example, invalid UTF-8 for `StringDeserializer`).
+The container catches it, REJECTs the affected record using the topic, partition, and offset from the exception, logs a warning, and continues polling.
+Subsequent records are processed normally.
+* **CorruptRecordException**: Thrown when CRC validation fails (for example, with `check.crcs` enabled).
+The Kafka client automatically rejects the corrupt batch.
+The container catches the exception, logs it, and continues polling.
+
+Without this handling, a single bad record would terminate the consumer thread.
+
+==== Listener-Level Error Handling: ShareConsumerRecordRecoverer
+
+When the listener throws an exception, the container delegates to a `ShareConsumerRecordRecoverer` to decide whether to ACCEPT, RELEASE, or REJECT the failed record.
+The default is `ShareConsumerRecordRecoverer.REJECTING` (log and REJECT); `ShareConsumerRecordRecoverer.RELEASING` is also available (log and RELEASE for redelivery).
+
+You can provide a custom recoverer to RELEASE records for transient failures (for example, downstream timeouts) so they can be redelivered to another consumer, while REJECTing permanent failures.
+
+===== Configuring a Custom Recoverer
+
+Set the recoverer on the container or on the factory so it applies to all containers created by that factory:
+
+[source,java]
+----
+@Bean
+public ShareKafkaListenerContainerFactory<String, String> shareKafkaListenerContainerFactory(
+        ShareConsumerFactory<String, String> shareConsumerFactory) {
+
+    ShareKafkaListenerContainerFactory<String, String> factory =
+        new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
+
+    factory.setShareConsumerRecordRecoverer((record, ex) -> {
+        if (ex instanceof TransientException || ex.getCause() instanceof TimeoutException) {
+            return AcknowledgeType.RELEASE;
+        }
+        return AcknowledgeType.REJECT;
+    });
+
+    return factory;
+}
+----
+
+You can also set the recoverer on an individual container via `container.setShareConsumerRecordRecoverer(recoverer)`.
+
+===== Recoverer Behavior
+
+* The recoverer must not return `RENEW`; the container treats it as REJECT.
+* If the recoverer itself throws, the container falls back to REJECT for that record.
+* The default recoverer logs at `ERROR` and returns `REJECT` for every exception.
+
+===== Relation to Poison Message Protection
+
+Broker-side delivery count (see <<share-poison-message-protection>>) limits how many times a record can be acquired.
+Even if your recoverer always returns `RELEASE`, the broker will eventually archive the record after the configured limit (default 5), so poison messages cannot loop forever.
+
+==== Difference from Traditional Container Error Handling
+
+Share consumers do not use `CommonErrorHandler`.
+That interface is designed for partition-based consumers (seek, remaining records, offset commit).
+Share consumers use acknowledgment-based recovery: the recoverer only decides ACCEPT, RELEASE, or REJECT; the container performs the acknowledgment.
+There is no seek or dead-letter topic integration in the share container.
 
 [[share-acknowledgment-examples]]
 === Acknowledgment Examples

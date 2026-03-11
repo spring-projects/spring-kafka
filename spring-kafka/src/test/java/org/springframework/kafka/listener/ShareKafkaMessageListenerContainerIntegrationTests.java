@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -43,6 +44,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.config.ConfigResource;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.awaitility.Awaitility;
@@ -73,7 +75,9 @@ import static org.mockito.Mockito.verify;
 				"share-container-concurrent-test",
 				"share-container-error-test",
 				"share-container-mixed-ack-test",
-				"share-container-lifecycle-test"
+				"share-container-lifecycle-test",
+				"share-container-recoverer-release-test",
+				"share-container-deser-error-test"
 		},
 		partitions = 1,
 		brokerProperties = {
@@ -439,6 +443,96 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 			assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue();
 			assertThat(errorCount.get()).isEqualTo(1);
 			assertThat(successCount.get()).isEqualTo(4);
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	void shouldUseCustomRecovererReturningReleaseWhenListenerThrows(EmbeddedKafkaBroker broker) throws Exception {
+		String topic = "share-container-recoverer-release-test";
+		String groupId = "share-container-recoverer-release-group";
+		String bootstrapServers = broker.getBrokersAsString();
+
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
+		produceTestRecords(bootstrapServers, topic, 1);
+
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
+
+		ContainerProperties containerProps = new ContainerProperties(topic);
+		containerProps.setExplicitShareAcknowledgment(true);
+
+		AtomicInteger deliveryCount = new AtomicInteger();
+		CountDownLatch acceptedLatch = new CountDownLatch(1);
+		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
+				record, acknowledgment, consumer) -> {
+			if (deliveryCount.getAndIncrement() == 0) {
+				throw new RuntimeException("Simulated transient failure");
+			}
+			acknowledgment.acknowledge();
+			acceptedLatch.countDown();
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(factory, containerProps);
+		container.setShareConsumerRecordRecoverer((rec, ex) -> AcknowledgeType.RELEASE);
+		container.setBeanName("recovererReleaseTestContainer");
+		container.start();
+
+		try {
+			// First delivery threw, recoverer returned RELEASE; record redelivered and accepted
+			assertThat(acceptedLatch.await(30, TimeUnit.SECONDS)).isTrue();
+			assertThat(deliveryCount.get()).isEqualTo(2);
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	void shouldRejectUndeserializableRecordAndProcessNextRecord(EmbeddedKafkaBroker broker) throws Exception {
+		String topic = "share-container-deser-error-test";
+		String groupId = "share-container-deser-error-group";
+		String bootstrapServers = broker.getBrokersAsString();
+
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
+
+		// Produce: good, then bad, then good. The bad record is invalid UTF-8 (0xFF not a valid start byte),
+		// so StringDeserializer throws during poll(); the container catches RecordDeserializationException,
+		// REJECTs it, continues. We must receive both good records to prove the consumer thread did not die.
+		byte[] undeserializableValue = new byte[] { (byte) 0xFF, (byte) 0xFE };
+		String goodRecordValue = "valid";
+
+		Map<String, Object> producerProps = new HashMap<>();
+		producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+		producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+		producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
+		try (KafkaProducer<String, byte[]> producer = new KafkaProducer<>(producerProps)) {
+			producer.send(new ProducerRecord<>(topic, "good", goodRecordValue.getBytes(StandardCharsets.UTF_8))).get();
+			producer.send(new ProducerRecord<>(topic, "bad", undeserializableValue)).get();
+			producer.send(new ProducerRecord<>(topic, "good", goodRecordValue.getBytes(StandardCharsets.UTF_8))).get();
+		}
+
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, false);
+		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
+
+		CountDownLatch twoGoodRecordsLatch = new CountDownLatch(2);
+		ContainerProperties containerProps = new ContainerProperties(topic);
+		containerProps.setMessageListener((MessageListener<String, String>) record -> {
+			if (goodRecordValue.equals(record.value())) {
+				twoGoodRecordsLatch.countDown();
+			}
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(factory, containerProps);
+		container.setBeanName("deserErrorTestContainer");
+		container.start();
+
+		try {
+			assertThat(twoGoodRecordsLatch.await(30, TimeUnit.SECONDS)).isTrue();
 		}
 		finally {
 			container.stop();

@@ -83,6 +83,8 @@ public abstract class AbstractShareKafkaMessageListenerContainer<K, V>
 
 	private volatile boolean running = false;
 
+	private ShareConsumerRecordRecoverer recordRecoverer = ShareConsumerRecordRecoverer.REJECTING;
+
 	/**
 	 * Construct an instance with the provided factory and properties.
 	 * @param shareConsumerFactory the factory.
@@ -237,6 +239,27 @@ public abstract class AbstractShareKafkaMessageListenerContainer<K, V>
 	@Override
 	public void setupMessageListener(Object messageListener) {
 		this.containerProperties.setMessageListener(messageListener);
+	}
+
+	/**
+	 * Set the {@link ShareConsumerRecordRecoverer} to use when a listener throws
+	 * an exception. The recoverer determines whether to ACCEPT, RELEASE, or
+	 * REJECT the failed record.
+	 * @param recoverer the recoverer
+	 * @since 4.1
+	 * @see ShareConsumerRecordRecoverer
+	 */
+	public void setShareConsumerRecordRecoverer(ShareConsumerRecordRecoverer recoverer) {
+		this.recordRecoverer = recoverer;
+	}
+
+	/**
+	 * Return the configured {@link ShareConsumerRecordRecoverer}.
+	 * @return the recoverer
+	 * @since 4.1
+	 */
+	protected ShareConsumerRecordRecoverer getShareConsumerRecordRecoverer() {
+		return this.recordRecoverer;
 	}
 
 	protected abstract void doStart();

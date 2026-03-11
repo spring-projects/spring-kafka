@@ -16,15 +16,20 @@
 
 package org.springframework.kafka.listener;
 
+import org.apache.kafka.clients.consumer.AcknowledgeType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.springframework.kafka.config.KafkaListenerEndpoint;
+import org.springframework.kafka.config.ShareKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ShareConsumerFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 
 /**
  * Unit tests for {@link ShareKafkaMessageListenerContainer}.
@@ -169,6 +174,48 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 
 		assertThat(container.getContainerProperties().isExplicitShareAcknowledgment())
 				.isTrue();
+	}
+
+	@Test
+	void shouldUseRejectingRecovererByDefault() {
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		assertThat(container.getShareConsumerRecordRecoverer()).isSameAs(ShareConsumerRecordRecoverer.REJECTING);
+	}
+
+	@Test
+	void shouldAllowCustomShareConsumerRecordRecoverer() {
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		ShareConsumerRecordRecoverer customRecoverer = (record, ex) -> AcknowledgeType.RELEASE;
+		container.setShareConsumerRecordRecoverer(customRecoverer);
+
+		assertThat(container.getShareConsumerRecordRecoverer()).isSameAs(customRecoverer);
+	}
+
+	@Test
+	void factoryShouldApplyShareConsumerRecordRecovererToContainer() {
+		ShareConsumerRecordRecoverer customRecoverer = (record, ex) -> AcknowledgeType.RELEASE;
+		ShareKafkaListenerContainerFactory<String, String> factory =
+				new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
+		factory.setShareConsumerRecordRecoverer(customRecoverer);
+
+		KafkaListenerEndpoint endpoint = mock(KafkaListenerEndpoint.class);
+		given(endpoint.getTopics()).willReturn(java.util.List.of("test-topic"));
+		given(endpoint.getConcurrency()).willReturn(null); // use factory default (1)
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				factory.createListenerContainer(endpoint);
+
+		assertThat(container.getShareConsumerRecordRecoverer()).isSameAs(customRecoverer);
 	}
 
 }
