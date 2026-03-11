@@ -196,7 +196,9 @@ public class SubBatchPerPartitionTxTests {
 				this.closeLatch.countDown();
 				return null;
 			}).given(consumer).close();
-			willReturn(new ConsumerGroupMetadata(CONTAINER_ID)).given(consumer).groupMetadata();
+			final ConsumerGroupMetadata metadata = mock(ConsumerGroupMetadata.class);
+			given(consumer.groupMetadata()).willReturn(metadata);
+			given(metadata.groupId()).willReturn(CONTAINER_ID);
 			return consumer;
 		}
 

@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.core;
 
+import java.io.Serial;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -141,6 +142,9 @@ class KafkaSaslHandlerClassloadingTest {
 	 * Marker exception to exit producer creation after capturing classloader.
 	 */
 	static class TestAbortedException extends RuntimeException {
+
+		@Serial
+		private static final long serialVersionUID = -3667799411878547727L;
 	}
 
 	/**
