@@ -54,6 +54,7 @@ import java.util.concurrent.TimeUnit
  *
  * @author Wang ZhiYang
  * @author Artem Bilan
+ * @author Youngjoo Kim
  *
  * @since 3.1
  */
@@ -114,7 +115,6 @@ class EnableKafkaKotlinCoroutinesTests {
 	fun `test suspend function with CommonErrorHandler`() {
 		this.template.send("kotlinAsyncTestTopicCommonHandler", "fail")
 		assertThat(this.config.commonHandlerLatch.await(10, TimeUnit.SECONDS)).isTrue()
-		assertThat(this.config.commonHandlerInvoked).isTrue()
 	}
 
 	@KafkaListener(id = "sendTopic", topics = ["kotlinAsyncTestTopic3"],
@@ -146,9 +146,6 @@ class EnableKafkaKotlinCoroutinesTests {
 
 		@Volatile
 		var batchError: Boolean = false
-
-		@Volatile
-		var commonHandlerInvoked: Boolean = false
 
 		val latch1 = CountDownLatch(1)
 
@@ -234,7 +231,6 @@ class EnableKafkaKotlinCoroutinesTests {
 		@Bean
 		fun commonErrorHandler(): DefaultErrorHandler {
 			return DefaultErrorHandler { record, exception ->
-				commonHandlerInvoked = true
 				commonHandlerLatch.countDown()
 			}
 		}
