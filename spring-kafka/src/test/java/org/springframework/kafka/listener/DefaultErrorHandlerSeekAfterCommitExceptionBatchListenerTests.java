@@ -32,7 +32,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.clients.consumer.CommitFailedException;
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -199,9 +198,6 @@ public class DefaultErrorHandlerSeekAfterCommitExceptionBatchListenerTests {
 				this.closeLatch.countDown();
 				return null;
 			}).given(consumer).close();
-			final ConsumerGroupMetadata metadata = mock(ConsumerGroupMetadata.class);
-			given(consumer.groupMetadata()).willReturn(metadata);
-			given(metadata.groupId()).willReturn(CONTAINER_ID);
 			return consumer;
 		}
 

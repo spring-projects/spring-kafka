@@ -31,7 +31,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -217,9 +216,6 @@ public class DefaultErrorHandlerNoSeeksBatchListenerTests {
 				this.closeLatch.countDown();
 				return null;
 			}).given(consumer).close();
-			final ConsumerGroupMetadata metadata = mock(ConsumerGroupMetadata.class);
-			given(consumer.groupMetadata()).willReturn(metadata);
-			given(metadata.groupId()).willReturn(CONTAINER_ID);
 			return consumer;
 		}
 
@@ -251,9 +247,6 @@ public class DefaultErrorHandlerNoSeeksBatchListenerTests {
 						return new ConsumerRecords(Collections.emptyMap(), Map.of());
 				}
 			}).given(consumer).poll(any());
-			final ConsumerGroupMetadata metadata = mock(ConsumerGroupMetadata.class);
-			given(consumer.groupMetadata()).willReturn(metadata);
-			given(metadata.groupId()).willReturn(CONTAINER_ID_2);
 			return consumer;
 		}
 
