@@ -61,6 +61,7 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -759,6 +760,101 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 			// Check internal state through reflection since isAcknowledged() is no longer public
 			assertThat(isAcknowledgedInternal(ack)).isTrue();
 
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	void shouldAllowRenewThenTerminalAcknowledgment(EmbeddedKafkaBroker broker) throws Exception {
+		String topic = "share-container-renew-then-ack-test";
+		String groupId = "share-container-renew-then-ack-group";
+		String bootstrapServers = broker.getBrokersAsString();
+
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
+		produceTestRecords(bootstrapServers, topic, 1);
+
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
+
+		ContainerProperties containerProps = new ContainerProperties(topic);
+		containerProps.setExplicitShareAcknowledgment(true);
+
+		CountDownLatch processedLatch = new CountDownLatch(1);
+		AtomicReference<ShareAcknowledgment> ackRef = new AtomicReference<>();
+
+		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
+				record, acknowledgment, consumer) -> {
+			ackRef.set(acknowledgment);
+			processedLatch.countDown();
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(factory, containerProps);
+		container.setBeanName("renewThenAckTestContainer");
+		container.start();
+
+		try {
+			assertThat(processedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			ShareAcknowledgment ack = ackRef.get();
+			assertThat(ack).isNotNull();
+
+			// RENEW is non-terminal: call renew() then acknowledge(); record should be terminally acknowledged
+			ack.renew();
+			ack.renew(); // multiple RENEWs allowed
+			ack.acknowledge();
+
+			// Allow consumer thread to process queued acks (RENEW, RENEW, ACCEPT)
+			Thread.sleep(500);
+
+			assertThat(isAcknowledgedInternal(ack)).isTrue();
+			assertThat(getAcknowledgmentTypeInternal(ack)).isEqualTo(AcknowledgeType.ACCEPT);
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	void shouldThrowWhenTerminalAcknowledgmentCalledTwice(EmbeddedKafkaBroker broker) throws Exception {
+		String topic = "share-container-double-terminal-test";
+		String groupId = "share-container-double-terminal-group";
+		String bootstrapServers = broker.getBrokersAsString();
+
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
+		produceTestRecords(bootstrapServers, topic, 1);
+
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
+
+		ContainerProperties containerProps = new ContainerProperties(topic);
+		containerProps.setExplicitShareAcknowledgment(true);
+
+		CountDownLatch processedLatch = new CountDownLatch(1);
+		AtomicReference<ShareAcknowledgment> ackRef = new AtomicReference<>();
+
+		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
+				record, acknowledgment, consumer) -> {
+			ackRef.set(acknowledgment);
+			processedLatch.countDown();
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(factory, containerProps);
+		container.setBeanName("doubleTerminalTestContainer");
+		container.start();
+
+		try {
+			assertThat(processedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			ShareAcknowledgment ack = ackRef.get();
+			assertThat(ack).isNotNull();
+
+			ack.acknowledge();
+			// Second terminal ack must throw
+			assertThatExceptionOfType(IllegalStateException.class)
+					.isThrownBy(() -> ack.acknowledge())
+					.withMessageContaining("already been acknowledged");
 		}
 		finally {
 			container.stop();

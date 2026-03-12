@@ -545,7 +545,10 @@ public class ShareKafkaMessageListenerContainer<K, V>
 					ShareConsumerAcknowledgment acknowledgment = this.pendingAcknowledgments.get(ack.record);
 					if (acknowledgment != null) {
 						acknowledgment.notifyAcknowledged(ack.type);
-						onRecordAcknowledged(ack.record);
+						// Remove from pending/timestamp tracking only on terminal ack (RENEW extends lock but record still in flight)
+						if (ack.type != AcknowledgeType.RENEW) {
+							onRecordAcknowledged(ack.record);
+						}
 					}
 				}
 				catch (Exception e) {
@@ -570,7 +573,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 					this.logger.warn(LogMessage.format(
 						"Record not acknowledged within timeout (%d seconds). " +
 						"In explicit acknowledgment mode, you must call ack.acknowledge(), ack.release(), " +
-						"or ack.reject() for every record. " +
+						"or ack.reject() for every record (call ack.renew() to extend the lock; a terminal ack is still required). " +
 						"Unacknowledged record: topic='%s', partition=%d, offset=%d",
 						this.ackTimeoutMs / 1000,
 						record.topic(), record.partition(), record.offset()
@@ -627,12 +630,39 @@ public class ShareKafkaMessageListenerContainer<K, V>
 				acknowledgeInternal(AcknowledgeType.REJECT);
 			}
 
+			@Override
+			public void renew() {
+				acknowledgeInternal(AcknowledgeType.RENEW);
+			}
+
 			@SuppressWarnings("NullAway") // Dataflow analysis limitation
 			private void acknowledgeInternal(AcknowledgeType type) {
-				if (!this.acknowledgmentType.compareAndSet(null, type)) {
-					throw new IllegalStateException(
-							String.format("Record at offset %d has already been acknowledged with type %s",
-									this.record.offset(), this.acknowledgmentType.get()));
+				if (type == AcknowledgeType.RENEW) {
+					AcknowledgeType current = this.acknowledgmentType.get();
+					if (current == AcknowledgeType.ACCEPT || current == AcknowledgeType.RELEASE || current == AcknowledgeType.REJECT) {
+						throw new IllegalStateException(
+								String.format("Record at offset %d has already been terminally acknowledged with type %s",
+										this.record.offset(), current));
+					}
+					// Allow RENEW when state is null or already RENEW (multiple RENEWs permitted).
+					// Try to transition null -> RENEW; if we fail, another thread changed the value.
+					if (current != AcknowledgeType.RENEW && !this.acknowledgmentType.compareAndSet(null, AcknowledgeType.RENEW)) {
+						// compareAndSet failed: state was updated by another thread. If it is now RENEW,
+						// multiple RENEWs are allowed — queue this one. If it is a terminal type, throw below.
+						if (this.acknowledgmentType.get() != AcknowledgeType.RENEW) {
+							throw new IllegalStateException(
+									String.format("Record at offset %d has already been acknowledged with type %s",
+											this.record.offset(), this.acknowledgmentType.get()));
+						}
+					}
+				}
+				else {
+					// Terminal: ACCEPT, RELEASE, or REJECT. Allowed only when state is null or RENEW.
+					if (!this.acknowledgmentType.compareAndSet(null, type) && !this.acknowledgmentType.compareAndSet(AcknowledgeType.RENEW, type)) {
+						throw new IllegalStateException(
+								String.format("Record at offset %d has already been acknowledged with type %s",
+										this.record.offset(), this.acknowledgmentType.get()));
+					}
 				}
 
 				// Queue the acknowledgment to be processed on the consumer thread
@@ -649,7 +679,8 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			}
 
 			boolean isAcknowledged() {
-				return this.acknowledgmentType.get() != null;
+				AcknowledgeType type = this.acknowledgmentType.get();
+				return type != null && type != AcknowledgeType.RENEW;
 			}
 
 			@Nullable

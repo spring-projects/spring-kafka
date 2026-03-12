@@ -1014,6 +1014,10 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		public void reject() {
 		}
 
+		@Override
+		public void renew() {
+		}
+
 	}
 
 }

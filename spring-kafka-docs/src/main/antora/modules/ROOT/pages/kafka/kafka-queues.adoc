@@ -467,11 +467,12 @@ When both configuration methods are used, Spring Kafka follows this precedence o
 [[share-acknowledgment-types]]
 === Acknowledgment Types
 
-Share consumers support three acknowledgment types:
+Share consumers support four acknowledgment types:
 
  ACCEPT: Record processed successfully, mark as completed
  RELEASE: Temporary failure, make record available for redelivery
  REJECT: Permanent failure, do not retry
+ RENEW: Extend the acquisition lock (non-terminal; a terminal ack is still required when processing completes)
 
 [[share-acknowledgment-api]]
 === ShareAcknowledgment API
@@ -484,6 +485,7 @@ public interface ShareAcknowledgment {
     void acknowledge();
     void release();
     void reject();
+    void renew();
 }
 ----
 
@@ -572,7 +574,8 @@ public class ExplicitAckListener {
 In explicit acknowledgment mode, the container enforces important constraints:
 
  Poll Blocking: Subsequent polls are blocked until all records from the previous poll are acknowledged.
- One-time Acknowledgment: Each record can only be acknowledged once.
+ Terminal Acknowledgment: Each record must receive exactly one terminal acknowledgment (`acknowledge()`, `release()`, or `reject()`).
+ You may call `renew()` zero or more times before that to extend the acquisition lock when processing exceeds the broker's lock duration.
  Error Handling: If processing throws an exception, the outcome is determined by the <<share-error-handling,ShareConsumerRecordRecoverer>> (default: `REJECT`).
 
 [WARNING]
@@ -603,8 +606,8 @@ public ShareKafkaListenerContainerFactory<String, String> shareKafkaListenerCont
 When a record exceeds the timeout, you'll see a warning like:
 ----
 WARN: Record not acknowledged within timeout (30 seconds).
-In explicit acknowledgment mode, you must call ack.acknowledge(), ack.release(),
-or ack.reject() for every record.
+In explicit acknowledgment mode, you must call ack.acknowledge(), ack.release(), or ack.reject() for every record.
+Call ack.renew() to extend the lock; a terminal ack is still required.
 ----
 
 This feature helps developers quickly identify when acknowledgment calls are missing from their code, preventing the common issue of "Spring Kafka does not consume new records any more" due to forgotten acknowledgments.
