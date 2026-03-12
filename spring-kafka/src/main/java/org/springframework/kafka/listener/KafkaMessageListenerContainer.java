@@ -928,19 +928,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.pollThreadStateProcessor = setUpPollProcessor(false);
 				this.observationEnabled = this.containerProperties.isObservationEnabled();
 
-				MessageListener<?, ?> target = this.listener;
-				while (target instanceof DelegatingMessageListener<?> delegatingMessageListener) {
-					if (delegatingMessageListener.getDelegate() instanceof MessageListener<?, ?> delegate) {
-						target = delegate;
-					}
-					else {
-						break;
-					}
-				}
-				if (target instanceof RecordMessagingMessageListenerAdapter<?, ?>) {
+				MessageListener<K, V> target = this.listener;
+				while (target instanceof DelegatingMessageListener<?>) {
 					@SuppressWarnings("unchecked")
-					RecordMessagingMessageListenerAdapter<K, V> adapter =
-							(RecordMessagingMessageListenerAdapter<K, V>) target;
+					DelegatingMessageListener<MessageListener<K, V>> dml =
+							(DelegatingMessageListener<MessageListener<K, V>>) target;
+					target = dml.getDelegate();
+				}
+				if (target instanceof RecordMessagingMessageListenerAdapter<K, V> adapter) {
 					adapter.setCallbackForAsyncFailure(this::callbackForAsyncFailure);
 				}
 			}
