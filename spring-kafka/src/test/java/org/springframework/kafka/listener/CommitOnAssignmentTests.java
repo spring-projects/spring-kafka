@@ -196,7 +196,7 @@ public class CommitOnAssignmentTests {
 				this.closeLatch.countDown();
 				return null;
 			}).given(consumer).close();
-			willReturn(new ConsumerGroupMetadata("")).given(consumer).groupMetadata();
+			willReturn(mock(ConsumerGroupMetadata.class)).given(consumer).groupMetadata();
 			return consumer;
 		}
 

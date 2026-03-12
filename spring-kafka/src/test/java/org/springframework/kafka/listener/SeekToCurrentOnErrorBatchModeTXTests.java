@@ -236,7 +236,7 @@ public class SeekToCurrentOnErrorBatchModeTXTests {
 				this.closeLatch.countDown();
 				return null;
 			}).given(consumer).close();
-			willReturn(new ConsumerGroupMetadata(CONTAINER_ID)).given(consumer).groupMetadata();
+			willReturn(mock(ConsumerGroupMetadata.class)).given(consumer).groupMetadata();
 			return consumer;
 		}
 

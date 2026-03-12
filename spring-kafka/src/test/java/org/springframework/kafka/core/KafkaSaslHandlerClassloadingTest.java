@@ -140,7 +140,10 @@ class KafkaSaslHandlerClassloadingTest {
 	/**
 	 * Marker exception to exit producer creation after capturing classloader.
 	 */
+	@SuppressWarnings("serial")
 	static class TestAbortedException extends RuntimeException {
+
+		private static final long serialVersionUID = 1L;
 	}
 
 	/**
