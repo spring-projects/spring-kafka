@@ -244,9 +244,8 @@ public class TransactionalContainerTests {
 		props.setAssignmentCommitOption(AssignmentCommitOption.ALWAYS);
 		props.setEosMode(eosMode);
 		props.setStopContainerWhenFenced(stopWhenFenced);
-		final ConsumerGroupMetadata consumerGroupMetadata = mock(ConsumerGroupMetadata.class);
+		ConsumerGroupMetadata consumerGroupMetadata = mock(ConsumerGroupMetadata.class);
 		given(consumer.groupMetadata()).willReturn(consumerGroupMetadata);
-		given(consumerGroupMetadata.groupId()).willReturn("group");
 		final KafkaTemplate template = new KafkaTemplate(pf);
 		if (AckMode.MANUAL_IMMEDIATE.equals(ackMode)) {
 			props.setMessageListener((AcknowledgingMessageListener<Object, Object>) (data, acknowledgment) -> {

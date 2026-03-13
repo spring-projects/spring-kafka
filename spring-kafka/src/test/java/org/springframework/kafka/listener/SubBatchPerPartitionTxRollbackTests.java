@@ -209,9 +209,7 @@ public class SubBatchPerPartitionTxRollbackTests {
 				this.closeLatch.countDown();
 				return null;
 			}).given(consumer).close();
-			final ConsumerGroupMetadata metadata = mock(ConsumerGroupMetadata.class);
-			given(consumer.groupMetadata()).willReturn(metadata);
-			given(metadata.groupId()).willReturn(CONTAINER_ID);
+			given(consumer.groupMetadata()).willReturn(mock(ConsumerGroupMetadata.class));
 			return consumer;
 		}
 
