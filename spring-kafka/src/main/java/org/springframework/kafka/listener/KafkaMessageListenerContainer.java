@@ -2227,8 +2227,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-
-		/** Check if there are any unacked offsets between {@code startingOffset} and {@code endingOffset}. */
+		/**
+		 * @param unackedOffsets list of unacked offsets
+		 * @param startingOffset the starting offset
+		 * @param endingOffset the ending offset
+		 * @return {@code true} if there are any unacked offsets between {@code startingOffset}
+		 * and {@code endingOffset}, otherwise {@code false}
+		 */
 		private boolean containsUnackedOffsets(final List<Long> unackedOffsets, long startingOffset, long endingOffset) {
 			for (long unackedOffset : unackedOffsets) {
 				if (unackedOffset > startingOffset && unackedOffset < endingOffset) {
