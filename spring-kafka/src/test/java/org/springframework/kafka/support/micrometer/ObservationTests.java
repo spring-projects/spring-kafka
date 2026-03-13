@@ -85,6 +85,7 @@ import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.RecordInterceptor;
 import org.springframework.kafka.requestreply.ReplyingKafkaTemplate;
@@ -100,6 +101,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.util.StringUtils;
+import org.springframework.util.backoff.FixedBackOff;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -114,6 +116,7 @@ import static org.mockito.Mockito.mock;
  * @author Soby Chacko
  * @author Francois Rosiere
  * @author Christian Fredriksson
+ * @author Youngjoo Kim
  *
  * @since 3.0
  */
@@ -693,6 +696,9 @@ public class ObservationTests {
 					// Enable async acks to trigger async failure handling
 					container.getContainerProperties().setAsyncAcks(true);
 					container.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL);
+				}
+				if (container.getListenerId().equals("obs6") || container.getListenerId().equals("obs7")) {
+					container.setCommonErrorHandler(new DefaultErrorHandler(new FixedBackOff(0L, 0)));
 				}
 				if (container.getListenerId().equals("obs4")) {
 					container.setRecordInterceptor(new RecordInterceptor<>() {
