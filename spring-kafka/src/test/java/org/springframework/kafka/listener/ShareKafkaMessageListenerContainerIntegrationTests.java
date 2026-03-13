@@ -806,10 +806,8 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 			ack.acknowledge();
 
 			// Wait for consumer thread to process queued acks (RENEW, RENEW, ACCEPT)
-			Awaitility.await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> {
-				assertThat(isAcknowledgedInternal(ack)).isTrue();
-				assertThat(getAcknowledgmentTypeInternal(ack)).isEqualTo(AcknowledgeType.ACCEPT);
-			});
+			Awaitility.await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> assertThat(isAcknowledgedInternal(ack)).isTrue());
+			assertThat(getAcknowledgmentTypeInternal(ack)).isEqualTo(AcknowledgeType.ACCEPT);
 		}
 		finally {
 			container.stop();
