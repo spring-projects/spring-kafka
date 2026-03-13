@@ -79,7 +79,6 @@ import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.jspecify.annotations.Nullable;
 
-import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
@@ -113,7 +112,6 @@ import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOp
 import org.springframework.kafka.listener.ContainerProperties.EOSMode;
 import org.springframework.kafka.listener.adapter.AsyncRepliesAware;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
-import org.springframework.kafka.listener.adapter.KafkaBackoffAwareMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -178,6 +176,7 @@ import org.springframework.util.StringUtils;
  * @author Su Ko
  * @author Jinhui Kim
  * @author Minchul Son
+ * @author Youngjoo Kim
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -929,15 +928,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.pollThreadStateProcessor = setUpPollProcessor(false);
 				this.observationEnabled = this.containerProperties.isObservationEnabled();
 
-				if (!AopUtils.isAopProxy(this.genericListener) &&
-						this.genericListener instanceof KafkaBackoffAwareMessageListenerAdapter<?, ?>) {
-
-					KafkaBackoffAwareMessageListenerAdapter<K, V> genListener =
-							(KafkaBackoffAwareMessageListenerAdapter<K, V>) this.genericListener;
-					if (genListener.getDelegate() instanceof RecordMessagingMessageListenerAdapter<K, V> adapterListener) {
-						// This means that the async retry feature is supported only for SingleRecordListener with @RetryableTopic.
-						adapterListener.setCallbackForAsyncFailure(this::callbackForAsyncFailure);
-					}
+				Object target = this.listener;
+				while (target instanceof DelegatingMessageListener<?> dml) {
+					target = dml.getDelegate();
+				}
+				if (target instanceof RecordMessagingMessageListenerAdapter<?, ?>) {
+					@SuppressWarnings("unchecked")
+					RecordMessagingMessageListenerAdapter<K, V> adapter =
+							(RecordMessagingMessageListenerAdapter<K, V>) target;
+					adapter.setCallbackForAsyncFailure(this::callbackForAsyncFailure);
 				}
 			}
 			else {
