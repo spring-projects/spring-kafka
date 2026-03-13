@@ -2196,6 +2196,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					ConsumerRecord<K, V> recordToAck = cRecord;
 					if (!CollectionUtils.isEmpty(deferred)) {
 						deferred.sort(Comparator.comparingLong(ConsumerRecord::offset));
+						// Only remove deferred records if there are not any unacked offsets between the current record's offset and the deferred offset
+						// Otherwise, we will remove the unacked offset instead of the targeted deferred offset
+						// Next time, we receive the already removed offsets to do ack and couldn't do anything further
+						// This may lead to pausing consumer infinitely.
 						while (!ObjectUtils.isEmpty(deferred) && !containsUnackedOffsets(offs, recordToAck.offset(), deferred.get(0).offset())) {
 							recordToAck = deferred.remove(0);
 							offs.remove(0);
@@ -2223,9 +2227,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private boolean containsUnackedOffsets(final List<Long> offs, long startingOffest, long endingOffset) {
-			for (long off : offs) {
-				if (off > startingOffest && off < endingOffset) {
+
+		/** Check if there are any unacked offsets between {@code startingOffset} and {@code endingOffset}. */
+		private boolean containsUnackedOffsets(final List<Long> unackedOffsets, long startingOffset, long endingOffset) {
+			for (long unackedOffset : unackedOffsets) {
+				if (unackedOffset > startingOffset && unackedOffset < endingOffset) {
 					return true;
 				}
 			}
