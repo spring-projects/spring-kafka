@@ -2196,7 +2196,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					ConsumerRecord<K, V> recordToAck = cRecord;
 					if (!CollectionUtils.isEmpty(deferred)) {
 						deferred.sort(Comparator.comparingLong(ConsumerRecord::offset));
-						// Only remove deferred records if there are not any unacked offsets between the current record's offset and the deferred offset
+						// Only remove deferred records if there are not any unacked offsets between the current recordToAck offset and the deferred offset
 						// Otherwise, we will remove the unacked offset instead of the targeted deferred offset
 						// Next time, we receive the already removed offsets to do ack and couldn't do anything further
 						// This may lead to pausing consumer infinitely.
