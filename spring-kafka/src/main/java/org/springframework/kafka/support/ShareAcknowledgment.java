@@ -111,7 +111,7 @@ public interface ShareAcknowledgment {
 	 *
 	 * @throws IllegalStateException if the record has already been terminally
 	 * acknowledged (via {@link #acknowledge()}, {@link #release()}, or {@link #reject()})
-	 * @since 4.0
+	 * @since 4.1
 	 */
 	void renew();
 

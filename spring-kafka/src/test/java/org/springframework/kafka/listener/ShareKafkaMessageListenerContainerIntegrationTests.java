@@ -61,7 +61,7 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -805,11 +805,11 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 			ack.renew(); // multiple RENEWs allowed
 			ack.acknowledge();
 
-			// Allow consumer thread to process queued acks (RENEW, RENEW, ACCEPT)
-			Thread.sleep(500);
-
-			assertThat(isAcknowledgedInternal(ack)).isTrue();
-			assertThat(getAcknowledgmentTypeInternal(ack)).isEqualTo(AcknowledgeType.ACCEPT);
+			// Wait for consumer thread to process queued acks (RENEW, RENEW, ACCEPT)
+			Awaitility.await().atMost(10, TimeUnit.SECONDS).untilAsserted(() -> {
+				assertThat(isAcknowledgedInternal(ack)).isTrue();
+				assertThat(getAcknowledgmentTypeInternal(ack)).isEqualTo(AcknowledgeType.ACCEPT);
+			});
 		}
 		finally {
 			container.stop();
@@ -852,7 +852,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 
 			ack.acknowledge();
 			// Second terminal ack must throw
-			assertThatExceptionOfType(IllegalStateException.class)
+			assertThatIllegalStateException()
 					.isThrownBy(() -> ack.acknowledge())
 					.withMessageContaining("already been acknowledged");
 		}

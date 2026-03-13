@@ -265,16 +265,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 	/**
 	 * Represents a pending acknowledgment to be processed on the consumer thread.
 	 */
-	private static class PendingAcknowledgment<K, V> {
-
-		private final ConsumerRecord<K, V> record;
-
-		private final AcknowledgeType type;
-
-		PendingAcknowledgment(ConsumerRecord<K, V> record, AcknowledgeType type) {
-			this.record = record;
-			this.type = type;
-		}
+	private record PendingAcknowledgment<K, V>(ConsumerRecord<K, V> record, AcknowledgeType type) {
 	}
 
 	/**
@@ -540,19 +531,19 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			while ((pendingAck = this.acknowledgmentQueue.poll()) != null) {
 				final PendingAcknowledgment<K, V> ack = pendingAck;
 				try {
-					this.consumer.acknowledge(ack.record, ack.type);
+					this.consumer.acknowledge(ack.record(), ack.type());
 					// Find and notify the acknowledgment object
-					ShareConsumerAcknowledgment acknowledgment = this.pendingAcknowledgments.get(ack.record);
+					ShareConsumerAcknowledgment acknowledgment = this.pendingAcknowledgments.get(ack.record());
 					if (acknowledgment != null) {
-						acknowledgment.notifyAcknowledged(ack.type);
+						acknowledgment.notifyAcknowledged(ack.type());
 						// Remove from pending/timestamp tracking only on terminal ack (RENEW extends lock but record still in flight)
-						if (ack.type != AcknowledgeType.RENEW) {
-							onRecordAcknowledged(ack.record);
+						if (ack.type() != AcknowledgeType.RENEW) {
+							onRecordAcknowledged(ack.record());
 						}
 					}
 				}
 				catch (Exception e) {
-					this.logger.error(e, () -> "Failed to process queued acknowledgment for record: " + ack.record);
+					this.logger.error(e, () -> "Failed to process queued acknowledgment for record: " + ack.record());
 				}
 			}
 		}

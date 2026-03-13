@@ -28,7 +28,5 @@ You can set a custom recoverer on the factory or container.
 [[x41-share-acknowledgment-renew]]
 === ShareAcknowledgment.renew()
 
-`ShareAcknowledgment` now supports `renew()` to extend the acquisition lock on a record when processing may exceed the broker's lock duration (`group.share.record.lock.duration.ms`, default 30 seconds).
-This follows KIP-1222 (Kafka 4.2): RENEW is non-terminal.
-You may call `renew()` multiple times, but you must still call exactly one of `acknowledge()`, `release()`, or `reject()` when processing completes.
-See xref:kafka/kafka-queues.adoc#share-acknowledgment-api[ShareAcknowledgment API] in the Kafka Queues documentation.
+`ShareAcknowledgment` now supports `renew()` to extend the acquisition lock when processing exceeds the broker's lock duration (KIP-1222, Kafka 4.2).
+See xref:kafka/kafka-queues.adoc#share-acknowledgment-api[ShareAcknowledgment API] in the Kafka Queues documentation for details.
