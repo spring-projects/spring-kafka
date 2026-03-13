@@ -24,3 +24,9 @@ Share consumer containers now provide configurable error handling:
 The default is `ShareConsumerRecordRecoverer.REJECTING`; `RELEASING` is also available.
 You can set a custom recoverer on the factory or container.
 * See xref:kafka/kafka-queues.adoc#share-error-handling[Share consumer error handling] in the Kafka Queues documentation.
+
+[[x41-share-acknowledgment-renew]]
+=== ShareAcknowledgment.renew()
+
+`ShareAcknowledgment` now supports `renew()` to extend the acquisition lock when processing exceeds the broker's lock duration (KIP-1222, Kafka 4.2).
+See xref:kafka/kafka-queues.adoc#share-acknowledgment-api[ShareAcknowledgment API] in the Kafka Queues documentation for details.

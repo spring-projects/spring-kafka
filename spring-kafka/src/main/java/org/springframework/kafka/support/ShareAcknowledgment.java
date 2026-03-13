@@ -28,6 +28,7 @@ package org.springframework.kafka.support;
  * <li>{@code ACCEPT} - Record processed successfully</li>
  * <li>{@code RELEASE} - Temporary failure, make available for retry</li>
  * <li>{@code REJECT} - Permanent failure, do not retry</li>
+ * <li>{@code RENEW} - Extend the acquisition lock (non-terminal; a terminal ack is still required)</li>
  * </ul>
  * <p>
  * This interface is only applicable when using explicit acknowledgment mode
@@ -88,5 +89,30 @@ public interface ShareAcknowledgment {
 	 * @throws IllegalStateException if the record has already been acknowledged
 	 */
 	void reject();
+
+	/**
+	 * Renew the acquisition lock on the record without changing its outcome.
+	 * <p>
+	 * Use when processing may exceed the broker's lock duration
+	 * ({@code group.share.record.lock.duration.ms}, default 30 seconds).
+	 * The broker will extend the lock so the record is not redelivered while
+	 * processing continues.
+	 * <p>
+	 * This is non-terminal: you may call {@code renew()} multiple times, but
+	 * you must still call exactly one of {@link #acknowledge()}, {@link #release()},
+	 * or {@link #reject()} when processing completes.
+	 * <p>
+	 * The acknowledgment will be committed when:
+	 * <ul>
+	 * <li>The next {@code poll()} is called (batched with fetch)</li>
+	 * <li>{@code commitSync()} or {@code commitAsync()} is explicitly called</li>
+	 * <li>The consumer is closed</li>
+	 * </ul>
+	 *
+	 * @throws IllegalStateException if the record has already been terminally
+	 * acknowledged (via {@link #acknowledge()}, {@link #release()}, or {@link #reject()})
+	 * @since 4.1
+	 */
+	void renew();
 
 }
