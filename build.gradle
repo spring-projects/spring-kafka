@@ -46,7 +46,7 @@ ext {
 	slf4jVersion = '2.0.17'
 	springBootVersion = '4.0.3' // docs module
 	springDataVersion = '2026.0.0-SNAPSHOT'
-	springVersion = '7.0.5'
+	springVersion = '7.0.6'
 
 	idPrefix = 'kafka'
 
