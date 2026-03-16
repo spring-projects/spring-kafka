@@ -879,7 +879,7 @@ public class KafkaMessageListenerContainerTests {
 				new ConsumerRecord<>("foo", 0, 2L, 1, "baz"),
 				new ConsumerRecord<>("foo", 0, 3L, 1, "qux"),
 				new ConsumerRecord<>("foo", 0, 4L, 1, "quz")));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			return consumerRecords;
