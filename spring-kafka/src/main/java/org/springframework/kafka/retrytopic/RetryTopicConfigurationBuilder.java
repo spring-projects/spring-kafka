@@ -45,6 +45,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * @author Adrian Chlebosz
  * @author Wang Zhiyang
  * @author Stephane Nicoll
+ * @author Heejin Jeon
  *
  * @since 2.7
  *
@@ -93,7 +94,7 @@ public class RetryTopicConfigurationBuilder {
 
 	private TopicSuffixingStrategy topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_DELAY_VALUE;
 
-	private SameIntervalTopicReuseStrategy sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.MULTIPLE_TOPICS;
+	private SameIntervalTopicReuseStrategy sameIntervalTopicReuseStrategy = SameIntervalTopicReuseStrategy.SINGLE_TOPIC;
 
 	@Nullable
 	private Boolean autoStartDltHandler;
