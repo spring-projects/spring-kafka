@@ -39,7 +39,6 @@ import org.apache.kafka.streams.processor.WallclockTimestampExtractor;
 import org.apache.kafka.streams.state.HostInfo;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,7 +83,6 @@ import static org.mockito.Mockito.verify;
 @DirtiesContext
 @EmbeddedKafka(partitions = 1,
 		topics = { "iqs-test-in", "iqs-test-out" })
-@Disabled
 class KafkaStreamsInteractiveQueryServiceTests {
 
 	public static final String IQS_TEST_IN = "iqs-test-in";
