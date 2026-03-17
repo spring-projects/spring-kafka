@@ -9,7 +9,7 @@ This section describes how Spring for Apache Kafka supports transactions.
 The 0.11.0.0 client library added support for transactions.
 Spring for Apache Kafka adds support in the following ways:
 
-* `KafkaTransactionManager`: Used with normal Spring transaction support (`@Transactional`, `TransactionTemplate`, etc)
+* `KafkaTransactionManager`: Used with normal Spring transaction support (`@Transactional`, `TransactionTemplate`, etc.)
 * Transactional `KafkaMessageListenerContainer`
 * Local transactions with `KafkaTemplate`
 * Transaction synchronization with other transaction managers
@@ -18,12 +18,12 @@ Transactions are enabled by providing the `DefaultKafkaProducerFactory` with a `
 In that case, instead of managing a single shared `Producer`, the factory maintains a cache of transactional producers.
 When the user calls `close()` on a producer, it is returned to the cache for reuse instead of actually being closed.
 The `transactional.id` property of each producer is `transactionIdPrefix` + `n`, where `n` starts with `0` and is incremented for each new producer.
-In previous versions of Spring for Apache Kafka, the `transactional.id` was generated differently for transactions started by a listener container with a record-based listener, to support fencing zombies, which is not necessary any more, with `EOSMode.V2` being the only option starting with 3.0.
+In previous versions of Spring for Apache Kafka, the `transactional.id` was generated differently for transactions started by a listener container with a record-based listener, to support fencing zombies, which is not necessary anymore, with `EOSMode.V2` being the only option starting with 3.0.
 For applications running with multiple instances, the `transactionIdPrefix` must be unique per instance.
 
 Also see xref:kafka/exactly-once.adoc[Exactly Once Semantics].
 
-Also see xref:kafka/transactions.adoc#transaction-id-prefix[`transactionIdPrefix`].
+Also see xref:transaction-id-prefix[`transactionIdPrefix`].
 
 With Spring Boot, it is only necessary to set the `spring.kafka.producer.transaction-id-prefix` property - Spring Boot will automatically configure a `KafkaTransactionManager` bean and wire it into the listener container.
 
@@ -48,7 +48,7 @@ You must configure the `KafkaTemplate` to use the same `ProducerFactory` as the 
 [[transaction-synchronization]]
 == Transaction Synchronization
 
-This section refers to producer-only transactions (transactions not started by a listener container); see xref:kafka/transactions.adoc#container-transaction-manager[Using Consumer-Initiated Transactions] for information about chaining transactions when the container starts the transaction.
+This section refers to producer-only transactions (those not started by a listener container); see xref:container-transaction-manager[Using Consumer-Initiated Transactions] for information about chaining transactions when the container starts the transaction.
 
 If you want to send records to kafka and perform some database updates, you can use normal Spring transaction management with, say, a `DataSourceTransactionManager`.
 
@@ -79,8 +79,8 @@ Instead, use a `KafkaTransactionManager` in the container to start the Kafka tra
 
 See xref:tips.adoc#ex-jdbc-sync[Examples of Kafka Transactions with Other Transaction Managers] for an example application that chains JDBC and Kafka transactions.
 
-IMPORTANT: xref:retrytopic.adoc[Non-Blocking Retries] cannot combine with xref:kafka/transactions.adoc#container-transaction-manager[Container Transactions].
-When the listener code throws an exception, container transaction commit succeeds, and the record is sent to the retryable topic.
+IMPORTANT: xref:retrytopic.adoc[Non-Blocking Retries] cannot combine with xref:container-transaction-manager[Container Transactions].
+When the listener code throws an exception, the container transaction commit succeeds, and the record is sent to the retryable topic.
 
 [[kafkatemplate-local-transactions]]
 == `KafkaTemplate` Local Transactions
@@ -111,7 +111,7 @@ With `EOSMode.V2` (aka `BETA`), the only supported mode, it is no longer necessa
 This property must have a different value on each application instance.
 
 [[transaction-id-suffix-fixed]]
-== `TransactionIdSuffix Fixed`
+== `TransactionIdSuffix` Fixed
 
 Since 3.2, a new `TransactionIdSuffixStrategy` interface was introduced to manage `transactional.id` suffix.
 The default implementation is `DefaultTransactionIdSuffixStrategy` when setting `maxCache` greater than zero can reuse `transactional.id` within a specific range, otherwise suffixes will be generated on the fly by incrementing a counter.
@@ -136,7 +136,7 @@ public static class Config {
 
 }
 ----
-When setting `maxCache` to 5, `transactional.id` is `my.txid.`+`{0-4}`.
+When setting `maxCache` to 5, `transactional.id` is `my.txid.`+`\{0-4}`.
 
 IMPORTANT: When using `KafkaTransactionManager` with the `ConcurrentMessageListenerContainer` and enabling `maxCache`, it is necessary to set `maxCache` to a value greater than or equal to `concurrency`.
 If a `MessageListenerContainer` is unable to acquire a `transactional.id` suffix, it will throw a `NoProducerAvailableException`.
@@ -158,7 +158,7 @@ See xref:kafka/sending-messages.adoc#producer-factory[Using `DefaultKafkaProduce
 When a listener fails while transactions are being used, the `AfterRollbackProcessor` is invoked to take some action after the rollback occurs.
 When using the default `AfterRollbackProcessor` with a record listener, seeks are performed so that the failed record will be redelivered.
 With a batch listener, however, the whole batch will be redelivered because the framework doesn't know which record in the batch failed.
-See xref:kafka/annotation-error-handling.adoc#after-rollback[After-rollback Processor] for more information.
+See the xref:kafka/annotation-error-handling.adoc#after-rollback[After-rollback Processor] for more information.
 
 When using a batch listener, version 2.4.2 introduced an alternative mechanism to deal with failures while processing a batch: `BatchToRecordAdapter`.
 When a container factory with `batchListener` set to true is configured with a `BatchToRecordAdapter`, the listener is invoked with one record at a time.
