@@ -1,18 +1,13 @@
 antora:
   extensions:
     - '@springio/antora-extensions/partial-build-extension'
-    # atlas-extension must be before latest-version-extension so the latest versions are applied to imported versions
+    # atlas-extension must be before latest-version-extension so latest versions are applied to imported versions
     - '@antora/atlas-extension'
     - require: '@springio/antora-extensions/latest-version-extension'
     - require: '@springio/antora-extensions/inject-collector-cache-config-extension'
     - '@antora/collector-extension'
     - require: '@springio/antora-extensions/root-component-extension'
       root_component_name: 'kafka'
-      # FIXME: Run antora once using this extension to migrate to the Asciidoc Tabs syntax
-      # and then remove this extension
-    - require: '@springio/antora-extensions/tabs-migration-extension'
-      unwrap_example_block: always
-      save_result: true
 site:
   title: Spring Kafka
   url: https://docs.spring.io/spring-kafka/reference/
@@ -43,4 +38,4 @@ runtime:
     format: pretty
 ui:
   bundle:
-    url: https://github.com/spring-io/antora-ui-spring/releases/download/v0.4.10/ui-bundle.zip
+    url: https://github.com/spring-io/antora-ui-spring/releases/download/v0.4.26/ui-bundle.zip
