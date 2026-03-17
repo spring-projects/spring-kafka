@@ -4,14 +4,14 @@ plugins {
 }
 
 antora {
-	version = '3.2.0-alpha.2'
+	version = '3.2.0-alpha.11'
 	options = [clean: true, fetch: true, stacktrace: true]
 	// NOTE remember to update the versions in lib/antora/templates/per-branch-antora-playbook.yml as well
 	dependencies = [
-			'@antora/atlas-extension'         : '1.0.0-alpha.2',
+			'@antora/atlas-extension'         : '1.0.0-alpha.5',
 			'@antora/collector-extension'     : '1.0.1',
 			'@asciidoctor/tabs'               : '1.0.0-beta.6',
-			'@springio/antora-extensions'     : '1.14.4',
-			'@springio/asciidoctor-extensions': '1.0.0-alpha.16',
+			'@springio/antora-extensions'     : '1.14.7',
+			'@springio/asciidoctor-extensions': '1.0.0-alpha.18',
 	]
 }
