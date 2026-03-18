@@ -23,6 +23,7 @@ asciidoc:
     page-pagination: ''
     hide-uri-scheme: '@'
     tabs-sync-option: '@'
+    0-4: '\{0-4}' # workaround for v4.1.0-M2 tag problem
   extensions:
   - '@asciidoctor/tabs'
   - '@springio/asciidoctor-extensions'
