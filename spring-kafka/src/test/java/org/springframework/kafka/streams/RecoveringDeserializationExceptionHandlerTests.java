@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
@@ -33,8 +34,7 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
-import org.apache.kafka.streams.errors.DeserializationExceptionHandler.Response;
-import org.apache.kafka.streams.errors.DeserializationExceptionHandler.Result;
+import org.apache.kafka.streams.errors.DeserializationExceptionHandler;
 import org.apache.kafka.streams.errors.ErrorHandlerContext;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.processor.WallclockTimestampExtractor;
@@ -58,7 +58,6 @@ import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
-import org.springframework.kafka.listener.ConsumerRecordRecoverer;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -79,7 +78,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka(partitions = 1, topics = { "recoverer1", "recoverer2", "recovererDLQ" })
-public class RecoveringDeserializationExceptionHandlerTests {
+public class RecoveringDeserializationExceptionHandlerTests
+		extends AbstractRecoveringExceptionHandlerTests<RecoveringDeserializationExceptionHandler,
+		DeserializationExceptionHandler.Response> {
 
 	@Autowired
 	private KafkaOperations<byte[], byte[]> kafkaTemplate;
@@ -87,52 +88,87 @@ public class RecoveringDeserializationExceptionHandlerTests {
 	@Autowired
 	private CompletableFuture<ConsumerRecord<byte[], byte[]>> resultFuture;
 
-	@Test
-	void viaStringProperty() {
+	RecoveringDeserializationExceptionHandlerTests() {
+		super(RecoveringDeserializationExceptionHandler.RECOVERER,
+				RecoveringDeserializationExceptionHandler.DLQ_DESTINATION_RESOLVER);
+	}
+
+	@Override
+	protected RecoveringDeserializationExceptionHandler createHandler(Map<String, Object> configs) {
 		RecoveringDeserializationExceptionHandler handler = new RecoveringDeserializationExceptionHandler();
-		Map<String, Object> configs = new HashMap<String, Object>();
-		configs.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER,
-				Recoverer.class.getName());
 		handler.configure(configs);
-		assertThat(KafkaTestUtils.getPropertyValue(handler, "recoverer")).isInstanceOf(Recoverer.class);
-		assertThat(handler.handleError((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
-				new IllegalArgumentException())).extracting(Response::result).isEqualTo(Result.RESUME);
-		assertThat(handler.handleError((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
-				new IllegalStateException())).extracting(Response::result).isEqualTo(Result.FAIL);
+		return handler;
+	}
+
+	@Override
+	protected DeserializationExceptionHandler.Response handleError(
+			RecoveringDeserializationExceptionHandler handler, ErrorHandlerContext context, Exception exception) {
+		return handler.handleError(context,
+				new ConsumerRecord<>(context.topic(), context.partition(), context.offset(), null, null), exception);
+	}
+
+	@Override
+	protected void assertResponseShouldResume(DeserializationExceptionHandler.Response response) {
+		assertThat(response.result()).isEqualTo(DeserializationExceptionHandler.Result.RESUME);
+	}
+
+	@Override
+	protected void assertResponseShouldFail(DeserializationExceptionHandler.Response response) {
+		assertThat(response.result()).isEqualTo(DeserializationExceptionHandler.Result.FAIL);
+	}
+
+	@Override
+	protected void assertResponseShouldContainDeadLetterRecords(
+			DeserializationExceptionHandler.Response response, ProducerRecord<byte[], byte[]> expectedRecord) {
+		assertThat(response.deadLetterQueueRecords()).hasSize(1).first()
+				.satisfies(record -> {
+					assertThat(record.topic()).isEqualTo(expectedRecord.topic());
+					assertThat(record.partition()).isEqualTo(expectedRecord.partition());
+					assertThat(record.key()).isEqualTo(expectedRecord.key());
+					assertThat(record.value()).isEqualTo(expectedRecord.value());
+					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN)).isNotNull();
+					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN)).isNotNull();
+					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
+					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNotNull();
+					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)).isNotNull();
+					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)).isNotNull();
+					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)).isNotNull();
+					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)).isNotNull();
+				});
 	}
 
 	@Test
-	void viaClassProperty() {
-		RecoveringDeserializationExceptionHandler handler = new RecoveringDeserializationExceptionHandler();
-		Map<String, Object> configs = new HashMap<String, Object>();
+	@SuppressWarnings("removal")
+	void withLegacyRecovererKeyAsStringProperty() {
+		Map<String, Object> configs = new HashMap<>();
+		configs.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER, Recoverer.class.getName());
+		RecoveringDeserializationExceptionHandler handler = createHandler(configs);
+		assertThat(KafkaTestUtils.getPropertyValue(handler, "recoverer")).isInstanceOf(Recoverer.class);
+		assertResponseShouldResume(handleError(handler, createMockContext(), new IllegalArgumentException()));
+		assertResponseShouldFail(handleError(handler, createMockContext(), new IllegalStateException()));
+	}
+
+	@Test
+	@SuppressWarnings("removal")
+	void withLegacyRecovererKeyAsClassProperty() {
+		Map<String, Object> configs = new HashMap<>();
 		configs.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER, Recoverer.class);
-		handler.configure(configs);
+		RecoveringDeserializationExceptionHandler handler = createHandler(configs);
 		assertThat(KafkaTestUtils.getPropertyValue(handler, "recoverer")).isInstanceOf(Recoverer.class);
-		assertThat(handler.handleError((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
-				new IllegalArgumentException())).extracting(Response::result).isEqualTo(Result.RESUME);
-		assertThat(handler.handleError((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
-				new IllegalStateException())).extracting(Response::result).isEqualTo(Result.FAIL);
+		assertResponseShouldResume(handleError(handler, createMockContext(), new IllegalArgumentException()));
+		assertResponseShouldFail(handleError(handler, createMockContext(), new IllegalStateException()));
 	}
 
 	@Test
-	void viaObjectProperty() {
-		RecoveringDeserializationExceptionHandler handler = new RecoveringDeserializationExceptionHandler();
+	@SuppressWarnings("removal")
+	void withLegacyRecovererKeyAsObjectProperty() {
 		Map<String, Object> configs = new HashMap<>();
 		Recoverer rec = new Recoverer();
 		configs.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER, rec);
-		handler.configure(configs);
+		RecoveringDeserializationExceptionHandler handler = createHandler(configs);
 		assertThat(KafkaTestUtils.getPropertyValue(handler, "recoverer")).isSameAs(rec);
-		assertThat(handler.handleError((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
-				new IllegalArgumentException())).extracting(Response::result).isEqualTo(Result.RESUME);
-		assertThat(handler.handleError((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
-				new IllegalStateException())).extracting(Response::result).isEqualTo(Result.FAIL);
-	}
-
-	@Test
-	void withNoRecoverer() {
-		RecoveringDeserializationExceptionHandler handler = new RecoveringDeserializationExceptionHandler();
-		assertThat(handler.handleError((ErrorHandlerContext) null, new ConsumerRecord<>("foo", 0, 0, null, null),
-				new IllegalArgumentException())).extracting(Response::result).isEqualTo(Result.FAIL);
+		assertResponseShouldResume(handleError(handler, createMockContext(), new IllegalArgumentException()));
+		assertResponseShouldFail(handleError(handler, createMockContext(), new IllegalStateException()));
 	}
 
 	@Test
@@ -145,17 +181,6 @@ public class RecoveringDeserializationExceptionHandlerTests {
 		assertThat(record.headers().lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
 	}
 
-	public static class Recoverer implements ConsumerRecordRecoverer {
-
-		@Override
-		public void accept(ConsumerRecord<?, ?> record, Exception exception) {
-			if (exception instanceof IllegalStateException) {
-				throw new IllegalStateException("recovery failed test");
-			}
-		}
-
-	}
-
 	@Configuration
 	@EnableKafka
 	@EnableKafkaStreams
@@ -163,9 +188,6 @@ public class RecoveringDeserializationExceptionHandlerTests {
 
 		@Value("${" + EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
 		private String brokerAddresses;
-
-		@Value("${streaming.topic.two}")
-		private String streamingTopic2;
 
 		@Bean
 		public ProducerFactory<byte[], byte[]> producerFactory() {
@@ -197,7 +219,7 @@ public class RecoveringDeserializationExceptionHandlerTests {
 			props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, "100");
 			props.put(StreamsConfig.DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
 					RecoveringDeserializationExceptionHandler.class);
-			props.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER, recoverer());
+			props.put(RecoveringDeserializationExceptionHandler.RECOVERER, recoverer());
 			return new KafkaStreamsConfiguration(props);
 		}
 
@@ -216,7 +238,8 @@ public class RecoveringDeserializationExceptionHandlerTests {
 
 		@Bean
 		public Map<String, Object> consumerConfigs() {
-			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.brokerAddresses, "recovererGroup", false);
+			Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(this.brokerAddresses, "recovererGroup",
+					false);
 			consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
 			consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class);
 			return consumerProps;
@@ -229,7 +252,7 @@ public class RecoveringDeserializationExceptionHandlerTests {
 
 		@Bean
 		public KafkaListenerContainerFactory<ConcurrentMessageListenerContainer<byte[], byte[]>>
-					kafkaListenerContainerFactory() {
+				kafkaListenerContainerFactory() {
 
 			ConcurrentKafkaListenerContainerFactory<byte[], byte[]> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();

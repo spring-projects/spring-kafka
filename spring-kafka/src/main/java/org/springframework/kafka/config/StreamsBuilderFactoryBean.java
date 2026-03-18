@@ -105,6 +105,8 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private @Nullable StreamsUncaughtExceptionHandler streamsUncaughtExceptionHandler;
 
+	private @Nullable String deadLetterTopicName;
+
 	private boolean autoStartup = true;
 
 	private int phase = Integer.MAX_VALUE - 1000; // NOSONAR magic #
@@ -161,6 +163,24 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	@Override
 	public synchronized void setBeanName(String name) {
 		this.beanName = name;
+	}
+
+	/**
+	 * Set the dead letter topic name.
+	 * @param deadLetterTopicName the dead letter topic name.
+	 * @since 4.1.0
+	 */
+	public void setDeadLetterTopicName(String deadLetterTopicName) {
+		this.deadLetterTopicName = deadLetterTopicName;
+	}
+
+	/**
+	 * Get the dead letter topic name.
+	 * @return the dead letter topic name.
+	 * @since 4.1.0
+	 */
+	public @Nullable String getDeadLetterTopicName() {
+		return this.deadLetterTopicName;
 	}
 
 	/**
@@ -365,6 +385,9 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 				try {
 					Assert.state(this.properties != null,
 							"streams configuration properties must not be null");
+					if (this.deadLetterTopicName != null) {
+						this.properties.put(StreamsConfig.ERRORS_DEAD_LETTER_QUEUE_TOPIC_NAME_CONFIG, this.deadLetterTopicName);
+					}
 					this.kafkaStreams = this.kafkaStreamsCustomizer.initKafkaStreams(
 							this.topology, this.properties, this.clientSupplier
 					);
