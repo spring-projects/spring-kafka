@@ -185,11 +185,38 @@ configure(javaProjects) { subproject ->
 
 	test {
 		testLogging {
-			events 'started', 'passed', 'skipped', 'failed'
+			// Per-test lifecycle is noisy on CI; see afterSuite for one line per test class (timing + counts).
+			events 'skipped', 'failed'
 			showStandardStreams = project.hasProperty('showStandardStreams') ?: false
 			showExceptions = true
 			showStackTraces = true
 			exceptionFormat = 'full'
+		}
+
+		afterSuite { desc, result ->
+			// Top-level class only (skip engine root, nested classes, and empty suites)
+			if (desc.className == null || result.testCount == 0 || desc.parent?.className != null) {
+				return
+			}
+			long classMs = result.endTime - result.startTime
+			String duration = classMs >= 60_000
+					? String.format("%.2f min", classMs / 60_000.0)
+					: classMs >= 10_000
+							? String.format("%.2fs", classMs / 1000.0)
+							: "${classMs}ms"
+			String fqn = desc.className
+			String simpleName = fqn.contains('.') ? fqn.substring(fqn.lastIndexOf('.') + 1) : fqn
+			StringBuilder summary = new StringBuilder()
+			summary.append(simpleName).append(" finished in ").append(duration)
+					.append(" (").append(result.testCount).append(" tests")
+			if (result.failedTestCount > 0) {
+				summary.append(", ").append(result.failedTestCount).append(" failed")
+			}
+			if (result.skippedTestCount > 0) {
+				summary.append(", ").append(result.skippedTestCount).append(" skipped")
+			}
+			summary.append(')')
+			logger.lifecycle(summary.toString())
 		}
 
 		maxHeapSize = '1536m'
