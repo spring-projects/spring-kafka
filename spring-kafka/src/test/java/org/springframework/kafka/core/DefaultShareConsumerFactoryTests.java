@@ -151,6 +151,9 @@ class DefaultShareConsumerFactoryTests {
 		final String groupId = "testGroup";
 		var bootstrapServers = broker.getBrokersAsString();
 
+		// Apply group config before producing so a joining share consumer consistently uses earliest.
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
+
 		var producerProps = new java.util.Properties();
 		producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -158,9 +161,8 @@ class DefaultShareConsumerFactoryTests {
 
 		try (var producer = new KafkaProducer<String, String>(producerProps)) {
 			producer.send(new ProducerRecord<>(topic, "key", "integration-test-value")).get();
+			producer.flush();
 		}
-
-		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 
 		var consumerProps = new HashMap<String, Object>();
 		consumerProps.put("bootstrap.servers", bootstrapServers);
@@ -172,11 +174,21 @@ class DefaultShareConsumerFactoryTests {
 		var consumer = factory.createShareConsumer(groupId, "myapp-client-id");
 		consumer.subscribe(Collections.singletonList(topic));
 
-		var records = consumer.poll(Duration.ofSeconds(10));
-		assertThat(records.count())
+		// First poll(s) may be empty (assignment / share coordinator); avoid a single-poll race on CI.
+		int total = 0;
+		String value = null;
+		long deadline = System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(30);
+		while (total == 0 && System.currentTimeMillis() < deadline) {
+			var records = consumer.poll(Duration.ofSeconds(1));
+			total += records.count();
+			if (!records.isEmpty()) {
+				value = records.iterator().next().value();
+			}
+		}
+		assertThat(total)
 				.as("Should have received at least one record")
 				.isGreaterThan(0);
-		assertThat(records.iterator().next().value())
+		assertThat(value)
 				.as("Record value should match")
 				.isEqualTo("integration-test-value");
 		consumer.close();
@@ -213,6 +225,8 @@ class DefaultShareConsumerFactoryTests {
 			List<String> consumerIds, int recordCount, EmbeddedKafkaBroker broker) throws Exception {
 		var bootstrapServers = broker.getBrokersAsString();
 
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
+
 		var producerProps = new java.util.Properties();
 		producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -223,8 +237,6 @@ class DefaultShareConsumerFactoryTests {
 			}
 			producer.flush();
 		}
-
-		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 
 		List<String> allReceived = Collections.synchronizedList(new ArrayList<>());
 		var latch = new java.util.concurrent.CountDownLatch(recordCount);
@@ -255,11 +267,11 @@ class DefaultShareConsumerFactoryTests {
 			});
 		}
 
-		assertThat(latch.await(10, TimeUnit.SECONDS))
+		assertThat(latch.await(30, TimeUnit.SECONDS))
 			.as("All records should be received within timeout")
 			.isTrue();
 		executor.shutdown();
-		assertThat(executor.awaitTermination(10, TimeUnit.SECONDS))
+		assertThat(executor.awaitTermination(30, TimeUnit.SECONDS))
 			.as("Executor should terminate after shutdown")
 			.isTrue();
 		return allReceived;

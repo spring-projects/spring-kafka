@@ -75,6 +75,7 @@ public class BatchListenerConversion2Tests {
 		this.template.send(topic, "{\"bar\":\"baz\"}");
 		this.template.send(topic, "junk");
 		this.template.send(topic, "{\"bar\":\"baz\"}");
+		this.template.flush();
 		assertThat(listener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(listener.badFoo).isInstanceOf(BadFoo.class);
 		assertThat(listener.receivedFoos).isEqualTo(2);

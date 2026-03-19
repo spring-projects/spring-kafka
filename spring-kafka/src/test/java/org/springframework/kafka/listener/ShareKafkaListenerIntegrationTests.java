@@ -36,14 +36,17 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.awaitility.Awaitility;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.config.ShareKafkaListenerContainerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.DefaultShareConsumerFactory;
@@ -75,6 +78,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 		"share-listener-error-handling-test",
 		"share-listener-factory-props-test"
 },
+		partitions = 1,
 		brokerProperties = {
 				"share.coordinator.state.topic.replication.factor=1",
 				"share.coordinator.state.topic.min.isr=1"
@@ -87,6 +91,9 @@ class ShareKafkaListenerIntegrationTests {
 	@Autowired
 	KafkaTemplate<String, String> kafkaTemplate;
 
+	@Autowired
+	KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
+
 	@Test
 	void shouldSupportBasicShareKafkaListener() throws Exception {
 		final String topic = "share-listener-basic-test";
@@ -95,6 +102,7 @@ class ShareKafkaListenerIntegrationTests {
 
 		// Send test message
 		kafkaTemplate.send(topic, "basic-test-message");
+		kafkaTemplate.flush();
 
 		// Wait for processing
 		assertThat(BasicTestListener.latch.await(10, TimeUnit.SECONDS)).isTrue();
@@ -111,6 +119,7 @@ class ShareKafkaListenerIntegrationTests {
 		kafkaTemplate.send(topic, "accept", "accept-message");
 		kafkaTemplate.send(topic, "release", "release-message");
 		kafkaTemplate.send(topic, "reject", "reject-message");
+		kafkaTemplate.flush();
 
 		// Wait for processing
 		assertThat(ExplicitAckTestListener.latch.await(15, TimeUnit.SECONDS)).isTrue();
@@ -134,6 +143,7 @@ class ShareKafkaListenerIntegrationTests {
 
 		// Send test message
 		kafkaTemplate.send(topic, "consumer-aware-message");
+		kafkaTemplate.flush();
 
 		// Wait for processing
 		assertThat(ShareConsumerAwareTestListener.latch.await(10, TimeUnit.SECONDS)).isTrue();
@@ -147,8 +157,12 @@ class ShareKafkaListenerIntegrationTests {
 		final String groupId = "share-ack-consumer-aware-group";
 		setShareAutoOffsetResetEarliest(this.broker.getBrokersAsString(), groupId);
 
+		// This test can run first (JUnit 6); wait for containers before producing so share consumers are subscribed.
+		awaitRunningShareListenerContainers();
+
 		// Send test message
 		kafkaTemplate.send(topic, "ack-consumer-aware-message");
+		kafkaTemplate.flush();
 
 		// Wait for processing
 		assertThat(AckShareConsumerAwareTestListener.latch.await(30, TimeUnit.SECONDS)).isTrue();
@@ -168,6 +182,7 @@ class ShareKafkaListenerIntegrationTests {
 		kafkaTemplate.send(topic, "success1", "success-message-1");
 		kafkaTemplate.send(topic, "success2", "success-message-2");
 		kafkaTemplate.send(topic, "retry", "retry-message");
+		kafkaTemplate.flush();
 
 		// Wait for processing
 		assertThat(MixedAckTestListener.processedLatch.await(15, TimeUnit.SECONDS)).isTrue();
@@ -189,6 +204,7 @@ class ShareKafkaListenerIntegrationTests {
 		kafkaTemplate.send(topic, "success", "success-message");
 		kafkaTemplate.send(topic, "error", "error-message");
 		kafkaTemplate.send(topic, "success2", "success-message-2");
+		kafkaTemplate.flush();
 
 		// Wait for processing
 		assertThat(ErrorHandlingTestListener.latch.await(10, TimeUnit.SECONDS)).isTrue();
@@ -206,6 +222,7 @@ class ShareKafkaListenerIntegrationTests {
 
 		// Send test message
 		kafkaTemplate.send(topic, "factory-test", "factory-props-message");
+		kafkaTemplate.flush();
 
 		// Wait for processing
 		assertThat(FactoryPropsTestListener.latch.await(10, TimeUnit.SECONDS)).isTrue();
@@ -243,6 +260,20 @@ class ShareKafkaListenerIntegrationTests {
 		}
 	}
 
+	/**
+	 * Wait until all listener containers have started (needed when a test runs before others).
+	 */
+	private void awaitRunningShareListenerContainers() {
+		Awaitility.await()
+				.atMost(30, TimeUnit.SECONDS)
+				.pollInterval(100, TimeUnit.MILLISECONDS)
+				.untilAsserted(() -> {
+					assertThat(this.kafkaListenerEndpointRegistry.getListenerContainerIds()).isNotEmpty();
+					this.kafkaListenerEndpointRegistry.getListenerContainers().forEach(container ->
+							assertThat(container.isRunning()).isTrue());
+				});
+	}
+
 	@Configuration
 	@EnableKafka
 	static class TestConfig {
@@ -262,7 +293,7 @@ class ShareKafkaListenerIntegrationTests {
 			configs.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString());
 			configs.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 			configs.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-			configs.put("share.acknowledgement.mode", "explicit");
+			configs.put(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG, "explicit");
 			return new DefaultShareConsumerFactory<>(configs);
 		}
 
@@ -280,10 +311,10 @@ class ShareKafkaListenerIntegrationTests {
 
 		@Bean
 		public ShareKafkaListenerContainerFactory<String, String> factoryPropsShareKafkaListenerContainerFactory(
-				ShareConsumerFactory<String, String> shareConsumerFactory) {
+				@Qualifier("explicitShareConsumerFactory") ShareConsumerFactory<String, String> explicitShareConsumerFactory) {
 			ShareKafkaListenerContainerFactory<String, String> factory =
-					new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
-			// Configure explicit acknowledgment via factory's container properties
+					new ShareKafkaListenerContainerFactory<>(explicitShareConsumerFactory);
+			// Configure explicit acknowledgment via factory's container properties (consumer must use explicit mode too)
 			factory.getContainerProperties().setExplicitShareAcknowledgment(true);
 			return factory;
 		}

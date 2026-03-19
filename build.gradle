@@ -157,12 +157,46 @@ configure(javaProjects) { subproject ->
 	[compileJava, compileTestJava]*.options*.compilerArgs = ['-Xlint:all,-options,-processing', '-parameters']
 
 	test {
+		// Default timeout for every testable method (unless @Timeout). Stops hung tests instead of wedging CI.
+		// Override: ./gradlew test -Djunit.jupiter.execution.timeout.default=PT20M  or  -PjunitTimeoutDefault=PT20M
+		def junitTimeoutDefault = System.getProperty('junit.jupiter.execution.timeout.default')
+				?: findProperty('junitTimeoutDefault')
+				?: 'PT10M'
+		systemProperty 'junit.jupiter.execution.timeout.default', junitTimeoutDefault
+
 		testLogging {
-			events 'skipped', 'failed'
+			// STARTED: last line before a hang usually identifies the stuck method. Class summary in afterSuite.
+			events 'started', 'failed'
 			showStandardStreams = project.hasProperty('showStandardStreams') ?: false
 			showExceptions = true
 			showStackTraces = true
 			exceptionFormat = 'full'
+		}
+
+		afterSuite { desc, result ->
+			// Top-level class only (skip engine root, nested classes, and empty suites)
+			if (desc.className == null || result.testCount == 0 || desc.parent?.className != null) {
+				return
+			}
+			long classMs = result.endTime - result.startTime
+			String duration = classMs >= 60_000
+					? String.format("%.2f min", classMs / 60_000.0)
+					: classMs >= 10_000
+							? String.format("%.2fs", classMs / 1000.0)
+							: "${classMs}ms"
+			String fqn = desc.className
+			String simpleName = fqn.contains('.') ? fqn.substring(fqn.lastIndexOf('.') + 1) : fqn
+			StringBuilder summary = new StringBuilder()
+			summary.append(simpleName).append(" finished in ").append(duration)
+					.append(" (").append(result.testCount).append(" tests")
+			if (result.failedTestCount > 0) {
+				summary.append(", ").append(result.failedTestCount).append(" failed")
+			}
+			if (result.skippedTestCount > 0) {
+				summary.append(", ").append(result.skippedTestCount).append(" skipped")
+			}
+			summary.append(')')
+			logger.lifecycle(summary.toString())
 		}
 
 		maxHeapSize = '1536m'
