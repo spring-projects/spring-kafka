@@ -184,9 +184,17 @@ configure(javaProjects) { subproject ->
 	[compileJava, compileTestJava]*.options*.compilerArgs = ['-Xlint:all,-options,-processing', '-parameters']
 
 	test {
+		// Default timeout for every testable method (unless @Timeout). Stops hung tests instead of wedging CI.
+		// Override: ./gradlew test -Djunit.jupiter.execution.timeout.default=PT20M  or  -PjunitTimeoutDefault=PT20M
+		def junitTimeoutDefault = System.getProperty('junit.jupiter.execution.timeout.default')
+				?: findProperty('junitTimeoutDefault')
+				?: 'PT10M'
+		systemProperty 'junit.jupiter.execution.timeout.default', junitTimeoutDefault
+
 		testLogging {
-			// Per-test lifecycle is noisy on CI; see afterSuite for one line per test class (timing + counts).
-			events 'skipped', 'failed'
+			// STARTED: last line before a hang usually identifies the stuck method. No PASSED (class summary only).
+			// Skipped count is in afterSuite; omit per-test SKIPPED lines to limit noise.
+			events 'started', 'failed'
 			showStandardStreams = project.hasProperty('showStandardStreams') ?: false
 			showExceptions = true
 			showStackTraces = true
