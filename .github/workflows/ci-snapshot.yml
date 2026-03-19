@@ -19,7 +19,7 @@ jobs:
   build-snapshot:
     uses: spring-io/spring-github-workflows/.github/workflows/spring-artifactory-gradle-snapshot.yml@v7
     with:
-      gradleTasks: ${{ github.event_name == 'schedule' && '--rerun-tasks' || '' }} --info
+      gradleTasks: ${{ github.event_name == 'schedule' && '--rerun-tasks' || '' }} -x test
     secrets:
       DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
       ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
