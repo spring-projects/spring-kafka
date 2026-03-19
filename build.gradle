@@ -193,6 +193,7 @@ configure(javaProjects) { subproject ->
 		}
 
 		maxHeapSize = '1536m'
+		maxParallelForks = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
 		useJUnitPlatform()
 	}
 
