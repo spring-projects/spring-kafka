@@ -54,6 +54,16 @@ ext {
 
 }
 
+gradle.projectsEvaluated {
+	int processors = Runtime.runtime.availableProcessors()
+	int testForks = processors.intdiv(2) ?: 1
+	int maxWorkers = gradle.startParameter.maxWorkerCount
+	String workersLabel = maxWorkers > 0 ? String.valueOf(maxWorkers) : "default (~${processors})"
+	rootProject.logger.lifecycle(
+			"Parallelism: {} processors (Runtime), test maxParallelForks={}, Gradle maxWorkers={}",
+			processors, testForks, workersLabel)
+}
+
 allprojects {
 	group = 'org.springframework.kafka'
 
