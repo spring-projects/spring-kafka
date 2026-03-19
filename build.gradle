@@ -185,7 +185,7 @@ configure(javaProjects) { subproject ->
 
 	test {
 		testLogging {
-			events 'skipped', 'failed'
+			events 'started', 'passed', 'skipped', 'failed'
 			showStandardStreams = project.hasProperty('showStandardStreams') ?: false
 			showExceptions = true
 			showStackTraces = true
