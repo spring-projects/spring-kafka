@@ -36,6 +36,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.awaitility.Awaitility;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
@@ -44,6 +45,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.config.ShareKafkaListenerContainerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.DefaultShareConsumerFactory;
@@ -86,6 +88,9 @@ class ShareKafkaListenerIntegrationTests {
 
 	@Autowired
 	KafkaTemplate<String, String> kafkaTemplate;
+
+	@Autowired
+	KafkaListenerEndpointRegistry kafkaListenerEndpointRegistry;
 
 	@Test
 	void shouldSupportBasicShareKafkaListener() throws Exception {
@@ -147,11 +152,15 @@ class ShareKafkaListenerIntegrationTests {
 		final String groupId = "share-ack-consumer-aware-group";
 		setShareAutoOffsetResetEarliest(this.broker.getBrokersAsString(), groupId);
 
+		// wait for containers before producing so the share consumer is subscribed.
+		awaitRunningShareListenerContainers();
+
 		// Send test message
 		kafkaTemplate.send(topic, "ack-consumer-aware-message");
+		kafkaTemplate.flush();
 
 		// Wait for processing
-		assertThat(AckShareConsumerAwareTestListener.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(AckShareConsumerAwareTestListener.latch.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(AckShareConsumerAwareTestListener.received.get()).isEqualTo("ack-consumer-aware-message");
 		assertThat(AckShareConsumerAwareTestListener.consumerReceived.get()).isNotNull();
 		assertThat(AckShareConsumerAwareTestListener.acknowledgmentReceived.get()).isNotNull();
@@ -241,6 +250,20 @@ class ShareKafkaListenerIntegrationTests {
 		catch (Exception e) {
 			throw new RuntimeException("Failed to access internal acknowledgment state", e);
 		}
+	}
+
+	/**
+	 * Wait until all listener containers have started (needed when this test runs before others).
+	 */
+	private void awaitRunningShareListenerContainers() {
+		Awaitility.await()
+				.atMost(30, TimeUnit.SECONDS)
+				.pollInterval(100, TimeUnit.MILLISECONDS)
+				.untilAsserted(() -> {
+					assertThat(this.kafkaListenerEndpointRegistry.getListenerContainerIds()).isNotEmpty();
+					this.kafkaListenerEndpointRegistry.getListenerContainers().forEach(container ->
+							assertThat(container.isRunning()).isTrue());
+				});
 	}
 
 	@Configuration
