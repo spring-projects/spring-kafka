@@ -1,5 +1,5 @@
 /*
- * Copyright 2024-present the original author or authors.
+ * Copyright 2026-present the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
@@ -64,20 +65,18 @@ import static org.assertj.core.api.Assertions.fail;
 /**
  * @author Sanghyeok An
  * @author Soby Chacko
- * @since 3.3.0
+ * @since 4.0.0
  */
 
 @SpringJUnitConfig
 @DirtiesContext
 @EmbeddedKafka
 @TestPropertySource(properties = { "five.attempts=5", "kafka.template=customKafkaTemplate"})
-public class AsyncMonoRetryTopicScenarioTests {
+public class AsyncMonoRetryTopicComplexScenarioTests {
 
 	private final static String MAIN_TOPIC_CONTAINER_FACTORY = "kafkaListenerContainerFactory";
 
-	public final static String TEST_TOPIC0 = "myRetryTopic0";
-
-	public final static String TEST_TOPIC1 = "myRetryTopic1";
+	public final static String TEST_TOPIC6 = "myRetryTopic6";
 
 	@Autowired
 	private KafkaTemplate<String, String> kafkaTemplate;
@@ -89,92 +88,53 @@ public class AsyncMonoRetryTopicScenarioTests {
 	DestinationTopicContainer topicContainer;
 
 	@Test
-	void allFailCaseTest(
-			@Autowired TestTopicListener0 testTopicListener,
-			@Autowired MyCustomDltProcessor myCustomDltProcessor0) {
-		// All Fail case.
-		String shortFailedMsg1 = "0";
-		String shortFailedMsg2 = "1";
-		String shortFailedMsg3 = "2";
-		DestinationTopic destinationTopic = topicContainer.getNextDestinationTopicFor("0-topicId", TEST_TOPIC0);
-
-		String expectedRetryTopic = TEST_TOPIC0 + "-retry";
-		String[] expectedReceivedMsgs = {
-				shortFailedMsg1,
-				shortFailedMsg2,
-				shortFailedMsg3,
-				shortFailedMsg1,
-				shortFailedMsg2,
-				shortFailedMsg3,
-				shortFailedMsg1,
-				shortFailedMsg2,
-				shortFailedMsg3,
-				};
-		String[] expectedReceivedTopics = {
-				TEST_TOPIC0,
-				TEST_TOPIC0,
-				TEST_TOPIC0,
-				expectedRetryTopic,
-				expectedRetryTopic,
-				expectedRetryTopic,
-				expectedRetryTopic,
-				expectedRetryTopic,
-				expectedRetryTopic,
-				};
-		String[] expectedDltMsgs = {
-				shortFailedMsg1,
-				shortFailedMsg2,
-				shortFailedMsg3
-		};
-
-		// When
-		kafkaTemplate.send(TEST_TOPIC0, shortFailedMsg1);
-		kafkaTemplate.send(TEST_TOPIC0, shortFailedMsg2);
-		kafkaTemplate.send(TEST_TOPIC0, shortFailedMsg3);
-
-		// Then
-		assertThat(awaitLatch(latchContainer.countDownLatch0)).isTrue();
-		assertThat(awaitLatch(latchContainer.dltCountdownLatch0)).isTrue();
-
-		assertThat(destinationTopic.getDestinationName()).isEqualTo(TEST_TOPIC0 + "-retry");
-
-		assertThat(testTopicListener.receivedMsgs).containsExactlyInAnyOrder(expectedReceivedMsgs);
-		assertThat(testTopicListener.receivedTopics).containsExactlyInAnyOrder(expectedReceivedTopics);
-
-		assertThat(myCustomDltProcessor0.receivedMsg).containsExactlyInAnyOrder(expectedDltMsgs);
-	}
-
-	@Test
-	void firstShortFailAndLastLongSuccessRetryTest(
-			@Autowired TestTopicListener1 testTopicListener1,
-			@Autowired MyCustomDltProcessor myCustomDltProcessor1) {
+	void moreComplexAsyncScenarioTest(
+			@Autowired TestTopicListener topicListener6,
+			@Autowired @Qualifier("myCustomDltProcessor6")
+			MyCustomDltProcessor myCustomDltProcessor6) {
 		// Scenario.
-		// 1. Short Fail msg (offset 0)
-		// 2. Long success msg (offset 1) -> -ing (latch wait)
-		// 3. Short fail msg (Retry1 offset 0) -> (latch down)
-		// 4. Long success msg (offset 1) -> Success!
-		// 5. Short fail msg (Retry2 offset 0)
-		// 6. Short fail msg (Retry3 offset 0)
-		// 7. Short fail msg (Retry4 offset 0)
+		// 1. Fail Msg (offset 0) -> -ing
+		// 2. Success Msg (offset 1) -> -ing
+		// 3. Success Msg (offset 2) -> -ing
+		// 4. Fail Msg (offset 3) -> done
+		// 5. Success Msg (offset 4) -> -ing
+		// 6. Success msg succeed (offset 2) - done
+		// 7. Success msg succeed (offset 4) -> done
+		// 8. Fail Msg (Retry1 offset 3) -> done
+		// 9. Fail Msg (Retry2 offset 3) -> done
+		// 10. Success msg succeed (offset 1) -> done
+		// 11. Fail Msg (offset 0) -> done
+		// 12. Fail Msg (Retry 1 offset 0) -> done
+		// 13. Fail Msg (Retry 2 offset 0) -> done
 
 		// Given
-		String longSuccessMsg = testTopicListener1.LONG_SUCCESS_MSG;
-		String shortFailedMsg = testTopicListener1.SHORT_FAIL_MSG;
-		DestinationTopic destinationTopic = topicContainer.getNextDestinationTopicFor("1-topicId", TEST_TOPIC1);
+		String firstMsg = TestTopicListener.FAIL_PREFIX + "0";
+		String secondMsg = TestTopicListener.SUCCESS_PREFIX + "1";
+		String thirdMsg = TestTopicListener.SUCCESS_PREFIX + "2";
+		String fourthMsg = TestTopicListener.FAIL_PREFIX + "3";
+		String fifthMsg = TestTopicListener.SUCCESS_PREFIX + "4";
 
-		String expectedRetryTopic = TEST_TOPIC1 + "-retry";
+		DestinationTopic destinationTopic = topicContainer.getNextDestinationTopicFor("6-TopicId", TEST_TOPIC6);
+		String expectedRetryTopic = TEST_TOPIC6 + "-retry";
+
 		String[] expectedReceivedMsgs = {
-				shortFailedMsg,
-				longSuccessMsg,
-				shortFailedMsg,
-				shortFailedMsg,
-				shortFailedMsg,
-				shortFailedMsg
+				firstMsg,
+				secondMsg,
+				thirdMsg,
+				fourthMsg,
+				fifthMsg,
+				fourthMsg,
+				fourthMsg,
+				firstMsg,
+				firstMsg
 		};
 
 		String[] expectedReceivedTopics = {
-				TEST_TOPIC1,
-				TEST_TOPIC1,
+				TEST_TOPIC6,
+				TEST_TOPIC6,
+				TEST_TOPIC6,
+				TEST_TOPIC6,
+				TEST_TOPIC6,
 				expectedRetryTopic,
 				expectedRetryTopic,
 				expectedRetryTopic,
@@ -182,23 +142,27 @@ public class AsyncMonoRetryTopicScenarioTests {
 		};
 
 		String[] expectedDltMsgs = {
-				shortFailedMsg
+				TestTopicListener.FAIL_PREFIX + "3",
+				TestTopicListener.FAIL_PREFIX + "0"
 		};
 
 		// When
-		kafkaTemplate.send(TEST_TOPIC1, shortFailedMsg);
-		kafkaTemplate.send(TEST_TOPIC1, longSuccessMsg);
+		kafkaTemplate.send(TEST_TOPIC6, firstMsg);
+		kafkaTemplate.send(TEST_TOPIC6, secondMsg);
+		kafkaTemplate.send(TEST_TOPIC6, thirdMsg);
+		kafkaTemplate.send(TEST_TOPIC6, fourthMsg);
+		kafkaTemplate.send(TEST_TOPIC6, fifthMsg);
 
 		// Then
-		assertThat(awaitLatch(latchContainer.countDownLatch1)).isTrue();
-		assertThat(awaitLatch(latchContainer.dltCountdownLatch1)).isTrue();
+		assertThat(awaitLatch(latchContainer.countDownLatch6)).isTrue();
+		assertThat(awaitLatch(latchContainer.dltCountdownLatch6)).isTrue();
 
 		assertThat(destinationTopic.getDestinationName()).isEqualTo(expectedRetryTopic);
-		assertThat(testTopicListener1.receivedMsgs).containsExactlyInAnyOrder(expectedReceivedMsgs);
-		assertThat(testTopicListener1.receivedTopics).containsExactlyInAnyOrder(expectedReceivedTopics);
-		assertThat(testTopicListener1.latchWaitFailCount).isEqualTo(0);
+		assertThat(topicListener6.receivedMsgs).containsExactlyInAnyOrder(expectedReceivedMsgs);
+		assertThat(topicListener6.receivedTopics).containsExactlyInAnyOrder(expectedReceivedTopics);
+		assertThat(topicListener6.latchWaitFailCount).isEqualTo(0);
 
-		assertThat(myCustomDltProcessor1.receivedMsg).containsExactlyInAnyOrder(expectedDltMsgs);
+		assertThat(myCustomDltProcessor6.receivedMsg).containsExactlyInAnyOrder(expectedDltMsgs);
 	}
 
 	private boolean awaitLatch(CountDownLatch latch) {
@@ -213,58 +177,32 @@ public class AsyncMonoRetryTopicScenarioTests {
 	}
 
 	@KafkaListener(
-			id = "0-topicId",
-			topics = TEST_TOPIC0,
+			id = "6-TopicId",
+			topics = TEST_TOPIC6,
 			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
 			errorHandler = "myCustomErrorHandler",
 			contentTypeConverter = "myCustomMessageConverter",
 			concurrency = "2")
-	static class TestTopicListener0 {
+	static class TestTopicListener {
 
 		@Autowired
 		CountDownLatchContainer container;
 
-		private final List<String> receivedMsgs = Collections.synchronizedList(new ArrayList<>());
+		protected final List<String> receivedMsgs = Collections.synchronizedList(new ArrayList<>());
 
 		private final List<String> receivedTopics = Collections.synchronizedList(new ArrayList<>());
 
-		@KafkaHandler
-		public Mono<Void> listen(String message, @Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic) {
-			this.receivedMsgs.add(message);
-			this.receivedTopics.add(receivedTopic);
-			return Mono.fromCallable(() -> {
-				try {
-					throw new RuntimeException("Woooops... in topic " + receivedTopic);
-				}
-				finally {
-					container.countDownLatch0.countDown();
-				}
-			});
-		}
+		public static final String SUCCESS_PREFIX = "success";
 
-	}
+		public static final String FAIL_PREFIX = "fail";
 
-	@KafkaListener(
-			id = "1-topicId",
-			topics = TEST_TOPIC1,
-			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
-			errorHandler = "myCustomErrorHandler",
-			contentTypeConverter = "myCustomMessageConverter",
-			concurrency = "2")
-	static class TestTopicListener1 {
+		protected CountDownLatch offset1CompletedLatch = new CountDownLatch(1);
 
-		@Autowired
-		CountDownLatchContainer container;
+		protected CountDownLatch offset2CompletedLatch = new CountDownLatch(1);
 
-		private final List<String> receivedMsgs = Collections.synchronizedList(new ArrayList<>());
+		protected CountDownLatch offset3RetryCompletedLatch = new CountDownLatch(3);
 
-		private final List<String> receivedTopics = Collections.synchronizedList(new ArrayList<>());
-
-		private CountDownLatch firstRetryFailMsgLatch = new CountDownLatch(1);
-
-		protected final String LONG_SUCCESS_MSG = "success";
-
-		protected final String SHORT_FAIL_MSG = "fail";
+		protected CountDownLatch offset4ReceivedLatch = new CountDownLatch(1);
 
 		protected int latchWaitFailCount = 0;
 
@@ -273,51 +211,63 @@ public class AsyncMonoRetryTopicScenarioTests {
 				String message,
 				@Header(KafkaHeaders.RECEIVED_TOPIC) String receivedTopic,
 				@Header(KafkaHeaders.OFFSET) String offset) {
-			this.receivedTopics.add(receivedTopic);
 			this.receivedMsgs.add(message);
+			this.receivedTopics.add(receivedTopic);
+
 			return Mono.fromCallable(() -> {
 				try {
-					if (message.equals(SHORT_FAIL_MSG)) {
-						throw new RuntimeException("Woooops... in topic " + receivedTopic);
+					if (message.startsWith(FAIL_PREFIX)) {
+						if (offset.equals("0")) {
+							if (receivedTopic.equals(TEST_TOPIC6)) {
+								offset1CompletedLatch.await(10, TimeUnit.SECONDS);
+							}
+						}
+
+						if (offset.equals("3")) {
+							offset3RetryCompletedLatch.countDown();
+						}
+
+						throw new RuntimeException("Woooops... in topic " + receivedTopic + "msg : " + message);
 					}
 					else {
-						firstRetryFailMsgLatch.await(10, TimeUnit.SECONDS);
+						if (offset.equals("1")) {
+							offset3RetryCompletedLatch.await(10, TimeUnit.SECONDS);
+							offset1CompletedLatch.countDown();
+						}
+
+						if (offset.equals("2")) {
+							offset4ReceivedLatch.await(10, TimeUnit.SECONDS);
+							offset2CompletedLatch.countDown();
+						}
+
+						if (offset.equals("4")) {
+							offset4ReceivedLatch.countDown();
+							offset2CompletedLatch.await(10, TimeUnit.SECONDS);
+						}
 					}
 				}
-				catch (InterruptedException e) {
+				catch (InterruptedException ex) {
 					latchWaitFailCount += 1;
-					throw new RuntimeException(e);
+					throw new RuntimeException(ex);
 				}
 				finally {
-					if (receivedTopic.equals(TEST_TOPIC1 + "-retry") &&
-						offset.equals("0")) {
-						firstRetryFailMsgLatch.countDown();
-					}
-					container.countDownLatch1.countDown();
+					container.countDownLatch6.countDown();
 				}
+
 				return "Task Completed";
 			});
 		}
-
 	}
 
 	static class CountDownLatchContainer {
 
-		static int COUNT0 = 9;
+		static int COUNT6 = 9;
 
-		static int DLT_COUNT0 = 3;
+		static int DLT_COUNT6 = 2;
 
-		CountDownLatch countDownLatch0 = new CountDownLatch(COUNT0);
+		CountDownLatch countDownLatch6 = new CountDownLatch(COUNT6);
 
-		CountDownLatch dltCountdownLatch0 = new CountDownLatch(DLT_COUNT0);
-
-		static int COUNT1 = 6;
-
-		static int DLT_COUNT1 = 1;
-
-		CountDownLatch countDownLatch1 = new CountDownLatch(COUNT1);
-
-		CountDownLatch dltCountdownLatch1 = new CountDownLatch(DLT_COUNT1);
+		CountDownLatch dltCountdownLatch6 = new CountDownLatch(DLT_COUNT6);
 
 	}
 
@@ -345,39 +295,18 @@ public class AsyncMonoRetryTopicScenarioTests {
 
 		private static final String DLT_METHOD_NAME = "processDltMessage";
 
-		static  RetryTopicConfiguration createRetryTopicConfiguration(
-				KafkaTemplate<String, String> template,
-				String topicName,
-				String dltBeanName,
-				int maxAttempts) {
+		@Bean
+		RetryTopicConfiguration testRetryTopic6(KafkaTemplate<String, String> template) {
 			return RetryTopicConfigurationBuilder
 					.newInstance()
 					.fixedBackOff(50)
-					.maxAttempts(maxAttempts)
+					.maxAttempts(3)
 					.concurrency(1)
 					.useSingleTopicForSameIntervals()
-					.includeTopic(topicName)
+					.includeTopic(TEST_TOPIC6)
 					.doNotRetryOnDltFailure()
-					.dltHandlerMethod(dltBeanName, DLT_METHOD_NAME)
+					.dltHandlerMethod("myCustomDltProcessor6", DLT_METHOD_NAME)
 					.create(template);
-		}
-
-		@Bean
-		RetryTopicConfiguration testRetryTopic0(KafkaTemplate<String, String> template) {
-			return createRetryTopicConfiguration(
-					template,
-					TEST_TOPIC0,
-					"myCustomDltProcessor0",
-					3);
-		}
-
-		@Bean
-		RetryTopicConfiguration testRetryTopic1(KafkaTemplate<String, String> template) {
-			return createRetryTopicConfiguration(
-					template,
-					TEST_TOPIC1,
-					"myCustomDltProcessor1",
-					5);
 		}
 
 		@Bean
@@ -406,29 +335,16 @@ public class AsyncMonoRetryTopicScenarioTests {
 		}
 
 		@Bean
-		TestTopicListener0 testTopicListener0() {
-			return new TestTopicListener0();
+		TestTopicListener testTopicListener6() {
+			return new TestTopicListener();
 		}
 
 		@Bean
-		TestTopicListener1 testTopicListener1() {
-			return new TestTopicListener1();
-		}
-
-		@Bean
-		MyCustomDltProcessor myCustomDltProcessor0(
+		MyCustomDltProcessor myCustomDltProcessor6(
 				KafkaTemplate<String, String> kafkaTemplate,
 				CountDownLatchContainer latchContainer) {
 			return new MyCustomDltProcessor(kafkaTemplate,
-											latchContainer.dltCountdownLatch0);
-		}
-
-		@Bean
-		MyCustomDltProcessor myCustomDltProcessor1(
-				KafkaTemplate<String, String> kafkaTemplate,
-				CountDownLatchContainer latchContainer) {
-			return new MyCustomDltProcessor(kafkaTemplate,
-											latchContainer.dltCountdownLatch1);
+											latchContainer.dltCountdownLatch6);
 		}
 
 	}
