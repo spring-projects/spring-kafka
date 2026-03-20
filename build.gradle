@@ -26,6 +26,13 @@ plugins {
 
 apply plugin: 'io.spring.nohttp'
 
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
+
+import org.gradle.api.tasks.testing.TestDescriptor
+import org.gradle.api.tasks.testing.TestListener
+import org.gradle.api.tasks.testing.TestResult
+
 description = 'Spring for Apache Kafka'
 
 ext {
@@ -191,10 +198,41 @@ configure(javaProjects) { subproject ->
 				?: 'PT10M'
 		systemProperty 'junit.jupiter.execution.timeout.default', junitTimeoutDefault
 
+		def failedTestsByClass = new ConcurrentHashMap<String, CopyOnWriteArrayList<String>>()
+		def skippedTestsByClass = new ConcurrentHashMap<String, CopyOnWriteArrayList<String>>()
+
+		addTestListener(new TestListener() {
+			@Override
+			void beforeSuite(TestDescriptor descriptor) {
+			}
+
+			@Override
+			void afterSuite(TestDescriptor descriptor, TestResult result) {
+			}
+
+			@Override
+			void beforeTest(TestDescriptor descriptor) {
+			}
+
+			@Override
+			void afterTest(TestDescriptor descriptor, TestResult result) {
+				String className = descriptor.className
+				if (className == null) {
+					return
+				}
+				String testId = descriptor.displayName ?: descriptor.name
+				if (result.resultType == TestResult.ResultType.FAILURE) {
+					failedTestsByClass.computeIfAbsent(className, { new CopyOnWriteArrayList<String>() }).add(testId)
+				}
+				else if (result.resultType == TestResult.ResultType.SKIPPED) {
+					skippedTestsByClass.computeIfAbsent(className, { new CopyOnWriteArrayList<String>() }).add(testId)
+				}
+			}
+		})
+
 		testLogging {
-			// STARTED: last line before a hang usually identifies the stuck method. No PASSED (class summary only).
-			// Skipped count is in afterSuite; omit per-test SKIPPED lines to limit noise.
-			events 'started', 'failed'
+			// Per-class summaries via afterSuite below; only log failures here (with stack traces).
+			events 'failed'
 			showStandardStreams = project.hasProperty('showStandardStreams') ?: false
 			showExceptions = true
 			showStackTraces = true
@@ -214,16 +252,30 @@ configure(javaProjects) { subproject ->
 							: "${classMs}ms"
 			String fqn = desc.className
 			String simpleName = fqn.contains('.') ? fqn.substring(fqn.lastIndexOf('.') + 1) : fqn
+			long passed = result.testCount - result.failedTestCount - result.skippedTestCount
 			StringBuilder summary = new StringBuilder()
 			summary.append(simpleName).append(" finished in ").append(duration)
 					.append(" (").append(result.testCount).append(" tests")
-			if (result.failedTestCount > 0) {
-				summary.append(", ").append(result.failedTestCount).append(" failed")
-			}
-			if (result.skippedTestCount > 0) {
-				summary.append(", ").append(result.skippedTestCount).append(" skipped")
+			if (result.failedTestCount > 0 || result.skippedTestCount > 0) {
+				if (passed > 0) {
+					summary.append(", ").append(passed).append(" passed")
+				}
+				if (result.failedTestCount > 0) {
+					summary.append(", ").append(result.failedTestCount).append(" failed")
+				}
+				if (result.skippedTestCount > 0) {
+					summary.append(", ").append(result.skippedTestCount).append(" skipped")
+				}
 			}
 			summary.append(')')
+			List<String> failedNames = failedTestsByClass.remove(fqn)
+			if (failedNames != null && !failedNames.isEmpty()) {
+				summary.append(" — failed: ").append(String.join("; ", failedNames))
+			}
+			List<String> skippedNames = skippedTestsByClass.remove(fqn)
+			if (skippedNames != null && !skippedNames.isEmpty()) {
+				summary.append(" — skipped: ").append(String.join("; ", skippedNames))
+			}
 			logger.lifecycle(summary.toString())
 		}
 
