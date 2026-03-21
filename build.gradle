@@ -44,7 +44,7 @@ ext {
 	log4jVersion = '2.25.3'
 	micrometerDocsVersion = '1.0.4'
 	micrometerVersion = '1.17.0-M3'
-	micrometerTracingVersion = '1.7.0-M4'
+	micrometerTracingVersion = '1.7.0-SNAPSHOT'
 	mockitoVersion = '5.23.0'
 	reactorVersion = '2025.0.4'
 	slf4jVersion = '2.0.17'
