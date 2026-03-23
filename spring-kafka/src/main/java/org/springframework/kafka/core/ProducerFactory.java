@@ -36,7 +36,7 @@ import org.jspecify.annotations.Nullable;
  * @author Thomas Strauß
  * @author  Kwon YongHyun
  */
-public interface ProducerFactory<K, V> {
+public interface ProducerFactory<K, V extends @Nullable Object> {
 
 	/**
 	 * The default close timeout duration as 30 seconds.
