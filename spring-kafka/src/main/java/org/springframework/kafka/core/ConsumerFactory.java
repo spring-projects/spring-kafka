@@ -34,7 +34,7 @@ import org.jspecify.annotations.Nullable;
  * @author Gary Russell
  * @author Artem Bilan
  */
-public interface ConsumerFactory<K, V> {
+public interface ConsumerFactory<K, V extends @Nullable Object> {
 
 	/**
 	 * Create a consumer with the group id and client id as configured in the properties.
