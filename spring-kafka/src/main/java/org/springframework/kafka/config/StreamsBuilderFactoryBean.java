@@ -17,12 +17,16 @@
 package org.springframework.kafka.config;
 
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.streams.CloseOptions;
+import org.apache.kafka.streams.GroupProtocol;
 import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -33,7 +37,6 @@ import org.apache.kafka.streams.TopologyDescription;
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.processor.internals.DefaultKafkaClientSupplier;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.factory.BeanNameAware;
@@ -116,7 +119,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private volatile boolean running;
 
-	private @Nullable String groupProtocol;
+	private @Nullable GroupProtocol groupProtocol;
 
 	@SuppressWarnings("NullAway.Init")
 	private Topology topology;
@@ -285,32 +288,29 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	}
 
 	/**
-	 * Specifies group protocol to be used by {@link StreamsBuilderFactoryBean}.
+	 * Set group protocol to be used by {@link StreamsBuilderFactoryBean}.
+	 * Only allowed values are from {@link GroupProtocol}
 	 * @param groupProtocol groupProtocol value as given in {@link org.apache.kafka.clients.consumer.GroupProtocol}
 	 */
 	public void setGroupProtocol(String groupProtocol) {
-		this.groupProtocol = groupProtocol;
+		Assert.notNull(groupProtocol, "'groupProtocol' must not be null");
+		this.groupProtocol = GroupProtocol.valueOf(groupProtocol);
 	}
 
 	/**
-	 * Provides access to groupProtocol defined for this {@link StreamsBuilderFactoryBean}.
-	 * @return groupProtocol returns string set from configuration should be a value from {@link org.apache.kafka.clients.consumer.GroupProtocol}
+	 * Get groupProtocol defined for this {@link StreamsBuilderFactoryBean}.
+	 * @return groupProtocol returns {@link GroupProtocol} value defined for this {@link StreamsBuilderFactoryBean}
 	 */
-	public @Nullable String getGroupProtocol() {
+	public @Nullable GroupProtocol getGroupProtocol() {
 		return groupProtocol;
 	}
 
 	/**
-	 * Retrieves and sets groupProtocol property for {@link KafkaStreams} instances.
+	 * Retrieves and sets group protocol for properties of {@link StreamsBuilderFactoryBean}.
 	 */
 	public void applyGroupProtocol() {
 		if (this.groupProtocol != null) {
-			if (("consumer".equals(this.properties.get("group.protocol")) || this.groupProtocol.equals("consumer"))
-					&& this.properties.containsKey(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG)) {
-				LOGGER.warn("Custom partition assignor ignored with group.protocol=consumer; " +
-						"server-side assignors will be used.");
-			}
-			this.properties.setProperty(ConsumerConfig.GROUP_PROTOCOL_CONFIG, groupProtocol);
+			this.properties.setProperty(ConsumerConfig.GROUP_PROTOCOL_CONFIG, groupProtocol.name());
 		}
 	}
 
