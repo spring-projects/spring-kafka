@@ -20,6 +20,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Properties;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -294,7 +295,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 */
 	public void setGroupProtocol(String groupProtocol) {
 		Assert.notNull(groupProtocol, "'groupProtocol' must not be null");
-		this.groupProtocol = GroupProtocol.valueOf(groupProtocol);
+		this.groupProtocol = GroupProtocol.valueOf(groupProtocol.toUpperCase(Locale.ROOT));
 	}
 
 	/**
@@ -302,7 +303,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 * @return groupProtocol returns {@link GroupProtocol} value defined for this {@link StreamsBuilderFactoryBean}
 	 */
 	public @Nullable GroupProtocol getGroupProtocol() {
-		return groupProtocol;
+		return this.groupProtocol;
 	}
 
 	/**
@@ -310,7 +311,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 */
 	public void applyGroupProtocol() {
 		if (this.groupProtocol != null) {
-			this.properties.setProperty(ConsumerConfig.GROUP_PROTOCOL_CONFIG, groupProtocol.name());
+			this.properties.setProperty(ConsumerConfig.GROUP_PROTOCOL_CONFIG, this.groupProtocol.name());
 		}
 	}
 

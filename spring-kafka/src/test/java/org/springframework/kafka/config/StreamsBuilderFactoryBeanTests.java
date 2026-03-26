@@ -21,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -126,10 +127,11 @@ public class StreamsBuilderFactoryBeanTests {
 		streamsBuilderFactoryBean.afterPropertiesSet();
 		StreamsBuilder builder = streamsBuilderFactoryBean.getObject();
 		builder.stream(Pattern.compile("foo"));
+		streamsBuilderFactoryBean.afterSingletonsInstantiated();
 		streamsBuilderFactoryBean.start();
 		StreamsBuilder streamsBuilder = streamsBuilderFactoryBean.getObject();
 		verify(streamsBuilder).build(kafkaStreamsConfiguration.asProperties());
-		assertThat(streamsBuilderFactoryBean.getGroupProtocol()).isEqualTo(GroupProtocol.valueOf(testGroupProtocol));
+		assertThat(streamsBuilderFactoryBean.getGroupProtocol()).isEqualTo(GroupProtocol.valueOf(testGroupProtocol.toUpperCase(Locale.ROOT)));
 	}
 
 	@Test
