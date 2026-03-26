@@ -151,7 +151,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		Assert.notNull(streamsConfig, STREAMS_CONFIG_MUST_NOT_BE_NULL);
 		Assert.notNull(cleanupConfig, CLEANUP_CONFIG_MUST_NOT_BE_NULL);
 		this.properties = streamsConfig.asProperties();
-		applyGroupProtocol();
+		this.applyGroupProtocol();
 		this.cleanupConfig = cleanupConfig;
 	}
 
