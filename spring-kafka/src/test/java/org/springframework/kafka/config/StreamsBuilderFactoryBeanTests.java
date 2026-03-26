@@ -21,11 +21,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import org.apache.kafka.streams.GroupProtocol;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.KStream;
@@ -35,9 +33,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -127,11 +125,10 @@ public class StreamsBuilderFactoryBeanTests {
 		streamsBuilderFactoryBean.afterPropertiesSet();
 		StreamsBuilder builder = streamsBuilderFactoryBean.getObject();
 		builder.stream(Pattern.compile("foo"));
-		streamsBuilderFactoryBean.afterSingletonsInstantiated();
 		streamsBuilderFactoryBean.start();
 		StreamsBuilder streamsBuilder = streamsBuilderFactoryBean.getObject();
 		verify(streamsBuilder).build(kafkaStreamsConfiguration.asProperties());
-		assertThat(streamsBuilderFactoryBean.getGroupProtocol()).isEqualTo(GroupProtocol.valueOf(testGroupProtocol.toUpperCase(Locale.ROOT)));
+		assertThat(streamsBuilderFactoryBean.getGroupProtocol()).isEqualTo(testGroupProtocol);
 	}
 
 	@Test
