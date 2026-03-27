@@ -36,3 +36,11 @@ See xref:kafka/kafka-queues.adoc#share-acknowledgment-api[ShareAcknowledgment AP
 
 The default value of `sameIntervalTopicReuseStrategy` in `RetryTopicConfigurationBuilder` has been changed from `MULTIPLE_TOPICS` to `SINGLE_TOPIC` to align with the `@RetryableTopic` annotation default.
 See xref:retrytopic/topic-naming.adoc[Topic Naming] for more information.
+
+[[x41-kafka-streams-group-protocol]]
+=== Kafka Streams Group Protocol Configuration
+
+The `StreamsBuilderFactoryBean` now supports configuring the `groupProtocol` property.
+This allows you to explicitly manage whether the underlying Kafka Streams consumers rely on the `classic` protocol or opt into the newer `streams` group protocol (KIP-1071: Server-side rebalance for Streams).
+
+See xref:streams.adoc#streams-config[Configuration] in the Kafka Streams documentation for more details.
