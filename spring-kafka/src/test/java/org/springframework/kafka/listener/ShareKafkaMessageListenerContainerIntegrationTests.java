@@ -145,7 +145,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 		produceTestRecords(bootstrapServers, topic, 3);
 
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
@@ -195,7 +195,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 		produceTestRecords(bootstrapServers, topic, 3);
 
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, false);
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
@@ -237,7 +237,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 		produceTestRecords(bootstrapServers, topic, 3);
 
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
@@ -317,7 +317,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 
 		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
@@ -408,7 +408,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 		produceTestRecords(bootstrapServers, topic, 5);
 
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
@@ -459,7 +459,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 		produceTestRecords(bootstrapServers, topic, 1);
 
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
@@ -516,7 +516,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 			producer.send(new ProducerRecord<>(topic, "good", goodRecordValue.getBytes(StandardCharsets.UTF_8))).get();
 		}
 
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, false);
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		CountDownLatch twoGoodRecordsLatch = new CountDownLatch(2);
@@ -555,7 +555,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 			producer.send(new ProducerRecord<>(topic, "reject", "reject-value")).get();
 		}
 
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
@@ -627,7 +627,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 		produceTestRecords(bootstrapServers, topic, 1);
 
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, false);
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		// Test 1: Basic MessageListener
@@ -648,7 +648,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 
 		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
@@ -703,7 +703,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 		produceTestRecords(bootstrapServers, topic, 1);
 
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
@@ -775,7 +775,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 		produceTestRecords(bootstrapServers, topic, 1);
 
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
@@ -823,7 +823,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 		produceTestRecords(bootstrapServers, topic, 1);
 
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
@@ -956,15 +956,12 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 	}
 
 	// Utility methods
-	private static Map<String, Object> createConsumerProps(String bootstrapServers, String groupId, boolean explicit) {
+	private static Map<String, Object> createConsumerProps(String bootstrapServers, String groupId) {
 		Map<String, Object> props = new HashMap<>();
 		props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
 		props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
 		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-		if (explicit) {
-			props.put("share.acknowledgement.mode", "explicit");
-		}
 		return props;
 	}
 
@@ -1042,7 +1039,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		int concurrency = 3;
 		produceTestRecords(bootstrapServers, topic, numRecords);
 
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, false);
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
@@ -1083,7 +1080,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 
 		int concurrency = 4;
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, false);
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
@@ -1140,7 +1137,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		int concurrency = 3;
 		produceTestRecords(bootstrapServers, topic, numRecords);
 
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
@@ -1199,7 +1196,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 
 		int concurrency = 5;
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, false);
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);

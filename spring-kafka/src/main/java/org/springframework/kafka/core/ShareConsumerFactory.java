@@ -19,6 +19,7 @@ package org.springframework.kafka.core;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import org.apache.kafka.clients.consumer.ShareConsumer;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -42,6 +43,21 @@ public interface ShareConsumerFactory<K, V> {
 	 * @return the share consumer.
 	 */
 	ShareConsumer<K, V> createShareConsumer(@Nullable String groupId, @Nullable String clientId);
+
+	/**
+	 * Create a share consumer with the provided group id, client id,
+	 * and additional property overrides.
+	 * These overrides take precedence over the factory's default configuration.
+	 * @param groupId the group id (maybe null).
+	 * @param clientId the client id.
+	 * @param overrideProperties additional properties to apply (maybe null).
+	 * @return the share consumer.
+	 */
+	default ShareConsumer<K, V> createShareConsumer(@Nullable String groupId,
+			@Nullable String clientId,
+			@Nullable Properties overrideProperties) {
+		return createShareConsumer(groupId, clientId);
+	}
 
 	/**
 	 * Return an unmodifiable reference to the configuration map for this factory.
