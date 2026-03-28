@@ -22,6 +22,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -300,26 +302,30 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		private final long ackTimeoutMs;
 
 		ShareListenerConsumer(GenericMessageListener<?> listener, String consumerClientId) {
-			this.consumer = ShareKafkaMessageListenerContainer.this.shareConsumerFactory.createShareConsumer(
-					ShareKafkaMessageListenerContainer.this.getGroupId(),
-					consumerClientId);
 
-			this.genericListener = listener;
-			this.clientId = consumerClientId;
 			ContainerProperties containerProperties = getContainerProperties();
 
-			// Configure acknowledgment mode
+			// Configure acknowledgment mode before factory
 			this.isExplicitMode = containerProperties.isExplicitShareAcknowledgment();
 			this.ackTimeoutMs = containerProperties.getShareAcknowledgmentTimeout().toMillis();
 
-			// Configure consumer properties based on acknowledgment mode
+			// add properties to configure consumer for explicit acknowledgment mode if needed
+			Properties overrides = null;
 			if (this.isExplicitMode) {
-				// Apply explicit mode configuration to consumer
-				// Note: This should ideally be done during consumer creation in the factory
+				overrides = new Properties();
+				overrides.put("share.acknowledgement.mode", "explicit");
 				this.logger.info("Share consumer configured for explicit acknowledgment mode");
 			}
 
-			this.consumer.subscribe(Arrays.asList(containerProperties.getTopics()));
+			this.consumer = ShareKafkaMessageListenerContainer.this.shareConsumerFactory.createShareConsumer(
+					ShareKafkaMessageListenerContainer.this.getGroupId(),
+					consumerClientId,
+					overrides);
+
+			this.genericListener = listener;
+			this.clientId = consumerClientId;
+
+			this.consumer.subscribe(Arrays.asList(Objects.requireNonNull(containerProperties.getTopics())));
 		}
 
 		@Nullable

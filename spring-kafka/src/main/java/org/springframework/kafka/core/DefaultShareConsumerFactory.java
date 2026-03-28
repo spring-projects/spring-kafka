@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
@@ -138,22 +139,43 @@ public class DefaultShareConsumerFactory<K, V> extends KafkaResourceFactory
 	 */
 	@Override
 	public ShareConsumer<K, V> createShareConsumer(@Nullable String groupId, @Nullable String clientId) {
-		return createRawConsumer(groupId, clientId);
+		return createRawConsumer(groupId, clientId, null);
+	}
+
+	/**
+	 * Create a share consumer with the provided group id, client id, and additional property overrides.
+	 * @param groupId the group id (maybe null).
+	 * @param clientId the client id.
+	 * @param overrideProperties additional properties to apply (maybe null).
+	 * @return the share consumer.
+	 */
+	@Override
+	public ShareConsumer<K, V> createShareConsumer(@Nullable String groupId,
+			@Nullable String clientId,
+			@Nullable Properties overrideProperties) {
+		return createRawConsumer(groupId, clientId, overrideProperties);
 	}
 
 	/**
 	 * Actually create the consumer.
 	 * @param groupId the group id (maybe null).
 	 * @param clientId the client id.
+	 * @param overrideProperties additional properties to apply (maybe null).
 	 * @return the share consumer.
 	 */
-	protected ShareConsumer<K, V> createRawConsumer(@Nullable String groupId, @Nullable String clientId) {
+	protected ShareConsumer<K, V> createRawConsumer(
+			@Nullable String groupId,
+			@Nullable String clientId,
+			@Nullable Properties overrideProperties) {
 		Map<String, Object> consumerProperties = new HashMap<>(this.configs);
 		if (groupId != null) {
 			consumerProperties.put("group.id", groupId);
 		}
 		if (clientId != null) {
 			consumerProperties.put("client.id", clientId);
+		}
+		if (overrideProperties != null) {
+			overrideProperties.forEach((k, v) -> consumerProperties.put((String) k, v));
 		}
 		return new ExtendedShareConsumer(consumerProperties);
 	}

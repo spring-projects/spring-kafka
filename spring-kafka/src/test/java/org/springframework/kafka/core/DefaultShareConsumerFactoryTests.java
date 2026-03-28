@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -124,6 +125,35 @@ class DefaultShareConsumerFactoryTests {
 		configs.put("value.deserializer", StringDeserializer.class);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(configs);
 		ShareConsumer<String, String> shareConsumer = factory.createShareConsumer("group", "myapp-client-id");
+		assertThat(shareConsumer).isNotNull();
+	}
+
+	@Test
+	void shouldCreateShareConsumerWithOverrideProperties() {
+		Map<String, Object> configs = new HashMap<>();
+		configs.put("bootstrap.servers", "localhost:9092");
+		configs.put("key.deserializer", StringDeserializer.class);
+		configs.put("value.deserializer", StringDeserializer.class);
+		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(configs);
+
+		Properties overrides = new Properties();
+		overrides.put("share.acknowledgement.mode", "explicit");
+
+		ShareConsumer<String, String> shareConsumer =
+				factory.createShareConsumer("group", "myapp-client-id", overrides);
+		assertThat(shareConsumer).isNotNull();
+	}
+
+	@Test
+	void shouldCreateShareConsumerWithNullOverrideProperties() {
+		Map<String, Object> configs = new HashMap<>();
+		configs.put("bootstrap.servers", "localhost:9092");
+		configs.put("key.deserializer", StringDeserializer.class);
+		configs.put("value.deserializer", StringDeserializer.class);
+		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(configs);
+
+		ShareConsumer<String, String> shareConsumer =
+				factory.createShareConsumer("group", "myapp-client-id", null);
 		assertThat(shareConsumer).isNotNull();
 	}
 
