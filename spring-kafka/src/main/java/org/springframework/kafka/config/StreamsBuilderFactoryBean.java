@@ -20,11 +20,14 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Properties;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.logging.LogFactory;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.streams.CloseOptions;
+import org.apache.kafka.streams.GroupProtocol;
 import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -117,6 +120,8 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	private volatile boolean running;
 
+	private @Nullable GroupProtocol groupProtocol;
+
 	@SuppressWarnings("NullAway.Init")
 	private Topology topology;
 
@@ -146,6 +151,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		Assert.notNull(streamsConfig, STREAMS_CONFIG_MUST_NOT_BE_NULL);
 		Assert.notNull(cleanupConfig, CLEANUP_CONFIG_MUST_NOT_BE_NULL);
 		this.properties = streamsConfig.asProperties();
+		this.applyGroupProtocol();
 		this.cleanupConfig = cleanupConfig;
 	}
 
@@ -280,6 +286,33 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	public void setCleanupConfig(CleanupConfig cleanupConfig) {
 		Assert.notNull(cleanupConfig, CLEANUP_CONFIG_MUST_NOT_BE_NULL);
 		this.cleanupConfig = cleanupConfig; // NOSONAR (sync)
+	}
+
+	/**
+	 * Set group protocol to be used by {@link StreamsBuilderFactoryBean}.
+	 * Only allowed values are from {@link GroupProtocol}
+	 * @param groupProtocol groupProtocol value as given in {@link org.apache.kafka.clients.consumer.GroupProtocol}
+	 */
+	public void setGroupProtocol(String groupProtocol) {
+		Assert.notNull(groupProtocol, "'groupProtocol' must not be null");
+		this.groupProtocol = GroupProtocol.valueOf(groupProtocol.toUpperCase(Locale.ROOT));
+	}
+
+	/**
+	 * Get groupProtocol defined for this {@link StreamsBuilderFactoryBean}.
+	 * @return groupProtocol returns {@link GroupProtocol} value defined for this {@link StreamsBuilderFactoryBean}
+	 */
+	public @Nullable GroupProtocol getGroupProtocol() {
+		return this.groupProtocol;
+	}
+
+	/**
+	 * Retrieves and sets group protocol for properties of {@link StreamsBuilderFactoryBean}.
+	 */
+	public void applyGroupProtocol() {
+		if (this.groupProtocol != null) {
+			this.properties.setProperty(ConsumerConfig.GROUP_PROTOCOL_CONFIG, this.groupProtocol.name());
+		}
 	}
 
 	/**
