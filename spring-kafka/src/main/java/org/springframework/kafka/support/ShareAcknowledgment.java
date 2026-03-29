@@ -31,9 +31,11 @@ package org.springframework.kafka.support;
  * <li>{@code RENEW} - Extend the acquisition lock (non-terminal; a terminal ack is still required)</li>
  * </ul>
  * <p>
- * This interface is only applicable when using explicit acknowledgment mode
- * ({@code share.acknowledgement.mode=explicit}). In implicit mode, records are
- * automatically acknowledged as {@code ACCEPT}.
+ * This interface is only used in {@link org.springframework.kafka.listener.ContainerProperties.ShareAckMode#MANUAL}
+ * mode, where the listener drives per-record acknowledgment decisions.
+ * In {@code EXPLICIT} mode the container handles acknowledgments automatically,
+ * and in {@code IMPLICIT} mode the broker auto-accepts all records — in both cases
+ * the acknowledgment argument passed to the listener will be {@code null}.
  * <p>
  * Note: Acknowledgment is separate from commit operations. After acknowledging
  * records, use {@code commitSync()} or {@code commitAsync()} to persist the

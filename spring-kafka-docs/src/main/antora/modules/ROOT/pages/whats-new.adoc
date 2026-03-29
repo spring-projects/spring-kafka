@@ -14,6 +14,63 @@ The `@KafkaListener` annotation now supports an `ackMode` attribute, allowing in
 The attribute also supports SpEL expressions and property placeholders.
 See xref:kafka/receiving-messages/listener-annotation.adoc[`@KafkaListener` Annotation] for more information.
 
+[[x41-share-ack-mode]]
+=== Share Consumer Acknowledgment Modes
+
+The boolean `setExplicitShareAcknowledgment(boolean)` property on `ContainerProperties` has been replaced by the `ShareAckMode` enum, which clearly names the three distinct acknowledgment modes:
+
+* `EXPLICIT` (default) — Container-managed.
+The container sends `ACCEPT` after successful processing and delegates error handling to the `ShareConsumerRecordRecoverer` (default: `REJECT`).
+This is the analogue of disabling `auto.commit` on a regular consumer.
+* `MANUAL` — Listener-managed.
+The listener must acknowledge each record via the provided `ShareAcknowledgment`.
+Subsequent polls are blocked until all records from the previous poll are acknowledged.
+* `IMPLICIT` — Kafka client implicit mode.
+The broker auto-accepts all records regardless of processing outcome.
+
+Configure the mode on the factory:
+
+[source,java]
+----
+factory.getContainerProperties().setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
+----
+
+The deprecated `setExplicitShareAcknowledgment(true)` maps to `MANUAL`; `setExplicitShareAcknowledgment(false)` maps to `EXPLICIT`.
+See xref:kafka/kafka-queues.adoc#share-record-acknowledgment[Record Acknowledgment] for the full reference.
+
+==== Migration Guide
+
+**Default behavior is unchanged.**
+The old `setExplicitShareAcknowledgment(false)` default was already container-managed acknowledgment (the container sent `ACCEPT` on success), which is exactly what `ShareAckMode.EXPLICIT` does.
+No action is required for applications using the default.
+
+**If you used `setExplicitShareAcknowledgment(true)`**, replace it:
+
+[source,java]
+----
+// Before (4.0)
+factory.getContainerProperties().setExplicitShareAcknowledgment(true);
+
+// After (4.1)
+factory.getContainerProperties().setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
+----
+
+**If you set `share.acknowledgement.mode=implicit` in the factory configuration** (via `ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG`), this is a breaking change.
+In 4.0 this setting had no effect because the container always called `consumer.acknowledge()` regardless, which would have thrown `IllegalStateException` in true Kafka implicit mode.
+In 4.1, the container detects this conflict and logs a warning, then overrides the factory setting with explicit mode.
+To genuinely use Kafka client implicit mode — where the broker auto-accepts all records regardless of processing outcome — you must now opt in explicitly:
+
+[source,java]
+----
+factory.getContainerProperties().setShareAckMode(ContainerProperties.ShareAckMode.IMPLICIT);
+----
+
+[WARNING]
+====
+In `ShareAckMode.IMPLICIT`, the `ShareConsumerRecordRecoverer` is not consulted and processing errors do not influence acknowledgment.
+Records are always ACCEPTed by the broker.
+====
+
 [[x41-share-consumer-error-handling]]
 === Share Consumer Error Handling
 

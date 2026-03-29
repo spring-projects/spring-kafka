@@ -35,7 +35,6 @@ import org.springframework.aop.framework.Advised;
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.core.task.AsyncTaskExecutor;
-import org.springframework.kafka.support.ShareAcknowledgment;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservationConvention;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
@@ -114,6 +113,40 @@ public class ContainerProperties extends ConsumerProperties {
 		 * sometimes acknowledge on the calling thread and sometimes not.
 		 */
 		MANUAL_IMMEDIATE,
+
+	}
+
+	/**
+	 * The acknowledgment mode for share consumer containers.
+	 * @since 4.1
+	 * @see #setShareAckMode(ShareAckMode)
+	 */
+	public enum ShareAckMode {
+
+		/**
+		 * Kafka client implicit mode. All records are automatically acknowledged
+		 * as ACCEPT by the broker regardless of processing outcome. No per-record
+		 * acknowledgment control is available in this mode. Equivalent to setting
+		 * {@code share.acknowledgement.mode=implicit} on the Kafka client.
+		 */
+		IMPLICIT,
+
+		/**
+		 * Kafka client explicit mode, container-managed. The container sends ACCEPT
+		 * after successful processing and delegates to the
+		 * {@link ShareConsumerRecordRecoverer} (default: REJECT) on error.
+		 * This is the default.
+		 */
+		EXPLICIT,
+
+		/**
+		 * Kafka client explicit mode, listener-managed. The listener must acknowledge
+		 * each record manually via the provided
+		 * {@link org.springframework.kafka.support.ShareAcknowledgment}.
+		 * Subsequent polls are blocked until all records from the previous poll
+		 * are acknowledged.
+		 */
+		MANUAL
 
 	}
 
@@ -314,7 +347,7 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private boolean recordObservationsInBatch;
 
-	private boolean explicitShareAcknowledgment = false;
+	private ShareAckMode shareAckMode = ShareAckMode.EXPLICIT; // default: container-managed explicit mode
 
 	private Duration shareAcknowledgmentTimeout = Duration.ofSeconds(30); // Align with Kafka's share.record.lock.duration.ms default
 
@@ -1121,38 +1154,54 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	/**
-	 * Set whether explicit acknowledgment is required for share consumer containers.
+	 * Set the acknowledgment mode for share consumer containers.
 	 * <p>
 	 * This setting only applies to share consumer containers and is ignored
 	 * by regular consumer containers.
-	 * <p>
-	 * When set to {@code false} (default), records are automatically acknowledged
-	 * as ACCEPT when the next poll occurs or when commitSync/commitAsync is called.
-	 * <p>
-	 * When set to {@code true}, the application must explicitly acknowledge each
-	 * record using the provided {@link ShareAcknowledgment}.
-	 * @param explicitShareAcknowledgment true for explicit acknowledgment, false for implicit
-	 * @since 4.0
-	 * @see ShareAcknowledgment
+	 * @param shareAckMode the acknowledgment mode; default {@link ShareAckMode#EXPLICIT}.
+	 * @since 4.1
+	 * @see ShareAckMode
 	 */
+	public void setShareAckMode(ShareAckMode shareAckMode) {
+		this.shareAckMode = shareAckMode;
+	}
+
+	/**
+	 * Return the acknowledgment mode for share consumer containers.
+	 * @return the acknowledgment mode.
+	 * @since 4.1
+	 */
+	public ShareAckMode getShareAckMode() {
+		return this.shareAckMode;
+	}
+
+	/**
+	 * Set whether to use explicit share acknowledgment mode.
+	 * @param explicitShareAcknowledgment {@code true} to use {@link ShareAckMode#MANUAL},
+	 * {@code false} to use {@link ShareAckMode#EXPLICIT}.
+	 * @deprecated in favor of {@link #setShareAckMode(ShareAckMode)} with
+	 * {@link ShareAckMode#MANUAL}.
+	 */
+	@Deprecated(since = "4.1", forRemoval = false)
 	public void setExplicitShareAcknowledgment(boolean explicitShareAcknowledgment) {
-		this.explicitShareAcknowledgment = explicitShareAcknowledgment;
+		this.shareAckMode = explicitShareAcknowledgment ? ShareAckMode.MANUAL : ShareAckMode.EXPLICIT;
 	}
 
 	/**
-	 * Check whether explicit acknowledgment is required for share consumer containers.
-	 * @return true if explicit acknowledgment is required, false for implicit acknowledgment
+	 * Return whether the current mode is {@link ShareAckMode#MANUAL}.
+	 * @return {@code true} if the current {@link ShareAckMode} is {@link ShareAckMode#MANUAL}.
+	 * @deprecated in favor of {@link #getShareAckMode()}.
 	 */
+	@Deprecated(since = "4.1", forRemoval = false)
 	public boolean isExplicitShareAcknowledgment() {
-		return this.explicitShareAcknowledgment;
+		return this.shareAckMode == ShareAckMode.MANUAL;
 	}
 
 	/**
-	 * Set the timeout for share acknowledgments in explicit mode.
+	 * Set the timeout for share acknowledgments in {@link ShareAckMode#MANUAL} mode.
 	 * <p>
-	 * When a record is not acknowledged within this timeout, a warning
-	 * will be logged to help identify missing acknowledgment calls.
-	 * This only applies when using explicit acknowledgment mode.
+	 * When a record is not acknowledged within this timeout, a warning will be logged
+	 * to help identify missing acknowledgment calls. Only applies to {@code MANUAL} mode.
 	 * <p>
 	 * Default is 30 seconds.
 	 * @param shareAcknowledgmentTimeout the timeout duration
@@ -1163,7 +1212,7 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	/**
-	 * Get the timeout for share acknowledgments in explicit mode.
+	 * Get the timeout for share acknowledgments in {@link ShareAckMode#MANUAL} mode.
 	 * @return the acknowledgment timeout
 	 * @since 4.0
 	 */

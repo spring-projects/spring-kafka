@@ -16,7 +16,11 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Map;
+
 import org.apache.kafka.clients.consumer.AcknowledgeType;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ShareConsumer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -25,11 +29,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.config.KafkaListenerEndpoint;
 import org.springframework.kafka.config.ShareKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ShareConsumerFactory;
+import org.springframework.kafka.listener.ContainerProperties.ShareAckMode;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 /**
  * Unit tests for {@link ShareKafkaMessageListenerContainer}.
@@ -53,45 +62,78 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 	private AcknowledgingShareConsumerAwareMessageListener<String, String> ackListener;
 
 	@Test
-	void shouldConfigureExplicitModeCorrectly() {
+	void shouldDefaultToExplicitAckMode() {
 		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		containerProperties.setExplicitShareAcknowledgment(true);
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		assertThat(container.getContainerProperties().getShareAckMode()).isEqualTo(ShareAckMode.EXPLICIT);
+	}
+
+	@Test
+	void shouldConfigureImplicitAckMode() {
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.IMPLICIT);
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		assertThat(container.getContainerProperties().getShareAckMode()).isEqualTo(ShareAckMode.IMPLICIT);
+	}
+
+	@Test
+	void shouldConfigureManualAckMode() {
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.MANUAL);
 		containerProperties.setMessageListener(ackListener);
 
 		ShareKafkaMessageListenerContainer<String, String> container =
 				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
 
-		assertThat(container.getContainerProperties().isExplicitShareAcknowledgment())
-				.isTrue();
+		assertThat(container.getContainerProperties().getShareAckMode()).isEqualTo(ShareAckMode.MANUAL);
 	}
 
 	@Test
-	void shouldConfigureImplicitModeByDefault() {
+	void shouldFailWhenManualAckModeUsedWithNonAcknowledgingListener() {
 		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.MANUAL);
 		containerProperties.setMessageListener(messageListener);
 
 		ShareKafkaMessageListenerContainer<String, String> container =
 				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
 
-		assertThat(container.getContainerProperties().isExplicitShareAcknowledgment())
-				.isFalse();
-	}
-
-	@Test
-	void shouldFailWhenExplicitModeUsedWithNonAcknowledgingListener() {
-		// Given: A container with explicit acknowledgment mode
-		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		containerProperties.setExplicitShareAcknowledgment(true);
-		// Using a non-acknowledging listener (just GenericMessageListener)
-		containerProperties.setMessageListener(messageListener);
-
-		ShareKafkaMessageListenerContainer<String, String> container =
-				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
-
-		// Starting the container should fail with validation error
 		assertThatExceptionOfType(IllegalStateException.class)
 				.isThrownBy(container::start)
-				.withMessageContaining("Explicit acknowledgment mode requires an AcknowledgingShareConsumerAwareMessageListener");
+				.withMessageContaining("ShareAckMode.MANUAL requires an AcknowledgingShareConsumerAwareMessageListener");
+	}
+
+	@Test
+	void shouldNotFailWhenManualAckModeUsedWithAcknowledgingListener() {
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.MANUAL);
+		containerProperties.setMessageListener(ackListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		assertThat(container.getContainerProperties().getShareAckMode()).isEqualTo(ShareAckMode.MANUAL);
+	}
+
+	@Test
+	@SuppressWarnings("deprecation")
+	void deprecatedSetExplicitShareAcknowledgmentShouldDelegateToShareAckMode() {
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+
+		containerProperties.setExplicitShareAcknowledgment(true);
+		assertThat(containerProperties.getShareAckMode()).isEqualTo(ShareAckMode.MANUAL);
+		assertThat(containerProperties.isExplicitShareAcknowledgment()).isTrue();
+
+		containerProperties.setExplicitShareAcknowledgment(false);
+		assertThat(containerProperties.getShareAckMode()).isEqualTo(ShareAckMode.EXPLICIT); // false maps to EXPLICIT (container-managed), not IMPLICIT
+		assertThat(containerProperties.isExplicitShareAcknowledgment()).isFalse();
 	}
 
 	@Test
@@ -109,21 +151,6 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		assertThatExceptionOfType(IllegalArgumentException.class)
 				.isThrownBy(() -> container.setConcurrency(-1))
 				.withMessageContaining("concurrency must be greater than 0");
-	}
-
-	@Test
-	void shouldValidateListenerTypeOnStartup() {
-		// Given: A container with explicit acknowledgment mode and proper listener
-		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		containerProperties.setExplicitShareAcknowledgment(true);
-		// Using an acknowledging listener should not throw during construction
-		containerProperties.setMessageListener(ackListener);
-
-		ShareKafkaMessageListenerContainer<String, String> container =
-				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
-
-		// Validation occurs during startup, but we don't need to actually start for this test
-		assertThat(container.getContainerProperties().isExplicitShareAcknowledgment()).isTrue();
 	}
 
 	@Test
@@ -159,21 +186,7 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		ShareKafkaMessageListenerContainer<String, String> container =
 				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
 
-		// Should not be running before start
 		assertThat(container.isRunning()).isFalse();
-	}
-
-	@Test
-	void shouldSupportContainerProperties() {
-		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		containerProperties.setMessageListener(ackListener);
-		containerProperties.setExplicitShareAcknowledgment(true);
-
-		ShareKafkaMessageListenerContainer<String, String> container =
-				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
-
-		assertThat(container.getContainerProperties().isExplicitShareAcknowledgment())
-				.isTrue();
 	}
 
 	@Test
@@ -210,12 +223,46 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 
 		KafkaListenerEndpoint endpoint = mock(KafkaListenerEndpoint.class);
 		given(endpoint.getTopics()).willReturn(java.util.List.of("test-topic"));
-		given(endpoint.getConcurrency()).willReturn(null); // use factory default (1)
+		given(endpoint.getConcurrency()).willReturn(null);
 
 		ShareKafkaMessageListenerContainer<String, String> container =
 				factory.createListenerContainer(endpoint);
 
 		assertThat(container.getShareConsumerRecordRecoverer()).isSameAs(customRecoverer);
+	}
+
+	/**
+	 * Verifies that even when the factory has share.acknowledgement.mode=implicit in its
+	 * base configuration, the container passes share.acknowledgement.mode=explicit as an
+	 * override when creating the consumer. This is the critical contract: the container
+	 * must enforce explicit mode regardless of what the factory is configured with.
+	 */
+	@Test
+	@SuppressWarnings("unchecked")
+	void shouldPassExplicitOverrideToConsumerEvenWhenFactoryConfigIsImplicit() {
+		ShareConsumerFactory<String, String> conflictingFactory = mock(ShareConsumerFactory.class);
+		given(conflictingFactory.getConfigurationProperties())
+				.willReturn(Map.of(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG, "implicit"));
+
+		ShareConsumer<String, String> mockConsumer = mock(ShareConsumer.class);
+		given(conflictingFactory.createShareConsumer(any(), any(), any()))
+				.willReturn(mockConsumer);
+		lenient().when(mockConsumer.poll(any())).thenReturn(null);
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.EXPLICIT);
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(conflictingFactory, containerProperties);
+		container.setBeanName("conflictWarningContainer");
+		container.start();
+		container.stop();
+
+		verify(conflictingFactory).createShareConsumer(
+				any(),
+				any(),
+				eq(Map.of(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG, "explicit")));
 	}
 
 }
