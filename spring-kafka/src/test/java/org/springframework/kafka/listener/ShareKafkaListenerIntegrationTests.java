@@ -306,7 +306,10 @@ class ShareKafkaListenerIntegrationTests {
 		@Bean
 		public ShareKafkaListenerContainerFactory<String, String> explicitShareKafkaListenerContainerFactory(
 				ShareConsumerFactory<String, String> explicitShareConsumerFactory) {
-			return new ShareKafkaListenerContainerFactory<>(explicitShareConsumerFactory);
+			ShareKafkaListenerContainerFactory<String, String> factory =
+					new ShareKafkaListenerContainerFactory<>(explicitShareConsumerFactory);
+			factory.getContainerProperties().setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
+			return factory;
 		}
 
 		@Bean
@@ -314,8 +317,7 @@ class ShareKafkaListenerIntegrationTests {
 				@Qualifier("explicitShareConsumerFactory") ShareConsumerFactory<String, String> explicitShareConsumerFactory) {
 			ShareKafkaListenerContainerFactory<String, String> factory =
 					new ShareKafkaListenerContainerFactory<>(explicitShareConsumerFactory);
-			// Configure explicit acknowledgment via factory's container properties (consumer must use explicit mode too)
-			factory.getContainerProperties().setExplicitShareAcknowledgment(true);
+			factory.getContainerProperties().setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
 			return factory;
 		}
 

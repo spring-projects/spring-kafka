@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaShareConsumer;
 import org.apache.kafka.clients.consumer.ShareConsumer;
 import org.apache.kafka.common.MetricName;
@@ -141,19 +142,42 @@ public class DefaultShareConsumerFactory<K, V> extends KafkaResourceFactory
 		return createRawConsumer(groupId, clientId);
 	}
 
+	@Override
+	public ShareConsumer<K, V> createShareConsumer(@Nullable String groupId, @Nullable String clientId,
+			Map<String, Object> overrideProperties) {
+		return createRawConsumer(groupId, clientId, overrideProperties);
+	}
+
 	/**
-	 * Actually create the consumer.
+	 * Create the consumer with no override properties.
+	 * Subclasses may override to customize consumer creation.
 	 * @param groupId the group id (maybe null).
-	 * @param clientId the client id.
+	 * @param clientId the client id (maybe null).
 	 * @return the share consumer.
 	 */
 	protected ShareConsumer<K, V> createRawConsumer(@Nullable String groupId, @Nullable String clientId) {
+		return createRawConsumer(groupId, clientId, Collections.emptyMap());
+	}
+
+	/**
+	 * Actually create the consumer, applying override properties on top of the
+	 * factory configuration. Override properties take precedence over factory
+	 * configuration; {@code groupId} and {@code clientId} are applied last.
+	 * @param groupId the group id (maybe null).
+	 * @param clientId the client id (maybe null).
+	 * @param overrideProperties properties to apply on top of the factory configuration.
+	 * @return the share consumer.
+	 * @since 4.1
+	 */
+	protected ShareConsumer<K, V> createRawConsumer(@Nullable String groupId, @Nullable String clientId,
+			Map<String, Object> overrideProperties) {
 		Map<String, Object> consumerProperties = new HashMap<>(this.configs);
+		consumerProperties.putAll(overrideProperties);
 		if (groupId != null) {
-			consumerProperties.put("group.id", groupId);
+			consumerProperties.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
 		}
 		if (clientId != null) {
-			consumerProperties.put("client.id", clientId);
+			consumerProperties.put(ConsumerConfig.CLIENT_ID_CONFIG, clientId);
 		}
 		return new ExtendedShareConsumer(consumerProperties);
 	}

@@ -20,8 +20,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.regex.Pattern;
 
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.internals.ShareAcknowledgementMode;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.beans.BeanUtils;
@@ -183,11 +181,6 @@ public class ShareKafkaListenerContainerFactory<K, V>
 		BeanUtils.copyProperties(this.containerProperties, properties, "topics", "topicPartitions", "topicPattern",
 				"messageListener", "ackCount", "ackTime", "subBatchPerPartition", "kafkaConsumerProperties");
 
-		// Determine acknowledgment mode following Spring Kafka's configuration precedence patterns
-		// Check factory-level properties first, then consumer factory config
-		boolean explicitAck = determineExplicitAcknowledgment(properties);
-		properties.setExplicitShareAcknowledgment(explicitAck);
-
 		// Set concurrency - endpoint setting takes precedence over factory setting
 		Integer conc = endpoint.getConcurrency();
 		if (conc != null) {
@@ -206,39 +199,6 @@ public class ShareKafkaListenerContainerFactory<K, V>
 				.acceptIfNotNull(this.recordRecoverer, instance::setShareConsumerRecordRecoverer)
 				.acceptIfNotNull(endpoint.getGroupId(), properties::setGroupId)
 				.acceptIfNotNull(endpoint.getClientIdPrefix(), properties::setClientId);
-	}
-
-	/**
-	 * Determine whether explicit acknowledgment is required following Spring Kafka's configuration precedence patterns.
-	 * <p>
-	 * Configuration precedence (highest to lowest):
-	 * <ol>
-	 * <li>Container Properties: {@code containerProperties.isExplicitShareAcknowledgment()} (if explicitly set via factory-level properties)</li>
-	 * <li>Consumer Config: {@code ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG}</li>
-	 * <li>Default: {@code false} (implicit acknowledgment)</li>
-	 * </ol>
-	 * @param containerProperties the container properties to check
-	 * @return true if explicit acknowledgment is required, false for implicit
-	 * @throws IllegalArgumentException if an invalid acknowledgment mode is configured
-	 */
-	private boolean determineExplicitAcknowledgment(ContainerProperties containerProperties) {
-		// Check factory-level properties first
-		// If explicitly set to true (non-default), use it with highest precedence
-		if (this.containerProperties.isExplicitShareAcknowledgment()) {
-			return true;
-		}
-
-		// Check Kafka client configuration as fallback
-		Object clientAckMode = this.shareConsumerFactory.getConfigurationProperties()
-				.get(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG);
-
-		if (clientAckMode != null) {
-			ShareAcknowledgementMode mode = ShareAcknowledgementMode.fromString(clientAckMode.toString());
-			return mode == ShareAcknowledgementMode.EXPLICIT;
-		}
-
-		// Default to implicit acknowledgment (false)
-		return false;
 	}
 
 	private static void validateShareConfiguration(KafkaListenerEndpoint endpoint) {
