@@ -128,13 +128,16 @@ public class StreamsBuilderFactoryBeanTests {
 		streamsBuilderFactoryBean.setGroupProtocol(testGroupProtocol);
 		streamsBuilderFactoryBean.afterPropertiesSet();
 		StreamsBuilder builder = streamsBuilderFactoryBean.getObject();
-		builder.stream(Pattern.compile("foo"));
+		builder.stream("foo");
 		streamsBuilderFactoryBean.afterSingletonsInstantiated();
 		streamsBuilderFactoryBean.start();
 		StreamsBuilder streamsBuilder = streamsBuilderFactoryBean.getObject();
 		verify(streamsBuilder).build(kafkaStreamsConfiguration.asProperties());
 		assertThat(streamsBuilderFactoryBean.getStreamsConfiguration())
 				.containsEntry(ConsumerConfig.GROUP_PROTOCOL_CONFIG, testGroupProtocol.name().toLowerCase(Locale.ROOT));
+		// Need to remove group protocol config to ensure other tests not get affected
+		// due to pattern usage with streams group protocol
+		kafkaStreamsConfiguration.asProperties().remove(ConsumerConfig.GROUP_PROTOCOL_CONFIG);
 	}
 
 	@Test
