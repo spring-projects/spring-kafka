@@ -232,7 +232,8 @@ By default, when the factory bean is stopped, the `KafkaStreams.cleanUp()` metho
 Starting with version 2.1.2, the factory bean has additional constructors, taking a `CleanupConfig` object that has properties to let you control whether the `cleanUp()` method is called during `start()` or `stop()` or neither.
 Starting with version 2.7, the default is to never clean up local state.
 
-=== Group Protocol Configuration
+[[streams-group-protocol]]
+== Group Protocol Configuration
 
 Starting with version 4.1.0, you can configure the consumer group protocol used by the underlying Kafka Streams consumers by setting the `groupProtocol` property.
 This allows you to explicitly manage whether the consumers rely on the `classic` protocol or opt into the newer `streams` group protocol introduced in KIP-1071 (Server-side rebalance for Streams, GA in Kafka 4.2).
@@ -241,11 +242,11 @@ It can be configured using `StreamsBuilderFactoryBean.setGroupProtocol()`.
 
 The following example shows how to configure the group protocol using a `StreamsBuilderFactoryBeanConfigurer`:
 
-[source, java]
+[source,java]
 ----
 @Bean
 public StreamsBuilderFactoryBeanConfigurer groupProtocolConfigurer() {
-    return fb -> fb.setGroupProtocol("streams");
+    return fb -> fb.setGroupProtocol(GroupProtocol.STREAMS);
 }
 ----
 
