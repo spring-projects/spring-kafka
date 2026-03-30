@@ -67,7 +67,7 @@ import org.springframework.util.Assert;
  * @author Sanghyeok An
  * @author Cédric Schaller
  * @author Almog Gavra
- *
+ * @author Saurabh Jadhav
  * @since 1.1.4
  */
 public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilder>
@@ -153,7 +153,6 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 		Assert.notNull(streamsConfig, STREAMS_CONFIG_MUST_NOT_BE_NULL);
 		Assert.notNull(cleanupConfig, CLEANUP_CONFIG_MUST_NOT_BE_NULL);
 		this.properties = streamsConfig.asProperties();
-		this.applyGroupProtocol();
 		this.cleanupConfig = cleanupConfig;
 	}
 
@@ -311,11 +310,11 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	/**
 	 * Set group protocol to be used by {@link StreamsBuilderFactoryBean}.
 	 * Only allowed values are from {@link GroupProtocol}
-	 * @param groupProtocol groupProtocol value as given in {@link org.apache.kafka.clients.consumer.GroupProtocol}
+	 * @param groupProtocol groupProtocol value as given in {@link GroupProtocol}
 	 */
-	public void setGroupProtocol(String groupProtocol) {
+	public void setGroupProtocol(GroupProtocol groupProtocol) {
 		Assert.notNull(groupProtocol, "'groupProtocol' must not be null");
-		this.groupProtocol = GroupProtocol.valueOf(groupProtocol.toUpperCase(Locale.ROOT));
+		this.groupProtocol = groupProtocol;
 	}
 
 	/**
@@ -324,15 +323,6 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 */
 	public @Nullable GroupProtocol getGroupProtocol() {
 		return this.groupProtocol;
-	}
-
-	/**
-	 * Retrieves and sets group protocol for properties of {@link StreamsBuilderFactoryBean}.
-	 */
-	public void applyGroupProtocol() {
-		if (this.groupProtocol != null) {
-			this.properties.setProperty(ConsumerConfig.GROUP_PROTOCOL_CONFIG, this.groupProtocol.name());
-		}
 	}
 
 	/**
@@ -420,6 +410,10 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 							"streams configuration properties must not be null");
 					if (this.deadLetterTopicName != null) {
 						this.properties.put(StreamsConfig.ERRORS_DEAD_LETTER_QUEUE_TOPIC_NAME_CONFIG, this.deadLetterTopicName);
+					}
+					if (this.getGroupProtocol() != null) {
+						this.properties.setProperty(ConsumerConfig.GROUP_PROTOCOL_CONFIG,
+								this.getGroupProtocol().name().toLowerCase(Locale.ROOT));
 					}
 					this.kafkaStreams = this.kafkaStreamsCustomizer.initKafkaStreams(
 							this.topology, this.properties, this.clientSupplier

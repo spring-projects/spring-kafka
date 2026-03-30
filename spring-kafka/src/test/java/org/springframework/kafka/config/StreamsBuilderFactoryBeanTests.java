@@ -25,6 +25,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.streams.GroupProtocol;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
@@ -36,7 +37,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -61,6 +62,7 @@ import static org.mockito.Mockito.verify;
  * @author Denis Washington
  * @author Soby Chacko
  * @author Sanghyeok An
+ * @author Saurabh Jadhav
  */
 @SpringJUnitConfig
 @DirtiesContext
@@ -115,8 +117,8 @@ public class StreamsBuilderFactoryBeanTests {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = {"classic", "streams"})
-	public void testBuildWithGroupProtocolProperty(String testGroupProtocol) throws Exception {
+	@EnumSource(GroupProtocol.class)
+	public void testBuildWithGroupProtocolProperty(GroupProtocol testGroupProtocol) throws Exception {
 		streamsBuilderFactoryBean = new StreamsBuilderFactoryBean(kafkaStreamsConfiguration) {
 			@Override
 			protected StreamsBuilder createInstance() {
@@ -131,7 +133,8 @@ public class StreamsBuilderFactoryBeanTests {
 		streamsBuilderFactoryBean.start();
 		StreamsBuilder streamsBuilder = streamsBuilderFactoryBean.getObject();
 		verify(streamsBuilder).build(kafkaStreamsConfiguration.asProperties());
-		assertThat(streamsBuilderFactoryBean.getGroupProtocol()).isEqualTo(GroupProtocol.valueOf(testGroupProtocol.toUpperCase(Locale.ROOT)));
+		assertThat(streamsBuilderFactoryBean.getStreamsConfiguration())
+				.containsEntry(ConsumerConfig.GROUP_PROTOCOL_CONFIG, testGroupProtocol.name().toLowerCase(Locale.ROOT));
 	}
 
 	@Test
