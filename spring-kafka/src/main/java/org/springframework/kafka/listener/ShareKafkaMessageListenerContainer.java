@@ -33,6 +33,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.ShareConsumer;
+import org.apache.kafka.clients.consumer.internals.ShareAcknowledgementMode;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
@@ -201,7 +202,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		GenericMessageListener<?> listener = (GenericMessageListener<?>) messageListener;
 		Assert.state(listener != null, "'messageListener' cannot be null");
 
-		if (containerProperties.getShareAckMode() == ContainerProperties.ShareAckMode.MANUAL) {
+		if (ContainerProperties.ShareAckMode.MANUAL.equals(containerProperties.getShareAckMode())) {
 			boolean isAcknowledgingListener = listener instanceof AcknowledgingShareConsumerAwareMessageListener;
 			Assert.state(isAcknowledgingListener,
 					"ShareAckMode.MANUAL requires an AcknowledgingShareConsumerAwareMessageListener. " +
@@ -209,7 +210,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 					"Either use ShareAckMode.EXPLICIT or provide a listener that accepts a ShareAcknowledgment parameter.");
 		}
 
-		if (containerProperties.getShareAckMode() == ContainerProperties.ShareAckMode.EXPLICIT
+		if (ContainerProperties.ShareAckMode.EXPLICIT.equals(containerProperties.getShareAckMode())
 				&& listener instanceof AcknowledgingShareConsumerAwareMessageListener) {
 			this.logger.warn("Listener is an AcknowledgingShareConsumerAwareMessageListener but "
 					+ "ShareAckMode.EXPLICIT is active; the acknowledgment argument will be null. "
@@ -304,22 +305,22 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			this.genericListener = listener;
 			this.clientId = consumerClientId;
 			ContainerProperties containerProperties = getContainerProperties();
+			String groupId = ShareKafkaMessageListenerContainer.this.getGroupId();
 
 			ContainerProperties.ShareAckMode shareAckMode = containerProperties.getShareAckMode();
-			this.isManualAckMode = shareAckMode == ContainerProperties.ShareAckMode.MANUAL;
+			this.isManualAckMode = ContainerProperties.ShareAckMode.MANUAL.equals(shareAckMode);
 			this.ackTimeoutMs = containerProperties.getShareAcknowledgmentTimeout().toMillis();
 
-			if (shareAckMode == ContainerProperties.ShareAckMode.IMPLICIT) {
+			if (ContainerProperties.ShareAckMode.IMPLICIT.equals(shareAckMode)) {
 				ShareConsumerRecordRecoverer recoverer =
 						ShareKafkaMessageListenerContainer.this.getShareConsumerRecordRecoverer();
-				if (recoverer != ShareConsumerRecordRecoverer.REJECTING) {
+				if (ShareConsumerRecordRecoverer.REJECTING != recoverer) {
 					this.logger.warn("A custom ShareConsumerRecordRecoverer is configured but its acknowledgment "
 							+ "decision will be ignored in ShareAckMode.IMPLICIT — all records are always "
 							+ "ACCEPTed by the broker regardless of processing outcome.");
 				}
 				this.consumer = ShareKafkaMessageListenerContainer.this.shareConsumerFactory.createShareConsumer(
-						ShareKafkaMessageListenerContainer.this.getGroupId(),
-						consumerClientId);
+						groupId, consumerClientId);
 			}
 			else {
 				// EXPLICIT and MANUAL both use Kafka client explicit mode so the container
@@ -327,16 +328,15 @@ public class ShareKafkaMessageListenerContainer<K, V>
 				Object configured = ShareKafkaMessageListenerContainer.this.shareConsumerFactory
 						.getConfigurationProperties()
 						.get(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG);
-				if (configured != null && "implicit".equalsIgnoreCase(configured.toString())) {
+				if (configured != null && ShareAcknowledgementMode.IMPLICIT.name().equalsIgnoreCase(configured.toString())) {
 					this.logger.warn("Factory configuration has share.acknowledgement.mode=implicit "
 							+ "but ShareAckMode." + shareAckMode + " is active; the container will "
 							+ "override it with explicit mode. To use implicit mode, set "
 							+ "ShareAckMode.IMPLICIT on the container properties instead.");
 				}
 				this.consumer = ShareKafkaMessageListenerContainer.this.shareConsumerFactory.createShareConsumer(
-						ShareKafkaMessageListenerContainer.this.getGroupId(),
-						consumerClientId,
-						Map.of(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG, "explicit"));
+						groupId, consumerClientId,
+						Map.of(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG, ShareAcknowledgementMode.EXPLICIT.name()));
 			}
 
 			this.consumer.subscribe(Arrays.asList(containerProperties.getTopics()));

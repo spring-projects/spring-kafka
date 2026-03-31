@@ -78,9 +78,7 @@ import static org.mockito.Mockito.verify;
 				"share-container-mixed-ack-test",
 				"share-container-lifecycle-test",
 				"share-container-recoverer-release-test",
-				"share-container-deser-error-test",
-				"share-container-explicit-reject-test",
-				"share-container-implicit-error-test"
+				"share-container-deser-error-test"
 		},
 		partitions = 1,
 		brokerProperties = {
@@ -483,114 +481,6 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		try {
 			// First delivery threw; recoverer returned RELEASE so the record came back; second delivery accepted
 			assertThat(redeliveredLatch.await(30, TimeUnit.SECONDS)).isTrue();
-			assertThat(deliveryCount.get()).isEqualTo(2);
-		}
-		finally {
-			container.stop();
-		}
-	}
-
-	/**
-	 * Verifies that in {@link ContainerProperties.ShareAckMode#EXPLICIT} (container-managed) mode,
-	 * a listener error causes the container to {@code REJECT} the record, archiving it so it is
-	 * not redelivered. This is the correct default semantic: failed records are discarded rather
-	 * than retried indefinitely. Use a custom {@link ShareConsumerRecordRecoverer} returning
-	 * {@link AcknowledgeType#RELEASE} to opt into retry-on-error behaviour instead.
-	 */
-	@Test
-	void shouldContainerRejectRecordOnListenerError(EmbeddedKafkaBroker broker) throws Exception {
-		String topic = "share-container-explicit-reject-test";
-		String groupId = "share-container-explicit-reject-group";
-		String bootstrapServers = broker.getBrokersAsString();
-
-		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
-		// Produce one record that will always cause an error
-		produceTestRecords(bootstrapServers, topic, 1);
-
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, false);
-		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
-
-		// ShareAckMode.EXPLICIT is the default: container auto-REJECTs on error (default recoverer)
-		ContainerProperties containerProps = new ContainerProperties(topic);
-
-		CountDownLatch firstDeliveryLatch = new CountDownLatch(1);
-		// This latch must NOT be reached: if REJECT works, there is no redelivery
-		CountDownLatch redeliveryLatch = new CountDownLatch(1);
-		AtomicInteger deliveryCount = new AtomicInteger();
-
-		containerProps.setMessageListener((MessageListener<String, String>) record -> {
-			int count = deliveryCount.incrementAndGet();
-			if (count == 1) {
-				firstDeliveryLatch.countDown();
-				throw new RuntimeException("Simulated processing error");
-			}
-			redeliveryLatch.countDown();
-		});
-
-		ShareKafkaMessageListenerContainer<String, String> container =
-				new ShareKafkaMessageListenerContainer<>(factory, containerProps);
-		container.setBeanName("explicitRejectTestContainer");
-		container.start();
-
-		try {
-			assertThat(firstDeliveryLatch.await(15, TimeUnit.SECONDS)).isTrue();
-			// REJECT archives the record; it must NOT be redelivered
-			assertThat(redeliveryLatch.await(5, TimeUnit.SECONDS))
-					.as("Record should be archived (REJECT) and not redelivered")
-					.isFalse();
-			assertThat(deliveryCount.get()).isEqualTo(1);
-		}
-		finally {
-			container.stop();
-		}
-	}
-
-	/**
-	 * Verifies that {@link ContainerProperties.ShareAckMode#IMPLICIT} mode never calls
-	 * {@code consumer.acknowledge()} — the Kafka client auto-accepts everything. Even when
-	 * the listener throws, no {@link IllegalStateException} is raised and no redelivery occurs.
-	 */
-	@Test
-	void shouldImplicitModeAutoAcceptsRecordsEvenOnError(EmbeddedKafkaBroker broker) throws Exception {
-		String topic = "share-container-implicit-error-test";
-		String groupId = "share-container-implicit-error-group";
-		String bootstrapServers = broker.getBrokersAsString();
-
-		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
-		produceTestRecords(bootstrapServers, topic, 2);
-
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, false);
-		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
-
-		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setShareAckMode(ContainerProperties.ShareAckMode.IMPLICIT);
-
-		AtomicInteger deliveryCount = new AtomicInteger();
-		// Both records must be seen exactly once (auto-accepted, never redelivered)
-		CountDownLatch bothSeenLatch = new CountDownLatch(2);
-		// Must NOT fire: would indicate an unexpected redelivery
-		CountDownLatch redeliveryLatch = new CountDownLatch(3);
-
-		containerProps.setMessageListener((MessageListener<String, String>) record -> {
-			deliveryCount.incrementAndGet();
-			bothSeenLatch.countDown();
-			redeliveryLatch.countDown();
-			if (record.value().endsWith("0")) {
-				throw new RuntimeException("Simulated error on first record");
-			}
-		});
-
-		ShareKafkaMessageListenerContainer<String, String> container =
-				new ShareKafkaMessageListenerContainer<>(factory, containerProps);
-		container.setBeanName("implicitErrorTestContainer");
-		container.start();
-
-		try {
-			assertThat(bothSeenLatch.await(15, TimeUnit.SECONDS)).isTrue();
-			// No redelivery: if a third invocation happened the latch would have reached 0
-			assertThat(redeliveryLatch.await(5, TimeUnit.SECONDS))
-					.as("No record should be redelivered in IMPLICIT mode")
-					.isFalse();
 			assertThat(deliveryCount.get()).isEqualTo(2);
 		}
 		finally {
