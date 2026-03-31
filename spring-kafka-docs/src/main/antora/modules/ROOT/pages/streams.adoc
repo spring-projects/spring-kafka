@@ -297,16 +297,31 @@ Spring Integration automatically provides an implementation using its `GatewayPr
 It also requires a `MessagingMessageConverter` to convert the key, value and metadata (including headers) to/from a Spring Messaging `Message<?>`.
 See {spring-integration-url}/kafka.html#streams-integration[Calling a Spring Integration Flow from a `KStream`] for more information.
 
+[[recovery-strategies]]
+== Recovery Strategies
+
+The framework provides the following exception handlers, which follow the same recovery strategies:
+
+- xref:streams.adoc#streams-deser-recovery[`RecoveringDeserializationExceptionHandler`]
+- xref:streams.adoc#streams-processing-recovery[`RecoveringProcessingExceptionHandler`]
+- xref:streams.adoc#streams-production-recovery[`RecoveringProductionExceptionHandler`]
+
+The recovery strategies are as follows, by priority order:
+
+- If a xref:streams.adoc#dead-letter-destination-resolver[`KafkaStreamsDeadLetterDestinationResolver`] is defined, resume the stream and forward the failed record to the resolved topic-partition using the native Kafka Streams DLQ.
+- If xref:streams.adoc#dead-letter-queue-topic-name-property[`errors.dead.letter.queue.topic.name`] is defined and set to a topic name, resume the stream and forward the failed record to that topic using the native Kafka Streams DLQ.
+- If a `ConsumerRecordRecoverer` implementation is defined, invoke it and resume the stream without producing dead-letter records, as handling is delegated to the `ConsumerRecordRecoverer`. For example, the provided xref:streams.adoc#dead-letter-publishing-recoverer[`DeadLetterPublishingRecoverer`] implementation can be used.
+- Fail the stream without producing dead-letter records.
+
+When a dead-letter record is published to a dead-letter topic, whether through the native Kafka Streams DLQ or via a `ConsumerRecordRecoverer` implementation, the record is enriched with the xref:kafka/annotation-error-handling.adoc#dead-letters[Spring for Apache Kafka DLT headers].
+
 [[streams-deser-recovery]]
 == Recovery from Deserialization Exceptions
 
-Version 2.3 introduced the `RecoveringDeserializationExceptionHandler` which can take some action when a deserialization exception occurs.
-Refer to the Kafka documentation about `DeserializationExceptionHandler`, of which the `RecoveringDeserializationExceptionHandler` is an implementation.
-The `RecoveringDeserializationExceptionHandler` is configured with a `ConsumerRecordRecoverer` implementation.
-The framework provides the `DeadLetterPublishingRecoverer` which sends the failed record to a dead-letter topic.
-See xref:kafka/annotation-error-handling.adoc#dead-letters[Publishing Dead-letter Records] for more information about this recoverer.
+Version 2.3 introduced the `RecoveringDeserializationExceptionHandler`, which can take some action when a deserialization exception occurs.
+It implements the `DeserializationExceptionHandler` interface (refer to the Kafka documentation for details) and follows the xref:streams.adoc#recovery-strategies[Spring for Apache Kafka recovery strategies].
 
-To configure the recoverer, add the following properties to your streams configuration:
+To configure the `RecoveringDeserializationExceptionHandler`, add the following property to your streams configuration:
 
 [source, java]
 ----
@@ -314,9 +329,71 @@ To configure the recoverer, add the following properties to your streams configu
 public KafkaStreamsConfiguration kStreamsConfigs() {
     Map<String, Object> props = new HashMap<>();
     ...
-    props.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
+    props.put(StreamsConfig.DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
             RecoveringDeserializationExceptionHandler.class);
-    props.put(RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER, recoverer());
+    ...
+    return new KafkaStreamsConfiguration(props);
+}
+----
+
+[[streams-processing-recovery]]
+== Recovery from Processing Exceptions
+
+Version 4.1 introduces the `RecoveringProcessingExceptionHandler`, which can take some action when an exception occurs during stream processing.
+It implements the `ProcessingExceptionHandler` interface (refer to the Kafka documentation for details), introduced by https://cwiki.apache.org/confluence/display/KAFKA/KIP-1033%3A+Add+Kafka+Streams+exception+handler+for+exceptions+occurring+during+processing[KIP-1033]
+and follows the xref:streams.adoc#recovery-strategies[Spring for Apache Kafka recovery strategies].
+
+To enable the `RecoveringProcessingExceptionHandler`, add the following property to your streams configuration:
+
+[source, java]
+----
+@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
+public KafkaStreamsConfiguration kStreamsConfigs() {
+    Map<String, Object> props = new HashMap<>();
+    ...
+    props.put(StreamsConfig.PROCESSING_EXCEPTION_HANDLER_CLASS_CONFIG,
+            RecoveringProcessingExceptionHandler.class);
+    ...
+}
+----
+
+[[streams-production-recovery]]
+== Recovery from Production Exceptions
+
+Version 4.1 introduces the `RecoveringProductionExceptionHandler`, which can take some action when an exception occurs during record production or serialization.
+It implements the `ProductionExceptionHandler` interface (refer to the Kafka documentation for details) and follows the xref:streams.adoc#recovery-strategies[Spring for Apache Kafka recovery strategies].
+
+To configure the `RecoveringProductionExceptionHandler`, add the following property to your streams configuration:
+
+[source, java]
+----
+@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
+public KafkaStreamsConfiguration kStreamsConfigs() {
+    Map<String, Object> props = new HashMap<>();
+    ...
+    props.put(StreamsConfig.PRODUCTION_EXCEPTION_HANDLER_CLASS_CONFIG,
+            RecoveringProductionExceptionHandler.class);
+    ...
+}
+----
+
+[[dead-letter-publishing-recoverer]]
+== Dead Letter Publishing Recoverer
+
+The framework provides the `DeadLetterPublishingRecoverer`, which sends the failed record to a dead-letter topic.
+See xref:kafka/annotation-error-handling.adoc#dead-letters[Publishing Dead-letter records] for more information about this recoverer.
+
+To configure the recoverer for an exception handler, add the following properties to your streams configuration:
+
+[source, java]
+----
+@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
+public KafkaStreamsConfiguration kStreamsConfigs() {
+    Map<String, Object> props = new HashMap<>();
+    ...
+    props.put(StreamsConfig.DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
+            RecoveringDeserializationExceptionHandler.class);
+    props.put(RecoveringDeserializationExceptionHandler.RECOVERER, recoverer());
     ...
     return new KafkaStreamsConfiguration(props);
 }
@@ -329,6 +406,60 @@ public DeadLetterPublishingRecoverer recoverer() {
 ----
 
 Of course, the `recoverer()` bean can be your own implementation of `ConsumerRecordRecoverer`.
+
+[[dead-letter-destination-resolver]]
+== Dead Letter Destination Resolver
+
+A bean of type `KafkaStreamsDeadLetterDestinationResolver` can be defined to activate native DLQ routing in the exception handlers.
+
+It determines the DLQ topic name and partition resolution logic to use, based on the error handler context, the input record of the failed processor, and the exception thrown:
+
+[source, java]
+----
+@Bean
+public KafkaStreamsDeadLetterDestinationResolver resolver() {
+    return (context, record, ex) -> {
+        if (ex instanceof FooException) return new TopicPartition("dlqTopic1", -1);
+        if (record instanceof Foo) return new TopicPartition("dlqTopic2", -1);
+        if (context.processorNodeId().equals("processor-1")) return new TopicPartition("dlqTopic3", -1);
+        return new TopicPartition("defaultDlqTopic", -1);
+    };
+}
+----
+
+A negative partition number indicates that the partition will be determined by the default partitioner.
+
+The `KafkaStreamsDeadLetterDestinationResolver` can then be injected into the exception handlers as follows:
+
+[source, java]
+----
+@Bean(name = KafkaStreamsDefaultConfiguration.DEFAULT_STREAMS_CONFIG_BEAN_NAME)
+public KafkaStreamsConfiguration kStreamsConfigs() {
+    Map<String, Object> props = new HashMap<>();
+    ...
+    props.put(StreamsConfig.PROCESSING_EXCEPTION_HANDLER_CLASS_CONFIG,
+            RecoveringProcessingExceptionHandler.class);
+    props.put(RecoveringProcessingExceptionHandler.DLQ_DESTINATION_RESOLVER, resolver());
+    ...
+    return new KafkaStreamsConfiguration(props);
+}
+----
+
+[[dead-letter-queue-topic-name-property]]
+== Dead Letter Queue Topic Name Property
+
+The Kafka Streams property `errors.dead.letter.queue.topic.name` can be defined and set to a topic name to activate native DLQ routing in the exception handlers.
+This directly specifies the DLQ topic to which the enabled exception handlers will route all failed records.
+
+Alternatively, this can be set programmatically through the `StreamsBuilderFactoryBean`:
+
+[source, java]
+----
+@Bean
+public StreamsBuilderFactoryBeanConfigurer streamsBuilderFactoryBeanConfigurer() {
+    return sfb -> sfb.setDeadLetterTopicName("deadLetterQueueTopic");
+}
+----
 
 [[kafka-streams-iq-support]]
 == Interactive Query Support

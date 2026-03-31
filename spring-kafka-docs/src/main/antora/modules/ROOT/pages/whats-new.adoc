@@ -36,3 +36,20 @@ See xref:kafka/kafka-queues.adoc#share-acknowledgment-api[ShareAcknowledgment AP
 
 The default value of `sameIntervalTopicReuseStrategy` in `RetryTopicConfigurationBuilder` has been changed from `MULTIPLE_TOPICS` to `SINGLE_TOPIC` to align with the `@RetryableTopic` annotation default.
 See xref:retrytopic/topic-naming.adoc[Topic Naming] for more information.
+
+[[x41-kafka-streams-native-dlq]]
+=== Kafka Streams Native DLQ Support
+
+Spring for Apache Kafka now provides exception handlers that support Kafka Streams DLQ (KIP-1034, Kafka 4.2):
+
+- xref:streams.adoc#streams-deser-recovery[`RecoveringDeserializationExceptionHandler`] (updated).
+- xref:streams.adoc#streams-processing-recovery[`RecoveringProcessingExceptionHandler`] (new).
+- xref:streams.adoc#streams-production-recovery[`RecoveringProductionExceptionHandler`] (new).
+
+The provided exception handlers support multiple Kafka Streams DLQ enabling strategies and dead-letter topic resolution options:
+
+- The Kafka Streams property xref:streams.adoc#dead-letter-queue-topic-name-property[`errors.dead.letter.queue.topic.name`].
+- An implementation of the new xref:streams.adoc#dead-letter-destination-resolver[`KafkaStreamsDeadLetterDestinationResolver`] functional interface for dynamic resolution.
+- The `setDeadLetterTopicName()` method of the xref:streams.adoc#dead-letter-queue-topic-name-property[`StreamsBuilderFactoryBean`].
+
+`RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER` has been deprecated in favor of `RecoveringDeserializationExceptionHandler.RECOVERER` to align with the new handlers properties.
