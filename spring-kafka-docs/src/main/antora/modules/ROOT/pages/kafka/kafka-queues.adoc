@@ -524,6 +524,37 @@ Use this mode only when per-record delivery guarantees are not required.
 |Broker auto-ACCEPTs (no recovery)
 |===
 
+[[share-ack-mode-migration]]
+=== Migration from 4.0
+
+In 4.0, share consumer acknowledgment was controlled by `setExplicitShareAcknowledgment(boolean)`.
+In 4.1, this is replaced by `setShareAckMode(ShareAckMode)`.
+The deprecated method still works: `true` maps to `MANUAL`, `false` maps to `EXPLICIT`.
+
+**Default behavior is unchanged.**
+The 4.0 default (`setExplicitShareAcknowledgment(false)`) was container-managed acknowledgment, which is exactly what `ShareAckMode.EXPLICIT` does.
+No action is required for applications using the default.
+
+**If you used `setExplicitShareAcknowledgment(true)`**, replace it:
+
+[source,java]
+----
+// Before (4.0)
+factory.getContainerProperties().setExplicitShareAcknowledgment(true);
+
+// After (4.1)
+factory.getContainerProperties().setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
+----
+
+**If you set `share.acknowledgement.mode=implicit` in the factory configuration** (via `ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG`), note that in 4.0 this setting had no effect because the container always called `consumer.acknowledge()` regardless.
+In 4.1, the container detects this conflict, logs a warning, and overrides the factory setting with explicit mode.
+To use Kafka client implicit mode, set it explicitly on the container:
+
+[source,java]
+----
+factory.getContainerProperties().setShareAckMode(ContainerProperties.ShareAckMode.IMPLICIT);
+----
+
 [[share-acknowledgment-types]]
 === Acknowledgment Types
 

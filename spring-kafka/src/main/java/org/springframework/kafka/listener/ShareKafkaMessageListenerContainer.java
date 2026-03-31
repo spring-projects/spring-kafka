@@ -310,7 +310,6 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			this.ackTimeoutMs = containerProperties.getShareAcknowledgmentTimeout().toMillis();
 
 			if (shareAckMode == ContainerProperties.ShareAckMode.IMPLICIT) {
-				// Kafka implicit mode: the broker auto-ACCEPTs all records; acknowledge() must not be called.
 				ShareConsumerRecordRecoverer recoverer =
 						ShareKafkaMessageListenerContainer.this.getShareConsumerRecordRecoverer();
 				if (recoverer != ShareConsumerRecordRecoverer.REJECTING) {
@@ -325,20 +324,14 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			else {
 				// EXPLICIT and MANUAL both use Kafka client explicit mode so the container
 				// has full per-record acknowledgment control.
-				try {
-					Object configured = ShareKafkaMessageListenerContainer.this.shareConsumerFactory
-							.getConfigurationProperties()
-							.get(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG);
-					if (configured != null && "implicit".equalsIgnoreCase(configured.toString())) {
-						this.logger.warn("Factory configuration has share.acknowledgement.mode=implicit "
-								+ "but ShareAckMode." + shareAckMode + " is active; the container will "
-								+ "override it with explicit mode. To use implicit mode, set "
-								+ "ShareAckMode.IMPLICIT on the container properties instead.");
-					}
-				}
-				catch (UnsupportedOperationException ex) {
-					this.logger.debug(ex, "ShareConsumerFactory does not expose configuration properties; "
-							+ "skipping implicit acknowledgment mode conflict check.");
+				Object configured = ShareKafkaMessageListenerContainer.this.shareConsumerFactory
+						.getConfigurationProperties()
+						.get(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG);
+				if (configured != null && "implicit".equalsIgnoreCase(configured.toString())) {
+					this.logger.warn("Factory configuration has share.acknowledgement.mode=implicit "
+							+ "but ShareAckMode." + shareAckMode + " is active; the container will "
+							+ "override it with explicit mode. To use implicit mode, set "
+							+ "ShareAckMode.IMPLICIT on the container properties instead.");
 				}
 				this.consumer = ShareKafkaMessageListenerContainer.this.shareConsumerFactory.createShareConsumer(
 						ShareKafkaMessageListenerContainer.this.getGroupId(),
