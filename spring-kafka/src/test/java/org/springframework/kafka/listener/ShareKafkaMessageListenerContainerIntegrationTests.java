@@ -78,7 +78,8 @@ import static org.mockito.Mockito.verify;
 				"share-container-mixed-ack-test",
 				"share-container-lifecycle-test",
 				"share-container-recoverer-release-test",
-				"share-container-deser-error-test"
+				"share-container-deser-error-test",
+				"share-container-async-commit-test"
 		},
 		partitions = 1,
 		brokerProperties = {
@@ -1265,4 +1266,45 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		assertThat(container.isRunning()).isFalse();
 	}
 
+	@Test
+	void shouldSupportAsyncCommits(EmbeddedKafkaBroker broker) throws Exception {
+		final String topic = "share-container-async-commit-test";
+		final String groupId = "asyncCommitGroup";
+		String bootstrapServers = broker.getBrokersAsString();
+
+		// Produce records
+		produceTestRecords(bootstrapServers, topic, 5);
+
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
+
+		var consumerProps = new HashMap<String, Object>();
+		consumerProps.put("bootstrap.servers", bootstrapServers);
+		consumerProps.put("key.deserializer", StringDeserializer.class);
+		consumerProps.put("value.deserializer", StringDeserializer.class);
+		consumerProps.put("group.id", groupId);
+
+		DefaultShareConsumerFactory<String, String> consumerFactory =
+				new DefaultShareConsumerFactory<>(consumerProps);
+
+		ContainerProperties containerProps = new ContainerProperties(topic);
+		// Set async commits
+		containerProps.setSyncShareCommits(false);
+
+		CountDownLatch latch = new CountDownLatch(5);
+		containerProps.setMessageListener((MessageListener<String, String>) record -> {
+			latch.countDown();
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(consumerFactory, containerProps);
+		container.setBeanName("asyncCommitTestContainer");
+
+		container.start();
+
+		Awaitility.await()
+				.atMost(10, TimeUnit.SECONDS)
+				.untilAsserted(() -> assertThat(latch.getCount()).isZero());
+
+		container.stop();
+	}
 }
