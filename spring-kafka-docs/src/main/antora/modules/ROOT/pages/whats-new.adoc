@@ -14,6 +14,14 @@ The `@KafkaListener` annotation now supports an `ackMode` attribute, allowing in
 The attribute also supports SpEL expressions and property placeholders.
 See xref:kafka/receiving-messages/listener-annotation.adoc[`@KafkaListener` Annotation] for more information.
 
+[[x41-share-ack-mode]]
+=== Share Consumer Acknowledgment Modes
+
+The boolean `setExplicitShareAcknowledgment(boolean)` property on `ContainerProperties` has been replaced by the `ShareAckMode` enum (`EXPLICIT`, `MANUAL`, `IMPLICIT`).
+The deprecated method still works: `true` maps to `MANUAL`, `false` maps to `EXPLICIT`.
+Default behavior is unchanged — applications using the default require no migration.
+See xref:kafka/kafka-queues.adoc#share-record-acknowledgment[Record Acknowledgment] for mode descriptions and xref:kafka/kafka-queues.adoc#share-ack-mode-migration[Migration from 4.0] for upgrade details.
+
 [[x41-share-consumer-error-handling]]
 === Share Consumer Error Handling
 

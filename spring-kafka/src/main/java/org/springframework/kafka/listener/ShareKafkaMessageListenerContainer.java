@@ -29,9 +29,11 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.AcknowledgeType;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.ShareConsumer;
+import org.apache.kafka.clients.consumer.internals.ShareAcknowledgementMode;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
@@ -69,19 +71,24 @@ import org.springframework.util.Assert;
  * <p>
  * Key features:
  * <ul>
- * <li>Explicit and implicit acknowledgment modes</li>
- * <li>Automatic error handling with REJECT acknowledgments</li>
- * <li>Poll-level acknowledgment constraints in explicit mode</li>
+ * <li>Three acknowledgment modes: {@link ContainerProperties.ShareAckMode#EXPLICIT},
+ * {@link ContainerProperties.ShareAckMode#MANUAL}, and {@link ContainerProperties.ShareAckMode#IMPLICIT}</li>
+ * <li>Automatic error handling via {@link ShareConsumerRecordRecoverer} (default: REJECT)</li>
+ * <li>Poll-level acknowledgment constraints in {@link ContainerProperties.ShareAckMode#MANUAL} mode</li>
  * <li>Integration with Spring's {@code @KafkaListener} annotation</li>
  * <li>Configurable concurrency for increased throughput</li>
  * </ul>
  * <p>
  * <strong>Acknowledgment Modes:</strong>
  * <ul>
- * <li><strong>Implicit</strong>: Records are automatically acknowledged as ACCEPT
- * after successful processing or REJECT on errors</li>
- * <li><strong>Explicit</strong>: Application must manually acknowledge each record;
- * subsequent polls are blocked until all records from the previous poll are acknowledged</li>
+ * <li><strong>EXPLICIT</strong> (default): Container-managed. The container sends ACCEPT after
+ * successful processing and delegates error handling to the {@link ShareConsumerRecordRecoverer}
+ * (default: REJECT). Equivalent to disabling {@code auto.commit} on a regular consumer.</li>
+ * <li><strong>MANUAL</strong>: Listener-managed. The listener must acknowledge each record via
+ * the provided {@link ShareAcknowledgment}. Subsequent polls are blocked until all records
+ * from the previous poll are acknowledged.</li>
+ * <li><strong>IMPLICIT</strong>: Kafka client implicit mode. The broker auto-accepts all records
+ * regardless of processing outcome. No per-record acknowledgment control is available.</li>
  * </ul>
  *
  * @param <K> the key type
@@ -195,18 +202,23 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		GenericMessageListener<?> listener = (GenericMessageListener<?>) messageListener;
 		Assert.state(listener != null, "'messageListener' cannot be null");
 
-		// Validate listener type for explicit acknowledgment mode
-		if (containerProperties.isExplicitShareAcknowledgment()) {
+		if (ContainerProperties.ShareAckMode.MANUAL.equals(containerProperties.getShareAckMode())) {
 			boolean isAcknowledgingListener = listener instanceof AcknowledgingShareConsumerAwareMessageListener;
 			Assert.state(isAcknowledgingListener,
-					"Explicit acknowledgment mode requires an AcknowledgingShareConsumerAwareMessageListener. " +
+					"ShareAckMode.MANUAL requires an AcknowledgingShareConsumerAwareMessageListener. " +
 					"Current listener type: " + listener.getClass().getName() + ". " +
-					"Either use implicit acknowledgment mode or provide a listener that can handle acknowledgments.");
+					"Either use ShareAckMode.EXPLICIT or provide a listener that accepts a ShareAcknowledgment parameter.");
+		}
+
+		if (ContainerProperties.ShareAckMode.EXPLICIT.equals(containerProperties.getShareAckMode())
+				&& listener instanceof AcknowledgingShareConsumerAwareMessageListener) {
+			this.logger.warn("Listener is an AcknowledgingShareConsumerAwareMessageListener but "
+					+ "ShareAckMode.EXPLICIT is active; the acknowledgment argument will be null. "
+					+ "Switch to ShareAckMode.MANUAL if the listener needs to manage acknowledgments.");
 		}
 
 		setRunning(true);
 
-		// Create multiple consumer threads based on concurrency setting
 		for (int i = 0; i < this.concurrency; i++) {
 			String consumerClientId = determineClientId(i);
 			ShareListenerConsumer consumer = new ShareListenerConsumer(listener, consumerClientId);
@@ -216,11 +228,6 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		}
 	}
 
-	/**
-	 * Determine the client ID for a consumer thread.
-	 * @param index the consumer index
-	 * @return the client ID to use
-	 */
 	private String determineClientId(int index) {
 		String baseClientId = this.clientId != null ? this.clientId : getBeanName();
 		if (this.concurrency > 1) {
@@ -232,7 +239,6 @@ public class ShareKafkaMessageListenerContainer<K, V>
 	@Override
 	protected void doStop() {
 		setRunning(false);
-		// Wait for all consumer threads to complete
 		this.lifecycleLock.lock();
 		try {
 			CompletableFuture.allOf(this.consumerFutures.toArray(new CompletableFuture<?>[0])).join();
@@ -283,40 +289,54 @@ public class ShareKafkaMessageListenerContainer<K, V>
 
 		private final @Nullable String clientId;
 
-		// Acknowledgment tracking for explicit mode
 		private final Map<ConsumerRecord<K, V>, ShareConsumerAcknowledgment> pendingAcknowledgments = new ConcurrentHashMap<>();
 
-		// Tracking for missed acknowledgment detection
+		// Tracks per-record dispatch time for acknowledgment timeout detection
 		private final Map<ConsumerRecord<K, V>, Long> acknowledgmentTimestamps = new ConcurrentHashMap<>();
 
-		// Lock for coordinating acknowledgment completion
-		private final Object acknowledgmentLock = new Object();
-
-		// Queue for acknowledgments from other threads
+		// Queue for acknowledgments submitted from listener threads to be applied on the consumer thread
 		private final ConcurrentLinkedQueue<PendingAcknowledgment<K, V>> acknowledgmentQueue = new ConcurrentLinkedQueue<>();
 
-		private final boolean isExplicitMode;
+		private final boolean isManualAckMode;
 
 		private final long ackTimeoutMs;
 
 		ShareListenerConsumer(GenericMessageListener<?> listener, String consumerClientId) {
-			this.consumer = ShareKafkaMessageListenerContainer.this.shareConsumerFactory.createShareConsumer(
-					ShareKafkaMessageListenerContainer.this.getGroupId(),
-					consumerClientId);
-
 			this.genericListener = listener;
 			this.clientId = consumerClientId;
 			ContainerProperties containerProperties = getContainerProperties();
+			String groupId = ShareKafkaMessageListenerContainer.this.getGroupId();
 
-			// Configure acknowledgment mode
-			this.isExplicitMode = containerProperties.isExplicitShareAcknowledgment();
+			ContainerProperties.ShareAckMode shareAckMode = containerProperties.getShareAckMode();
+			this.isManualAckMode = ContainerProperties.ShareAckMode.MANUAL.equals(shareAckMode);
 			this.ackTimeoutMs = containerProperties.getShareAcknowledgmentTimeout().toMillis();
 
-			// Configure consumer properties based on acknowledgment mode
-			if (this.isExplicitMode) {
-				// Apply explicit mode configuration to consumer
-				// Note: This should ideally be done during consumer creation in the factory
-				this.logger.info("Share consumer configured for explicit acknowledgment mode");
+			if (ContainerProperties.ShareAckMode.IMPLICIT.equals(shareAckMode)) {
+				ShareConsumerRecordRecoverer recoverer =
+						ShareKafkaMessageListenerContainer.this.getShareConsumerRecordRecoverer();
+				if (ShareConsumerRecordRecoverer.REJECTING != recoverer) {
+					this.logger.warn("A custom ShareConsumerRecordRecoverer is configured but its acknowledgment "
+							+ "decision will be ignored in ShareAckMode.IMPLICIT — all records are always "
+							+ "ACCEPTed by the broker regardless of processing outcome.");
+				}
+				this.consumer = ShareKafkaMessageListenerContainer.this.shareConsumerFactory.createShareConsumer(
+						groupId, consumerClientId);
+			}
+			else {
+				// EXPLICIT and MANUAL both use Kafka client explicit mode so the container
+				// has full per-record acknowledgment control.
+				Object configured = ShareKafkaMessageListenerContainer.this.shareConsumerFactory
+						.getConfigurationProperties()
+						.get(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG);
+				if (configured != null && ShareAcknowledgementMode.IMPLICIT.name().equalsIgnoreCase(configured.toString())) {
+					this.logger.warn("Factory configuration has share.acknowledgement.mode=implicit "
+							+ "but ShareAckMode." + shareAckMode + " is active; the container will "
+							+ "override it with explicit mode. To use implicit mode, set "
+							+ "ShareAckMode.IMPLICIT on the container properties instead.");
+				}
+				this.consumer = ShareKafkaMessageListenerContainer.this.shareConsumerFactory.createShareConsumer(
+						groupId, consumerClientId,
+						Map.of(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG, ShareAcknowledgementMode.EXPLICIT.name()));
 			}
 
 			this.consumer.subscribe(Arrays.asList(containerProperties.getTopics()));
@@ -334,11 +354,10 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			Throwable exitThrowable = null;
 			while (isRunning()) {
 				try {
-					// Process any pending acknowledgments from other threads
 					processQueuedAcknowledgments();
 
-					// In explicit mode, check for acknowledgment timeouts before polling
-					if (this.isExplicitMode && !this.pendingAcknowledgments.isEmpty()) {
+					// In MANUAL mode, check for acknowledgment timeouts before polling
+					if (this.isManualAckMode && !this.pendingAcknowledgments.isEmpty()) {
 						checkAcknowledgmentTimeouts();
 					}
 
@@ -347,19 +366,23 @@ public class ShareKafkaMessageListenerContainer<K, V>
 						records = this.consumer.poll(java.time.Duration.ofMillis(POLL_TIMEOUT));
 					}
 					catch (RecordDeserializationException e) {
-						// poll() throws when a record can't be deserialized. Override client's auto-release
-						// with REJECT so the record is archived and the consumer thread continues.
+						// poll() throws when a record can't be deserialized. In EXPLICIT/MANUAL mode,
+						// override the client's auto-release with REJECT to archive the record.
+						// In IMPLICIT mode consumer.acknowledge() cannot be called — the broker
+						// auto-accepts the record regardless of outcome.
 						TopicPartition tp = e.topicPartition();
 						long offset = e.offset();
 						this.logger.warn(e, () -> "RecordDeserializationException at "
 								+ tp + " offset " + offset + "; rejecting record and continuing");
-						try {
-							this.consumer.acknowledge(tp.topic(), tp.partition(), offset,
-									AcknowledgeType.REJECT);
-						}
-						catch (Exception ackEx) {
-							this.logger.error(ackEx, () -> "Failed to reject undeserializable record at "
-									+ tp + " offset " + offset);
+						if (getContainerProperties().getShareAckMode() != ContainerProperties.ShareAckMode.IMPLICIT) {
+							try {
+								this.consumer.acknowledge(tp.topic(), tp.partition(), offset,
+										AcknowledgeType.REJECT);
+							}
+							catch (Exception ackEx) {
+								this.logger.error(ackEx, () -> "Failed to reject undeserializable record at "
+										+ tp + " offset " + offset);
+							}
 						}
 						continue;
 					}
@@ -370,8 +393,8 @@ public class ShareKafkaMessageListenerContainer<K, V>
 						continue;
 					}
 					catch (IllegalStateException e) {
-						// In explicit mode, poll() throws if unacknowledged records exist
-						if (this.isExplicitMode && !this.pendingAcknowledgments.isEmpty()) {
+						// In MANUAL mode, poll() throws if unacknowledged records exist
+						if (this.isManualAckMode && !this.pendingAcknowledgments.isEmpty()) {
 							this.logger.trace(() -> "Poll blocked waiting for " + this.pendingAcknowledgments.size() +
 									" acknowledgments");
 							// Small delay to prevent tight loop while maintaining reasonable responsiveness
@@ -416,15 +439,12 @@ public class ShareKafkaMessageListenerContainer<K, V>
 				ShareConsumerAcknowledgment acknowledgment = null;
 
 				try {
-					if (this.isExplicitMode) {
-						// Create acknowledgment using inner class
+					if (this.isManualAckMode) {
 						acknowledgment = new ShareConsumerAcknowledgment(record);
 						this.pendingAcknowledgments.put(record, acknowledgment);
-						// Track when the record was dispatched for acknowledgment timeout detection
 						this.acknowledgmentTimestamps.put(record, System.currentTimeMillis());
 					}
 
-					// Dispatch to listener
 					if (this.genericListener instanceof AcknowledgingShareConsumerAwareMessageListener<?, ?> ackListener) {
 						@SuppressWarnings("unchecked")
 						AcknowledgingShareConsumerAwareMessageListener<K, V> typedAckListener =
@@ -432,31 +452,34 @@ public class ShareKafkaMessageListenerContainer<K, V>
 						typedAckListener.onShareRecord(record, acknowledgment, this.consumer);
 					}
 					else {
-						// Basic listener remains the same
 						@SuppressWarnings("unchecked")
 						GenericMessageListener<ConsumerRecord<K, V>> listener =
 								(GenericMessageListener<ConsumerRecord<K, V>>) this.genericListener;
 						listener.onMessage(record);
+					}
+
+					// EXPLICIT: container sends ACCEPT on success.
+					// IMPLICIT: broker auto-ACCEPTs — no acknowledge() call.
+					// MANUAL: listener drives it via ShareAcknowledgment.
+					if (getContainerProperties().getShareAckMode() == ContainerProperties.ShareAckMode.EXPLICIT) {
+						this.consumer.acknowledge(record, AcknowledgeType.ACCEPT);
 					}
 				}
 				catch (Exception e) {
 					handleProcessingError(record, acknowledgment, e);
 				}
 			}
-			// Commit acknowledgments
 			commitAcknowledgments();
 		}
 
 		private void handleProcessingError(ConsumerRecord<K, V> record,
 				@Nullable ShareConsumerAcknowledgment acknowledgment, Exception e) {
 
-			// Delegate to recoverer to decide ACCEPT, RELEASE, or REJECT
 			AcknowledgeType action;
 			try {
 				action = ShareKafkaMessageListenerContainer.this.getShareConsumerRecordRecoverer().recover(record, e);
 			}
 			catch (Exception recovererEx) {
-				// If the recoverer itself throws, fall back to REJECT
 				this.logger.error(recovererEx, () -> "ShareConsumerRecordRecoverer threw an exception; "
 						+ "falling back to REJECT for record from "
 						+ record.topic() + "-" + record.partition() + "@" + record.offset());
@@ -473,7 +496,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 
 			final AcknowledgeType actionToLog = action;
 
-			if (this.isExplicitMode && acknowledgment != null) {
+			if (this.isManualAckMode && acknowledgment != null) {
 				// Remove from pending and from timestamp tracking so timeout checker doesn't hold stale entries
 				this.pendingAcknowledgments.remove(record);
 				this.acknowledgmentTimestamps.remove(record);
@@ -481,16 +504,14 @@ public class ShareKafkaMessageListenerContainer<K, V>
 					switch (action) {
 						case ACCEPT -> acknowledgment.acknowledge();
 						case RELEASE -> acknowledgment.release();
-						case REJECT -> acknowledgment.reject();
-						default -> acknowledgment.reject();
+						default -> acknowledgment.reject(); // REJECT, or any future AcknowledgeType
 					}
 				}
 				catch (Exception ackEx) {
 					this.logger.error(ackEx, () -> "Failed to " + actionToLog + " record after processing error");
 				}
 			}
-			else {
-				// Implicit mode: apply recoverer's decision via consumer.acknowledge
+			else if (getContainerProperties().getShareAckMode() != ContainerProperties.ShareAckMode.IMPLICIT) {
 				try {
 					this.consumer.acknowledge(record, action);
 				}
@@ -498,6 +519,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 					this.logger.error(ackEx, () -> "Failed to " + actionToLog + " record after processing error");
 				}
 			}
+			// IMPLICIT mode: broker auto-ACCEPTs — no acknowledge() call is possible or needed
 		}
 
 		private void commitAcknowledgments() {
@@ -509,13 +531,8 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			}
 		}
 
-		/**
-		 * Called by ShareConsumerAcknowledgment when a record is acknowledged in explicit mode.
-		 *
-		 * @param record the record that was acknowledged
-		 */
 		void onRecordAcknowledged(ConsumerRecord<K, V> record) {
-			if (this.isExplicitMode) {
+			if (this.isManualAckMode) {
 				this.pendingAcknowledgments.remove(record);
 				this.acknowledgmentTimestamps.remove(record);
 				this.logger.debug(() -> "Record acknowledged, " + this.pendingAcknowledgments.size() + " still pending");
@@ -532,7 +549,6 @@ public class ShareKafkaMessageListenerContainer<K, V>
 				final PendingAcknowledgment<K, V> ack = pendingAck;
 				try {
 					this.consumer.acknowledge(ack.record(), ack.type());
-					// Find and notify the acknowledgment object
 					ShareConsumerAcknowledgment acknowledgment = this.pendingAcknowledgments.get(ack.record());
 					if (acknowledgment != null) {
 						acknowledgment.notifyAcknowledged(ack.type());
@@ -548,11 +564,8 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			}
 		}
 
-		/**
-		 * Check if any records have exceeded the acknowledgment timeout and log a warning.
-		 */
 		private void checkAcknowledgmentTimeouts() {
-			if (!this.isExplicitMode || this.acknowledgmentTimestamps.isEmpty()) {
+			if (!this.isManualAckMode || this.acknowledgmentTimestamps.isEmpty()) {
 				return;
 			}
 
@@ -562,13 +575,12 @@ public class ShareKafkaMessageListenerContainer<K, V>
 				if (recordAge > this.ackTimeoutMs) {
 					ConsumerRecord<K, V> record = entry.getKey();
 					this.logger.warn(LogMessage.format(
-						"Record not acknowledged within timeout (%d seconds). " +
-						"In explicit acknowledgment mode, you must call ack.acknowledge(), ack.release(), " +
-						"or ack.reject() for every record (call ack.renew() to extend the lock; a terminal ack is still required). " +
-						"Unacknowledged record: topic='%s', partition=%d, offset=%d",
-						this.ackTimeoutMs / 1000,
-						record.topic(), record.partition(), record.offset()
-					));
+							"Record not acknowledged within timeout (%d seconds). "
+							+ "In ShareAckMode.MANUAL you must call ack.acknowledge(), ack.release(), "
+							+ "or ack.reject() for every record (call ack.renew() to extend the lock; a terminal ack is still required). "
+							+ "Unacknowledged record: topic='%s', partition=%d, offset=%d",
+							this.ackTimeoutMs / 1000,
+							record.topic(), record.partition(), record.offset()));
 					// Only warn once per record
 					this.acknowledgmentTimestamps.put(record, currentTime);
 				}
@@ -593,9 +605,6 @@ public class ShareKafkaMessageListenerContainer<K, V>
 					+ "]";
 		}
 
-		/**
-		 * Inner acknowledgment class that integrates directly with the container.
-		 */
 		private class ShareConsumerAcknowledgment implements ShareAcknowledgment {
 
 			private final ConsumerRecord<K, V> record;
@@ -661,11 +670,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 						new PendingAcknowledgment<>(this.record, type));
 			}
 
-			/**
-			 * Called by the consumer thread after successful acknowledgment.
-			 * @param type the type of acknowledgment
-			 */
-			void notifyAcknowledged(AcknowledgeType type) {
+		void notifyAcknowledged(AcknowledgeType type) {
 				this.acknowledgmentType.set(type);
 			}
 

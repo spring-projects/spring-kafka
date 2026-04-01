@@ -1,8 +1,8 @@
 [[kafka-queues]]
 = Kafka Queues (Share Consumer)
 
-Starting with version 4.0, Spring for Apache Kafka provides support for Kafka Queues through share consumers, which are part of Apache Kafka 4.0.0 and implement https://cwiki.apache.org/confluence/display/KAFKA/KIP-932%3A+Queues+for+Kafka[KIP-932 (Queues for Kafka)].
-This feature is currently in early access.
+Starting with version 4.0, Spring for Apache Kafka provides support for Kafka Queues through share consumers, implementing https://cwiki.apache.org/confluence/display/KAFKA/KIP-932%3A+Queues+for+Kafka[KIP-932 (Queues for Kafka)].
+As of Spring for Apache Kafka 4.1, backed by Apache Kafka 4.2, share consumers are promoted to full production support.
 
 Kafka Queues enable a different consumption model compared to traditional consumer groups.
 Instead of the partition-based assignment model where each partition is exclusively assigned to one consumer, share consumers can cooperatively consume from the same partitions, with records being distributed among the consumers in the share group.
@@ -140,6 +140,8 @@ Share containers support a subset of the container properties available for regu
 * `topics`: Array of topic names to subscribe to
 * `groupId`: The share group ID
 * `clientId`: The client ID for the consumer
+* `shareAckMode`: The acknowledgment mode (`EXPLICIT`, `MANUAL`, or `IMPLICIT`; see <<share-record-acknowledgment>>)
+* `shareAcknowledgmentTimeout`: Timeout for detecting unacknowledged records in `MANUAL` mode
 * `kafkaConsumerProperties`: Additional consumer properties
 
 [IMPORTANT]
@@ -254,24 +256,23 @@ public class ConcurrentShareListener {
 * **Metrics**: Metrics from all consumer threads are aggregated and accessible via `container.metrics()`
 * **Lifecycle**: All consumer threads start and stop together as a unit
 * **Work Distribution**: The Kafka broker handles record distribution across all consumer instances in the share group
-* **Explicit Acknowledgment**: Each thread independently manages acknowledgments for its records; unacknowledged records in one thread don't block other threads
+* **Acknowledgment**: Each thread independently manages acknowledgments for its own records; unacknowledged records in one thread do not block other threads
 
-==== Concurrency with Explicit Acknowledgment
+==== Concurrency with MANUAL Acknowledgment
 
-Concurrency works seamlessly with explicit acknowledgment mode.
+Concurrency works seamlessly with `ShareAckMode.MANUAL`.
 Each consumer thread independently tracks and acknowledges its own records:
 
 [source,java]
 ----
 @KafkaListener(
     topics = "order-queue",
-    containerFactory = "explicitShareKafkaListenerContainerFactory",
+    containerFactory = "manualShareKafkaListenerContainerFactory",
     groupId = "order-processors",
     concurrency = "5"
 )
 public void processOrder(ConsumerRecord<String, String> record, ShareAcknowledgment acknowledgment) {
     try {
-        // Process the order
         processOrderLogic(record.value());
         acknowledgment.acknowledge(); // ACCEPT
     }
@@ -395,206 +396,289 @@ private void configureShareGroup(String bootstrapServers, String groupId) throws
 [[share-record-acknowledgment]]
 == Record Acknowledgment
 
-Share consumers support two acknowledgment modes that control how records are acknowledged after processing.
+Spring Kafka exposes three acknowledgment modes through `ContainerProperties.ShareAckMode`, controlling how records are acknowledged after processing.
 
-[[share-implicit-acknowledgment]]
-=== Implicit Acknowledgment (Default)
+[[share-ack-mode-explicit]]
+=== EXPLICIT (Default): Container-Managed Acknowledgment
 
-In implicit mode, records are automatically acknowledged based on processing outcome:
+In `EXPLICIT` mode the container takes full responsibility for acknowledgment.
+After the listener returns normally, the container sends `ACCEPT` for the record.
+On listener exceptions, the <<share-error-handling,`ShareConsumerRecordRecoverer`>> decides the outcome (`ACCEPT`, `RELEASE`, or `REJECT`; default: `REJECT`).
+This is the closest analogue to disabling `auto.commit` on a regular consumer — the container manages all acknowledgment decisions without any listener involvement.
 
-Successful processing: Records are acknowledged as `ACCEPT`
-Processing errors: Records are acknowledged as `REJECT`
+This is the default mode; no additional configuration is required:
 
 [source,java]
 ----
 @Bean
 public ShareKafkaListenerContainerFactory<String, String> shareKafkaListenerContainerFactory(
-    ShareConsumerFactory<String, String> shareConsumerFactory) {
-    // Implicit mode is the default - no additional configuration needed
+        ShareConsumerFactory<String, String> shareConsumerFactory) {
+    // EXPLICIT is the default — no shareAckMode configuration needed
     return new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
 }
 ----
 
-[[share-explicit-acknowledgment]]
-=== Explicit Acknowledgment
-
-In explicit mode, the application must manually acknowledge each record using the provided ShareAcknowledgment.
-
-There are two ways to configure explicit acknowledgment mode:
-
-==== Option 1: Using Kafka Client Configuration
-
 [source,java]
 ----
-@Bean
-public ShareConsumerFactory<String, String> explicitShareConsumerFactory() {
-    Map<String, Object> props = new HashMap<>();
-    props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-    props.put(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG, "explicit"); // Official Kafka client config
-    return new DefaultShareConsumerFactory<>(props);
+@KafkaListener(topics = "my-queue-topic", containerFactory = "shareKafkaListenerContainerFactory",
+               groupId = "my-share-group")
+public void listen(ConsumerRecord<String, String> record) {
+    // Container sends ACCEPT on success; recoverer decides on error (default: REJECT)
+    process(record.value());
 }
 ----
 
-==== Option 2: Using Spring Container Configuration
+[[share-ack-mode-manual]]
+=== MANUAL: Listener-Managed Acknowledgment
+
+In `MANUAL` mode the listener drives every per-record acknowledgment decision.
+Each record is delivered with a non-null `ShareAcknowledgment` instance that the listener must call exactly once with a terminal operation (`acknowledge()`, `release()`, or `reject()`).
+Subsequent polls are blocked until all records from the previous poll are acknowledged.
+
+Use `MANUAL` mode when your business logic determines the acknowledgment outcome record by record.
 
 [source,java]
 ----
 @Bean
-public ShareKafkaListenerContainerFactory<String, String> explicitShareKafkaListenerContainerFactory(
-    ShareConsumerFactory<String, String> shareConsumerFactory) {
-
+public ShareKafkaListenerContainerFactory<String, String> manualShareKafkaListenerContainerFactory(
+        ShareConsumerFactory<String, String> shareConsumerFactory) {
     ShareKafkaListenerContainerFactory<String, String> factory =
         new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
-
-    // Configure acknowledgment mode at container factory level
-    // true means explicit acknowledgment is required
-    factory.getContainerProperties().setExplicitShareAcknowledgment(true);
-
+    factory.getContainerProperties().setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
     return factory;
 }
 ----
 
-==== Configuration Precedence
+The listener must accept a `ShareAcknowledgment` parameter (that is, implement `AcknowledgingShareConsumerAwareMessageListener`):
 
-When both configuration methods are used, Spring Kafka follows this precedence order (highest to lowest):
+[source,java]
+----
+@KafkaListener(topics = "order-queue", containerFactory = "manualShareKafkaListenerContainerFactory")
+public void processOrder(ConsumerRecord<String, String> record, ShareAcknowledgment acknowledgment) {
+    try {
+        processOrderLogic(record.value());
+        acknowledgment.acknowledge(); // ACCEPT — success
+    }
+    catch (TransientException e) {
+        acknowledgment.release();     // RELEASE — redelivery
+    }
+    catch (Exception e) {
+        acknowledgment.reject();      // REJECT — permanent failure
+    }
+}
+----
 
-1. **Container Properties**: `containerProperties.setExplicitShareAcknowledgment(true/false)`
-2. **Consumer Config**: `ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG` ("implicit" or "explicit")
-3. **Default**: `false` (implicit acknowledgment)
+[IMPORTANT]
+====
+`ShareAckMode.MANUAL` requires the listener to accept a `ShareAcknowledgment` parameter
+(that is, implement `AcknowledgingShareConsumerAwareMessageListener`).
+The container validates this at startup and throws `IllegalStateException` if a plain `MessageListener` is used.
+====
+
+[[share-ack-mode-implicit]]
+=== IMPLICIT: Kafka Client Implicit Mode
+
+In `IMPLICIT` mode, acknowledgment is delegated entirely to the Kafka broker, which automatically accepts all acquired records regardless of processing outcome.
+No per-record acknowledgment API is available; the `ShareAcknowledgment` argument is always `null`.
+This maps directly to setting `share.acknowledgement.mode=implicit` in the Kafka client configuration.
+
+[source,java]
+----
+@Bean
+public ShareKafkaListenerContainerFactory<String, String> implicitShareKafkaListenerContainerFactory(
+        ShareConsumerFactory<String, String> shareConsumerFactory) {
+    ShareKafkaListenerContainerFactory<String, String> factory =
+        new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
+    factory.getContainerProperties().setShareAckMode(ContainerProperties.ShareAckMode.IMPLICIT);
+    return factory;
+}
+----
+
+[WARNING]
+====
+In `IMPLICIT` mode the `ShareConsumerRecordRecoverer` is not consulted.
+Processing errors are silently absorbed from the broker's perspective — all records are always ACCEPTed.
+Use this mode only when per-record delivery guarantees are not required.
+====
+
+[[share-ack-mode-comparison]]
+=== Acknowledgment Mode Comparison
+
+[cols="1,1,1,1",options="header"]
+|===
+|Mode |Who acknowledges |On success |On listener error
+
+|`EXPLICIT` (default)
+|Container
+|Container sends `ACCEPT`
+|Recoverer decides (`REJECT` by default)
+
+|`MANUAL`
+|Listener code
+|Listener calls `acknowledge()`
+|Listener calls `release()` or `reject()`
+
+|`IMPLICIT`
+|Kafka broker
+|Broker auto-ACCEPTs
+|Broker auto-ACCEPTs (no recovery)
+|===
+
+[[share-ack-mode-migration]]
+=== Migration from 4.0
+
+In 4.0, share consumer acknowledgment was controlled by `setExplicitShareAcknowledgment(boolean)`.
+In 4.1, this is replaced by `setShareAckMode(ShareAckMode)`.
+The deprecated method still works: `true` maps to `MANUAL`, `false` maps to `EXPLICIT`.
+
+**Default behavior is unchanged.**
+The 4.0 default (`setExplicitShareAcknowledgment(false)`) was container-managed acknowledgment, which is exactly what `ShareAckMode.EXPLICIT` does.
+No action is required for applications using the default.
+
+**If you used `setExplicitShareAcknowledgment(true)`**, replace it:
+
+[source,java]
+----
+// Before (4.0)
+factory.getContainerProperties().setExplicitShareAcknowledgment(true);
+
+// After (4.1)
+factory.getContainerProperties().setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
+----
+
+**If you set `share.acknowledgement.mode=implicit` in the factory configuration** (via `ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG`), note that in 4.0 this setting had no effect because the container always called `consumer.acknowledge()` regardless.
+In 4.1, the container detects this conflict, logs a warning, and overrides the factory setting with explicit mode.
+To use Kafka client implicit mode, set it explicitly on the container:
+
+[source,java]
+----
+factory.getContainerProperties().setShareAckMode(ContainerProperties.ShareAckMode.IMPLICIT);
+----
 
 [[share-acknowledgment-types]]
 === Acknowledgment Types
 
 Share consumers support four acknowledgment types:
 
- ACCEPT: Record processed successfully, mark as completed
- RELEASE: Temporary failure, make record available for redelivery
- REJECT: Permanent failure, do not retry
- RENEW: Extend the acquisition lock (non-terminal; a terminal ack is still required when processing completes)
+* `ACCEPT` — Record processed successfully; mark as completed.
+* `RELEASE` — Temporary failure; make the record available for redelivery to this or another consumer.
+* `REJECT` — Permanent failure; archive the record and do not redeliver.
+* `RENEW` — Extend the acquisition lock (non-terminal).
+Use `renew()` when processing may exceed the broker's lock duration (`group.share.record.lock.duration.ms`, default 30 seconds).
+A terminal acknowledgment (`acknowledge()`, `release()`, or `reject()`) is still required.
 
 [[share-acknowledgment-api]]
 === ShareAcknowledgment API
 
-The `ShareAcknowledgment` interface provides methods for explicit acknowledgment:
+The `ShareAcknowledgment` interface is only non-null in `ShareAckMode.MANUAL` mode:
 
 [source,java]
 ----
 public interface ShareAcknowledgment {
-    void acknowledge();
-    void release();
-    void reject();
-    void renew();
+    void acknowledge(); // ACCEPT — record successfully processed
+    void release();     // RELEASE — redelivery on transient failure
+    void reject();      // REJECT — permanent failure, do not retry
+    void renew();       // RENEW (non-terminal) — extend acquisition lock
 }
 ----
 
 [[share-listener-interfaces]]
 === Listener Interfaces
 
-Share consumers support specialized listener interfaces for different use cases:
-
 [[share-basic-listener]]
 ==== Basic Message Listener
 
-Use the standard MessageListener for simple cases:
+Use the standard `MessageListener` in `EXPLICIT` (default) or `IMPLICIT` mode:
+
 [source,java]
 ----
 @KafkaListener(topics = "my-topic", containerFactory = "shareKafkaListenerContainerFactory")
 public void listen(ConsumerRecord<String, String> record) {
-    System.out.println("Received: " + record.value());
-    // Automatically acknowledged in implicit mode
+    // In EXPLICIT mode (default): container sends ACCEPT on success, REJECT on error
+    process(record.value());
 }
 ----
 
 [[share-acknowledging-listener]]
 ==== AcknowledgingShareConsumerAwareMessageListener
 
-This interface provides access to the `ShareConsumer` instance with optional acknowledgment support.
-The acknowledgment parameter is nullable and depends on the container's acknowledgment mode:
+This interface provides access to the `ShareConsumer` instance and, in `MANUAL` mode, to the `ShareAcknowledgment`.
+The `acknowledgment` parameter is non-null only in `MANUAL` mode; it is `null` in `EXPLICIT` and `IMPLICIT` modes.
 
-===== Implicit Mode Example (acknowledgment is null)
+===== EXPLICIT Mode (Default — acknowledgment is null)
 
 [source,java]
 ----
 @KafkaListener(
     topics = "my-topic",
-    containerFactory = "shareKafkaListenerContainerFactory"  // Implicit mode by default
+    containerFactory = "shareKafkaListenerContainerFactory"  // EXPLICIT by default
 )
 public void listen(ConsumerRecord<String, String> record,
                   @Nullable ShareAcknowledgment acknowledgment,
                   ShareConsumer<?, ?> consumer) {
 
-    // In implicit mode, acknowledgment is null
-    System.out.println("Received: " + record.value());
+    // acknowledgment is null in EXPLICIT mode — container handles ACCEPT/REJECT automatically
+    process(record.value());
 
     // Access consumer metrics if needed
     Map<MetricName, ? extends Metric> metrics = consumer.metrics();
-
-    // Record is auto-acknowledged as ACCEPT on success, REJECT on error
 }
 ----
 
-===== Explicit Mode Example (acknowledgment is non-null)
+===== MANUAL Mode (acknowledgment is non-null)
 
 [source,java]
 ----
-@Component
-public class ExplicitAckListener {
-    @KafkaListener(
-        topics = "my-topic",
-        containerFactory = "explicitShareKafkaListenerContainerFactory"
-    )
-    public void listen(ConsumerRecord<String, String> record,
-                      @Nullable ShareAcknowledgment acknowledgment,
-                      ShareConsumer<?, ?> consumer) {
+@KafkaListener(
+    topics = "my-topic",
+    containerFactory = "manualShareKafkaListenerContainerFactory" // ShareAckMode.MANUAL
+)
+public void listen(ConsumerRecord<String, String> record,
+                  @Nullable ShareAcknowledgment acknowledgment,
+                  ShareConsumer<?, ?> consumer) {
 
-        // In explicit mode, acknowledgment is non-null
-        try {
-            processRecord(record);
-            acknowledgment.acknowledge(); // ACCEPT
-        }
-		catch (RetryableException e) {
-            acknowledgment.release(); // Will be redelivered
-        }
-		catch (Exception e) {
-            acknowledgment.reject(); // Permanent failure
-        }
+    // acknowledgment is non-null in MANUAL mode
+    try {
+        processRecord(record);
+        acknowledgment.acknowledge(); // ACCEPT
     }
-
-    private void processRecord(ConsumerRecord<String, String> record) {
-        // Business logic here
+    catch (RetryableException e) {
+        acknowledgment.release(); // Will be redelivered
+    }
+    catch (Exception e) {
+        acknowledgment.reject(); // Permanent failure
     }
 }
 ----
 
 [[share-acknowledgment-constraints]]
-=== Acknowledgment Constraints
+=== Acknowledgment Constraints (MANUAL Mode)
 
-In explicit acknowledgment mode, the container enforces important constraints:
+In `ShareAckMode.MANUAL`, the container enforces the following constraints:
 
- Poll Blocking: Subsequent polls are blocked until all records from the previous poll are acknowledged.
- Terminal Acknowledgment: Each record must receive exactly one terminal acknowledgment (`acknowledge()`, `release()`, or `reject()`).
- You may call `renew()` zero or more times before that to extend the acquisition lock when processing exceeds the broker's lock duration.
- Error Handling: If processing throws an exception, the outcome is determined by the <<share-error-handling,ShareConsumerRecordRecoverer>> (default: `REJECT`).
+* **Poll Blocking**: Subsequent polls are blocked until all records from the previous poll are acknowledged.
+* **Terminal Acknowledgment**: Each record must receive exactly one terminal acknowledgment (`acknowledge()`, `release()`, or `reject()`).
+You may call `renew()` zero or more times before that to extend the acquisition lock.
+* **Error Handling**: If processing throws an exception, the outcome is determined by the <<share-error-handling,ShareConsumerRecordRecoverer>> (default: `REJECT`).
 
 [WARNING]
-In explicit mode, failing to acknowledge records will block further message processing.
-Always ensure records are acknowledged in all code paths.
+In `ShareAckMode.MANUAL`, failing to acknowledge records will block further message processing.
+Always ensure records are acknowledged in all code paths, including exception handlers.
 
 [[share-acknowledgment-timeout]]
 ==== Acknowledgment Timeout Detection
 
-To help identify missing acknowledgments, Spring Kafka provides configurable timeout detection.
+To help identify missing acknowledgments, Spring Kafka provides configurable timeout detection in `MANUAL` mode.
 When a record is not acknowledged within the specified timeout, a warning is logged with details about the unacknowledged record.
 
 [source,java]
 ----
 @Bean
-public ShareKafkaListenerContainerFactory<String, String> shareKafkaListenerContainerFactory(
+public ShareKafkaListenerContainerFactory<String, String> manualShareKafkaListenerContainerFactory(
     ShareConsumerFactory<String, String> shareConsumerFactory) {
     ShareKafkaListenerContainerFactory<String, String> factory =
         new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
+    factory.getContainerProperties().setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
 
     // Set acknowledgment timeout (default is 30 seconds)
     factory.getContainerProperties().setShareAcknowledgmentTimeout(Duration.ofSeconds(30));
@@ -606,11 +690,12 @@ public ShareKafkaListenerContainerFactory<String, String> shareKafkaListenerCont
 When a record exceeds the timeout, you'll see a warning like:
 ----
 WARN: Record not acknowledged within timeout (30 seconds).
-In explicit acknowledgment mode, you must call ack.acknowledge(), ack.release(), or ack.reject() for every record.
-Call ack.renew() to extend the lock; a terminal ack is still required.
+In ShareAckMode.MANUAL you must call ack.acknowledge(), ack.release(),
+or ack.reject() for every record (call ack.renew() to extend the lock; a terminal ack is still required).
+Unacknowledged record: topic='my-topic', partition=0, offset=42
 ----
 
-This feature helps developers quickly identify when acknowledgment calls are missing from their code, preventing the common issue of "Spring Kafka does not consume new records any more" due to forgotten acknowledgments.
+This feature helps identify missing acknowledgment calls before they cause "no new records consumed" symptoms due to blocked polls.
 
 [[share-error-handling]]
 === Error Handling
@@ -622,7 +707,9 @@ The share container handles errors at two levels: during `poll()` (poll-level) a
 If `consumer.poll()` throws an exception, the container handles it so the consumer thread does not stop:
 
 * **RecordDeserializationException**: Thrown when a record cannot be deserialized (for example, invalid UTF-8 for `StringDeserializer`).
-The container catches it, REJECTs the affected record using the topic, partition, and offset from the exception, logs a warning, and continues polling.
+The container catches it, logs a warning, and continues polling.
+In `EXPLICIT` and `MANUAL` modes, the container REJECTs the affected record using the topic, partition, and offset from the exception.
+In `IMPLICIT` mode no explicit acknowledgment call is made — the broker auto-accepts the record.
 Subsequent records are processed normally.
 * **CorruptRecordException**: Thrown when CRC validation fails (for example, with `check.crcs` enabled).
 The Kafka client automatically rejects the corrupt batch.
@@ -682,34 +769,32 @@ Share consumers use acknowledgment-based recovery: the recoverer only decides AC
 There is no seek or dead-letter topic integration in the share container.
 
 [[share-acknowledgment-examples]]
-=== Acknowledgment Examples
+=== Acknowledgment Examples (MANUAL Mode)
 
 [[share-mixed-acknowledgment-example]]
 ==== Mixed Acknowledgment Patterns
 
 [source,java]
 ----
-@KafkaListener(topics = "order-processing", containerFactory = "explicitShareKafkaListenerContainerFactory")
-    public void processOrder(ConsumerRecord<String, String> record, ShareAcknowledgment acknowledgment) {
-        String orderId = record.key();
-        String orderData = record.value();
-        try {
-            if (isValidOrder(orderData)) {
-                if (processOrder(orderData)) {
-                    acknowledgment.acknowledge(); // Success - ACCEPT
-                }
-                else {
-                    acknowledgment.release(); // Temporary failure - retry later
-                }
+@KafkaListener(topics = "order-processing", containerFactory = "manualShareKafkaListenerContainerFactory")
+public void processOrder(ConsumerRecord<String, String> record, ShareAcknowledgment acknowledgment) {
+    String orderData = record.value();
+    try {
+        if (isValidOrder(orderData)) {
+            if (processOrder(orderData)) {
+                acknowledgment.acknowledge(); // ACCEPT — success
             }
             else {
-                acknowledgment.reject(); // Invalid order - don't retry
+                acknowledgment.release(); // RELEASE — temporary failure, retry later
             }
         }
-        catch (Exception e) {
-            // Exception automatically triggers REJECT
-            throw e;
+        else {
+            acknowledgment.reject(); // REJECT — invalid order, don't retry
         }
+    }
+    catch (Exception e) {
+        acknowledgment.reject(); // REJECT — unexpected failure
+    }
 }
 ----
 
@@ -718,19 +803,13 @@ There is no seek or dead-letter topic integration in the share container.
 
 [source,java]
 ----
-@KafkaListener(topics = "data-validation", containerFactory = "explicitShareKafkaListenerContainerFactory")
+@KafkaListener(topics = "data-validation", containerFactory = "manualShareKafkaListenerContainerFactory")
 public void validateData(ConsumerRecord<String, String> record, ShareAcknowledgment acknowledgment) {
     ValidationResult result = validator.validate(record.value());
     switch (result.getStatus()) {
-        case VALID:
-            acknowledgment.acknowledge(AcknowledgeType.ACCEPT);
-            break;
-        case INVALID_RETRYABLE:
-            acknowledgment.acknowledge(AcknowledgeType.RELEASE);
-            break;
-        case INVALID_PERMANENT:
-            acknowledgment.acknowledge(AcknowledgeType.REJECT);
-            break;
+        case VALID -> acknowledgment.acknowledge();        // ACCEPT
+        case INVALID_RETRYABLE -> acknowledgment.release(); // RELEASE
+        case INVALID_PERMANENT -> acknowledgment.reject();  // REJECT
     }
 }
 ----
@@ -769,7 +848,7 @@ Here is an example of how to use the various acknowledgement types based excepti
 
 [source,java]
 ----
-@KafkaListener(topics = "orders", containerFactory = "explicitShareKafkaListenerContainerFactory")
+@KafkaListener(topics = "orders", containerFactory = "manualShareKafkaListenerContainerFactory")
 public void processOrder(ConsumerRecord<String, String> record, ShareAcknowledgment ack) {
     try {
         // Attempt to process the order
@@ -820,8 +899,7 @@ Share consumers differ from regular consumers in several key ways:
 [[share-current-limitations]]
 === Current Limitations
 
-* **In preview**: This feature is in preview mode and may change in future versions
 * **No Message Converters**: Message converters are not yet supported for share consumers
 * **No Batch Listeners**: Batch processing is not supported with share consumers
-* **Poll Constraints**: In explicit acknowledgment mode, unacknowledged records block subsequent polls within each consumer thread
+* **Poll Constraints**: In `ShareAckMode.MANUAL`, unacknowledged records block subsequent polls within each consumer thread
 

@@ -137,7 +137,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 	}
 
 	@Test
-	void shouldSupportExplicitAcknowledgmentMode(EmbeddedKafkaBroker broker) throws Exception {
+	void shouldSupportManualAcknowledgmentMode(EmbeddedKafkaBroker broker) throws Exception {
 		String topic = "share-container-explicit-test";
 		String groupId = "share-container-explicit-group";
 		String bootstrapServers = broker.getBrokersAsString();
@@ -149,7 +149,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setExplicitShareAcknowledgment(true);
+		containerProps.setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
 
 		CountDownLatch latch = new CountDownLatch(3);
 		List<String> received = Collections.synchronizedList(new ArrayList<>());
@@ -170,7 +170,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 
 		ShareKafkaMessageListenerContainer<String, String> container =
 				new ShareKafkaMessageListenerContainer<>(factory, containerProps);
-		container.setBeanName("explicitAckTestContainer");
+		container.setBeanName("manualAckTestContainer");
 		container.start();
 
 		try {
@@ -199,18 +199,14 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		// Default is implicit mode
+		containerProps.setShareAckMode(ContainerProperties.ShareAckMode.IMPLICIT);
 
 		CountDownLatch latch = new CountDownLatch(3);
 		List<String> received = Collections.synchronizedList(new ArrayList<>());
 
-		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
-				record, acknowledgment, consumer) -> {
+		// In IMPLICIT mode, the Kafka client auto-accepts all records; a plain MessageListener is sufficient
+		containerProps.setMessageListener((MessageListener<String, String>) record -> {
 			received.add(record.value());
-
-			// In implicit mode, acknowledgment should be null
-			assertThat(acknowledgment).isNull();
-
 			latch.countDown();
 		});
 
@@ -241,7 +237,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setExplicitShareAcknowledgment(true);
+		containerProps.setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
 
 		CountDownLatch firstBatchLatch = new CountDownLatch(3);
 		CountDownLatch secondBatchLatch = new CountDownLatch(3);
@@ -321,11 +317,11 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setExplicitShareAcknowledgment(true);
+		containerProps.setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
 
 		// The 4th record's ack is held back to verify poll-blocking behavior;
 		// all other records are acknowledged immediately in the listener to
-		// comply with the explicit mode contract (per-record acknowledgment
+		// comply with the MANUAL mode contract (per-record acknowledgment
 		// within the poll batch).
 		AtomicReference<ShareAcknowledgment> heldAck = new AtomicReference<>();
 		CountDownLatch heldAckLatch = new CountDownLatch(1);
@@ -338,7 +334,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 			int count = totalProcessed.incrementAndGet();
 
 			if (count < 4) {
-				// Acknowledge immediately — required in explicit mode
+				// Acknowledge immediately — required in MANUAL mode
 				acknowledgment.acknowledge();
 			}
 			else if (count == 4) {
@@ -400,7 +396,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 	}
 
 	@Test
-	void shouldHandleProcessingErrorsInExplicitMode(EmbeddedKafkaBroker broker) throws Exception {
+	void shouldHandleProcessingErrorsInManualMode(EmbeddedKafkaBroker broker) throws Exception {
 		String topic = "share-container-error-test";
 		String groupId = "share-container-error-group";
 		String bootstrapServers = broker.getBrokersAsString();
@@ -412,7 +408,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setExplicitShareAcknowledgment(true);
+		containerProps.setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
 
 		CountDownLatch latch = new CountDownLatch(5);
 		AtomicInteger errorCount = new AtomicInteger();
@@ -437,7 +433,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 
 		ShareKafkaMessageListenerContainer<String, String> container =
 				new ShareKafkaMessageListenerContainer<>(factory, containerProps);
-		container.setBeanName("errorTestContainer");
+		container.setBeanName("manualErrorTestContainer");
 		container.start();
 
 		try {
@@ -459,21 +455,21 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 		produceTestRecords(bootstrapServers, topic, 1);
 
-		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		// Factory uses default props (no explicit flag); the container will force explicit mode via override
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, false);
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
+		// ShareAckMode.EXPLICIT is the default: the container manages acks, no acknowledgment arg in listener
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setExplicitShareAcknowledgment(true);
 
 		AtomicInteger deliveryCount = new AtomicInteger();
-		CountDownLatch acceptedLatch = new CountDownLatch(1);
-		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
-				record, acknowledgment, consumer) -> {
+		CountDownLatch redeliveredLatch = new CountDownLatch(1);
+		containerProps.setMessageListener((MessageListener<String, String>) record -> {
 			if (deliveryCount.getAndIncrement() == 0) {
 				throw new RuntimeException("Simulated transient failure");
 			}
-			acknowledgment.acknowledge();
-			acceptedLatch.countDown();
+			// Second delivery succeeds; container will auto-ACCEPT
+			redeliveredLatch.countDown();
 		});
 
 		ShareKafkaMessageListenerContainer<String, String> container =
@@ -483,8 +479,8 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		container.start();
 
 		try {
-			// First delivery threw, recoverer returned RELEASE; record redelivered and accepted
-			assertThat(acceptedLatch.await(30, TimeUnit.SECONDS)).isTrue();
+			// First delivery threw; recoverer returned RELEASE so the record came back; second delivery accepted
+			assertThat(redeliveredLatch.await(30, TimeUnit.SECONDS)).isTrue();
 			assertThat(deliveryCount.get()).isEqualTo(2);
 		}
 		finally {
@@ -559,7 +555,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setExplicitShareAcknowledgment(true);
+		containerProps.setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
 
 		CountDownLatch firstRoundLatch = new CountDownLatch(3);
 		CountDownLatch redeliveryLatch = new CountDownLatch(1);
@@ -652,7 +648,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setExplicitShareAcknowledgment(true);
+		containerProps.setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
 
 		CountDownLatch firstProcessingLatch = new CountDownLatch(1);
 		CountDownLatch secondProcessingLatch = new CountDownLatch(1);
@@ -707,7 +703,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setExplicitShareAcknowledgment(true);
+		containerProps.setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
 
 		CountDownLatch processedLatch = new CountDownLatch(1);
 		AtomicReference<ShareAcknowledgment> ackRef = new AtomicReference<>();
@@ -779,7 +775,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setExplicitShareAcknowledgment(true);
+		containerProps.setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
 
 		CountDownLatch processedLatch = new CountDownLatch(1);
 		AtomicReference<ShareAcknowledgment> ackRef = new AtomicReference<>();
@@ -827,7 +823,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setExplicitShareAcknowledgment(true);
+		containerProps.setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
 
 		CountDownLatch processedLatch = new CountDownLatch(1);
 		AtomicReference<ShareAcknowledgment> ackRef = new AtomicReference<>();
@@ -902,7 +898,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 					@Nullable ShareAcknowledgment acknowledgment, ShareConsumer<?, ?> consumer) {
 				assertThat(record).isNotNull();
 				assertThat(consumer).isNotNull();
-				// In implicit mode, acknowledgment should be null
+				// In EXPLICIT mode (container-managed), acknowledgment is null — the container sends ACCEPT automatically
 				assertThat(acknowledgment).isNull();
 				consumerRef.set(consumer);
 				latch.countDown();
@@ -930,14 +926,15 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		produceTestRecords(bootstrapServers, topic, 1);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		// Implicit mode (default)
+		containerProps.setShareAckMode(ContainerProperties.ShareAckMode.IMPLICIT);
 		CountDownLatch latch = new CountDownLatch(1);
 
+		// In IMPLICIT mode the broker auto-accepts; acknowledgment is null since the container
+		// never sets it up (there is no per-record ack control in this mode)
 		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
 				record, acknowledgment, consumer) -> {
 			assertThat(record).isNotNull();
 			assertThat(consumer).isNotNull();
-			// In implicit mode, acknowledgment should be null
 			assertThat(acknowledgment).isNull();
 			latch.countDown();
 		});
@@ -963,7 +960,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 		props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 		if (explicit) {
-			props.put("share.acknowledgement.mode", "explicit");
+			props.put(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG, "explicit");
 		}
 		return props;
 	}
@@ -1128,7 +1125,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 	}
 
 	@Test
-	void shouldHandleConcurrencyWithExplicitAcknowledgment(EmbeddedKafkaBroker broker) throws Exception {
+	void shouldHandleConcurrencyWithManualAcknowledgment(EmbeddedKafkaBroker broker) throws Exception {
 		String topic = "share-container-concurrency-explicit-test";
 		String groupId = "share-container-concurrency-explicit-group";
 		String bootstrapServers = broker.getBrokersAsString();
@@ -1144,7 +1141,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
 
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		containerProps.setExplicitShareAcknowledgment(true);
+		containerProps.setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
 
 		CountDownLatch latch = new CountDownLatch(numRecords);
 		AtomicInteger acceptCount = new AtomicInteger();

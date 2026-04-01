@@ -44,6 +44,26 @@ public interface ShareConsumerFactory<K, V> {
 	ShareConsumer<K, V> createShareConsumer(@Nullable String groupId, @Nullable String clientId);
 
 	/**
+	 * Create a share consumer with the provided group id, client id, and
+	 * additional properties that override the factory's configuration.
+	 * The container uses this to enforce internal configuration (e.g. acknowledgement
+	 * mode) without mutating the factory's configuration.
+	 * Implementations that do not override this method will fall back to
+	 * {@link #createShareConsumer(String, String)}, and the override properties
+	 * will be ignored.
+	 * @param groupId the group id (maybe null).
+	 * @param clientId the client id (maybe null).
+	 * @param overrideProperties properties to apply on top of the factory configuration.
+	 * @return the share consumer.
+	 * @since 4.1
+	 */
+	default ShareConsumer<K, V> createShareConsumer(@Nullable String groupId, @Nullable String clientId,
+			Map<String, Object> overrideProperties) {
+
+		return createShareConsumer(groupId, clientId);
+	}
+
+	/**
 	 * Return an unmodifiable reference to the configuration map for this factory.
 	 * Useful for cloning to make a similar factory.
 	 * @return the configs.
