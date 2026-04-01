@@ -1272,39 +1272,51 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		final String groupId = "asyncCommitGroup";
 		String bootstrapServers = broker.getBrokersAsString();
 
-		// Produce records
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
 		produceTestRecords(bootstrapServers, topic, 5);
 
-		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
-
-		var consumerProps = new HashMap<String, Object>();
-		consumerProps.put("bootstrap.servers", bootstrapServers);
-		consumerProps.put("key.deserializer", StringDeserializer.class);
-		consumerProps.put("value.deserializer", StringDeserializer.class);
-		consumerProps.put("group.id", groupId);
-
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, false);
 		DefaultShareConsumerFactory<String, String> consumerFactory =
 				new DefaultShareConsumerFactory<>(consumerProps);
 
+		// Phase 1: consume all 5 records with async commits
 		ContainerProperties containerProps = new ContainerProperties(topic);
-		// Set async commits
 		containerProps.setSyncShareCommits(false);
 
-		CountDownLatch latch = new CountDownLatch(5);
+		CountDownLatch consumeLatch = new CountDownLatch(5);
 		containerProps.setMessageListener((MessageListener<String, String>) record -> {
-			latch.countDown();
+			consumeLatch.countDown();
 		});
 
 		ShareKafkaMessageListenerContainer<String, String> container =
 				new ShareKafkaMessageListenerContainer<>(consumerFactory, containerProps);
 		container.setBeanName("asyncCommitTestContainer");
-
 		container.start();
 
 		Awaitility.await()
 				.atMost(10, TimeUnit.SECONDS)
-				.untilAsserted(() -> assertThat(latch.getCount()).isZero());
+				.untilAsserted(() -> assertThat(consumeLatch.getCount()).isZero());
 
 		container.stop();
+
+		// Phase 2: restart with the same groupId and verify no redelivery
+		AtomicInteger redeliveryCount = new AtomicInteger(0);
+		ContainerProperties restartProps = new ContainerProperties(topic);
+		restartProps.setSyncShareCommits(false);
+		restartProps.setMessageListener((MessageListener<String, String>) record -> {
+			redeliveryCount.incrementAndGet();
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> restartContainer =
+				new ShareKafkaMessageListenerContainer<>(consumerFactory, restartProps);
+		restartContainer.setBeanName("asyncCommitRestartContainer");
+		restartContainer.start();
+
+		// Allow enough time for any redelivery to occur
+		Thread.sleep(3000);
+
+		restartContainer.stop();
+
+		assertThat(redeliveryCount.get()).isZero();
 	}
 }
