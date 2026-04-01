@@ -299,6 +299,8 @@ public class ShareKafkaMessageListenerContainer<K, V>
 
 		private final boolean isManualAckMode;
 
+		private final boolean syncShareCommits;
+
 		private final long ackTimeoutMs;
 
 		ShareListenerConsumer(GenericMessageListener<?> listener, String consumerClientId) {
@@ -309,6 +311,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 
 			ContainerProperties.ShareAckMode shareAckMode = containerProperties.getShareAckMode();
 			this.isManualAckMode = ContainerProperties.ShareAckMode.MANUAL.equals(shareAckMode);
+			this.syncShareCommits = containerProperties.isSyncShareCommits();
 			this.ackTimeoutMs = containerProperties.getShareAcknowledgmentTimeout().toMillis();
 
 			if (ContainerProperties.ShareAckMode.IMPLICIT.equals(shareAckMode)) {
@@ -524,7 +527,12 @@ public class ShareKafkaMessageListenerContainer<K, V>
 
 		private void commitAcknowledgments() {
 			try {
-				this.consumer.commitSync();
+				if (this.syncShareCommits) {
+					this.consumer.commitSync();
+				}
+				else {
+					this.consumer.commitAsync();
+				}
 			}
 			catch (Exception e) {
 				this.logger.error(e, "Failed to commit acknowledgments");

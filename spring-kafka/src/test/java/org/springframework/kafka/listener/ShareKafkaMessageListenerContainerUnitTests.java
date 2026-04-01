@@ -47,6 +47,7 @@ import static org.mockito.Mockito.verify;
  * by integration tests in {@link ShareKafkaMessageListenerContainerIntegrationTests}.
  *
  * @author Soby Chacko
+ * @author Maxwell Balla
  * @since 4.0
  */
 @ExtendWith(MockitoExtension.class)
@@ -263,6 +264,31 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 				any(),
 				any(),
 				eq(Map.of(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG, "explicit")));
+	}
+
+	@Test
+	void shouldConfigureSyncShareCommitsByDefault() {
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		assertThat(container.getContainerProperties().isSyncShareCommits())
+				.isTrue();
+	}
+
+	@Test
+	void shouldConfigureAsyncShareCommitsWhenSet() {
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setSyncShareCommits(false);
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		assertThat(container.getContainerProperties().isSyncShareCommits())
+				.isFalse();
 	}
 
 }

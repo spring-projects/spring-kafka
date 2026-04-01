@@ -55,6 +55,7 @@ import org.springframework.util.CollectionUtils;
  * @author Kyuhyeok Park
  * @author Wang Zhiyang
  * @author Choi Wang Gyu
+ * @author Maxwell Balla
  */
 public class ContainerProperties extends ConsumerProperties {
 
@@ -348,6 +349,8 @@ public class ContainerProperties extends ConsumerProperties {
 	private boolean recordObservationsInBatch;
 
 	private ShareAckMode shareAckMode = ShareAckMode.EXPLICIT; // default: container-managed explicit mode
+
+	private boolean syncShareCommits = true;
 
 	private Duration shareAcknowledgmentTimeout = Duration.ofSeconds(30); // Align with Kafka's share.record.lock.duration.ms default
 
@@ -1173,6 +1176,27 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	public ShareAckMode getShareAckMode() {
 		return this.shareAckMode;
+	}
+
+	/**
+	 * Set whether to use commitSync() or commitAsync() for share consumer
+	 * acknowledgment commits. Default {@code true} (sync).
+	 * <p>Set to {@code false} to use commitAsync() when slight
+	 * ack-durability lag is acceptable for higher throughput.
+	 * @param syncShareCommits true to use commitSync(), false for commitAsync().
+	 * @since 4.1
+	 */
+	public void setSyncShareCommits(boolean syncShareCommits) {
+		this.syncShareCommits = syncShareCommits;
+	}
+
+	/**
+	 * Check whether share consumer commits are synchronous.
+	 * @return true if using commitSync(), false if using commitAsync().
+	 * @since 4.1
+	 */
+	public boolean isSyncShareCommits() {
+		return this.syncShareCommits;
 	}
 
 	/**
