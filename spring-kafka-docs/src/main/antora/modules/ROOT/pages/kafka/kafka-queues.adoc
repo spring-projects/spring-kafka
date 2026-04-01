@@ -142,6 +142,7 @@ Share containers support a subset of the container properties available for regu
 * `clientId`: The client ID for the consumer
 * `shareAckMode`: The acknowledgment mode (`EXPLICIT`, `MANUAL`, or `IMPLICIT`; see <<share-record-acknowledgment>>)
 * `shareAcknowledgmentTimeout`: Timeout for detecting unacknowledged records in `MANUAL` mode
+* `syncShareCommits`: Whether to use `commitSync()` (default) or `commitAsync()` for share consumer acknowledgments (see <<share-sync-async-commits>>)
 * `kafkaConsumerProperties`: Additional consumer properties
 
 [IMPORTANT]
@@ -696,6 +697,37 @@ Unacknowledged record: topic='my-topic', partition=0, offset=42
 ----
 
 This feature helps identify missing acknowledgment calls before they cause "no new records consumed" symptoms due to blocked polls.
+
+[[share-sync-async-commits]]
+==== Synchronous vs Asynchronous Commits
+
+By default, the share container uses `commitSync()` to ensure acknowledgments are durable before proceeding.
+Set `syncShareCommits` to `false` to use `commitAsync()` when slightly relaxed ack-durability is acceptable in exchange for higher throughput.
+
+[source,java]
+----
+@Bean
+public ShareKafkaListenerContainerFactory<String, String> asyncCommitFactory(
+        ShareConsumerFactory<String, String> consumerFactory) {
+    ShareKafkaListenerContainerFactory<String, String> factory =
+        new ShareKafkaListenerContainerFactory<>(consumerFactory);
+    factory.getContainerProperties().setSyncShareCommits(false); // use commitAsync()
+    return factory;
+}
+----
+
+[cols="1,1,1",options="header"]
+|===
+|Property value |Kafka API called |Trade-off
+
+|`true` (default)
+|`consumer.commitSync()`
+|Durable — acknowledgments are guaranteed persisted before the next poll
+
+|`false`
+|`consumer.commitAsync()`
+|Higher throughput — slight risk of redelivery if the consumer crashes before the async commit completes
+|===
 
 [[share-error-handling]]
 === Error Handling

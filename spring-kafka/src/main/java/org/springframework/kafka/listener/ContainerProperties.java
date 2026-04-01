@@ -55,6 +55,7 @@ import org.springframework.util.CollectionUtils;
  * @author Kyuhyeok Park
  * @author Wang Zhiyang
  * @author Choi Wang Gyu
+ * @author Maxwell Balla
  */
 public class ContainerProperties extends ConsumerProperties {
 
@@ -348,6 +349,8 @@ public class ContainerProperties extends ConsumerProperties {
 	private boolean recordObservationsInBatch;
 
 	private ShareAckMode shareAckMode = ShareAckMode.EXPLICIT; // default: container-managed explicit mode
+
+	private boolean syncShareCommits = true;
 
 	private Duration shareAcknowledgmentTimeout = Duration.ofSeconds(30); // Align with Kafka's share.record.lock.duration.ms default
 
@@ -1176,6 +1179,27 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	/**
+	 * Set whether to use commitSync() or commitAsync() for share consumer
+	 * acknowledgment commits. Default {@code true} (sync).
+	 * <p>Set to {@code false} to use commitAsync() when slight
+	 * ack-durability lag is acceptable for higher throughput.
+	 * @param syncShareCommits true to use commitSync(), false for commitAsync().
+	 * @since 4.1
+	 */
+	public void setSyncShareCommits(boolean syncShareCommits) {
+		this.syncShareCommits = syncShareCommits;
+	}
+
+	/**
+	 * Check whether share consumer commits are synchronous.
+	 * @return true if using commitSync(), false if using commitAsync().
+	 * @since 4.1
+	 */
+	public boolean isSyncShareCommits() {
+		return this.syncShareCommits;
+	}
+
+	/**
 	 * Set whether to use explicit share acknowledgment mode.
 	 * @param explicitShareAcknowledgment {@code true} to use {@link ShareAckMode#MANUAL},
 	 * {@code false} to use {@link ShareAckMode#EXPLICIT}.
@@ -1257,6 +1281,7 @@ public class ContainerProperties extends ConsumerProperties {
 		appendProperty(sb, "stopImmediate", this.stopImmediate);
 		appendProperty(sb, "stopContainerWhenFenced", this.stopContainerWhenFenced);
 		appendProperty(sb, "asyncAcks", this.asyncAcks);
+		appendProperty(sb, "syncShareCommits", this.syncShareCommits);
 
 		// Polling and partition configuration
 		appendProperty(sb, "pollTimeoutWhilePaused", this.pollTimeoutWhilePaused);

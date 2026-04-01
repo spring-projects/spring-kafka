@@ -16,11 +16,18 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.consumer.AcknowledgeType;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.ShareConsumer;
+import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -38,6 +45,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -47,6 +55,7 @@ import static org.mockito.Mockito.verify;
  * by integration tests in {@link ShareKafkaMessageListenerContainerIntegrationTests}.
  *
  * @author Soby Chacko
+ * @author Maxwell Balla
  * @since 4.0
  */
 @ExtendWith(MockitoExtension.class)
@@ -263,6 +272,83 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 				any(),
 				any(),
 				eq(Map.of(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG, "explicit")));
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void shouldUseCommitSyncByDefault() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock(ShareConsumerFactory.class);
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+
+		ShareConsumer<String, String> mockConsumer = mock(ShareConsumer.class);
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("test-topic", 0, 0L, "key", "value");
+		ConsumerRecords<String, String> records = new ConsumerRecords<>(
+				Map.of(new TopicPartition("test-topic", 0), List.of(record)));
+
+		AtomicBoolean firstPoll = new AtomicBoolean(true);
+		given(mockConsumer.poll(any())).willAnswer(invocation -> {
+			if (firstPoll.compareAndSet(true, false)) {
+				return records;
+			}
+			Thread.sleep(50);
+			return new ConsumerRecords<>(Map.of());
+		});
+
+		CountDownLatch latch = new CountDownLatch(1);
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener((MessageListener<String, String>) rec -> latch.countDown());
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("syncCommitContainer");
+		container.start();
+
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+
+		verify(mockConsumer).commitSync();
+		verify(mockConsumer, never()).commitAsync();
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void shouldUseCommitAsyncWhenSyncShareCommitsIsFalse() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock(ShareConsumerFactory.class);
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+
+		ShareConsumer<String, String> mockConsumer = mock(ShareConsumer.class);
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("test-topic", 0, 0L, "key", "value");
+		ConsumerRecords<String, String> records = new ConsumerRecords<>(
+				Map.of(new TopicPartition("test-topic", 0), List.of(record)));
+
+		AtomicBoolean firstPoll = new AtomicBoolean(true);
+		given(mockConsumer.poll(any())).willAnswer(invocation -> {
+			if (firstPoll.compareAndSet(true, false)) {
+				return records;
+			}
+			Thread.sleep(50);
+			return new ConsumerRecords<>(Map.of());
+		});
+
+		CountDownLatch latch = new CountDownLatch(1);
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setSyncShareCommits(false);
+		containerProperties.setMessageListener((MessageListener<String, String>) rec -> latch.countDown());
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("asyncCommitContainer");
+		container.start();
+
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+
+		verify(mockConsumer).commitAsync();
+		verify(mockConsumer, never()).commitSync();
 	}
 
 }
