@@ -190,12 +190,12 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 */
 	public void setStreamsConfiguration(Properties streamsConfig) {
 		Assert.notNull(streamsConfig, STREAMS_CONFIG_MUST_NOT_BE_NULL);
-		this.properties = streamsConfig;
+		this.properties = (Properties) streamsConfig.clone();
 	}
 
 	@Nullable
 	public Properties getStreamsConfiguration() {
-		return this.properties; // NOSONAR - inconsistent synchronization
+		return (Properties) this.properties.clone(); // NOSONAR - inconsistent synchronization
 	}
 
 	public void setClientSupplier(KafkaClientSupplier clientSupplier) {
