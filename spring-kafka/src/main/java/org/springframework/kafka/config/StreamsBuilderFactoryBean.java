@@ -195,7 +195,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 
 	@Nullable
 	public Properties getStreamsConfiguration() {
-		return (Properties) this.properties.clone(); // NOSONAR - inconsistent synchronization
+		return (Properties) this.properties.clone();
 	}
 
 	public void setClientSupplier(KafkaClientSupplier clientSupplier) {
