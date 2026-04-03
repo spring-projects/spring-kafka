@@ -1312,11 +1312,12 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		restartContainer.setBeanName("asyncCommitRestartContainer");
 		restartContainer.start();
 
-		// Allow enough time for any redelivery to occur
-		Thread.sleep(3000);
+		// Verify no redelivery occurs over a sustained period
+		Awaitility.await()
+				.during(3, TimeUnit.SECONDS)
+				.atMost(5, TimeUnit.SECONDS)
+				.untilAsserted(() -> assertThat(redeliveryCount.get()).isZero());
 
 		restartContainer.stop();
-
-		assertThat(redeliveryCount.get()).isZero();
 	}
 }

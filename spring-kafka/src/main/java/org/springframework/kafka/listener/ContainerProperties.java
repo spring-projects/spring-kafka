@@ -1281,6 +1281,7 @@ public class ContainerProperties extends ConsumerProperties {
 		appendProperty(sb, "stopImmediate", this.stopImmediate);
 		appendProperty(sb, "stopContainerWhenFenced", this.stopContainerWhenFenced);
 		appendProperty(sb, "asyncAcks", this.asyncAcks);
+		appendProperty(sb, "syncShareCommits", this.syncShareCommits);
 
 		// Polling and partition configuration
 		appendProperty(sb, "pollTimeoutWhilePaused", this.pollTimeoutWhilePaused);

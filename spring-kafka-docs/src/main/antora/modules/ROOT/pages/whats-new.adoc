@@ -22,6 +22,13 @@ The deprecated method still works: `true` maps to `MANUAL`, `false` maps to `EXP
 Default behavior is unchanged — applications using the default require no migration.
 See xref:kafka/kafka-queues.adoc#share-record-acknowledgment[Record Acknowledgment] for mode descriptions and xref:kafka/kafka-queues.adoc#share-ack-mode-migration[Migration from 4.0] for upgrade details.
 
+[[x41-share-sync-async-commits]]
+=== Share Consumer Async Commits
+
+A new `syncShareCommits` property on `ContainerProperties` controls whether the share container uses `commitSync()` (default) or `commitAsync()` for acknowledgment commits.
+Set to `false` for higher throughput when slight ack-durability lag is acceptable.
+See xref:kafka/kafka-queues.adoc#share-sync-async-commits[Synchronous vs Asynchronous Commits] for details.
+
 [[x41-share-consumer-error-handling]]
 === Share Consumer Error Handling
 
