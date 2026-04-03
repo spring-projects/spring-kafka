@@ -40,6 +40,19 @@ The default is `ShareConsumerRecordRecoverer.REJECTING`; `RELEASING` is also ava
 You can set a custom recoverer on the factory or container.
 * See xref:kafka/kafka-queues.adoc#share-error-handling[Share consumer error handling] in the Kafka Queues documentation.
 
+[[x41-share-consumer-lifecycle-events]]
+=== Share Consumer Lifecycle Events
+
+`ShareKafkaMessageListenerContainer` now publishes stop and failure lifecycle events in addition to `ConsumerStartingEvent` and `ConsumerStartedEvent`:
+
+* `ShareConsumerStoppingEvent` (new): published before the underlying `ShareConsumer` is closed.
+A new event class is introduced because `ShareConsumer` is a separate client API from `Consumer`, so the existing `ConsumerStoppingEvent` is not reusable.
+* `ConsumerStoppedEvent`: published after the share consumer is closed, with a `reason` of `NORMAL`, `ABNORMAL`, or `ERROR`.
+* `ConsumerFailedToStartEvent`: published when a share consumer fails to start.
+Any already-constructed consumers from the same startup attempt are closed quietly.
+
+See xref:kafka/kafka-queues.adoc#share-container-lifecycle-events[Lifecycle Events] for details.
+
 [[x41-share-acknowledgment-renew]]
 === ShareAcknowledgment.renew()
 

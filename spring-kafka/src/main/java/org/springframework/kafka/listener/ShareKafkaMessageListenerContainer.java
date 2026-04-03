@@ -48,8 +48,12 @@ import org.springframework.core.log.LogMessage;
 import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.core.ShareConsumerFactory;
+import org.springframework.kafka.event.ConsumerFailedToStartEvent;
 import org.springframework.kafka.event.ConsumerStartedEvent;
 import org.springframework.kafka.event.ConsumerStartingEvent;
+import org.springframework.kafka.event.ConsumerStoppedEvent;
+import org.springframework.kafka.event.ConsumerStoppedEvent.Reason;
+import org.springframework.kafka.event.ShareConsumerStoppingEvent;
 import org.springframework.kafka.support.ShareAcknowledgment;
 import org.springframework.util.Assert;
 
@@ -98,6 +102,7 @@ import org.springframework.util.Assert;
  *
  * @author Soby Chacko
  * @author Maxwell Balla
+ * @author Youngjoo Kim
  *
  * @since 4.0
  *
@@ -220,11 +225,25 @@ public class ShareKafkaMessageListenerContainer<K, V>
 					+ "Switch to ShareAckMode.MANUAL if the listener needs to manage acknowledgments.");
 		}
 
+		List<ShareListenerConsumer> builtConsumers = new ArrayList<>();
+		try {
+			for (int i = 0; i < this.concurrency; i++) {
+				String consumerClientId = determineClientId(i);
+				builtConsumers.add(new ShareListenerConsumer(listener, consumerClientId));
+			}
+		}
+		catch (Exception e) {
+			this.logger.error(e, "Failed to start share consumer");
+			for (ShareListenerConsumer built : builtConsumers) {
+				built.closeAfterFailedStartup();
+			}
+			publishConsumerFailedToStartEvent();
+			throw e;
+		}
+
 		setRunning(true);
 
-		for (int i = 0; i < this.concurrency; i++) {
-			String consumerClientId = determineClientId(i);
-			ShareListenerConsumer consumer = new ShareListenerConsumer(listener, consumerClientId);
+		for (ShareListenerConsumer consumer : builtConsumers) {
 			this.consumers.add(consumer);
 			CompletableFuture<Void> future = CompletableFuture.runAsync(consumer, consumerExecutor);
 			this.consumerFutures.add(future);
@@ -253,6 +272,42 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		}
 		finally {
 			this.lifecycleLock.unlock();
+		}
+	}
+
+	private void publishConsumerStoppedEvent(@Nullable Throwable throwable) {
+		ApplicationEventPublisher publisher = getApplicationEventPublisher();
+		if (publisher != null) {
+			Reason reason;
+			if (throwable instanceof Error) {
+				reason = Reason.ERROR;
+			}
+			else if (throwable != null) {
+				reason = Reason.ABNORMAL;
+			}
+			else {
+				reason = Reason.NORMAL;
+			}
+			publisher.publishEvent(new ConsumerStoppedEvent(this, this, reason));
+		}
+	}
+
+	private void publishConsumerStoppingEvent(ShareConsumer<?, ?> consumer) {
+		try {
+			ApplicationEventPublisher publisher = getApplicationEventPublisher();
+			if (publisher != null) {
+				publisher.publishEvent(new ShareConsumerStoppingEvent(this, this, consumer));
+			}
+		}
+		catch (Exception e) {
+			this.logger.error(e, "Failed to publish share consumer stopping event");
+		}
+	}
+
+	private void publishConsumerFailedToStartEvent() {
+		ApplicationEventPublisher publisher = getApplicationEventPublisher();
+		if (publisher != null) {
+			publisher.publishEvent(new ConsumerFailedToStartEvent(this, this));
 		}
 	}
 
@@ -362,6 +417,19 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			this.consumer.subscribe(Arrays.asList(containerProperties.getTopics()));
 		}
 
+		/**
+		 * Quietly close the underlying {@link ShareConsumer} after a failed startup.
+		 * No lifecycle events are published because the consumer never reached {@code run()}.
+		 */
+		private void closeAfterFailedStartup() {
+			try {
+				this.consumer.close();
+			}
+			catch (Exception closeEx) {
+				this.logger.error(closeEx, "Failed to close share consumer after startup failure");
+			}
+		}
+
 		@Nullable
 		String getClientId() {
 			return this.clientId;
@@ -436,7 +504,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 				}
 				catch (Error e) {
 					this.logger.error(e, "Stopping share consumer due to an Error");
-					wrapUp();
+					wrapUp(e);
 					throw e;
 				}
 				catch (Exception e) {
@@ -451,7 +519,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			if (exitThrowable != null) {
 				this.logger.error(exitThrowable, "ShareListenerConsumer exiting due to error");
 			}
-			wrapUp();
+			wrapUp(exitThrowable);
 		}
 
 		private void processRecords(ConsumerRecords<K, V> records) {
@@ -617,9 +685,11 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			publishConsumerStartedEvent();
 		}
 
-		private void wrapUp() {
+		private void wrapUp(@Nullable Throwable throwable) {
+			publishConsumerStoppingEvent(this.consumer);
 			this.consumer.close();
 			this.logger.info(() -> this.consumerGroupId + ": Consumer stopped");
+			publishConsumerStoppedEvent(throwable);
 		}
 
 		@Override

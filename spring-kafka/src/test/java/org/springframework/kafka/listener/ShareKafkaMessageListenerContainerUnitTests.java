@@ -16,12 +16,15 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.AcknowledgeType;
 import org.apache.kafka.clients.consumer.AcknowledgementCommitCallback;
@@ -38,6 +41,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.config.KafkaListenerEndpoint;
 import org.springframework.kafka.config.ShareKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ShareConsumerFactory;
+import org.springframework.kafka.event.ConsumerFailedToStartEvent;
+import org.springframework.kafka.event.ConsumerStartedEvent;
+import org.springframework.kafka.event.ConsumerStartingEvent;
+import org.springframework.kafka.event.ConsumerStoppedEvent;
+import org.springframework.kafka.event.ConsumerStoppedEvent.Reason;
+import org.springframework.kafka.event.ShareConsumerStoppingEvent;
 import org.springframework.kafka.listener.ContainerProperties.ShareAckMode;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,6 +54,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -464,4 +474,184 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		verify(mockConsumer, never()).setAcknowledgementCommitCallback(any());
 	}
 
+	@SuppressWarnings("unchecked")
+	@Test
+	void shouldPublishStoppingAndStoppedEventsOnNormalShutdown() throws InterruptedException {
+		ShareConsumer<String, String> consumer = mock(ShareConsumer.class);
+		CountDownLatch pollEnteredLatch = new CountDownLatch(1);
+		CountDownLatch pollReleaseLatch = new CountDownLatch(1);
+		willAnswer(invocation -> {
+			pollEnteredLatch.countDown();
+			pollReleaseLatch.await(10, TimeUnit.SECONDS);
+			return new ConsumerRecords<>(Collections.emptyMap(), Collections.emptyMap());
+		}).given(consumer).poll(any());
+		given(shareConsumerFactory.getConfigurationProperties()).willReturn(Map.of());
+		given(shareConsumerFactory.createShareConsumer(any(), any(), any())).willReturn(consumer);
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		CountDownLatch stoppedLatch = new CountDownLatch(1);
+		AtomicReference<Reason> stoppedReason = new AtomicReference<>();
+		AtomicReference<ShareConsumer<?, ?>> stoppingConsumer = new AtomicReference<>();
+		container.setApplicationEventPublisher(event -> {
+			if (event instanceof ShareConsumerStoppingEvent stoppingEvent) {
+				stoppingConsumer.set(stoppingEvent.getConsumer());
+			}
+			else if (event instanceof ConsumerStoppedEvent stoppedEvent) {
+				stoppedReason.set(stoppedEvent.getReason());
+				stoppedLatch.countDown();
+			}
+		});
+
+		container.start();
+		assertThat(pollEnteredLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		pollReleaseLatch.countDown();
+		container.stop();
+
+		assertThat(stoppedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(stoppedReason.get()).isEqualTo(Reason.NORMAL);
+		assertThat(stoppingConsumer.get()).isSameAs(consumer);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void shouldPublishLifecycleEventsInOrder() throws InterruptedException {
+		ShareConsumer<String, String> consumer = mock(ShareConsumer.class);
+		CountDownLatch pollEnteredLatch = new CountDownLatch(1);
+		CountDownLatch pollReleaseLatch = new CountDownLatch(1);
+		willAnswer(invocation -> {
+			pollEnteredLatch.countDown();
+			pollReleaseLatch.await(10, TimeUnit.SECONDS);
+			return new ConsumerRecords<>(Collections.emptyMap(), Collections.emptyMap());
+		}).given(consumer).poll(any());
+		given(shareConsumerFactory.getConfigurationProperties()).willReturn(Map.of());
+		given(shareConsumerFactory.createShareConsumer(any(), any(), any())).willReturn(consumer);
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		List<String> eventOrder = Collections.synchronizedList(new ArrayList<>());
+		CountDownLatch stoppedLatch = new CountDownLatch(1);
+		container.setApplicationEventPublisher(event -> {
+			if (event instanceof ConsumerStartingEvent) {
+				eventOrder.add("starting");
+			}
+			else if (event instanceof ConsumerStartedEvent) {
+				eventOrder.add("started");
+			}
+			else if (event instanceof ShareConsumerStoppingEvent) {
+				eventOrder.add("stopping");
+			}
+			else if (event instanceof ConsumerStoppedEvent) {
+				eventOrder.add("stopped");
+				stoppedLatch.countDown();
+			}
+		});
+
+		container.start();
+		assertThat(pollEnteredLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		pollReleaseLatch.countDown();
+		container.stop();
+
+		assertThat(stoppedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(eventOrder).containsExactly("starting", "started", "stopping", "stopped");
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void shouldPublishStoppedEventWithErrorReasonOnError() throws InterruptedException {
+		ShareConsumer<String, String> consumer = mock(ShareConsumer.class);
+		willAnswer(invocation -> {
+			throw new OutOfMemoryError("test error");
+		}).given(consumer).poll(any());
+		given(shareConsumerFactory.getConfigurationProperties()).willReturn(Map.of());
+		given(shareConsumerFactory.createShareConsumer(any(), any(), any())).willReturn(consumer);
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		CountDownLatch stoppedLatch = new CountDownLatch(1);
+		AtomicReference<Reason> stoppedReason = new AtomicReference<>();
+		container.setApplicationEventPublisher(event -> {
+			if (event instanceof ConsumerStoppedEvent stoppedEvent) {
+				stoppedReason.set(stoppedEvent.getReason());
+				stoppedLatch.countDown();
+			}
+		});
+
+		try {
+			container.start();
+			assertThat(stoppedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			assertThat(stoppedReason.get()).isEqualTo(Reason.ERROR);
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void shouldPublishStoppedEventWithAbnormalReasonOnException() throws InterruptedException {
+		ShareConsumer<String, String> consumer = mock(ShareConsumer.class);
+		willAnswer(invocation -> {
+			throw new RuntimeException("test exception");
+		}).given(consumer).poll(any());
+		given(shareConsumerFactory.getConfigurationProperties()).willReturn(Map.of());
+		given(shareConsumerFactory.createShareConsumer(any(), any(), any())).willReturn(consumer);
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		CountDownLatch stoppedLatch = new CountDownLatch(1);
+		AtomicReference<Reason> stoppedReason = new AtomicReference<>();
+		container.setApplicationEventPublisher(event -> {
+			if (event instanceof ConsumerStoppedEvent stoppedEvent) {
+				stoppedReason.set(stoppedEvent.getReason());
+				stoppedLatch.countDown();
+			}
+		});
+
+		container.start();
+		assertThat(stoppedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(stoppedReason.get()).isEqualTo(Reason.ABNORMAL);
+		container.stop();
+	}
+
+	@Test
+	void shouldPublishFailedToStartEventOnInitializationFailure() {
+		given(shareConsumerFactory.getConfigurationProperties()).willReturn(Map.of());
+		given(shareConsumerFactory.createShareConsumer(any(), any(), any()))
+				.willThrow(new RuntimeException("failed to create consumer"));
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		AtomicReference<ConsumerFailedToStartEvent> failedEvent = new AtomicReference<>();
+		container.setApplicationEventPublisher(event -> {
+			if (event instanceof ConsumerFailedToStartEvent failed) {
+				failedEvent.set(failed);
+			}
+		});
+
+		assertThatExceptionOfType(RuntimeException.class)
+				.isThrownBy(container::start)
+				.withMessage("failed to create consumer");
+		assertThat(failedEvent.get()).isNotNull();
+	}
 }
