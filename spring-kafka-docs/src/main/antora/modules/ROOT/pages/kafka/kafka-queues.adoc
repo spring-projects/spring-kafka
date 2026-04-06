@@ -699,7 +699,7 @@ Unacknowledged record: topic='my-topic', partition=0, offset=42
 This feature helps identify missing acknowledgment calls before they cause "no new records consumed" symptoms due to blocked polls.
 
 [[share-sync-async-commits]]
-==== Synchronous vs Asynchronous Commits
+=== Synchronous vs Asynchronous Commits
 
 By default, the share container uses `commitSync()` to ensure acknowledgments are durable before proceeding.
 Set `syncShareCommits` to `false` to use `commitAsync()` when slightly relaxed ack-durability is acceptable in exchange for higher throughput.
