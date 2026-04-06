@@ -53,7 +53,7 @@ public class KafkaStreamsConfiguration {
 			props.putAll(this.configs);
 			this.properties = props;
 		}
-		return this.properties;
+		return (Properties) this.properties.clone();
 	}
 
 }
