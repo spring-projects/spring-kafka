@@ -28,6 +28,7 @@ import java.util.regex.Pattern;
 
 import io.micrometer.observation.ObservationRegistry;
 import org.aopalliance.aop.Advice;
+import org.apache.kafka.clients.consumer.AcknowledgementCommitCallback;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.jspecify.annotations.Nullable;
 
@@ -351,6 +352,8 @@ public class ContainerProperties extends ConsumerProperties {
 	private ShareAckMode shareAckMode = ShareAckMode.EXPLICIT; // default: container-managed explicit mode
 
 	private boolean syncShareCommits = true;
+
+	private @Nullable AcknowledgementCommitCallback acknowledgementCommitCallback;
 
 	private Duration shareAcknowledgmentTimeout = Duration.ofSeconds(30); // Align with Kafka's share.record.lock.duration.ms default
 
@@ -1197,6 +1200,28 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	public boolean isSyncShareCommits() {
 		return this.syncShareCommits;
+	}
+
+	/**
+	 * Set the callback to be invoked when acknowledgement commits complete.
+	 * <p>This is particularly useful when {@link #setSyncShareCommits(boolean) syncShareCommits}
+	 * is {@code false} (async mode) to get visibility into commit success or failure.
+	 * <p>If not set and async commits are enabled, a default callback that logs failures will be used.
+	 * @param acknowledgementCommitCallback the callback, or null to use the default.
+	 * @since 4.1
+	 * @see AcknowledgementCommitCallback
+	 */
+	public void setAcknowledgementCommitCallback(AcknowledgementCommitCallback acknowledgementCommitCallback) {
+		this.acknowledgementCommitCallback = acknowledgementCommitCallback;
+	}
+
+	/**
+	 * Get the acknowledgement commit callback.
+	 * @return the callback, or null if not set.
+	 * @since 4.1
+	 */
+	public @Nullable AcknowledgementCommitCallback getAcknowledgementCommitCallback() {
+		return this.acknowledgementCommitCallback;
 	}
 
 	/**

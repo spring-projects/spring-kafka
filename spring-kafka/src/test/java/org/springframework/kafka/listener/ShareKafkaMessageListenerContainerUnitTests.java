@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -23,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.consumer.AcknowledgeType;
+import org.apache.kafka.clients.consumer.AcknowledgementCommitCallback;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -349,6 +351,117 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 
 		verify(mockConsumer).commitAsync();
 		verify(mockConsumer, never()).commitSync();
+	}
+
+	@Test
+	void shouldDefaultToNoAcknowledgementCommitCallback() {
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+
+		assertThat(containerProperties.getAcknowledgementCommitCallback()).isNull();
+	}
+
+	@Test
+	void shouldStoreCustomAcknowledgementCommitCallback() {
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		AcknowledgementCommitCallback customCallback = (offsets, exception) -> { };
+		containerProperties.setAcknowledgementCommitCallback(customCallback);
+
+		assertThat(containerProperties.getAcknowledgementCommitCallback()).isSameAs(customCallback);
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void shouldRegisterCustomCallbackOnShareConsumer() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock(ShareConsumerFactory.class);
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+
+		ShareConsumer<String, String> mockConsumer = mock(ShareConsumer.class);
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		CountDownLatch callbackRegistered = new CountDownLatch(1);
+		AcknowledgementCommitCallback customCallback = (offsets, exception) -> { };
+
+		// Signal when callback is set on the consumer
+		lenient().doAnswer(invocation -> {
+			callbackRegistered.countDown();
+			return null;
+		}).when(mockConsumer).setAcknowledgementCommitCallback(any());
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setSyncShareCommits(false);
+		containerProperties.setAcknowledgementCommitCallback(customCallback);
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("customCallbackContainer");
+		container.start();
+		assertThat(callbackRegistered.await(5, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+
+		verify(mockConsumer).setAcknowledgementCommitCallback(customCallback);
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void shouldRegisterDefaultLoggingCallbackWhenAsyncAndNoCustomCallback() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock(ShareConsumerFactory.class);
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+
+		ShareConsumer<String, String> mockConsumer = mock(ShareConsumer.class);
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		CountDownLatch callbackRegistered = new CountDownLatch(1);
+		lenient().doAnswer(invocation -> {
+			callbackRegistered.countDown();
+			return null;
+		}).when(mockConsumer).setAcknowledgementCommitCallback(any());
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setSyncShareCommits(false);
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("defaultCallbackContainer");
+		container.start();
+
+		assertThat(callbackRegistered.await(5, TimeUnit.SECONDS)).isTrue();
+
+		container.stop();
+
+		verify(mockConsumer).setAcknowledgementCommitCallback(any(AcknowledgementCommitCallback.class));
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void shouldNotRegisterCallbackWhenSyncCommits() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock(ShareConsumerFactory.class);
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+
+		ShareConsumer<String, String> mockConsumer = mock(ShareConsumer.class);
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		CountDownLatch subscribed = new CountDownLatch(1);
+		lenient().doAnswer(invocation -> {
+			subscribed.countDown();
+			return null;
+		}).when(mockConsumer).subscribe(any(Collection.class));
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("noCallbackSyncContainer");
+		container.start();
+
+		assertThat(subscribed.await(5, TimeUnit.SECONDS)).isTrue();
+
+		container.stop();
+
+		verify(mockConsumer, never()).setAcknowledgementCommitCallback(any());
 	}
 
 }
