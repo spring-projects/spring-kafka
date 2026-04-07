@@ -25,6 +25,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.streams.CloseOptions;
+import org.apache.kafka.streams.GroupProtocol;
 import org.apache.kafka.streams.KafkaClientSupplier;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -64,7 +65,7 @@ import org.springframework.util.Assert;
  * @author Sanghyeok An
  * @author Cédric Schaller
  * @author Almog Gavra
- *
+ * @author Saurabh Jadhav
  * @since 1.1.4
  */
 public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilder>
@@ -118,6 +119,8 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	private @Nullable KafkaStreams kafkaStreams;
 
 	private volatile boolean running;
+
+	private @Nullable GroupProtocol groupProtocol;
 
 	@SuppressWarnings("NullAway.Init")
 	private Topology topology;
@@ -303,6 +306,17 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	}
 
 	/**
+	 * Set group protocol to be used by {@link StreamsBuilderFactoryBean}.
+	 * Only allowed values are from {@link GroupProtocol}
+	 * @param groupProtocol groupProtocol value as given in {@link GroupProtocol}
+	 * @since 4.1
+	 */
+	public void setGroupProtocol(GroupProtocol groupProtocol) {
+		Assert.notNull(groupProtocol, "'groupProtocol' must not be null");
+		this.groupProtocol = groupProtocol;
+	}
+
+	/**
 	 * Get a managed by this {@link StreamsBuilderFactoryBean} {@link KafkaStreams} instance.
 	 * @return KafkaStreams managed instance;
 	 * may be null if this {@link StreamsBuilderFactoryBean} hasn't been started.
@@ -387,6 +401,15 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 							"streams configuration properties must not be null");
 					if (this.deadLetterTopicName != null) {
 						this.properties.put(StreamsConfig.ERRORS_DEAD_LETTER_QUEUE_TOPIC_NAME_CONFIG, this.deadLetterTopicName);
+					}
+					if (this.groupProtocol != null) {
+						String rawGroupProtocol = (String) this.properties.get(StreamsConfig.GROUP_PROTOCOL_CONFIG);
+						String configuredGroupProtocol = this.groupProtocol.name().toLowerCase();
+						if (rawGroupProtocol != null && !rawGroupProtocol.equals(configuredGroupProtocol)) {
+							LOGGER.warn(String.format("Property `group.protocol=%s` will be overridden by %s ",
+									rawGroupProtocol, configuredGroupProtocol));
+						}
+						this.properties.setProperty(StreamsConfig.GROUP_PROTOCOL_CONFIG, configuredGroupProtocol);
 					}
 					this.kafkaStreams = this.kafkaStreamsCustomizer.initKafkaStreams(
 							this.topology, this.properties, this.clientSupplier

@@ -24,6 +24,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import org.apache.kafka.streams.GroupProtocol;
+import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.KStream;
@@ -33,6 +35,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,6 +47,7 @@ import org.springframework.kafka.annotation.KafkaStreamsDefaultConfiguration;
 import org.springframework.kafka.core.CleanupConfig;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
@@ -57,6 +62,7 @@ import static org.mockito.Mockito.verify;
  * @author Denis Washington
  * @author Soby Chacko
  * @author Sanghyeok An
+ * @author Saurabh Jadhav
  */
 @SpringJUnitConfig
 @DirtiesContext
@@ -108,6 +114,24 @@ public class StreamsBuilderFactoryBeanTests {
 		StreamsBuilder streamsBuilder = streamsBuilderFactoryBean.getObject();
 		verify(streamsBuilder).build(kafkaStreamsConfiguration.asProperties());
 		assertThat(streamsBuilderFactoryBean.getTopology()).isNotNull();
+	}
+
+	@ParameterizedTest
+	@EnumSource(GroupProtocol.class)
+	public void testBuildWithGroupProtocolProperty(GroupProtocol testGroupProtocol) throws Exception {
+		streamsBuilderFactoryBean = new StreamsBuilderFactoryBean(kafkaStreamsConfiguration);
+		streamsBuilderFactoryBean.setGroupProtocol(testGroupProtocol);
+		streamsBuilderFactoryBean.afterPropertiesSet();
+		StreamsBuilder builder = streamsBuilderFactoryBean.getObject();
+		builder.stream("test-topic");
+
+		streamsBuilderFactoryBean.afterSingletonsInstantiated();
+		streamsBuilderFactoryBean.start();
+
+		KafkaStreams kafkaStreams = streamsBuilderFactoryBean.getKafkaStreams();
+		StreamsConfig streamsConfig = KafkaTestUtils.getPropertyValue(kafkaStreams, "applicationConfigs", StreamsConfig.class);
+		assertThat(streamsConfig.getString(StreamsConfig.GROUP_PROTOCOL_CONFIG))
+				.isEqualTo(testGroupProtocol.name().toLowerCase());
 	}
 
 	@Test
