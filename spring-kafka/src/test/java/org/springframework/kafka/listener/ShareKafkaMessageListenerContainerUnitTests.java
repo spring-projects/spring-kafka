@@ -365,10 +365,14 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 	@Test
 	void shouldPublishStoppingAndStoppedEventsOnNormalShutdown() throws InterruptedException {
 		ShareConsumer<String, String> consumer = mock(ShareConsumer.class);
+		CountDownLatch pollEnteredLatch = new CountDownLatch(1);
+		CountDownLatch pollReleaseLatch = new CountDownLatch(1);
 		willAnswer(invocation -> {
-			Thread.sleep(100);
+			pollEnteredLatch.countDown();
+			pollReleaseLatch.await(10, TimeUnit.SECONDS);
 			return new ConsumerRecords<>(Collections.emptyMap(), Collections.emptyMap());
 		}).given(consumer).poll(any());
+		given(shareConsumerFactory.getConfigurationProperties()).willReturn(Map.of());
 		given(shareConsumerFactory.createShareConsumer(any(), any(), any())).willReturn(consumer);
 
 		ContainerProperties containerProperties = new ContainerProperties("test-topic");
@@ -391,8 +395,9 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		});
 
 		container.start();
-		Thread.sleep(500);
+		assertThat(pollEnteredLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		container.stop();
+		pollReleaseLatch.countDown();
 
 		assertThat(stoppedLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(stoppedReason.get()).isEqualTo(Reason.NORMAL);
@@ -403,10 +408,14 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 	@Test
 	void shouldPublishLifecycleEventsInOrder() throws InterruptedException {
 		ShareConsumer<String, String> consumer = mock(ShareConsumer.class);
+		CountDownLatch pollEnteredLatch = new CountDownLatch(1);
+		CountDownLatch pollReleaseLatch = new CountDownLatch(1);
 		willAnswer(invocation -> {
-			Thread.sleep(100);
+			pollEnteredLatch.countDown();
+			pollReleaseLatch.await(10, TimeUnit.SECONDS);
 			return new ConsumerRecords<>(Collections.emptyMap(), Collections.emptyMap());
 		}).given(consumer).poll(any());
+		given(shareConsumerFactory.getConfigurationProperties()).willReturn(Map.of());
 		given(shareConsumerFactory.createShareConsumer(any(), any(), any())).willReturn(consumer);
 
 		ContainerProperties containerProperties = new ContainerProperties("test-topic");
@@ -434,8 +443,9 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		});
 
 		container.start();
-		Thread.sleep(500);
+		assertThat(pollEnteredLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		container.stop();
+		pollReleaseLatch.countDown();
 
 		assertThat(stoppedLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(eventOrder).containsExactly("starting", "started", "stopping", "stopped");
@@ -448,6 +458,7 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		willAnswer(invocation -> {
 			throw new OutOfMemoryError("test error");
 		}).given(consumer).poll(any());
+		given(shareConsumerFactory.getConfigurationProperties()).willReturn(Map.of());
 		given(shareConsumerFactory.createShareConsumer(any(), any(), any())).willReturn(consumer);
 
 		ContainerProperties containerProperties = new ContainerProperties("test-topic");
@@ -482,6 +493,7 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		willAnswer(invocation -> {
 			throw new RuntimeException("test exception");
 		}).given(consumer).poll(any());
+		given(shareConsumerFactory.getConfigurationProperties()).willReturn(Map.of());
 		given(shareConsumerFactory.createShareConsumer(any(), any(), any())).willReturn(consumer);
 
 		ContainerProperties containerProperties = new ContainerProperties("test-topic");
@@ -507,6 +519,7 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 
 	@Test
 	void shouldPublishFailedToStartEventOnInitializationFailure() {
+		given(shareConsumerFactory.getConfigurationProperties()).willReturn(Map.of());
 		given(shareConsumerFactory.createShareConsumer(any(), any(), any()))
 				.willThrow(new RuntimeException("failed to create consumer"));
 
