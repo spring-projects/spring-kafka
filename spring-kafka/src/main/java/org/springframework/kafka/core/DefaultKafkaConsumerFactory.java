@@ -26,7 +26,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
@@ -368,13 +367,14 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 		boolean shouldModifyClientId = (this.configs.containsKey(ConsumerConfig.CLIENT_ID_CONFIG)
 				&& StringUtils.hasText(clientIdSuffix)) || overrideClientIdPrefix;
 		if (groupId == null
-				&& (properties == null || properties.stringPropertyNames().isEmpty())
+				&& properties == null
 				&& !shouldModifyClientId) {
+
 			return createKafkaConsumer(new HashMap<>(this.configs));
 		}
 		else {
-			return createConsumerWithAdjustedProperties(groupId, clientIdPrefix, properties, overrideClientIdPrefix,
-					clientIdSuffix, shouldModifyClientId);
+			return createConsumerWithAdjustedProperties(groupId, clientIdPrefix, properties,
+					overrideClientIdPrefix, clientIdSuffix, shouldModifyClientId);
 		}
 	}
 
@@ -392,18 +392,16 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 							: modifiedConfigs.get(ConsumerConfig.CLIENT_ID_CONFIG)) + clientIdSuffix);
 		}
 		if (properties != null) {
-			Set<String> stringPropertyNames = properties.stringPropertyNames();  // to get any nested default Properties
-			stringPropertyNames
-					.stream()
-					.filter(name -> !name.equals(ConsumerConfig.CLIENT_ID_CONFIG)
-							&& !name.equals(ConsumerConfig.GROUP_ID_CONFIG))
-					.forEach(name -> modifiedConfigs.put(name, properties.getProperty(name)));
-			properties.entrySet().stream()
-					.filter(entry -> !entry.getKey().equals(ConsumerConfig.CLIENT_ID_CONFIG)
-							&& !entry.getKey().equals(ConsumerConfig.GROUP_ID_CONFIG)
-							&& !stringPropertyNames.contains(entry.getKey())
-							&& entry.getKey() instanceof String)
-					.forEach(entry -> modifiedConfigs.put((String) entry.getKey(), entry.getValue()));
+			for (Map.Entry<Object, Object> entry : properties.entrySet()) {
+				Object key = entry.getKey();
+
+				if (key instanceof String
+						&& !key.equals(ConsumerConfig.CLIENT_ID_CONFIG)
+						&& !key.equals(ConsumerConfig.GROUP_ID_CONFIG)) {
+
+					modifiedConfigs.put((String) key, entry.getValue());
+				}
+			}
 			checkInaccessible(properties, modifiedConfigs);
 		}
 		return createKafkaConsumer(modifiedConfigs);
