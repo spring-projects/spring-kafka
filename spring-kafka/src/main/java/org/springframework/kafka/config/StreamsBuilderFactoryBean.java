@@ -309,7 +309,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 * Set group protocol to be used by {@link StreamsBuilderFactoryBean}.
 	 * Only allowed values are from {@link GroupProtocol}
 	 * @param groupProtocol groupProtocol value as given in {@link GroupProtocol}
-	 * @since 4.1.1
+	 * @since 4.1
 	 */
 	public void setGroupProtocol(GroupProtocol groupProtocol) {
 		Assert.notNull(groupProtocol, "'groupProtocol' must not be null");

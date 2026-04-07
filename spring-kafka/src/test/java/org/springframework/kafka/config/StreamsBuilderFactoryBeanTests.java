@@ -119,16 +119,11 @@ public class StreamsBuilderFactoryBeanTests {
 	@ParameterizedTest
 	@EnumSource(GroupProtocol.class)
 	public void testBuildWithGroupProtocolProperty(GroupProtocol testGroupProtocol) throws Exception {
-		streamsBuilderFactoryBean = new StreamsBuilderFactoryBean(kafkaStreamsConfiguration) {
-			@Override
-			protected StreamsBuilder createInstance() {
-				return spy(super.createInstance());
-			}
-		};
+		streamsBuilderFactoryBean = new StreamsBuilderFactoryBean(kafkaStreamsConfiguration);
 		streamsBuilderFactoryBean.setGroupProtocol(testGroupProtocol);
 		streamsBuilderFactoryBean.afterPropertiesSet();
 		StreamsBuilder builder = streamsBuilderFactoryBean.getObject();
-		builder.stream("foo");
+		builder.stream("test-topic");
 
 		streamsBuilderFactoryBean.afterSingletonsInstantiated();
 		streamsBuilderFactoryBean.start();
