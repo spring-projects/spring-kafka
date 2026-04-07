@@ -24,7 +24,6 @@ import java.util.Properties;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.logging.LogFactory;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.streams.CloseOptions;
 import org.apache.kafka.streams.GroupProtocol;
 import org.apache.kafka.streams.KafkaClientSupplier;
@@ -310,6 +309,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	 * Set group protocol to be used by {@link StreamsBuilderFactoryBean}.
 	 * Only allowed values are from {@link GroupProtocol}
 	 * @param groupProtocol groupProtocol value as given in {@link GroupProtocol}
+	 * @since 4.1.1
 	 */
 	public void setGroupProtocol(GroupProtocol groupProtocol) {
 		Assert.notNull(groupProtocol, "'groupProtocol' must not be null");
@@ -403,14 +403,13 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 						this.properties.put(StreamsConfig.ERRORS_DEAD_LETTER_QUEUE_TOPIC_NAME_CONFIG, this.deadLetterTopicName);
 					}
 					if (this.groupProtocol != null) {
-						if (this.properties.containsKey(ConsumerConfig.GROUP_PROTOCOL_CONFIG) &&
-								!this.properties.get(ConsumerConfig.GROUP_PROTOCOL_CONFIG).equals(this.groupProtocol)) {
-							LOGGER.warn(String.format("Property `group.protocol=%s` will be overridden by %s " +
-											"defined in StreamsBuilderFactoryBean group protocol",
-									this.properties.get(ConsumerConfig.GROUP_PROTOCOL_CONFIG), this.groupProtocol));
+						String rawGroupProtocol = (String) this.properties.get(StreamsConfig.GROUP_PROTOCOL_CONFIG);
+						String configuredGroupProtocol = this.groupProtocol.name().toLowerCase();
+						if (rawGroupProtocol != null && !rawGroupProtocol.equals(configuredGroupProtocol)) {
+							LOGGER.warn(String.format("Property `group.protocol=%s` will be overridden by %s ",
+									rawGroupProtocol, configuredGroupProtocol));
 						}
-						this.properties.setProperty(ConsumerConfig.GROUP_PROTOCOL_CONFIG,
-								this.groupProtocol.name().toLowerCase());
+						this.properties.setProperty(StreamsConfig.GROUP_PROTOCOL_CONFIG, configuredGroupProtocol);
 					}
 					this.kafkaStreams = this.kafkaStreamsCustomizer.initKafkaStreams(
 							this.topology, this.properties, this.clientSupplier
