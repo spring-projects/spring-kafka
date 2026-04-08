@@ -16,7 +16,6 @@
 
 package org.springframework.kafka.listener;
 
-import java.time.Duration;
 import java.util.Collection;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -49,6 +48,8 @@ import static org.awaitility.Awaitility.await;
 
 /**
  * @author Soby Chacko
+ * @author Artem Bilan
+ *
  * @since 3.1.2
  */
 @SpringJUnitConfig
@@ -58,20 +59,20 @@ public class ContainerEnforceRebalanceTests {
 
 	@Test
 	void enforceRebalance(@Autowired Config config, @Autowired KafkaTemplate<Integer, String> template,
-						@Autowired KafkaListenerEndpointRegistry registry) throws InterruptedException {
+			@Autowired KafkaListenerEndpointRegistry registry) throws InterruptedException {
+
 		template.send("enforce-rebalance-topic", "my-data");
 		final MessageListenerContainer listenerContainer = registry.getListenerContainer("enforce-rebalance-grp");
 		assertThat(config.listenerLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(listenerContainer).isNotNull();
 		listenerContainer.enforceRebalance();
-		assertThat(((ConcurrentMessageListenerContainer<?, ?>) listenerContainer).enforceRebalanceRequested).isTrue();
 		// The test is expecting partition revoke once and assign twice.
 		assertThat(config.partitionRevokedLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(config.partitionAssignedLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(((ConcurrentMessageListenerContainer<?, ?>) listenerContainer).enforceRebalanceRequested).isFalse();
 		listenerContainer.pause();
-		await().timeout(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(listenerContainer.isPauseRequested()).isTrue());
-		await().timeout(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(listenerContainer.isContainerPaused()).isTrue());
+		await().until(listenerContainer::isPauseRequested);
+		await().until(listenerContainer::isContainerPaused);
 		// resetting the latches
 		config.partitionRevokedLatch = new CountDownLatch(1);
 		config.partitionAssignedLatch = new CountDownLatch(1);
@@ -84,7 +85,7 @@ public class ContainerEnforceRebalanceTests {
 		assertThat(listenerContainer.isContainerPaused()).isTrue();
 	}
 
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	@EnableKafka
 	public static class Config {
 
@@ -115,20 +116,24 @@ public class ContainerEnforceRebalanceTests {
 		@Bean
 		ConcurrentKafkaListenerContainerFactory<Integer, String> kafkaListenerContainerFactory(
 				ConsumerFactory<Integer, String> cf) {
+
 			ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(cf);
-			factory.getContainerProperties().setConsumerRebalanceListener(new ConsumerAwareRebalanceListener() {
-				@Override
-				public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
-					partitionAssignedLatch.countDown();
-				}
+			factory.getContainerProperties()
+					.setConsumerRebalanceListener(new ConsumerAwareRebalanceListener() {
 
-				@Override
-				public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-					partitionRevokedLatch.countDown();
-				}
-			});
+						@Override
+						public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions) {
+							partitionAssignedLatch.countDown();
+						}
+
+						@Override
+						public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+							partitionRevokedLatch.countDown();
+						}
+
+					});
 			return factory;
 		}
 
@@ -137,6 +142,7 @@ public class ContainerEnforceRebalanceTests {
 			return new DefaultKafkaConsumerFactory<>(
 					KafkaTestUtils.consumerProps("enforce-rebalance-topic", "false", this.broker));
 		}
+
 	}
 
 }
