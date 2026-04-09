@@ -223,22 +223,33 @@ public class ShareKafkaMessageListenerContainer<K, V>
 					+ "Switch to ShareAckMode.MANUAL if the listener needs to manage acknowledgments.");
 		}
 
-		setRunning(true);
-
+		List<ShareListenerConsumer> builtConsumers = new ArrayList<>();
 		try {
 			for (int i = 0; i < this.concurrency; i++) {
 				String consumerClientId = determineClientId(i);
-				ShareListenerConsumer consumer = new ShareListenerConsumer(listener, consumerClientId);
-				this.consumers.add(consumer);
-				CompletableFuture<Void> future = CompletableFuture.runAsync(consumer, consumerExecutor);
-				this.consumerFutures.add(future);
+				builtConsumers.add(new ShareListenerConsumer(listener, consumerClientId));
 			}
 		}
 		catch (Exception e) {
 			this.logger.error(e, "Failed to start share consumer");
-			setRunning(false);
+			for (ShareListenerConsumer built : builtConsumers) {
+				try {
+					built.getConsumer().close();
+				}
+				catch (Exception closeEx) {
+					this.logger.error(closeEx, "Failed to close share consumer after startup failure");
+				}
+			}
 			publishConsumerFailedToStartEvent();
 			throw e;
+		}
+
+		setRunning(true);
+
+		for (ShareListenerConsumer consumer : builtConsumers) {
+			this.consumers.add(consumer);
+			CompletableFuture<Void> future = CompletableFuture.runAsync(consumer, consumerExecutor);
+			this.consumerFutures.add(future);
 		}
 	}
 
@@ -393,6 +404,10 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			}
 
 			this.consumer.subscribe(Arrays.asList(containerProperties.getTopics()));
+		}
+
+		ShareConsumer<K, V> getConsumer() {
+			return this.consumer;
 		}
 
 		@Nullable

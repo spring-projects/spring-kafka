@@ -396,8 +396,8 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 
 		container.start();
 		assertThat(pollEnteredLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		container.stop();
 		pollReleaseLatch.countDown();
+		container.stop();
 
 		assertThat(stoppedLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(stoppedReason.get()).isEqualTo(Reason.NORMAL);
@@ -444,8 +444,8 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 
 		container.start();
 		assertThat(pollEnteredLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		container.stop();
 		pollReleaseLatch.countDown();
+		container.stop();
 
 		assertThat(stoppedLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(eventOrder).containsExactly("starting", "started", "stopping", "stopped");
