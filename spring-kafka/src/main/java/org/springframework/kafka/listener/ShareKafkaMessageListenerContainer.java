@@ -29,6 +29,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.AcknowledgeType;
+import org.apache.kafka.clients.consumer.AcknowledgementCommitCallback;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -77,6 +78,7 @@ import org.springframework.util.Assert;
  * <li>Poll-level acknowledgment constraints in {@link ContainerProperties.ShareAckMode#MANUAL} mode</li>
  * <li>Integration with Spring's {@code @KafkaListener} annotation</li>
  * <li>Configurable concurrency for increased throughput</li>
+ * <li>Sync or async commit modes with optional {@link AcknowledgementCommitCallback} for async commit visibility</li>
  * </ul>
  * <p>
  * <strong>Acknowledgment Modes:</strong>
@@ -341,6 +343,20 @@ public class ShareKafkaMessageListenerContainer<K, V>
 				this.consumer = ShareKafkaMessageListenerContainer.this.shareConsumerFactory.createShareConsumer(
 						groupId, consumerClientId,
 						Map.of(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG, ShareAcknowledgementMode.EXPLICIT.name()));
+			}
+
+			// Register acknowledgement commit callback
+			AcknowledgementCommitCallback callback = containerProperties.getAcknowledgementCommitCallback();
+			if (callback != null) {
+				this.consumer.setAcknowledgementCommitCallback(callback);
+			}
+			else if (!this.syncShareCommits) {
+				// Default callback for async mode: log failures
+				this.consumer.setAcknowledgementCommitCallback((offsets, exception) -> {
+					if (exception != null) {
+						this.logger.error(exception, () -> "Async acknowledgement commit failed for offsets: " + offsets);
+					}
+				});
 			}
 
 			this.consumer.subscribe(Arrays.asList(containerProperties.getTopics()));

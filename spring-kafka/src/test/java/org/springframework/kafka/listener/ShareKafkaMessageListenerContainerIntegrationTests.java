@@ -79,7 +79,8 @@ import static org.mockito.Mockito.verify;
 				"share-container-lifecycle-test",
 				"share-container-recoverer-release-test",
 				"share-container-deser-error-test",
-				"share-container-async-commit-test"
+				"share-container-async-commit-test",
+				"share-container-async-callback-test"
 		},
 		partitions = 1,
 		brokerProperties = {
@@ -1319,5 +1320,48 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 				.untilAsserted(() -> assertThat(redeliveryCount.get()).isZero());
 
 		restartContainer.stop();
+	}
+
+	@Test
+	void shouldInvokeAcknowledgementCommitCallbackOnAsyncCommit(EmbeddedKafkaBroker broker) throws Exception {
+		final String topic = "share-container-async-callback-test";
+		final String groupId = "asyncCallbackGroup";
+		String bootstrapServers = broker.getBrokersAsString();
+
+		produceTestRecords(bootstrapServers, topic, 3);
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
+
+		var consumerProps = new HashMap<String, Object>();
+		consumerProps.put("bootstrap.servers", bootstrapServers);
+		consumerProps.put("key.deserializer", StringDeserializer.class);
+		consumerProps.put("value.deserializer", StringDeserializer.class);
+		consumerProps.put("group.id", groupId);
+
+		DefaultShareConsumerFactory<String, String> consumerFactory = new DefaultShareConsumerFactory<>(consumerProps);
+
+		CountDownLatch messageLatch = new CountDownLatch(3);
+		CountDownLatch callbackLatch = new CountDownLatch(1);
+		AtomicReference<Exception> callbackError = new AtomicReference<>();
+
+		ContainerProperties containerProps = new ContainerProperties(topic);
+		containerProps.setSyncShareCommits(false);
+		containerProps.setAcknowledgementCommitCallback((offsets, exception) -> {
+			if (exception != null) {
+				callbackError.set(exception);
+			}
+			callbackLatch.countDown();
+		});
+		containerProps.setMessageListener((MessageListener<String, String>) record -> messageLatch.countDown());
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(consumerFactory, containerProps);
+		container.setBeanName("asyncCallbackTestContainer");
+		container.start();
+
+		assertThat(messageLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(callbackLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(callbackError.get()).isNull();
+
+		container.stop();
 	}
 }
