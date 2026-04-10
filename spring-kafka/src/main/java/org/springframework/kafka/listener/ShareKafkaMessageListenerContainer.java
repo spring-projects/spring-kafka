@@ -233,12 +233,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		catch (Exception e) {
 			this.logger.error(e, "Failed to start share consumer");
 			for (ShareListenerConsumer built : builtConsumers) {
-				try {
-					built.getConsumer().close();
-				}
-				catch (Exception closeEx) {
-					this.logger.error(closeEx, "Failed to close share consumer after startup failure");
-				}
+				built.closeAfterFailedStartup();
 			}
 			publishConsumerFailedToStartEvent();
 			throw e;
@@ -406,8 +401,17 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			this.consumer.subscribe(Arrays.asList(containerProperties.getTopics()));
 		}
 
-		ShareConsumer<K, V> getConsumer() {
-			return this.consumer;
+		/**
+		 * Quietly close the underlying {@link ShareConsumer} after a failed startup.
+		 * No lifecycle events are published because the consumer never reached {@code run()}.
+		 */
+		private void closeAfterFailedStartup() {
+			try {
+				this.consumer.close();
+			}
+			catch (Exception closeEx) {
+				this.logger.error(closeEx, "Failed to close share consumer after startup failure");
+			}
 		}
 
 		@Nullable

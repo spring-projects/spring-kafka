@@ -154,6 +154,24 @@ Share consumers do not support:
 * Manual offset management
 ====
 
+[[share-container-lifecycle-events]]
+=== Lifecycle Events
+
+The `ShareKafkaMessageListenerContainer` publishes Spring application events across the consumer lifecycle:
+
+* `ConsumerStartingEvent`: published when a share consumer thread is first started, before it starts polling.
+* `ConsumerStartedEvent`: published when a share consumer is about to start polling.
+* `ConsumerFailedToStartEvent`: published when a share consumer fails to start (for example, the underlying `ShareConsumer` could not be created).
+Any already-constructed `ShareConsumer` instances from the same startup attempt are closed quietly and do not publish stopping or stopped events because they never reached the poll loop.
+* `ShareConsumerStoppingEvent`: published by each share consumer just before its underlying `ShareConsumer` is closed.
+Unlike `ConsumerStoppingEvent`, this event carries a `ShareConsumer` reference (not a `Consumer`) because `ShareConsumer` is a separate client API and is not assigned to specific partitions.
+* `ConsumerStoppedEvent`: published after the share consumer is closed, with a `reason`:
+** `NORMAL` - the container was stopped.
+** `ABNORMAL` - the consumer thread exited because of an `Exception`.
+** `ERROR` - a `java.lang.Error` was thrown.
+
+These events can be consumed with `@EventListener` (see xref:kafka/events.adoc#event-consumption[Event Consumption]) to integrate share containers with the same monitoring and restart patterns available for regular containers.
+
 [[share-container-concurrency]]
 === Concurrency
 
