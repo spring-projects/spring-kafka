@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -48,6 +49,7 @@ import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.event.ConsumerStoppedEvent.Reason;
 import org.springframework.kafka.event.ShareConsumerStoppingEvent;
 import org.springframework.kafka.listener.ContainerProperties.ShareAckMode;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -364,6 +366,42 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 	}
 
 	@Test
+	void shouldAwaitConsumerThreadStartup() {
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+		containerProperties.setConsumerStartTimeout(Duration.ofSeconds(5));
+		containerProperties.setListenerTaskExecutor(task -> new Thread(() -> {
+			try {
+				Thread.sleep(200);
+			}
+			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+			task.run();
+		}).start());
+
+		@SuppressWarnings("unchecked")
+		ShareConsumer<String, String> consumer = mock(ShareConsumer.class);
+		given(this.shareConsumerFactory.createShareConsumer(any(), eq("startupWaitContainer"), any()))
+				.willReturn(consumer);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(this.shareConsumerFactory, containerProperties);
+		container.setBeanName("startupWaitContainer");
+
+		long start = System.nanoTime();
+		container.start();
+		long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start);
+
+		try {
+			assertThat(elapsed).isGreaterThanOrEqualTo(150L);
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
 	void shouldDefaultToNoAcknowledgementCommitCallback() {
 		ContainerProperties containerProperties = new ContainerProperties("test-topic");
 		containerProperties.setMessageListener(messageListener);
@@ -653,5 +691,50 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 				.isThrownBy(container::start)
 				.withMessage("failed to create consumer");
 		assertThat(failedEvent.get()).isNotNull();
+	}
+
+	@Test
+	void shouldPublishFailedToStartWhenNotAllConsumersStartWithinTimeout() throws InterruptedException {
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+		containerProperties.setConsumerStartTimeout(Duration.ofMillis(50));
+		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+		executor.setCorePoolSize(1);
+		executor.setMaxPoolSize(1);
+		executor.afterPropertiesSet();
+		containerProperties.setListenerTaskExecutor(executor);
+
+		@SuppressWarnings("unchecked")
+		ShareConsumer<String, String> firstConsumer = mock(ShareConsumer.class);
+		@SuppressWarnings("unchecked")
+		ShareConsumer<String, String> secondConsumer = mock(ShareConsumer.class);
+		given(this.shareConsumerFactory.createShareConsumer(any(), eq("failedStartContainer-0"), any()))
+				.willReturn(firstConsumer);
+		given(this.shareConsumerFactory.createShareConsumer(any(), eq("failedStartContainer-1"), any()))
+				.willReturn(secondConsumer);
+		willAnswer(invocation -> {
+			Thread.sleep(200);
+			return new ConsumerRecords<>(Collections.emptyMap(), Map.of());
+		}).given(firstConsumer).poll(Duration.ofMillis(1000));
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(this.shareConsumerFactory, containerProperties);
+		container.setBeanName("failedStartContainer");
+		container.setConcurrency(2);
+		CountDownLatch failedToStartLatch = new CountDownLatch(1);
+		container.setApplicationEventPublisher(event -> {
+			if (event instanceof ConsumerFailedToStartEvent) {
+				failedToStartLatch.countDown();
+			}
+		});
+
+		try {
+			container.start();
+			assertThat(failedToStartLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		}
+		finally {
+			container.stop();
+			executor.destroy();
+		}
 	}
 }

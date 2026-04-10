@@ -26,6 +26,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.AcknowledgeType;
@@ -242,11 +243,24 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		}
 
 		setRunning(true);
+		this.startLatch = new CountDownLatch(this.concurrency);
 
 		for (ShareListenerConsumer consumer : builtConsumers) {
 			this.consumers.add(consumer);
 			CompletableFuture<Void> future = CompletableFuture.runAsync(consumer, consumerExecutor);
 			this.consumerFutures.add(future);
+		}
+		try {
+			if (!this.startLatch.await(containerProperties.getConsumerStartTimeout().toMillis(),
+					TimeUnit.MILLISECONDS)) {
+
+				this.logger.error("Consumer thread failed to start - does the configured task executor "
+						+ "have enough threads to support all containers and concurrency?");
+				publishConsumerFailedToStartEvent();
+			}
+		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
 		}
 	}
 
