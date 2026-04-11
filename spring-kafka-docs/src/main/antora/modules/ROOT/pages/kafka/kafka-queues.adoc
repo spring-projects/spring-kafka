@@ -314,7 +314,35 @@ When a consumer polls, the broker's share-partition leader:
 * Selects records in "Available" state
 * Moves them to "Acquired" state with a time-limited acquisition lock (default 30 seconds, configurable via `group.share.record.lock.duration.ms`)
 * Prefers to return complete record batches for efficiency
-* Applies `max.poll.records` as a soft limit, meaning complete record batches will be acquired even if it exceeds this value
+* Applies `max.poll.records` as a soft limit by default, meaning complete record batches will be acquired even if it exceeds this value
+
+[[share-acquire-mode]]
+===== Acquire Mode (KIP-1206)
+
+Apache Kafka 4.2 introduces the `share.acquire.mode` consumer property that controls how strictly `max.poll.records` is enforced:
+
+* `batch_optimized` (default) — soft limit.
+The broker may return more records than `max.poll.records` to align with batch boundaries for better throughput.
+* `record_limit` — strict limit.
+The broker will never return more records than `max.poll.records` per `poll()` call.
+Useful when you need precise control over memory usage or processing rate.
+
+This is a pass-through consumer property.
+Configure it directly in the consumer properties:
+
+[source,java]
+----
+Map<String, Object> props = new HashMap<>();
+props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+props.put("share.acquire.mode", "record_limit");
+props.put("max.poll.records", 5);
+// ... other properties
+
+DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(props);
+----
+
+NOTE: No additional Spring Kafka configuration is needed.
+The property is passed directly to the underlying `KafkaShareConsumer`.
 
 While records are acquired by one consumer, they are not available to other consumers.
 When the acquisition lock expires, unacknowledged records automatically return to "Available" state and can be delivered to another consumer.
