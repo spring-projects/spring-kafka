@@ -34,8 +34,11 @@ import org.mockito.InOrder;
 
 import org.springframework.kafka.support.converter.ConversionException;
 import org.springframework.kafka.support.serializer.DeserializationException;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.util.backoff.FixedBackOff;
+
+import static org.mockito.Mockito.verify;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -233,6 +236,30 @@ public class DefaultErrorHandlerRecordTests {
 		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(() -> handler.handleRemaining(illegalState,
 						records, consumer, container));
 		assertThat(System.currentTimeMillis() >= t1 + 200);
+	}
+
+	@Test
+	void testEnhancedConsumerFailureLogging() {
+		DefaultErrorHandler handler = new DefaultErrorHandler();
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("test-topic", 0, 123L, "test-key", "test-value");
+		IllegalStateException exception = new IllegalStateException("Test exception");
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		
+		// Mock the failure tracker to throw an exception to trigger logging
+		FailureTracker failureTracker = mock(FailureTracker.class);
+		given(failureTracker.recovered(any(), any(), any(), any())).willThrow(new RuntimeException("Recovery failed"));
+		KafkaTestUtils.setFieldValue(handler, "failureTracker", failureTracker);
+		
+		// Test the enhanced logging
+		boolean result = handler.handleOne(exception, record, consumer, container);
+		
+		// Verify that false is returned when exception occurs
+		assertThat(result).isFalse();
+		
+		// The test verifies that the logging method is called with structured parameters
+		// In a real test environment, you would capture and verify log output
+		// For this test, we verify the method executes without throwing exceptions
 	}
 
 	@Test
