@@ -151,11 +151,14 @@ public class DefaultErrorHandler extends FailedBatchProcessor implements CommonE
 			return getFailureTracker().recovered(record, thrownException, container, consumer);
 		}
 		catch (Exception ex) {
+			Integer deliveryAttempt = KafkaUtils.getDeliveryAttempt(record);
 			if (SeekUtils.isBackoffException(thrownException)) {
-				this.logger.debug(ex, "Failed to handle " + KafkaUtils.format(record) + " with " + thrownException);
+				this.logger.debug(ex, "Kafka consumer retry backoff | topic={} partition={} offset={} key={} attempt={} error={}", 
+					record.topic(), record.partition(), record.offset(), record.key(), deliveryAttempt, thrownException.getMessage());
 			}
 			else {
-				this.logger.error(ex, "Failed to handle " + KafkaUtils.format(record) + " with " + thrownException);
+				this.logger.error(ex, "Kafka consumer failed | topic={} partition={} offset={} key={} attempt={} error={}", 
+					record.topic(), record.partition(), record.offset(), record.key(), deliveryAttempt, thrownException.getMessage());
 			}
 			return false;
 		}

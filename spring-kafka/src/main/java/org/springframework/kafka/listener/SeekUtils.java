@@ -110,13 +110,12 @@ public final class SeekUtils {
 				}
 				catch (Exception ex) {
 					if (isBackoffException(ex)) {
-						logger.debug(ex, () -> KafkaUtils.format(record)
-								+ " included in seeks due to retry back off");
+						logger.debug(ex, "Kafka consumer retry backoff during recovery | topic={} partition={} offset={} key={}", 
+							record.topic(), record.partition(), record.offset(), record.key());
 					}
 					else {
-						logger.error(ex, () -> "Failed to determine if this record ("
-								+ KafkaUtils.format(record)
-								+ ") should be recovered, including in seeks");
+						logger.error(ex, "Kafka consumer recovery failed | topic={} partition={} offset={} key={} error={}", 
+							record.topic(), record.partition(), record.offset(), record.key(), ex.getMessage());
 					}
 					skipped.set(false);
 				}
