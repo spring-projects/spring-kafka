@@ -169,6 +169,9 @@ public class RetryableTopicAnnotationProcessor {
 
 		Integer attempts = resolveExpressionAsInteger(annotation.attempts(), "attempts", true);
 		if (attempts != null) {
+			if (attempts <= 0) {
+				throw new IllegalArgumentException("Retry attempts must be greater than 0, but got: " + attempts);
+			}
 			builder.maxAttempts(attempts);
 		}
 		Integer concurrency = resolveExpressionAsInteger(annotation.concurrency(), "concurrency", false);
