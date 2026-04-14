@@ -200,6 +200,23 @@ public final class KafkaUtils {
 		return prFormatter.apply(record);
 	}
 
+	/**
+	 * Get the delivery attempt for a consumer record.
+	 * @param record the consumer record
+	 * @return the delivery attempt number
+	 */
+	public static int getDeliveryAttempt(ConsumerRecord<?, ?> record) {
+		return getFailureTracker().getDeliveryAttempt(record);
+	}
+
+	/**
+	 * Get the failure tracker instance.
+	 * @return the failure tracker
+	 */
+	private static FailedRecordTracker getFailureTracker() {
+		return new FailedRecordTracker();
+	}
+
 	private KafkaUtils() {
 	}
 
