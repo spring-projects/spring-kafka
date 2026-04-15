@@ -262,6 +262,11 @@ configure(javaProjects) { subproject ->
 		maxHeapSize = '1536m'
 		maxParallelForks = Runtime.runtime.availableProcessors().intdiv(2) ?: 1
 		useJUnitPlatform()
+
+		javaLauncher = javaToolchains.launcherFor {
+			languageVersion = JavaLanguageVersion.of(project.findProperty('testJavaVersion') ?: 25)
+		}
+
 	}
 
 	checkstyle {
