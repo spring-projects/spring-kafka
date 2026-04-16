@@ -94,6 +94,16 @@ public interface AfterRollbackProcessor<K, V> {
 	}
 
 	/**
+	 * Optional method to clear state for a specific topic partition.
+	 * This can be used to clear state for a single partition without affecting
+	 * other partitions, which is useful in multi-partition environments.
+	 * @param topicPartition the topic partition.
+	 * @since 3.2
+	 */
+	default void clearTopicPartitionState(TopicPartition topicPartition) {
+	}
+
+	/**
 	 * Return true to invoke
 	 * {@link #process(List, Consumer, MessageListenerContainer, Exception, boolean, ContainerProperties.EOSMode)}
 	 * in a new transaction. Because the container cannot infer the desired behavior, the

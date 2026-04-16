@@ -166,6 +166,16 @@ public interface CommonErrorHandler extends DeliveryAttemptAware {
 	}
 
 	/**
+	 * Optional method to clear state for a specific topic partition.
+	 * This can be used to clear state for a single partition without affecting
+	 * other partitions, which is useful in multi-partition environments.
+	 * @param topicPartition the topic partition.
+	 * @since 3.2
+	 */
+	default void clearTopicPartitionState(TopicPartition topicPartition) {
+	}
+
+	/**
 	 * Return true if the offset should be committed for a handled error (no exception
 	 * thrown).
 	 * @return true to commit.

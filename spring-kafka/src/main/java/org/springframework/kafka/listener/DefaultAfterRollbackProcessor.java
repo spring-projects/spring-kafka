@@ -250,6 +250,26 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 		this.lastIntervals.remove(currentThread);
 	}
 
+	@Override
+	public void clearTopicPartitionState(TopicPartition topicPartition) {
+		super.clearTopicPartitionState(topicPartition);
+		Thread currentThread = Thread.currentThread();
+		Map<TopicPartition, BackOffContext> threadBackOffs = this.backOffs.get(currentThread);
+		if (threadBackOffs != null) {
+			threadBackOffs.remove(topicPartition);
+			if (threadBackOffs.isEmpty()) {
+				this.backOffs.remove(currentThread);
+			}
+		}
+		Map<TopicPartition, Long> threadLastIntervals = this.lastIntervals.get(currentThread);
+		if (threadLastIntervals != null) {
+			threadLastIntervals.remove(topicPartition);
+			if (threadLastIntervals.isEmpty()) {
+				this.lastIntervals.remove(currentThread);
+			}
+		}
+	}
+
 	private static OffsetAndMetadata createOffsetAndMetadata(@Nullable MessageListenerContainer container, long offset) {
 		if (container == null) {
 			return new OffsetAndMetadata(offset);

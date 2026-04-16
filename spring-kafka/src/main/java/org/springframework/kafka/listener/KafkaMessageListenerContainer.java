@@ -2360,9 +2360,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (this.batchFailed) {
 					this.batchFailed = false;
 					if (this.commonErrorHandler != null) {
-						this.commonErrorHandler.clearThreadState();
+						records.partitions().forEach(tp -> this.commonErrorHandler.clearTopicPartitionState(tp));
 					}
-					getAfterRollbackProcessor().clearThreadState();
+					records.partitions().forEach(tp -> getAfterRollbackProcessor().clearTopicPartitionState(tp));
 				}
 				if (!this.autoCommit && !this.isRecordAck) {
 					processCommits();
