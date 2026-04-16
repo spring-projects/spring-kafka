@@ -186,14 +186,17 @@ class RetryableTopicAnnotationProcessorTests {
 	void shouldThrowIfProvidedKafkaTemplateNotFound() {
 
 		// setup
-		given(this.beanFactory.getBean(kafkaTemplateName, KafkaOperations.class)).willThrow(NoSuchBeanDefinitionException.class);
+		given(this.beanFactory.getBean(kafkaTemplateName, KafkaOperations.class))
+				.willThrow(NoSuchBeanDefinitionException.class);
 		RetryableTopicAnnotationProcessor processor = new RetryableTopicAnnotationProcessor(beanFactory);
 
 		// given - then
 		assertThatExceptionOfType(BeanInitializationException.class)
 				.isThrownBy(() -> processor.processAnnotation(topics, listenWithRetry, annotation, bean));
 		assertThatExceptionOfType(BeanInitializationException.class)
-				.isThrownBy(() -> processor.processAnnotation(topics, RetryableTopicClassLevelAnnotationFactory.class,
+				.isThrownBy(() -> processor.processAnnotation(
+						topics,
+						RetryableTopicClassLevelAnnotationFactory.class,
 						annotation, bean));
 	}
 
@@ -201,7 +204,8 @@ class RetryableTopicAnnotationProcessorTests {
 	void shouldThrowIfNoKafkaTemplateFound() {
 
 		// setup
-		given(this.beanFactory.getBean(RetryTopicBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME, KafkaOperations.class))
+		given(this.beanFactory.getBean(RetryTopicBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME,
+				KafkaOperations.class))
 				.willThrow(NoSuchBeanDefinitionException.class);
 
 		@SuppressWarnings({ "unchecked", "rawtypes" })
