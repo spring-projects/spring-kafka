@@ -414,7 +414,6 @@ class RetryableTopicAnnotationProcessorTests {
 	@KafkaListener
 	@RetryableTopic(attempts = "3", backOff = @BackOff(multiplier = 2, value = 1000),
 			dltStrategy = DltStrategy.FAIL_ON_ERROR, excludeNames = "java.lang.IllegalStateException")
-
 	static class RetryableTopicClassLevelAnnotationFactoryWithDlt {
 
 		@DltHandler
