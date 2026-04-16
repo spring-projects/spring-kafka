@@ -393,13 +393,21 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 		}
 		if (properties != null) {
 			for (Map.Entry<Object, Object> entry : properties.entrySet()) {
-				Object key = entry.getKey();
 
-				if (key instanceof String
-						&& !key.equals(ConsumerConfig.CLIENT_ID_CONFIG)
-						&& !key.equals(ConsumerConfig.GROUP_ID_CONFIG)) {
+				if (entry.getKey() instanceof String key
+						&& !ConsumerConfig.CLIENT_ID_CONFIG.equals(key)
+						&& !ConsumerConfig.GROUP_ID_CONFIG.equals(key)) {
 
-					modifiedConfigs.put((String) key, entry.getValue());
+					Object value;
+
+					if (properties.getProperty(key) != null) {
+						value = properties.getProperty(key);
+					}
+					else {
+						value = entry.getValue();
+					}
+
+					modifiedConfigs.put(key, value);
 				}
 			}
 			checkInaccessible(properties, modifiedConfigs);

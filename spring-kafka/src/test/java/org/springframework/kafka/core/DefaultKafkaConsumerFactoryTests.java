@@ -141,6 +141,31 @@ public class DefaultKafkaConsumerFactoryTests {
 	}
 
 	@Test
+	void testIntegerOverrideConvertedToString() {
+		Map<String, Object> originalConfig =
+				Collections.singletonMap(ConsumerConfig.GROUP_ID_CONFIG, "original");
+
+		Properties overrides = new Properties();
+		overrides.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2);
+
+		final Map<String, Object> captured = new HashMap<>();
+
+		DefaultKafkaConsumerFactory<String, String> factory =
+				new DefaultKafkaConsumerFactory<>(originalConfig) {
+					@Override
+					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
+						captured.putAll(configProps);
+						return null;
+					}
+				};
+
+		factory.createConsumer(null, null, null, overrides);
+
+		assertThat(captured.get(ConsumerConfig.MAX_POLL_RECORDS_CONFIG))
+				.isEqualTo(2);
+	}
+
+	@Test
 	void testMixedTypeOverridePropertiesApplied() {
 		Map<String, Object> originalConfig =
 				Collections.singletonMap(ConsumerConfig.GROUP_ID_CONFIG, "original");
