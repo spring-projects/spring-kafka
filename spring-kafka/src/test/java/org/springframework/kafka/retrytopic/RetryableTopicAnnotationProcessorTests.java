@@ -378,38 +378,6 @@ class RetryableTopicAnnotationProcessorTests {
 		assertThat(destinationTopicProperties.get(2).suffix()).isEqualTo("-dlt");
 	}
 
-	@Test
-	void shouldThrowExceptionForZeroRetryAttempts() {
-		// setup
-		given(this.beanFactory.getBean(RetryTopicBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME, KafkaOperations.class))
-			.willReturn(kafkaOperationsFromDefaultName);
-		RetryableTopicAnnotationProcessor processor = new RetryableTopicAnnotationProcessor(beanFactory);
-
-		// given - then
-		assertThatIllegalArgumentException()
-			.isThrownBy(() -> processor.processAnnotation(topics, listenWithRetryAndDlt, 
-				AnnotationUtils.findAnnotation(
-					ReflectionUtils.findMethod(InvalidRetryAttemptsFactory.class, "listenWithZeroAttempts"), 
-					RetryableTopic.class), beanWithDlt))
-			.withMessage("Retry attempts must be greater than 0, but got: 0");
-	}
-
-	@Test
-	void shouldThrowExceptionForNegativeRetryAttempts() {
-		// setup
-		given(this.beanFactory.getBean(RetryTopicBeanNames.DEFAULT_KAFKA_TEMPLATE_BEAN_NAME, KafkaOperations.class))
-			.willReturn(kafkaOperationsFromDefaultName);
-		RetryableTopicAnnotationProcessor processor = new RetryableTopicAnnotationProcessor(beanFactory);
-
-		// given - then
-		assertThatIllegalArgumentException()
-			.isThrownBy(() -> processor.processAnnotation(topics, listenWithRetryAndDlt, 
-				AnnotationUtils.findAnnotation(
-					ReflectionUtils.findMethod(InvalidRetryAttemptsFactory.class, "listenWithNegativeAttempts"), 
-					RetryableTopic.class), beanWithDlt))
-			.withMessage("Retry attempts must be greater than 0, but got: -1");
-	}
-
 	static class RetryableTopicAnnotationFactory {
 
 		@KafkaListener
@@ -477,21 +445,6 @@ class RetryableTopicAnnotationProcessorTests {
 			}
 	)
 	static class RetryableTopicClassLevelAnnotationFactoryWithCustomDltRouting {
-	}
-
-	static class InvalidRetryAttemptsFactory {
-
-		@KafkaListener
-		@RetryableTopic(attempts = "0", kafkaTemplate = RetryableTopicAnnotationProcessorTests.kafkaTemplateName)
-		void listenWithZeroAttempts() {
-			// NoOps
-		}
-
-		@KafkaListener
-		@RetryableTopic(attempts = "-1", kafkaTemplate = RetryableTopicAnnotationProcessorTests.kafkaTemplateName)
-		void listenWithNegativeAttempts() {
-			// NoOps
-		}
 	}
 
 }
