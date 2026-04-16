@@ -179,4 +179,8 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 		this.failureTracker.clearThreadState();
 	}
 
+	public void clearTopicPartitionState(org.apache.kafka.common.TopicPartition topicPartition) {
+		this.failureTracker.clearTopicPartitionState(topicPartition);
+	}
+
 }

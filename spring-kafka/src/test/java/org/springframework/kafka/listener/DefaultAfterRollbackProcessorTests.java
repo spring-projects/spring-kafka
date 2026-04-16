@@ -176,4 +176,16 @@ public class DefaultAfterRollbackProcessorTests {
 		assertThat(System.currentTimeMillis() >= t1 + 200).isTrue();
 	}
 
+	@Test
+	void testClearTopicPartitionState() {
+		DefaultAfterRollbackProcessor<String, String> processor = new DefaultAfterRollbackProcessor<>();
+		TopicPartition tp = new TopicPartition("test-topic", 0);
+
+		// Verify that clearTopicPartitionState can be called without throwing an exception
+		processor.clearTopicPartitionState(tp);
+
+		// Verify that clearThreadState still works as expected
+		processor.clearThreadState();
+	}
+
 }
