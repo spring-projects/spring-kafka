@@ -122,6 +122,7 @@ import org.springframework.kafka.support.TopicPartitionOffset.SeekPosition;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservation;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservation.DefaultKafkaListenerObservationConvention;
 import org.springframework.kafka.support.micrometer.KafkaRecordReceiverContext;
+import org.springframework.kafka.support.micrometer.ContainerLifecycleMicrometerHolder;
 import org.springframework.kafka.support.micrometer.MicrometerHolder;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.SerializationUtils;
@@ -194,6 +195,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	private final @Nullable TopicPartitionOffset @Nullable [] topicPartitions;
 
 	private @Nullable String clientIdSuffix;
+
+	@Nullable
+	private ContainerLifecycleMicrometerHolder lifecycleMicrometerHolder;
 
 	private Runnable emergencyStop = () -> stopAbnormally(() -> {
 	});
@@ -363,6 +367,43 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			return Collections.singletonMap(listenerConsumerForMetrics.getClientId(), metrics);
 		}
 		return Collections.emptyMap();
+	}
+
+	@Override
+	protected void recordContainerStarted() {
+		if (this.lifecycleMicrometerHolder == null) {
+			this.lifecycleMicrometerHolder = obtainLifecycleMicrometerHolder();
+		}
+		if (this.lifecycleMicrometerHolder != null) {
+			this.lifecycleMicrometerHolder.recordStart();
+		}
+	}
+
+	@Override
+	protected void recordContainerStopped() {
+		if (this.lifecycleMicrometerHolder != null) {
+			this.lifecycleMicrometerHolder.recordStop();
+		}
+	}
+
+	@Nullable
+	private ContainerLifecycleMicrometerHolder obtainLifecycleMicrometerHolder() {
+		try {
+			if (KafkaUtils.MICROMETER_PRESENT) {
+				org.springframework.context.ApplicationContext ctx = getApplicationContext();
+				if (ctx != null) {
+					io.micrometer.core.instrument.MeterRegistry registry =
+							ctx.getBeanProvider(io.micrometer.core.instrument.MeterRegistry.class).getIfUnique();
+					if (registry != null) {
+						return new ContainerLifecycleMicrometerHolder(registry, getBeanName());
+					}
+				}
+			}
+		}
+		catch (Exception ex) {
+			// no micrometer
+		}
+		return null;
 	}
 
 	@Override
