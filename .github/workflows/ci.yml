@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        testJavaVersion: [ 17, 21, 25 ]
+        testJavaVersion: [ 21, 25 ]
         os: [ ubuntu-latest, macos-latest, windows-latest ]
 
     uses: spring-io/spring-github-workflows/.github/workflows/spring-gradle-ci.yml@main
