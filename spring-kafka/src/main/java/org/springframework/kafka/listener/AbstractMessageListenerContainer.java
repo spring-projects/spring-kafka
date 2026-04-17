@@ -73,6 +73,7 @@ import org.springframework.util.StringUtils;
  * @author Sanghyeok An
  * @author Lokesh Alamuri
  * @author Christian Fredriksson
+ * @author Vineeth Yelagandula
  */
 public abstract class AbstractMessageListenerContainer<K, V>
 		implements GenericMessageListenerContainer<K, V>, BeanNameAware, ApplicationEventPublisherAware,
@@ -530,6 +531,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 						() -> "A " + GenericMessageListener.class.getName() + " implementation must be provided");
 				Assert.state(!this.fenced, "Container Fenced. It is not allowed to start.");
 				doStart();
+				recordContainerStarted();
 			}
 		}
 		finally {
@@ -609,6 +611,20 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	protected abstract void doStart();
 
+	/**
+	 * Called when the container is started. Subclasses may override to record metrics.
+	 * @since 4.1.0
+	 */
+	protected void recordContainerStarted() {
+	}
+
+	/**
+	 * Called when the container is stopped. Subclasses may override to record metrics.
+	 * @since 4.1.0
+	 */
+	protected void recordContainerStopped() {
+	}
+
 	@Override
 	public final void stop() {
 		stop(true);
@@ -680,6 +696,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	public void stopAbnormally(Runnable callback) {
 		this.lifecycleLock.lock();
 		try {
+			recordContainerStopped();
 			doStop(callback, false);
 			publishContainerStoppedEvent();
 		}
@@ -689,6 +706,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	protected void doStop(Runnable callback) {
+		recordContainerStopped();
 		doStop(callback, true);
 		publishContainerStoppedEvent();
 	}
