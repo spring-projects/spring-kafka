@@ -455,7 +455,7 @@ public class AsyncMonoRetryTopicScenarioTests {
 	}
 
 	@EnableKafka
-	@Configuration
+	@Configuration(proxyBeanMethods = false)
 	static class KafkaConsumerConfig {
 
 		@Autowired
@@ -474,7 +474,7 @@ public class AsyncMonoRetryTopicScenarioTests {
 		ConcurrentKafkaListenerContainerFactory<String, String> retryTopicListenerContainerFactory(
 				ConsumerFactory<String, String> consumerFactory) {
 
-			ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
+			var factory = new ConcurrentKafkaListenerContainerFactory<String, String>();
 			ContainerProperties props = factory.getContainerProperties();
 			props.setIdleEventInterval(100L);
 			props.setPollTimeout(50L);
@@ -490,15 +490,9 @@ public class AsyncMonoRetryTopicScenarioTests {
 		ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
 				ConsumerFactory<String, String> consumerFactory) {
 
-			ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
+			var factory = new ConcurrentKafkaListenerContainerFactory<String, String>();
 			factory.setConsumerFactory(consumerFactory);
 			factory.setConcurrency(1);
-			factory.setContainerCustomizer(container -> {
-				if (container.getListenerId().startsWith("manual")) {
-					container.getContainerProperties().setAckMode(AckMode.MANUAL);
-					container.getContainerProperties().setAsyncAcks(true);
-				}
-			});
 			return factory;
 		}
 
