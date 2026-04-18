@@ -14,7 +14,7 @@ plugins {
 	id 'base'
 	id 'idea'
 	id 'io.freefair.aggregate-javadoc' version '9.2.0'
-	id 'io.spring.nullability' version '0.0.12' apply false
+	id 'io.spring.nullability' version '0.0.13' apply false
 }
 
 
