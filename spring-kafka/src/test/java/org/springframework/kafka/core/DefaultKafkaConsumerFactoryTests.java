@@ -88,14 +88,16 @@ public class DefaultKafkaConsumerFactoryTests {
 	@Test
 	public void testProvidedDeserializerInstancesAreShared() {
 		ConsumerFactory<String, String> target = new DefaultKafkaConsumerFactory<>(Collections.emptyMap(),
-				new StringDeserializer() { }, null);
+				new StringDeserializer() {
+				}, null);
 		assertThat(target.getKeyDeserializer()).isSameAs(target.getKeyDeserializer());
 	}
 
 	@Test
 	public void testSupplierProvidedDeserializersAreNotShared() {
 		ConsumerFactory<String, String> target = new DefaultKafkaConsumerFactory<>(Collections.emptyMap(),
-				() -> new StringDeserializer() { }, null);
+				() -> new StringDeserializer() {
+				}, null);
 		assertThat(target.getKeyDeserializer()).isNotSameAs(target.getKeyDeserializer());
 	}
 
@@ -117,19 +119,19 @@ public class DefaultKafkaConsumerFactoryTests {
 	}
 
 	@Test
-	void testNonStringOverridePropertyApplied() {
-		Map<String, Object> originalConfig =
-				Collections.singletonMap(ConsumerConfig.GROUP_ID_CONFIG, "original");
+	void testIntegerOverrideApplied() {
+		Map<String, Object> configs = new HashMap<>();
+		configs.put(ConsumerConfig.GROUP_ID_CONFIG, "test");
 
 		Properties overrides = new Properties();
 		overrides.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2);
 
-		final Map<String, Object> captured = new HashMap<>();
+		Map<String, Object> captured = new HashMap<>();
 
 		DefaultKafkaConsumerFactory<String, String> factory =
-				new DefaultKafkaConsumerFactory<>(originalConfig) {
+				new DefaultKafkaConsumerFactory<>(configs) {
 					@Override
-					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
+					protected Consumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
 						captured.putAll(configProps);
 						return null;
 					}
@@ -141,19 +143,20 @@ public class DefaultKafkaConsumerFactoryTests {
 	}
 
 	@Test
-	void testIntegerOverrideConvertedToString() {
-		Map<String, Object> originalConfig =
-				Collections.singletonMap(ConsumerConfig.GROUP_ID_CONFIG, "original");
+	void testMixedTypeOverridesApplied() {
+		Map<String, Object> configs = new HashMap<>();
+		configs.put(ConsumerConfig.GROUP_ID_CONFIG, "test");
 
 		Properties overrides = new Properties();
 		overrides.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2);
+		overrides.setProperty("foo", "bar");
 
-		final Map<String, Object> captured = new HashMap<>();
+		Map<String, Object> captured = new HashMap<>();
 
 		DefaultKafkaConsumerFactory<String, String> factory =
-				new DefaultKafkaConsumerFactory<>(originalConfig) {
+				new DefaultKafkaConsumerFactory<>(configs) {
 					@Override
-					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
+					protected Consumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
 						captured.putAll(configProps);
 						return null;
 					}
@@ -161,33 +164,10 @@ public class DefaultKafkaConsumerFactoryTests {
 
 		factory.createConsumer(null, null, null, overrides);
 
-		assertThat(captured.get(ConsumerConfig.MAX_POLL_RECORDS_CONFIG))
-				.isEqualTo(2);
-	}
-
-	@Test
-	void testMixedTypeOverridePropertiesApplied() {
-		Map<String, Object> originalConfig =
-				Collections.singletonMap(ConsumerConfig.GROUP_ID_CONFIG, "original");
-
-		Properties overrides = new Properties();
-		overrides.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2);
-		overrides.put("additional", "property");
-
-		final Map<String, Object> captured = new HashMap<>();
-
-		DefaultKafkaConsumerFactory<String, String> factory =
-				new DefaultKafkaConsumerFactory<>(originalConfig) {
-					@Override
-					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
-						captured.putAll(configProps);
-						return null;
-					}
-				};
-
-		factory.createConsumer(null, null, null, overrides);
-
-		assertThat(captured.get(ConsumerConfig.MAX_POLL_RECORDS_CONFIG)).isEqualTo(2);
+		assertThat(captured)
+				.containsEntry(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2)
+				.containsEntry("foo", "bar")
+				.containsEntry(ConsumerConfig.GROUP_ID_CONFIG, "test");
 	}
 
 	@Test
@@ -474,8 +454,7 @@ public class DefaultKafkaConsumerFactoryTests {
 			assertThat(KafkaTestUtils.getPropertyValue(pfTx, "cache", Map.class)).hasSize(1);
 			assertThat(pfTx.getCache()).hasSize(1);
 			assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer")).isSameAs(wrapped.get());
-		}
-		finally {
+		} finally {
 			container.stop();
 			pf.destroy();
 			pfTx.destroy();
@@ -527,17 +506,16 @@ public class DefaultKafkaConsumerFactoryTests {
 			assertThat(KafkaTestUtils.getPropertyValue(suffixStrategy, "suffixCache", Map.class)).hasSize(1);
 			//  1 tm tx producer and 1 templateTx tx producer
 			assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer")).isSameAs(wrapped.get());
-		}
-		finally {
+		} finally {
 			container.stop();
 			pf.destroy();
 			pfTx.destroy();
 		}
 	}
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@SuppressWarnings({"rawtypes", "unchecked"})
 	@ParameterizedTest
-	@ValueSource(booleans = { true, false })
+	@ValueSource(booleans = {true, false})
 	void listener(boolean closeWithTimeout) {
 		Map<String, Object> consumerConfig = KafkaTestUtils.consumerProps(this.embeddedKafka, "txCache1Group", false);
 		consumerConfig.put(ConsumerConfig.CLIENT_ID_CONFIG, "foo-0");
@@ -566,14 +544,13 @@ public class DefaultKafkaConsumerFactoryTests {
 		assertThat(removals).isEmpty();
 		if (closeWithTimeout) {
 			consumer.close(CloseOptions.timeout(Duration.ofSeconds(10)));
-		}
-		else {
+		} else {
 			consumer.close();
 		}
 		assertThat(removals).hasSize(1);
 	}
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@SuppressWarnings({"rawtypes", "unchecked"})
 	@Test
 	void configDeserializer() {
 		Deserializer key = mock(Deserializer.class);
@@ -601,5 +578,4 @@ public class DefaultKafkaConsumerFactoryTests {
 	public static class Config {
 
 	}
-
 }
