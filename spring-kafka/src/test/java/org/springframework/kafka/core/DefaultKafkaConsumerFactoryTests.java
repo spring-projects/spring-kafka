@@ -119,46 +119,26 @@ public class DefaultKafkaConsumerFactoryTests {
 	}
 
 	@Test
-	void testIntegerOverrideApplied() {
-		Map<String, Object> configs = new HashMap<>();
-		configs.put(ConsumerConfig.GROUP_ID_CONFIG, "test");
-
-		Properties overrides = new Properties();
-		overrides.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2);
-
-		Map<String, Object> captured = new HashMap<>();
-
-		DefaultKafkaConsumerFactory<String, String> factory =
-				new DefaultKafkaConsumerFactory<>(configs) {
-					@Override
-					protected Consumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
-						captured.putAll(configProps);
-						return null;
-					}
-				};
-
-		factory.createConsumer(null, null, null, overrides);
-
-		assertThat(captured.get(ConsumerConfig.MAX_POLL_RECORDS_CONFIG)).isEqualTo(2);
-	}
-
-	@Test
 	void testMixedTypeOverridesApplied() {
-		Map<String, Object> configs = new HashMap<>();
-		configs.put(ConsumerConfig.GROUP_ID_CONFIG, "test");
+		Map<String, Object> configs = KafkaTestUtils.consumerProps(
+				this.embeddedKafka,
+				"testGroup",
+				false
+		);
 
 		Properties overrides = new Properties();
 		overrides.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2);
-		overrides.setProperty("foo", "bar");
+		overrides.setProperty("some.property", "value");
 
 		Map<String, Object> captured = new HashMap<>();
 
 		DefaultKafkaConsumerFactory<String, String> factory =
 				new DefaultKafkaConsumerFactory<>(configs) {
+
 					@Override
-					protected Consumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
+					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
 						captured.putAll(configProps);
-						return null;
+						return mock(KafkaConsumer.class);
 					}
 				};
 
@@ -166,8 +146,33 @@ public class DefaultKafkaConsumerFactoryTests {
 
 		assertThat(captured)
 				.containsEntry(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2)
-				.containsEntry("foo", "bar")
-				.containsEntry(ConsumerConfig.GROUP_ID_CONFIG, "test");
+				.containsEntry("some.property", "value");
+	}
+
+	@Test
+	void testIntegerAndStringOverridesTogether() {
+		Map<String, Object> configs = new HashMap<>();
+		configs.put(ConsumerConfig.GROUP_ID_CONFIG, "test");
+
+		Properties overrides = new Properties();
+		overrides.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 5);
+		overrides.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+		DefaultKafkaConsumerFactory<String, String> factory =
+				new DefaultKafkaConsumerFactory<>(configs) {
+
+					@Override
+					protected Consumer<String, String> createRawConsumer(Map<String, Object> configProps) {
+
+						assertThat(configProps)
+								.containsEntry(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 5)
+								.containsEntry(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+						return mock(Consumer.class);
+					}
+				};
+
+		factory.createConsumer(null, null, null, overrides);
 	}
 
 	@Test
@@ -407,7 +412,6 @@ public class DefaultKafkaConsumerFactoryTests {
 						configPassedToKafkaConsumer.putAll(configProps);
 						return null;
 					}
-
 				};
 		target.createConsumer(null, null, null, overrides);
 		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.MAX_POLL_RECORDS_CONFIG)).isEqualTo("2");
@@ -454,7 +458,8 @@ public class DefaultKafkaConsumerFactoryTests {
 			assertThat(KafkaTestUtils.getPropertyValue(pfTx, "cache", Map.class)).hasSize(1);
 			assertThat(pfTx.getCache()).hasSize(1);
 			assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer")).isSameAs(wrapped.get());
-		} finally {
+		}
+		finally {
 			container.stop();
 			pf.destroy();
 			pfTx.destroy();
@@ -504,9 +509,9 @@ public class DefaultKafkaConsumerFactoryTests {
 			assertThat(KafkaTestUtils.getPropertyValue(pfTx, "cache", Map.class)).hasSize(1);
 			assertThat(pfTx.getCache()).hasSize(1);
 			assertThat(KafkaTestUtils.getPropertyValue(suffixStrategy, "suffixCache", Map.class)).hasSize(1);
-			//  1 tm tx producer and 1 templateTx tx producer
 			assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.consumer")).isSameAs(wrapped.get());
-		} finally {
+		}
+		finally {
 			container.stop();
 			pf.destroy();
 			pfTx.destroy();
@@ -536,6 +541,7 @@ public class DefaultKafkaConsumerFactoryTests {
 			}
 
 		});
+
 		cf.setBeanName("cf");
 
 		Consumer consumer = cf.createConsumer();
@@ -544,7 +550,8 @@ public class DefaultKafkaConsumerFactoryTests {
 		assertThat(removals).isEmpty();
 		if (closeWithTimeout) {
 			consumer.close(CloseOptions.timeout(Duration.ofSeconds(10)));
-		} else {
+		}
+		else {
 			consumer.close();
 		}
 		assertThat(removals).hasSize(1);

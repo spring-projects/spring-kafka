@@ -367,7 +367,7 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 		boolean shouldModifyClientId = (this.configs.containsKey(ConsumerConfig.CLIENT_ID_CONFIG)
 				&& StringUtils.hasText(clientIdSuffix)) || overrideClientIdPrefix;
 		if (groupId == null
-				&& properties == null
+				&& (properties == null || properties.isEmpty())
 				&& !shouldModifyClientId) {
 
 			return createKafkaConsumer(new HashMap<>(this.configs));
@@ -400,14 +400,12 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 
 					Object value = entry.getValue();
 
+					if (value == null) {
+						value = properties.getProperty(key);
+					}
+
 					if (value != null) {
 						modifiedConfigs.put(key, value);
-					}
-					else {
-						String stringValue = properties.getProperty(key);
-						if (stringValue != null) {
-							modifiedConfigs.put(key, stringValue);
-						}
 					}
 				}
 			}
