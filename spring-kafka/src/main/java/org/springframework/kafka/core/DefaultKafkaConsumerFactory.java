@@ -398,16 +398,17 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 						&& !ConsumerConfig.CLIENT_ID_CONFIG.equals(key)
 						&& !ConsumerConfig.GROUP_ID_CONFIG.equals(key)) {
 
-					Object value;
+					Object value = entry.getValue();
 
-					if (properties.getProperty(key) != null) {
-						value = properties.getProperty(key);
+					if (value != null) {
+						modifiedConfigs.put(key, value);
 					}
 					else {
-						value = entry.getValue();
+						String stringValue = properties.getProperty(key);
+						if (stringValue != null) {
+							modifiedConfigs.put(key, stringValue);
+						}
 					}
-
-					modifiedConfigs.put(key, value);
 				}
 			}
 			checkInaccessible(properties, modifiedConfigs);
