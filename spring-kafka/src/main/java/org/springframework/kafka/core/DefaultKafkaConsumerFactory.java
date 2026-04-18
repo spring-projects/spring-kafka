@@ -400,14 +400,12 @@ public class DefaultKafkaConsumerFactory<K, V> extends KafkaResourceFactory
 
 					Object value = entry.getValue();
 
+					if (value == null) {
+						value = properties.getProperty(key);
+					}
+
 					if (value != null) {
 						modifiedConfigs.put(key, value);
-					}
-					else {
-						String stringValue = properties.getProperty(key);
-						if (stringValue != null) {
-							modifiedConfigs.put(key, stringValue);
-						}
 					}
 				}
 			}
