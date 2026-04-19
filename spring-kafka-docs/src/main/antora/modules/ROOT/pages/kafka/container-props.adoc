@@ -138,7 +138,7 @@ The default executor creates threads named `<name>-C-n`; with the `KafkaMessageL
 
 |[[messageListener]]<<messageListener,`messageListener`>>
 |`null`
-|The message listener.
+|The message listener that processes records consumed from Kafka topics.
 
 |[[micrometerEnabled]]<<micrometerEnabled,`micrometerEnabled`>>
 |`true`
