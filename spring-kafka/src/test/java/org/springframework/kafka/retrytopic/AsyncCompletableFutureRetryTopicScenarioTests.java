@@ -219,15 +219,16 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 	void firstLongSuccessAndLastShortFailed(
 			@Autowired TestTopicListener2 testTopicListener2,
 			@Autowired MyCustomDltProcessor myCustomDltProcessor2) {
-		// Scenario.
-		// 1. Long success msg (offset 0) -> going on... (latch await)
-		// 2. Short fail msg (offset 1) -> done.
-		// 3. Short fail msg (Retry1 offset 1) -> done (latch down)
-		// 4. Long success msg (offset 0) -> succeed.
-		// 5. Short fail msg (Retry2 offset 1)
-		// 6. Short fail msg (Retry3 offset 1)
-		// 7. Short fail msg (Retry4 offset 1)
-		// 8. Short fail msg (dlt offset 1)
+		// Scenario: both sends on one main-topic partition -> offsets 0 then 1. The
+		// retry topic has its own offsets, usually 0, 1, 2, ... on the partition that receives the republished "fail").
+		// 1. Long success on main topic -> async work blocks on firstRetryFailMsgLatch.await.
+		// 2. Short fail on main topic -> throws; framework schedules ...-retry delivery.
+		// 3. First "fail" from ...-retry (partition offset 0) -> firstRetryFailMsgLatch counts down (see listener).
+		// 4. Long success async completes.
+		// 5. Next "fail" from ...-retry (partition offset 1).
+		// 6. Next "fail" from ...-retry (partition offset 2).
+		// 7. Next "fail" from ...-retry (partition offset 3).
+		// 8. "fail" sent to DLT after maxAttempts (5) exhausted.
 
 		// Given
 		String shortFailedMsg = testTopicListener2.SHORT_FAIL_MSG;
@@ -724,8 +725,9 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 					throw new RuntimeException(e);
 				}
 				finally {
+					// First record on the retry partition (same signal as TestTopicListener1).
 					if (receivedTopic.equals(TEST_TOPIC2 + "-retry") &&
-						offset.equals("1")) {
+						offset.equals("0")) {
 						firstRetryFailMsgLatch.countDown();
 					}
 					container.countDownLatch2.countDown();
