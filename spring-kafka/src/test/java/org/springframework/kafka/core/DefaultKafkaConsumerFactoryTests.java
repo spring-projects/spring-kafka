@@ -359,6 +359,45 @@ public class DefaultKafkaConsumerFactoryTests {
 		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.MAX_POLL_RECORDS_CONFIG)).isEqualTo("2");
 	}
 
+	@Test
+	public void testOverriddenMaxPollRecordsOnlyAsInteger() {
+		Map<String, Object> originalConfig = Collections.singletonMap(ConsumerConfig.GROUP_ID_CONFIG, "original");
+		Properties overrides = new Properties();
+		overrides.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2);
+		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
+		DefaultKafkaConsumerFactory<String, String> target =
+				new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
+
+					@Override
+					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
+						configPassedToKafkaConsumer.putAll(configProps);
+						return null;
+					}
+				};
+		target.createConsumer(null, null, null, overrides);
+		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.MAX_POLL_RECORDS_CONFIG)).isEqualTo(2);
+	}
+
+	@Test
+	public void testOverriddenMaxPollRecordsAsIntegerWithAdditionalStringProperty() {
+		Map<String, Object> originalConfig = Collections.singletonMap(ConsumerConfig.GROUP_ID_CONFIG, "original");
+		Properties overrides = new Properties();
+		overrides.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2);
+		overrides.put("additional", "property");
+		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
+		DefaultKafkaConsumerFactory<String, String> target =
+				new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
+
+					@Override
+					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
+						configPassedToKafkaConsumer.putAll(configProps);
+						return null;
+					}
+				};
+		target.createConsumer(null, null, null, overrides);
+		assertThat(configPassedToKafkaConsumer.get(ConsumerConfig.MAX_POLL_RECORDS_CONFIG)).isEqualTo(2);
+	}
+
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testNestedTxProducerIsCached() throws Exception {
