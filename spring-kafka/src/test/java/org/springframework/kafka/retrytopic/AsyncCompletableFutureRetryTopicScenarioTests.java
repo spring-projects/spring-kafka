@@ -24,6 +24,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
@@ -218,9 +219,9 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 	@Test
 	void firstLongSuccessAndLastShortFailed(
 			@Autowired TestTopicListener2 testTopicListener2,
-			@Autowired MyCustomDltProcessor myCustomDltProcessor2) {
-		// Scenario: both sends on one main-topic partition -> offsets 0 then 1. The
-		// retry topic has its own offsets, usually 0, 1, 2, ... on the partition that receives the republished "fail").
+			@Autowired MyCustomDltProcessor myCustomDltProcessor2) throws Exception {
+		// Scenario (single main-topic partition: offsets 0 then 1; with null keys and multiple
+		// partitions, records may land on different partitions). Retry topic offsets are per partition, usually 0, 1, 2, ...
 		// 1. Long success on main topic -> async work blocks on firstRetryFailMsgLatch.await.
 		// 2. Short fail on main topic -> throws; framework schedules ...-retry delivery.
 		// 3. First "fail" from ...-retry (partition offset 0) -> firstRetryFailMsgLatch counts down (see listener).
@@ -258,11 +259,10 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 				shortFailedMsg
 		};
 
-		// When
-		kafkaTemplate.send(TEST_TOPIC2, longSuccessMsg);
-		kafkaTemplate.send(TEST_TOPIC2, shortFailedMsg);
-
-		// Then
+		// wait for broker acks so both records are visible before consumption races; do not use
+		// the same key on both sends (same-partition + async CF + ordered acks can deadlock this scenario).
+		kafkaTemplate.send(TEST_TOPIC2, longSuccessMsg).get(30, TimeUnit.SECONDS);
+		kafkaTemplate.send(TEST_TOPIC2, shortFailedMsg).get(30, TimeUnit.SECONDS);
 
 		assertThat(awaitLatch(latchContainer.countDownLatch2)).isTrue();
 		assertThat(awaitLatch(latchContainer.dltCountdownLatch2)).isTrue();
@@ -685,7 +685,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 			containerFactory = MAIN_TOPIC_CONTAINER_FACTORY,
 			errorHandler = "myCustomErrorHandler",
 			contentTypeConverter = "myCustomMessageConverter",
-			concurrency = "2")
+			concurrency = "1")
 	static class TestTopicListener2 {
 
 		@Autowired
@@ -1336,6 +1336,9 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 					this.broker.getBrokersAsString(),
 					"groupId",
 					false);
+			// Async CompletableFuture listeners can stretch the time between polls; avoid spurious
+			// leave-group / redelivery under slow CI by keeping the consumer in the group longer.
+			props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, "300000");
 			return new DefaultKafkaConsumerFactory<>(props);
 		}
 
