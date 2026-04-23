@@ -73,10 +73,10 @@ import static org.mockito.Mockito.verify;
  *
  * @since 1.0.6
  */
-@EmbeddedKafka(topics = { "txCache1", "txCache2", "txCacheSendFromListener" },
+@EmbeddedKafka(topics = {"txCache1", "txCache2", "txCacheSendFromListener"},
 		brokerProperties = {
 				"transaction.state.log.replication.factor=1",
-				"transaction.state.log.min.isr=1" }
+				"transaction.state.log.min.isr=1"}
 )
 @SpringJUnitConfig
 @DirtiesContext
@@ -120,33 +120,31 @@ public class DefaultKafkaConsumerFactoryTests {
 
 	@Test
 	void testMixedTypeOverridesApplied() {
-		Map<String, Object> configs = KafkaTestUtils.consumerProps(
-				this.embeddedKafka,
-				"testGroup",
-				false
-		);
+		Map<String, Object> configs = KafkaTestUtils.consumerProps(this.embeddedKafka, "testGroup", false);
 
 		Properties overrides = new Properties();
 		overrides.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2);
 		overrides.setProperty("some.property", "value");
 
-		Map<String, Object> captured = new HashMap<>();
+		AtomicReference<ConsumerConfig> capturedConfig = new AtomicReference<>();
 
 		DefaultKafkaConsumerFactory<String, String> factory =
 				new DefaultKafkaConsumerFactory<>(configs) {
 
 					@Override
 					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
-						captured.putAll(configProps);
+						capturedConfig.set(new ConsumerConfig(configProps));
 						return mock(KafkaConsumer.class);
 					}
+
 				};
 
 		factory.createConsumer(null, null, null, overrides);
 
-		assertThat(captured)
-				.containsEntry(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2)
-				.containsEntry("some.property", "value");
+		ConsumerConfig consumerConfig = capturedConfig.get();
+
+		assertThat(consumerConfig.getInt(ConsumerConfig.MAX_POLL_RECORDS_CONFIG)).isEqualTo(2);
+		assertThat(consumerConfig.getString("some.property")).isEqualTo("value");
 	}
 
 	@Test
@@ -158,21 +156,25 @@ public class DefaultKafkaConsumerFactoryTests {
 		overrides.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 5);
 		overrides.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 
+		AtomicReference<ConsumerConfig> capturedConfig = new AtomicReference<>();
+
 		DefaultKafkaConsumerFactory<String, String> factory =
 				new DefaultKafkaConsumerFactory<>(configs) {
 
 					@Override
 					protected Consumer<String, String> createRawConsumer(Map<String, Object> configProps) {
-
-						assertThat(configProps)
-								.containsEntry(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 5)
-								.containsEntry(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-
+						capturedConfig.set(new ConsumerConfig(configProps));
 						return mock(Consumer.class);
 					}
+
 				};
 
 		factory.createConsumer(null, null, null, overrides);
+
+		ConsumerConfig consumerConfig = capturedConfig.get();
+
+		assertThat(consumerConfig.getInt(ConsumerConfig.MAX_POLL_RECORDS_CONFIG)).isEqualTo(5);
+		assertThat(consumerConfig.getString(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)).isEqualTo("earliest");
 	}
 
 	@Test
