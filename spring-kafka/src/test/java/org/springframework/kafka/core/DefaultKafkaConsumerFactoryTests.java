@@ -100,6 +100,62 @@ public class DefaultKafkaConsumerFactoryTests {
 	}
 
 	@Test
+	public void testMixedTypeOverridesApplied() {
+		Map<String, Object> configs = KafkaTestUtils.consumerProps(this.embeddedKafka, "testGroup", false);
+
+		Properties overrides = new Properties();
+		overrides.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2);
+		overrides.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+		AtomicReference<ConsumerConfig> capturedConfig = new AtomicReference<>();
+
+		DefaultKafkaConsumerFactory<String, String> factory =
+				new DefaultKafkaConsumerFactory<String, String>(configs) {
+
+					@Override
+					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
+						capturedConfig.set(new ConsumerConfig(configProps));
+						return mock(KafkaConsumer.class);
+					}
+				};
+
+		factory.createConsumer(null, null, null, overrides);
+
+		ConsumerConfig consumerConfig = capturedConfig.get();
+
+		assertThat(consumerConfig.getInt(ConsumerConfig.MAX_POLL_RECORDS_CONFIG)).isEqualTo(2);
+		assertThat(consumerConfig.getString(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)).isEqualTo("earliest");
+	}
+
+	@Test
+	public void testIntegerAndStringOverridesTogether() {
+		Map<String, Object> configs = KafkaTestUtils.consumerProps(this.embeddedKafka, "testGroup", false);
+
+		Properties overrides = new Properties();
+		overrides.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "5");
+		overrides.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+
+		AtomicReference<ConsumerConfig> capturedConfig = new AtomicReference<>();
+
+		DefaultKafkaConsumerFactory<String, String> factory =
+				new DefaultKafkaConsumerFactory<String, String>(configs) {
+
+					@Override
+					protected Consumer<String, String> createRawConsumer(Map<String, Object> configProps) {
+						capturedConfig.set(new ConsumerConfig(configProps));
+						return mock(Consumer.class);
+					}
+				};
+
+		factory.createConsumer(null, null, null, overrides);
+
+		ConsumerConfig consumerConfig = capturedConfig.get();
+
+		assertThat(consumerConfig.getInt(ConsumerConfig.MAX_POLL_RECORDS_CONFIG)).isEqualTo(5);
+		assertThat(consumerConfig.getString(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)).isEqualTo("earliest");
+	}
+
+	@Test
 	public void testNoOverridesWhenCreatingConsumer() {
 		Map<String, Object> originalConfig = Collections.emptyMap();
 		final Map<String, Object> configPassedToKafkaConsumer = new HashMap<>();
