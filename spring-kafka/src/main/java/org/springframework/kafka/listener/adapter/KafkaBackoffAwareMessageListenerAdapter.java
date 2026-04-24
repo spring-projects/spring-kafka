@@ -18,6 +18,7 @@ package org.springframework.kafka.listener.adapter;
 
 import java.math.BigInteger;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -49,6 +50,8 @@ import org.springframework.kafka.support.Acknowledgment;
 public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 		extends AbstractDelegatingMessageListenerAdapter<MessageListener<K, V>>
 		implements AcknowledgingConsumerAwareMessageListener<K, V> {
+
+	private static final long MAX_BACKOFF_MS = Duration.ofDays(1).toMillis();
 
 	private final String listenerId;
 
@@ -120,9 +123,9 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 	private Optional<Long> maybeGetBackoffTimestamp(ConsumerRecord<K, V> data) {
 		return Optional
 				.ofNullable(data.headers().lastHeader(this.backoffTimestampHeader))
-				.map(timestampHeader -> new BigInteger(timestampHeader.value()).longValue());
+				.map(timestampHeader -> new BigInteger(timestampHeader.value()).longValue())
+				.filter(ts -> ts - Instant.now(this.clock).toEpochMilli() <= MAX_BACKOFF_MS);
 	}
-
 
 	/*
 	 * Since the container uses the delegate's type to determine which method to call, we

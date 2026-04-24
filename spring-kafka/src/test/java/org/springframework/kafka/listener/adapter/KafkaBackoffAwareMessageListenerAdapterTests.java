@@ -252,4 +252,24 @@ class KafkaBackoffAwareMessageListenerAdapterTests {
 
 		then(delegate).should(times(1)).onMessage(data, ack, consumer);
 	}
+
+	@Test
+	void shouldIgnoreBackoffHeaderWhenTimestampImpliesExcessivePause() {
+		// given - Long.MAX_VALUE as the backoff. This implies a pause of ~292M years
+		byte[] poisonBytes = BigInteger.valueOf(Long.MAX_VALUE).toByteArray();
+		given(data.headers()).willReturn(headers);
+		given(headers.lastHeader(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP))
+				.willReturn(header);
+		given(header.value()).willReturn(poisonBytes);
+
+		KafkaBackoffAwareMessageListenerAdapter<Object, Object> adapter =
+				new KafkaBackoffAwareMessageListenerAdapter<>(delegate, kafkaConsumerBackoffManager, listenerId, clock);
+
+		// when
+		adapter.onMessage(data, ack, consumer);
+
+		// then - backoff manager is never consulted, delegate still gets the record
+		then(kafkaConsumerBackoffManager).shouldHaveNoInteractions();
+		then(delegate).should(times(1)).onMessage(data, ack, consumer);
+	}
 }
