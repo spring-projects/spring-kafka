@@ -21,6 +21,7 @@ import java.util.List;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.listener.ContainerProperties.EOSMode;
 
@@ -91,6 +92,14 @@ public interface AfterRollbackProcessor<K, V> {
 	 * @since 2.2
 	 */
 	default void clearThreadState() {
+	}
+
+	/**
+	 * Optional method to clear state for the specified topic/partition.
+	 * @param topicPartition the topic/partition.
+	 * @since 4.1
+	 */
+	default void clearTopicPartitionState(TopicPartition topicPartition) {
 	}
 
 	/**

@@ -207,4 +207,9 @@ public class DefaultErrorHandler extends FailedBatchProcessor implements CommonE
 		getFallbackBatchHandler().onPartitionsAssigned(consumer, partitions, publishPause);
 	}
 
+	@Override
+	public void clearTopicPartitionState(TopicPartition topicPartition) {
+		super.clearTopicPartition(topicPartition);
+	}
+
 }

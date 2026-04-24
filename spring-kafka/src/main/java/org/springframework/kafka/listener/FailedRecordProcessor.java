@@ -22,6 +22,7 @@ import java.util.function.BiFunction;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.log.LogAccessor;
@@ -177,6 +178,15 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 
 	public void clearThreadState() {
 		this.failureTracker.clearThreadState();
+	}
+
+	/**
+	 * Clear the state for the specified topic/partition.
+	 * @param topicPartition the topic/partition.
+	 * @since 4.1
+	 */
+	public void clearTopicPartition(TopicPartition topicPartition) {
+		this.failureTracker.clearTopicPartition(topicPartition);
 	}
 
 }
