@@ -63,6 +63,8 @@ public class DeadLetterPublishingRecovererFactory {
 	private static final LogAccessor LOGGER =
 			new LogAccessor(LogFactory.getLog(DeadLetterPublishingRecovererFactory.class));
 
+	private static final short ATTEMPTS_HARD_CAP = Short.MAX_VALUE;
+
 	private final DestinationTopicResolver destinationTopicResolver;
 
 	private final Set<Class<? extends Exception>> fatalExceptions = new LinkedHashSet<>();
@@ -337,15 +339,21 @@ public class DeadLetterPublishingRecovererFactory {
 		Header header = consumerRecord.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS);
 		if (header != null) {
 			byte[] value = header.value();
+			int raw;
 			if (value.length == Byte.BYTES) { // backwards compatibility
-				return value[0];
+				raw = Byte.toUnsignedInt(value[0]);
 			}
 			else if (value.length == Integer.BYTES) {
-				return ByteBuffer.wrap(value).getInt();
+				raw = ByteBuffer.wrap(value).getInt();
 			}
 			else {
 				LOGGER.debug(() -> "Unexpected size for " + RetryTopicHeaders.DEFAULT_HEADER_ATTEMPTS + " header: "
 						+ value.length);
+				return 1;
+			}
+
+			if (raw >= 1 && raw <= ATTEMPTS_HARD_CAP) {
+				return raw;
 			}
 		}
 		return 1;
