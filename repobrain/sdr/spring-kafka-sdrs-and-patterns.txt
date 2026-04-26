@@ -1,21 +1,21 @@
 Repo: spring-projects/spring-kafka
-Generated: 2026-04-26 06:38:50Z
+Generated: 2026-04-26 06:40:56Z
 Repo dir: /Users/ankitc/Desktop/Codes/RepoBrain-Codex/work/spring-kafka-upstream
-Count: 25
+Count: 14
 Fetch failures (used fallback URLs):
-- #4213: HTTP Error 403: rate limit exceeded
-- #4216: HTTP Error 403: rate limit exceeded
-- #4214: HTTP Error 403: rate limit exceeded
-- #4208: HTTP Error 403: rate limit exceeded
-- #4204: HTTP Error 403: rate limit exceeded
-- #4184: HTTP Error 403: rate limit exceeded
-- #4197: HTTP Error 403: rate limit exceeded
-- #4172: HTTP Error 403: rate limit exceeded
-- #4185: HTTP Error 403: rate limit exceeded
-- #4193: HTTP Error 403: rate limit exceeded
-- ... (1 more)
+- #4213: cache miss for PR #4213 and SPRING_KAFKA_NO_FETCH is set
+- #4216: cache miss for PR #4216 and SPRING_KAFKA_NO_FETCH is set
+- #4214: cache miss for PR #4214 and SPRING_KAFKA_NO_FETCH is set
+- #4208: cache miss for PR #4208 and SPRING_KAFKA_NO_FETCH is set
+- #4204: cache miss for PR #4204 and SPRING_KAFKA_NO_FETCH is set
+- #4184: cache miss for PR #4184 and SPRING_KAFKA_NO_FETCH is set
+- #4197: cache miss for PR #4197 and SPRING_KAFKA_NO_FETCH is set
+- #4172: cache miss for PR #4172 and SPRING_KAFKA_NO_FETCH is set
+- #4185: cache miss for PR #4185 and SPRING_KAFKA_NO_FETCH is set
+- #4193: cache miss for PR #4193 and SPRING_KAFKA_NO_FETCH is set
+- ... (151 more)
 
-== 1/25 ==
+== 1/14 ==
 SDR: PR #4401
 Attribution: https://github.com/spring-projects/spring-kafka/pull/4401
 Decision: Fix `asyncReplies` calculation for container
@@ -28,7 +28,7 @@ Example paths:
 - spring-kafka/src/test/java/org/springframework/kafka/retrytopic/AsyncMonoRetryTopicScenarioTests.java
 Pattern: When changing container bookkeeping (async replies/pausing/offset gaps), add a minimal repro test to prevent regressions in concurrent flows.
 
-== 2/25 ==
+== 2/14 ==
 SDR: PR #4367
 Attribution: https://github.com/spring-projects/spring-kafka/pull/4367
 Decision: GH-4355 Add @Nullable for ProducerFactory & ConsumerFactory interfaces
@@ -40,7 +40,7 @@ Example paths:
 - spring-kafka/src/main/java/org/springframework/kafka/core/ProducerFactory.java
 Pattern: When adjusting public APIs, annotate nullability consistently across interfaces and ensure binary compatibility where applicable.
 
-== 3/25 ==
+== 3/14 ==
 SDR: PR #4334
 Attribution: https://github.com/spring-projects/spring-kafka/pull/4334
 Decision: Fix consumer pausing infinitely in async ack flow
@@ -52,7 +52,7 @@ Example paths:
 - spring-kafka/src/test/java/org/springframework/kafka/listener/KafkaMessageListenerContainerTests.java
 Pattern: When adding new ack types/callbacks, thread it through container properties and listener container codepaths, and add a regression test for async flows.
 
-== 4/25 ==
+== 4/14 ==
 SDR: PR #4331
 Attribution: https://github.com/spring-projects/spring-kafka/pull/4331
 Decision: Upgrade to Gradle `9.4.0`; build improvements
@@ -67,7 +67,7 @@ Example paths:
 - gradle/wrapper/gradle-wrapper.jar
 Pattern: Add a focused test or verification note when changing behavior.
 
-== 5/25 ==
+== 5/14 ==
 SDR: PR #4304
 Attribution: https://github.com/spring-projects/spring-kafka/pull/4304
 Decision: Allow @KafkaListener with no topic specification for programmatic resolution
@@ -79,7 +79,7 @@ Example paths:
 - spring-kafka/src/test/java/org/springframework/kafka/annotation/KafkaListenerAnnotationBeanPostProcessorTests.java
 Pattern: Add a focused test or verification note when changing behavior.
 
-== 6/25 ==
+== 6/14 ==
 SDR: PR #4307
 Attribution: https://github.com/spring-projects/spring-kafka/pull/4307
 Decision: Fix typo in `GenericMessageListener` subclasses
@@ -94,7 +94,7 @@ Example paths:
 - spring-kafka/src/main/java/org/springframework/kafka/listener/ConsumerAwareMessageListener.java
 Pattern: Add a focused test or verification note when changing behavior.
 
-== 7/25 ==
+== 7/14 ==
 SDR: PR #4279
 Attribution: https://github.com/spring-projects/spring-kafka/pull/4279
 Decision: Update Quick Tour and Testing Applications for Spring Boot starter dependencies
@@ -106,7 +106,7 @@ Example paths:
 - spring-kafka-docs/src/main/antora/modules/ROOT/pages/testing.adoc
 Pattern: Add a focused test or verification note when changing behavior.
 
-== 8/25 ==
+== 8/14 ==
 SDR: PR #4271
 Attribution: https://github.com/spring-projects/spring-kafka/pull/4271
 Decision: Fix formatting in `transactions.adoc`
@@ -117,7 +117,7 @@ Example paths:
 - spring-kafka-docs/src/main/antora/modules/ROOT/pages/kafka/transactions.adoc
 Pattern: Fix style violations with the project’s existing Checkstyle/formatting rules.
 
-== 9/25 ==
+== 9/14 ==
 SDR: PR #4264
 Attribution: https://github.com/spring-projects/spring-kafka/pull/4264
 Decision: Fix offset gap larger than 1 in case async ack
@@ -129,7 +129,7 @@ Example paths:
 - spring-kafka/src/test/java/org/springframework/kafka/listener/KafkaMessageListenerContainerTests.java
 Pattern: When adding new ack types/callbacks, thread it through container properties and listener container codepaths, and add a regression test for async flows.
 
-== 10/25 ==
+== 10/14 ==
 SDR: PR #4201
 Attribution: https://github.com/spring-projects/spring-kafka/pull/4201
 Decision: Fix plural words rendering in docs
@@ -144,7 +144,7 @@ Example paths:
 - spring-kafka-docs/src/main/antora/modules/ROOT/pages/kafka/container-props.adoc
 Pattern: When updating docs, keep property names and behavioral descriptions consistent with code.
 
-== 11/25 ==
+== 11/14 ==
 SDR: PR #4244
 Attribution: https://github.com/spring-projects/spring-kafka/pull/4244
 Decision: Fix reference of deprecated serde APIs in docs
@@ -157,7 +157,7 @@ Example paths:
 - spring-kafka-docs/src/main/antora/modules/ROOT/pages/tips.adoc
 Pattern: When updating docs, keep property names and behavioral descriptions consistent with code.
 
-== 12/25 ==
+== 12/14 ==
 SDR: PR #4228
 Attribution: https://github.com/spring-projects/spring-kafka/pull/4228
 Decision: Remove duplicate space
@@ -168,7 +168,7 @@ Example paths:
 - spring-kafka/src/main/java/org/springframework/kafka/support/serializer/JsonDeserializer.java
 Pattern: Add a focused test or verification note when changing behavior.
 
-== 13/25 ==
+== 13/14 ==
 SDR: PR #4229
 Attribution: https://github.com/spring-projects/spring-kafka/pull/4229
 Decision: Correct method javadoc
@@ -179,7 +179,7 @@ Example paths:
 - spring-kafka/src/main/java/org/springframework/kafka/support/converter/MessagingMessageConverter.java
 Pattern: Add a focused test or verification note when changing behavior.
 
-== 14/25 ==
+== 14/14 ==
 SDR: PR #4224
 Attribution: https://github.com/spring-projects/spring-kafka/pull/4224
 Decision: Make sure that `@Payload` arg has a precedence
@@ -189,134 +189,4 @@ Commit: 3372060eb9593adeaebe656af152a347eb1ceb16
 Example paths:
 - spring-kafka/src/main/java/org/springframework/kafka/listener/adapter/MessagingMessageListenerAdapter.java
 - spring-kafka/src/test/java/org/springframework/kafka/annotation/EnableKafkaIntegrationTests.java
-Pattern: Add a focused test or verification note when changing behavior.
-
-== 15/25 ==
-SDR: PR #4213
-Attribution: https://github.com/spring-projects/spring-kafka/pull/4213
-Decision: 
-Justification: Not stated in PR description; see linked PR/issue discussion.
-Scope: build.gradle(1)
-Commit: b14e775cf2a1516f07a1f583cf322598d06802c8
-Example paths:
-- build.gradle
-Pattern: Add a focused test or verification note when changing behavior.
-
-== 16/25 ==
-SDR: PR #4216
-Attribution: https://github.com/spring-projects/spring-kafka/pull/4216
-Decision: 
-Justification: Not stated in PR description; see linked PR/issue discussion.
-Scope: build.gradle(1)
-Commit: 2640dc846309b61018cb962d971984e74ed9b02c
-Example paths:
-- build.gradle
-Pattern: Add a focused test or verification note when changing behavior.
-
-== 17/25 ==
-SDR: PR #4214
-Attribution: https://github.com/spring-projects/spring-kafka/pull/4214
-Decision: 
-Justification: Not stated in PR description; see linked PR/issue discussion.
-Scope: .github(1)
-Commit: 2b08acc3e6dda878d96db440cb5c3b86b70632d1
-Example paths:
-- .github/workflows/verify-staged-artifacts.yml
-Pattern: Add a focused test or verification note when changing behavior.
-
-== 18/25 ==
-SDR: PR #4208
-Attribution: https://github.com/spring-projects/spring-kafka/pull/4208
-Decision: 
-Justification: Not stated in PR description; see linked PR/issue discussion.
-Scope: spring-kafka-docs(1)
-Commit: 5e081a3c90241550a62a87b7bab537bce6edb802
-Example paths:
-- spring-kafka-docs/src/main/antora/modules/ROOT/pages/kafka/receiving-messages/filtering.adoc
-Pattern: Add a focused test or verification note when changing behavior.
-
-== 19/25 ==
-SDR: PR #4204
-Attribution: https://github.com/spring-projects/spring-kafka/pull/4204
-Decision: 
-Justification: Not stated in PR description; see linked PR/issue discussion.
-Scope: spring-kafka-docs(1)
-Commit: 4f1906c52a239bd8917dbdee3d47af7006357d95
-Example paths:
-- spring-kafka-docs/src/main/antora/modules/ROOT/pages/kafka/receiving-messages/listener-annotation.adoc
-Pattern: Add a focused test or verification note when changing behavior.
-
-== 20/25 ==
-SDR: PR #4184
-Attribution: https://github.com/spring-projects/spring-kafka/pull/4184
-Decision: 
-Justification: Not stated in PR description; see linked PR/issue discussion.
-Scope: CONTRIBUTING.adoc(1), README.md(1)
-Commit: 6999a1898ac1a144d4b110275c3c2ce21f1509d5
-Example paths:
-- CONTRIBUTING.adoc
-- README.md
-Pattern: Add a focused test or verification note when changing behavior.
-
-== 21/25 ==
-SDR: PR #4197
-Attribution: https://github.com/spring-projects/spring-kafka/pull/4197
-Decision: 
-Justification: Not stated in PR description; see linked PR/issue discussion.
-Scope: spring-kafka(2)
-Commit: 83a34b9f1b8abcf063bc8fb50336dbcfd002bf65
-Example paths:
-- spring-kafka/src/main/java/org/springframework/kafka/config/KafkaListenerConfigUtils.java
-- spring-kafka/src/main/java/org/springframework/kafka/core/ProducerFactoryUtils.java
-Pattern: Add a focused test or verification note when changing behavior.
-
-== 22/25 ==
-SDR: PR #4172
-Attribution: https://github.com/spring-projects/spring-kafka/pull/4172
-Decision: 
-Justification: Not stated in PR description; see linked PR/issue discussion.
-Scope: spring-kafka(1)
-Commit: a0b5b70cfc061cf8c3771b9647d0a63e83819273
-Example paths:
-- spring-kafka/src/main/java/org/springframework/kafka/annotation/KafkaListenerAnnotationBeanPostProcessor.java
-Pattern: Add a focused test or verification note when changing behavior.
-
-== 23/25 ==
-SDR: PR #4185
-Attribution: https://github.com/spring-projects/spring-kafka/pull/4185
-Decision: 
-Justification: Not stated in PR description; see linked PR/issue discussion.
-Scope: spring-kafka(10)
-Commit: 9eb09a9b1a8c8935f1109d343f3d9beb179533fd
-Example paths:
-- spring-kafka/src/main/java/org/springframework/kafka/listener/DeadLetterPublishingRecoverer.java
-- spring-kafka/src/main/java/org/springframework/kafka/listener/KafkaMessageListenerContainer.java
-- spring-kafka/src/main/java/org/springframework/kafka/requestreply/ReplyingKafkaTemplate.java
-- spring-kafka/src/main/java/org/springframework/kafka/support/serializer/ErrorHandlingDeserializer.java
-- spring-kafka/src/main/java/org/springframework/kafka/support/serializer/SerializationUtils.java
-Pattern: Add a focused test or verification note when changing behavior.
-
-== 24/25 ==
-SDR: PR #4193
-Attribution: https://github.com/spring-projects/spring-kafka/pull/4193
-Decision: 
-Justification: Not stated in PR description; see linked PR/issue discussion.
-Scope: spring-kafka(4)
-Commit: 781adaed6e102e136730038c89496df0ea219b8a
-Example paths:
-- spring-kafka/src/main/java/org/springframework/kafka/config/KafkaListenerEndpointRegistrar.java
-- spring-kafka/src/main/java/org/springframework/kafka/retrytopic/EndpointCustomizer.java
-- spring-kafka/src/main/java/org/springframework/kafka/retrytopic/RetryTopicConfigurer.java
-- spring-kafka/src/test/java/org/springframework/kafka/retrytopic/EndpointCustomizerFactoryTests.java
-Pattern: Add a focused test or verification note when changing behavior.
-
-== 25/25 ==
-SDR: PR #4187
-Attribution: https://github.com/spring-projects/spring-kafka/pull/4187
-Decision: 
-Justification: Not stated in PR description; see linked PR/issue discussion.
-Scope: build.gradle(1)
-Commit: a95ff86500d1825e321eaf9fec549554527d4d92
-Example paths:
-- build.gradle
 Pattern: Add a focused test or verification note when changing behavior.
