@@ -530,6 +530,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 						() -> "A " + GenericMessageListener.class.getName() + " implementation must be provided");
 				Assert.state(!this.fenced, "Container Fenced. It is not allowed to start.");
 				doStart();
+				recordContainerStarted();
 			}
 		}
 		finally {
@@ -608,6 +609,18 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	protected abstract void doStart();
+
+	/**
+	 * Called when the container is started. Subclasses may override to record metrics.
+	 */
+	protected void recordContainerStarted() {
+	}
+
+	/**
+	 * Called when the container is stopped. Subclasses may override to record metrics.
+	 */
+	protected void recordContainerStopped() {
+	}
 
 	@Override
 	public final void stop() {
@@ -689,6 +702,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	protected void doStop(Runnable callback) {
+		recordContainerStopped();
 		doStop(callback, true);
 		publishContainerStoppedEvent();
 	}
