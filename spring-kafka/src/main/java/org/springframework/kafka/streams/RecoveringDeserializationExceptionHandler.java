@@ -85,7 +85,7 @@ public class RecoveringDeserializationExceptionHandler
 	@Override
 	public Response handleError(ErrorHandlerContext context, ConsumerRecord<byte[], byte[]> record,
 			Exception exception) {
-		return handleErrorCommon(context, record, exception);
+		return handleErrorCommon(context, record, exception, record);
 	}
 
 	/**

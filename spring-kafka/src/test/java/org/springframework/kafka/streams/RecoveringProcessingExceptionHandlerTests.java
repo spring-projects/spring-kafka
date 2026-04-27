@@ -17,8 +17,12 @@
 package org.springframework.kafka.streams;
 
 import java.util.Map;
+import java.util.Optional;
 
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.streams.errors.ErrorHandlerContext;
 import org.apache.kafka.streams.errors.ProcessingExceptionHandler;
 import org.apache.kafka.streams.processor.api.Record;
@@ -35,9 +39,14 @@ class RecoveringProcessingExceptionHandlerTests
 		extends AbstractRecoveringExceptionHandlerTests<RecoveringProcessingExceptionHandler,
 		ProcessingExceptionHandler.Response> {
 
+	private final Record<String, String> record;
+
 	RecoveringProcessingExceptionHandlerTests() {
 		super(RecoveringProcessingExceptionHandler.RECOVERER,
 				RecoveringProcessingExceptionHandler.DLQ_DESTINATION_RESOLVER);
+		RecordHeaders headers = new RecordHeaders();
+		headers.add("processor-header", "processor-header-value".getBytes());
+		this.record = new Record<>("key", "value", 12345L, headers);
 	}
 
 	@Override
@@ -50,8 +59,24 @@ class RecoveringProcessingExceptionHandlerTests
 	@Override
 	protected ProcessingExceptionHandler.Response handleError(
 			RecoveringProcessingExceptionHandler handler, ErrorHandlerContext context, Exception exception) {
-		return handler.handleError(context,
-				new Record<>(context.sourceRawKey(), context.sourceRawValue(), context.timestamp()), exception);
+		return handler.handleError(context, this.record, exception);
+	}
+
+	@Override
+	protected ConsumerRecord<?, ?> createDestinationResolverConsumerRecord(ErrorHandlerContext context) {
+		return new ConsumerRecord<>(
+				context.topic(),
+				context.partition(),
+				context.offset(),
+				this.record.timestamp(),
+				TimestampType.NO_TIMESTAMP_TYPE,
+				ConsumerRecord.NULL_SIZE,
+				ConsumerRecord.NULL_SIZE,
+				this.record.key(),
+				this.record.value(),
+				this.record.headers(),
+				Optional.empty(),
+				Optional.empty());
 	}
 
 	@Override
@@ -68,13 +93,20 @@ class RecoveringProcessingExceptionHandlerTests
 	protected void assertResponseShouldContainDeadLetterRecords(
 			ProcessingExceptionHandler.Response response, ProducerRecord<byte[], byte[]> expectedRecord) {
 		assertThat(response.deadLetterQueueRecords()).hasSize(1).first()
-				.satisfies(record -> {
-					assertThat(record.topic()).isEqualTo(expectedRecord.topic());
-					assertThat(record.partition()).isEqualTo(expectedRecord.partition());
-					assertThat(record.key()).isEqualTo(expectedRecord.key());
-					assertThat(record.value()).isEqualTo(expectedRecord.value());
-					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
-					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE).value()).isNotNull();
+				.satisfies(deadLetterRecord -> {
+					assertThat(deadLetterRecord.topic()).isEqualTo(expectedRecord.topic());
+					assertThat(deadLetterRecord.partition()).isEqualTo(expectedRecord.partition());
+					assertThat(deadLetterRecord.key()).isEqualTo(expectedRecord.key());
+					assertThat(deadLetterRecord.value()).isEqualTo(expectedRecord.value());
+					assertThat(deadLetterRecord.headers().toArray().length).isEqualTo(9);
+					expectedRecord.headers().forEach(expectedHeader ->
+							assertThat(deadLetterRecord.headers().lastHeader(expectedHeader.key()))
+									.isNotNull()
+									.satisfies(h -> assertThat(h.value()).isEqualTo(expectedHeader.value())));
+					// Do not validate content for the following headers, only presence
+					assertThat(deadLetterRecord.headers().lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN)).isNotNull();
+					assertThat(deadLetterRecord.headers().lastHeader(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN)).isNotNull();
+					assertThat(deadLetterRecord.headers().lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
 				});
 	}
 

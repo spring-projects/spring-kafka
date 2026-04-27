@@ -331,7 +331,10 @@ The recovery strategies are as follows, by priority order:
 - If a `ConsumerRecordRecoverer` implementation is defined, invoke it and resume the stream without producing dead-letter records, as handling is delegated to the `ConsumerRecordRecoverer`. For example, the provided xref:streams.adoc#dead-letter-publishing-recoverer[`DeadLetterPublishingRecoverer`] implementation can be used.
 - Fail the stream without producing dead-letter records.
 
-When a dead-letter record is published to a dead-letter topic, whether through the native Kafka Streams DLQ or via a `ConsumerRecordRecoverer` implementation, the record is enriched with the xref:kafka/annotation-error-handling.adoc#dead-letters[Spring for Apache Kafka DLT headers].
+When a dead-letter record is published to a dead-letter topic, whether through the native Kafka Streams DLQ or via a `ConsumerRecordRecoverer` implementation:
+
+- The source raw key, source raw value and source headers are used to build the record.
+- The record is enriched with the xref:kafka/annotation-error-handling.adoc#dead-letters[Spring for Apache Kafka DLT headers].
 
 [[streams-deser-recovery]]
 == Recovery from Deserialization Exceptions

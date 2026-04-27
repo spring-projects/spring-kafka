@@ -54,7 +54,7 @@ public class RecoveringProductionExceptionHandler
 	 */
 	@Override
 	public Response handleError(ErrorHandlerContext context, ProducerRecord<byte[], byte[]> record, Exception exception) {
-		return handleErrorCommon(context, buildConsumerSourceRecord(context), exception);
+		return handleErrorCommon(context, buildConsumerRecord(context, record), exception, buildSourceRecord(context));
 	}
 
 	/**
@@ -63,7 +63,7 @@ public class RecoveringProductionExceptionHandler
 	@SuppressWarnings("rawtypes")
 	@Override
 	public Response handleSerializationError(ErrorHandlerContext context, ProducerRecord record, Exception exception, SerializationExceptionOrigin origin) {
-		return handleErrorCommon(context, buildConsumerSourceRecord(context), exception);
+		return handleErrorCommon(context, buildConsumerRecord(context, record), exception, buildSourceRecord(context));
 	}
 
 	/**
@@ -90,7 +90,23 @@ public class RecoveringProductionExceptionHandler
 		return Response.resume(deadLetterRecords);
 	}
 
-	private ConsumerRecord<?, ?> buildConsumerSourceRecord(ErrorHandlerContext context) {
+	private ConsumerRecord<?, ?> buildConsumerRecord(ErrorHandlerContext context, ProducerRecord<?, ?> record) {
+		return new ConsumerRecord<>(
+				context.topic(),
+				context.partition(),
+				context.offset(),
+				record.timestamp(),
+				TimestampType.NO_TIMESTAMP_TYPE,
+				ConsumerRecord.NULL_SIZE,
+				ConsumerRecord.NULL_SIZE,
+				record.key(),
+				record.value(),
+				record.headers(),
+				Optional.empty(),
+				Optional.empty());
+	}
+
+	private ConsumerRecord<byte[], byte[]> buildSourceRecord(ErrorHandlerContext context) {
 		return new ConsumerRecord<>(
 				context.topic(),
 				context.partition(),
