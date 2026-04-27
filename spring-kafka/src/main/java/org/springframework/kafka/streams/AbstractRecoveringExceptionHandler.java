@@ -71,19 +71,18 @@ public abstract class AbstractRecoveringExceptionHandler<R> {
 	 * @param context the error handler context
 	 * @param record the consumer record that caused the error
 	 * @param exception the exception that occurred
+	 * @param sourceRecord the source record as it was at the input of the sub-topology
 	 * @return a handler-specific response
 	 */
-	protected R handleErrorCommon(ErrorHandlerContext context, ConsumerRecord<?, ?> record, Exception exception) {
+	protected R handleErrorCommon(ErrorHandlerContext context, ConsumerRecord<?, ?> record, Exception exception, ConsumerRecord<byte[], byte[]> sourceRecord) {
 		if (this.destinationResolver != null) {
 			TopicPartition tp = this.destinationResolver.resolve(context, record, exception);
-			ProducerRecord<byte[], byte[]> outRecord = this.deadLetterRecordManager.enrichHeadersAndCreateProducerRecord(
-					record, exception, tp, context.sourceRawKey(), context.sourceRawValue());
+			ProducerRecord<byte[], byte[]> outRecord = this.deadLetterRecordManager.enrichHeadersAndCreateProducerRecord(sourceRecord, exception, tp);
 			return resume(Collections.singletonList(outRecord));
 		}
 
 		if (this.deadLetterTopic != null) {
-			ProducerRecord<byte[], byte[]> outRecord = this.deadLetterRecordManager.enrichHeadersAndCreateProducerRecord(
-					record, exception, new TopicPartition(this.deadLetterTopic, -1), context.sourceRawKey(), context.sourceRawValue());
+			ProducerRecord<byte[], byte[]> outRecord = this.deadLetterRecordManager.enrichHeadersAndCreateProducerRecord(sourceRecord, exception, new TopicPartition(this.deadLetterTopic, -1));
 			return resume(Collections.singletonList(outRecord));
 		}
 
