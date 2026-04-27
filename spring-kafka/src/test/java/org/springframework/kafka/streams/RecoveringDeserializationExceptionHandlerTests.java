@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.streams;
 
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -104,7 +105,12 @@ public class RecoveringDeserializationExceptionHandlerTests
 	protected DeserializationExceptionHandler.Response handleError(
 			RecoveringDeserializationExceptionHandler handler, ErrorHandlerContext context, Exception exception) {
 		return handler.handleError(context,
-				new ConsumerRecord<>(context.topic(), context.partition(), context.offset(), null, null), exception);
+				new ConsumerRecord<>(context.topic(), context.partition(), context.offset(), context.sourceRawKey(), context.sourceRawValue()), exception);
+	}
+
+	@Override
+	protected ConsumerRecord<?, ?> createExpectedConsumerRecord(ErrorHandlerContext context) {
+		return new ConsumerRecord<>(context.topic(), context.partition(), context.offset(), context.sourceRawKey(), context.sourceRawValue());
 	}
 
 	@Override
@@ -124,15 +130,24 @@ public class RecoveringDeserializationExceptionHandlerTests
 				.satisfies(record -> {
 					assertThat(record.topic()).isEqualTo(expectedRecord.topic());
 					assertThat(record.partition()).isEqualTo(expectedRecord.partition());
+					assertThat(record.timestamp()).isEqualTo(expectedRecord.timestamp());
 					assertThat(record.key()).isEqualTo(expectedRecord.key());
 					assertThat(record.value()).isEqualTo(expectedRecord.value());
+					assertThat(expectedRecord.headers()).hasSize(1);
+					expectedRecord.headers().forEach(expectedHeader ->
+							assertThat(record.headers().lastHeader(expectedHeader.key()))
+									.isNotNull()
+									.satisfies(h -> assertThat(h.value()).isEqualTo(expectedHeader.value())));
 					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_EXCEPTION_FQCN)).isNotNull();
 					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_EXCEPTION_CAUSE_FQCN)).isNotNull();
 					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_EXCEPTION_STACKTRACE)).isNotNull();
-					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNotNull();
-					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)).isNotNull();
+					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_ORIGINAL_TOPIC)).isNotNull()
+							.satisfies(h -> assertThat(new String(h.value())).isEqualTo(expectedRecord.topic()));
+					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_ORIGINAL_PARTITION)).isNotNull()
+							.satisfies(h -> assertThat(ByteBuffer.wrap(h.value()).getInt()).isEqualTo(expectedRecord.partition()));
 					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_ORIGINAL_OFFSET)).isNotNull();
-					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)).isNotNull();
+					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP)).isNotNull()
+							.satisfies(h -> assertThat(ByteBuffer.wrap(h.value()).getLong()).isEqualTo(expectedRecord.timestamp()));
 					assertThat(record.headers().lastHeader(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP_TYPE)).isNotNull();
 				});
 	}
