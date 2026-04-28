@@ -100,7 +100,7 @@ public class DefaultKafkaConsumerFactoryTests {
 
 	@Test
 	public void testMixedTypeOverridesApplied() {
-		Map<String, Object> configs = KafkaTestUtils.consumerProps(this.embeddedKafka, "testGroup", false);
+		Map<String, Object> configs = KafkaTestUtils.consumerProps(this.embeddedKafka.getBrokersAsString(), "testGroup", "false");
 
 		Properties overrides = new Properties();
 		overrides.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 2);
@@ -128,7 +128,7 @@ public class DefaultKafkaConsumerFactoryTests {
 
 	@Test
 	public void testIntegerAndStringOverridesTogether() {
-		Map<String, Object> configs = KafkaTestUtils.consumerProps(this.embeddedKafka, "testGroup", false);
+		Map<String, Object> configs = KafkaTestUtils.consumerProps(this.embeddedKafka.getBrokersAsString(), "testGroup", "false");
 
 		Properties overrides = new Properties();
 		overrides.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "5");
