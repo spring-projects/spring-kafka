@@ -59,7 +59,6 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -580,30 +579,18 @@ public class DefaultKafkaConsumerFactoryTests {
 		return applicationContext;
 	}
 
-	@Configuration
-	public static class Config {
-
-	}
-
 	@Test
-	public void testNullValueInOverridePropertiesThrowsException() {
-		Properties props = new Properties();
-		assertThatThrownBy(() -> props.put("max.poll.records", null))
-				.isInstanceOf(NullPointerException.class);
-	}
-
-	@Test
-	public void testEmptyStringValueInOverridePropertiesIsApplied(){
+	public void testEmptyStringValueInOverridePropertiesIsApplied() {
 		Map<String, Object> originalConfig = new HashMap<>();
 		originalConfig.put("max.poll.records", "10");
 
 		final Map<String, Object> capturedConfig = new HashMap<>();
 		DefaultKafkaConsumerFactory<String, String> factory =
-				new DefaultKafkaConsumerFactory<String, String>(originalConfig){
+				new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
 					@Override
-					protected Consumer<String, String> createRawConsumer(Map<String, Object> configProps){
+					protected Consumer<String, String> createRawConsumer(Map<String, Object> configProps) {
 						capturedConfig.putAll(configProps);
-						return null;
+						return mock(Consumer.class);
 					}
 				};
 
@@ -612,6 +599,34 @@ public class DefaultKafkaConsumerFactoryTests {
 		factory.createConsumer(null, null, null, props);
 
 		assertThat(capturedConfig.get("max.poll.records")).isEqualTo("");
+	}
+
+	@Test
+	public void testNewKeyInOverridePropertiesIsAddedToConfig() {
+		Map<String, Object> originalConfig = new HashMap<>();
+		originalConfig.put("max.poll.records", "10");
+
+		final Map<String, Object> capturedConfig = new HashMap<>();
+		DefaultKafkaConsumerFactory<String, String> factory =
+				new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
+					@Override
+					protected Consumer<String, String> createRawConsumer(Map<String, Object> configProps) {
+						capturedConfig.putAll(configProps);
+						return mock(Consumer.class);
+					}
+				};
+
+		Properties props = new Properties();
+		props.setProperty("fetch.min.bytes", "100");
+		factory.createConsumer(null, null, null, props);
+
+		assertThat(capturedConfig.get("max.poll.records")).isEqualTo("10");
+		assertThat(capturedConfig.get("fetch.min.bytes")).isEqualTo("100");
+	}
+
+	@Configuration
+	public static class Config {
+
 	}
 
 }
