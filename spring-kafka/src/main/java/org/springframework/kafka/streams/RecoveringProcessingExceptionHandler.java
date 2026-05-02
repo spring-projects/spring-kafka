@@ -55,7 +55,7 @@ public class RecoveringProcessingExceptionHandler
 	 */
 	@Override
 	public Response handleError(ErrorHandlerContext context, Record<?, ?> record, Exception exception) {
-		ConsumerRecord<?, ?> consumerSourceRecord = new ConsumerRecord<>(
+		ConsumerRecord<byte[], byte[]> sourceRecord = new ConsumerRecord<>(
 				context.topic(),
 				context.partition(),
 				context.offset(),
@@ -69,7 +69,21 @@ public class RecoveringProcessingExceptionHandler
 				Optional.empty(),
 				Optional.empty());
 
-		return handleErrorCommon(context, consumerSourceRecord, exception);
+		ConsumerRecord<?, ?> consumerRecord = new ConsumerRecord<>(
+				context.topic(),
+				context.partition(),
+				context.offset(),
+				record.timestamp(),
+				TimestampType.NO_TIMESTAMP_TYPE,
+				ConsumerRecord.NULL_SIZE,
+				ConsumerRecord.NULL_SIZE,
+				record.key(),
+				record.value(),
+				record.headers(),
+				Optional.empty(),
+				Optional.empty());
+
+		return handleErrorCommon(context, consumerRecord, exception, sourceRecord);
 	}
 
 	/**

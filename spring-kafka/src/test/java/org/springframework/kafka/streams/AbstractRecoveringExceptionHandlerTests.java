@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.streams;
 
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -29,6 +30,7 @@ import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.listener.ConsumerRecordRecoverer;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -67,16 +69,29 @@ abstract class AbstractRecoveringExceptionHandlerTests<H, R> {
 	protected abstract void assertResponseShouldContainDeadLetterRecords(R response,
 			ProducerRecord<byte[], byte[]> expectedRecord);
 
+	protected abstract ConsumerRecord<?, ?> createDestinationResolverConsumerRecord(ErrorHandlerContext context);
+
 	protected ErrorHandlerContext createMockContext() {
 		ErrorHandlerContext context = mock(ErrorHandlerContext.class);
-		given(context.topic()).willReturn("foo");
-		given(context.partition()).willReturn(0);
-		given(context.offset()).willReturn(0L);
-		given(context.timestamp()).willReturn(0L);
+		given(context.topic()).willReturn("source-topic");
+		given(context.partition()).willReturn(2);
+		given(context.offset()).willReturn(42L);
+		given(context.timestamp()).willReturn(150L);
 		given(context.sourceRawKey()).willReturn(new byte[0]);
 		given(context.sourceRawValue()).willReturn(new byte[0]);
-		given(context.headers()).willReturn(new RecordHeaders());
+		RecordHeaders headers = new RecordHeaders();
+		headers.add("original-header", "original-header-value".getBytes());
+		given(context.headers()).willReturn(headers);
 		return context;
+	}
+
+	private ProducerRecord<byte[], byte[]> createExpectedDeadLetterRecord(Integer partition, ErrorHandlerContext context) {
+		ProducerRecord<byte[], byte[]> record = new ProducerRecord<>("dlq-topic", partition, context.timestamp(), context.sourceRawKey(), context.sourceRawValue(), context.headers());
+		record.headers().add(KafkaHeaders.DLT_ORIGINAL_TOPIC, context.topic().getBytes());
+		record.headers().add(KafkaHeaders.DLT_ORIGINAL_PARTITION, ByteBuffer.allocate(Integer.BYTES).putInt(context.partition()).array());
+		record.headers().add(KafkaHeaders.DLT_ORIGINAL_OFFSET, ByteBuffer.allocate(Long.BYTES).putLong(context.offset()).array());
+		record.headers().add(KafkaHeaders.DLT_ORIGINAL_TIMESTAMP, ByteBuffer.allocate(Long.BYTES).putLong(context.timestamp()).array());
+		return record;
 	}
 
 	@Test
@@ -126,8 +141,7 @@ abstract class AbstractRecoveringExceptionHandlerTests<H, R> {
 		assertThat(KafkaTestUtils.getPropertyValue(handler, "destinationResolver"))
 				.isInstanceOf(KafkaStreamsDlqDestinationResolver.class);
 		assertResponseShouldResume(result);
-		assertResponseShouldContainDeadLetterRecords(result,
-				new ProducerRecord<>("foo", 1, new byte[0], new byte[0]));
+		assertResponseShouldContainDeadLetterRecords(result, createExpectedDeadLetterRecord(1, context));
 	}
 
 	@Test
@@ -140,34 +154,32 @@ abstract class AbstractRecoveringExceptionHandlerTests<H, R> {
 		assertThat(KafkaTestUtils.getPropertyValue(handler, "destinationResolver"))
 				.isInstanceOf(KafkaStreamsDlqDestinationResolver.class);
 		assertResponseShouldResume(result);
-		assertResponseShouldContainDeadLetterRecords(result,
-				new ProducerRecord<>("foo", 1, new byte[0], new byte[0]));
+		assertResponseShouldContainDeadLetterRecords(result, createExpectedDeadLetterRecord(1, context));
 	}
 
 	@Test
 	void withDestinationResolverAsObjectProperty() {
 		Map<String, Object> configs = new HashMap<>();
-		KafkaStreamsDlqDestinationResolver resolver = new KafkaStreamsDlqDestinationResolver();
+		ErrorHandlerContext context = createMockContext();
+		ConsumerRecord<?, ?> expectedRecord = createDestinationResolverConsumerRecord(context);
+		KafkaStreamsDestinationResolverWithAsserts resolver = new KafkaStreamsDestinationResolverWithAsserts(expectedRecord);
 		configs.put(this.destinationResolverPropertyKey, resolver);
 		H handler = createHandler(configs);
-		ErrorHandlerContext context = createMockContext();
 		R result = handleError(handler, context, new IllegalArgumentException());
 		assertThat(KafkaTestUtils.getPropertyValue(handler, "destinationResolver")).isSameAs(resolver);
 		assertResponseShouldResume(result);
-		assertResponseShouldContainDeadLetterRecords(result,
-				new ProducerRecord<>("foo", 1, new byte[0], new byte[0]));
+		assertResponseShouldContainDeadLetterRecords(result, createExpectedDeadLetterRecord(1, context));
 	}
 
 	@Test
 	void withDeadLetterQueueTopic() {
 		Map<String, Object> configs = new HashMap<>();
-		configs.put(StreamsConfig.ERRORS_DEAD_LETTER_QUEUE_TOPIC_NAME_CONFIG, "foo");
+		configs.put(StreamsConfig.ERRORS_DEAD_LETTER_QUEUE_TOPIC_NAME_CONFIG, "dlq-topic");
 		H handler = createHandler(configs);
 		ErrorHandlerContext context = createMockContext();
 		R result = handleError(handler, context, new IllegalArgumentException());
 		assertResponseShouldResume(result);
-		assertResponseShouldContainDeadLetterRecords(result,
-				new ProducerRecord<>("foo", null, new byte[0], new byte[0]));
+		assertResponseShouldContainDeadLetterRecords(result, createExpectedDeadLetterRecord(null, context));
 	}
 
 	@Test
@@ -193,7 +205,29 @@ abstract class AbstractRecoveringExceptionHandlerTests<H, R> {
 
 		@Override
 		public @NonNull TopicPartition resolve(@NonNull ErrorHandlerContext errorHandlerContext, @NonNull ConsumerRecord<?, ?> record, @NonNull Exception exception) {
-			return new TopicPartition("foo", 1);
+			return new TopicPartition("dlq-topic", 1);
+		}
+
+	}
+
+	public static class KafkaStreamsDestinationResolverWithAsserts implements KafkaStreamsDeadLetterDestinationResolver {
+
+		private final ConsumerRecord<?, ?> expectedRecord;
+
+		KafkaStreamsDestinationResolverWithAsserts(ConsumerRecord<?, ?> expectedRecord) {
+			this.expectedRecord = expectedRecord;
+		}
+
+		@Override
+		public @NonNull TopicPartition resolve(@NonNull ErrorHandlerContext errorHandlerContext, @NonNull ConsumerRecord<?, ?> record, @NonNull Exception exception) {
+			assertThat(record.topic()).isEqualTo(this.expectedRecord.topic());
+			assertThat(record.partition()).isEqualTo(this.expectedRecord.partition());
+			assertThat(record.offset()).isEqualTo(this.expectedRecord.offset());
+			assertThat(record.timestamp()).isEqualTo(this.expectedRecord.timestamp());
+			assertThat(record.key()).isEqualTo(this.expectedRecord.key());
+			assertThat(record.value()).isEqualTo(this.expectedRecord.value());
+			assertThat(record.headers()).isEqualTo(this.expectedRecord.headers());
+			return new TopicPartition("dlq-topic", 1);
 		}
 
 	}

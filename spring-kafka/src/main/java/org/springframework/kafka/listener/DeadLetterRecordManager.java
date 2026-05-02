@@ -92,15 +92,13 @@ public class DeadLetterRecordManager {
 
 	/**
 	 * Enriches headers with deserialization exception information and metadata, then creates a producer record for dead letter publishing.
-	 * @param record the consumer record
+	 * @param record the source consumer record
 	 * @param exception the exception that triggered the dead letter publishing
 	 * @param topicPartition the target topic and partition
-	 * @param sourceRawKey the raw key bytes of the source record that triggers the exception
-	 * @param sourceRawValue the raw value bytes of the source record that triggers the exception
 	 * @return a producer record
 	 * @since 4.1.0
 	 */
-	public ProducerRecord<byte[], byte[]> enrichHeadersAndCreateProducerRecord(ConsumerRecord<?, ?> record, Exception exception, TopicPartition topicPartition, byte[] sourceRawKey, byte[] sourceRawValue) {
+	public ProducerRecord<byte[], byte[]> enrichHeadersAndCreateProducerRecord(ConsumerRecord<byte[], byte[]> record, Exception exception, TopicPartition topicPartition) {
 		DeserializationException vDeserEx = SerializationUtils.getExceptionFromHeader(record,
 				KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER, this.logger);
 		DeserializationException kDeserEx = SerializationUtils.getExceptionFromHeader(record,
@@ -109,8 +107,9 @@ public class DeadLetterRecordManager {
 		addAndEnhanceHeaders(record, exception, vDeserEx, kDeserEx, headers);
 		return new ProducerRecord<>(topicPartition.topic(),
 				topicPartition.partition() < 0 ? null : topicPartition.partition(),
-				sourceRawKey,
-				sourceRawValue, headers);
+				record.key(),
+				record.value(),
+				headers);
 	}
 
 	/**
