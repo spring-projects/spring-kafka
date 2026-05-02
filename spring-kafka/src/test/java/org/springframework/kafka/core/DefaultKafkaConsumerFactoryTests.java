@@ -579,6 +579,51 @@ public class DefaultKafkaConsumerFactoryTests {
 		return applicationContext;
 	}
 
+	@Test
+	public void testEmptyStringValueInOverridePropertiesIsApplied() {
+		Map<String, Object> originalConfig = new HashMap<>();
+		originalConfig.put("max.poll.records", "10");
+
+		final Map<String, Object> capturedConfig = new HashMap<>();
+		DefaultKafkaConsumerFactory<String, String> factory =
+				new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
+					@Override
+					protected Consumer<String, String> createRawConsumer(Map<String, Object> configProps) {
+						capturedConfig.putAll(configProps);
+						return mock(Consumer.class);
+					}
+				};
+
+		Properties props = new Properties();
+		props.setProperty("max.poll.records", "");
+		factory.createConsumer(null, null, null, props);
+
+		assertThat(capturedConfig.get("max.poll.records")).isEqualTo("");
+	}
+
+	@Test
+	public void testNewKeyInOverridePropertiesIsAddedToConfig() {
+		Map<String, Object> originalConfig = new HashMap<>();
+		originalConfig.put("max.poll.records", "10");
+
+		final Map<String, Object> capturedConfig = new HashMap<>();
+		DefaultKafkaConsumerFactory<String, String> factory =
+				new DefaultKafkaConsumerFactory<String, String>(originalConfig) {
+					@Override
+					protected Consumer<String, String> createRawConsumer(Map<String, Object> configProps) {
+						capturedConfig.putAll(configProps);
+						return mock(Consumer.class);
+					}
+				};
+
+		Properties props = new Properties();
+		props.setProperty("fetch.min.bytes", "100");
+		factory.createConsumer(null, null, null, props);
+
+		assertThat(capturedConfig.get("max.poll.records")).isEqualTo("10");
+		assertThat(capturedConfig.get("fetch.min.bytes")).isEqualTo("100");
+	}
+
 	@Configuration
 	public static class Config {
 
