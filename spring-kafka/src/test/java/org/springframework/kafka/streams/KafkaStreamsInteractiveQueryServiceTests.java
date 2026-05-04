@@ -159,6 +159,15 @@ class KafkaStreamsInteractiveQueryServiceTests {
 	}
 
 	@Test
+	void currentHostInfoWithNoProperties() {
+		StreamsBuilderFactoryBean sbfb = new StreamsBuilderFactoryBean();
+		sbfb.setAutoStartup(false);
+		KafkaStreamsInteractiveQueryService iqs = new KafkaStreamsInteractiveQueryService(sbfb);
+		HostInfo currentKafkaStreamsApplicationHostInfo = iqs.getCurrentKafkaStreamsApplicationHostInfo();
+		assertThat(currentKafkaStreamsApplicationHostInfo).isNull();
+	}
+
+	@Test
 	void hostInfoForKeyAndStore() throws Exception {
 		ensureKafkaStreamsProcessorIsUpAndRunning();
 
