@@ -39,6 +39,7 @@ import org.springframework.util.StringUtils;
  *
  * @author Gary Russell
  * @author Wang Zhiyang
+ * @author Soby Chacko
  *
  * @since 2.3
  *
@@ -215,8 +216,7 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 			this.delegates.put(key, deserializer);
 			return deserializer;
 		}
-		catch (IllegalStateException | ClassNotFoundException | LinkageError e) {
-			this.delegates.put(key, Serdes.serdeFrom(byte[].class).deserializer());
+		catch (IllegalStateException | IllegalArgumentException | ClassNotFoundException | LinkageError e) {
 			return null;
 		}
 	}
