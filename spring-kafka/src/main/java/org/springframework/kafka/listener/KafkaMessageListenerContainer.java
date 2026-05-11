@@ -2322,7 +2322,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (afterRollbackProcessorToUse.isProcessInTransaction() && this.transactionTemplate != null) {
 				this.transactionTemplate.executeWithoutResult((status) ->
 						afterRollbackProcessorToUse.processBatch(records,
-								Objects.requireNonNullElseGet(recordList, () -> createRecordList(records)),
+								(CollectionUtils.isEmpty(recordList) ? createRecordList(records) : recordList),
 								ListenerConsumer.this.consumer,
 								KafkaMessageListenerContainer.this.thisOrParentContainer, e,
 								ListenerConsumer.this.wantsBatchRecoverAfterRollback, ListenerConsumer.this.eosMode));
@@ -2330,7 +2330,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			else {
 				try {
 					afterRollbackProcessorToUse.processBatch(records,
-							Objects.requireNonNullElseGet(recordList, () -> createRecordList(records)), this.consumer,
+							(CollectionUtils.isEmpty(recordList) ? createRecordList(records) : recordList), this.consumer,
 							KafkaMessageListenerContainer.this.thisOrParentContainer, e,
 							this.wantsBatchRecoverAfterRollback, this.eosMode);
 				}
