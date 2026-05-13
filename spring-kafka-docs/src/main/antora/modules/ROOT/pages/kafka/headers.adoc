@@ -76,10 +76,23 @@ The first pattern that matches a header name (whether positive or negative) wins
 
 When you provide your own patterns, we recommend including `!id` and `!timestamp`, since these headers are read-only on the inbound side.
 
-IMPORTANT: By default, the mapper deserializes only classes in `java.lang` and `java.util`.
-You can trust other (or all) packages by adding trusted packages with the `addTrustedPackages` method.
-If you receive messages from untrusted sources, you may wish to add only those packages you trust.
-To trust all packages, you can use `mapper.addTrustedPackages("+++*+++")`.
+[[header-mapper-trusted-packages]]
+IMPORTANT: By default, the mapper deserializes only classes whose package is exactly `java.lang`, `java.net`, `java.util`, or `org.springframework.util`.
+You can trust additional packages with the `addTrustedPackages` method.
+Trust is **exact-package-name only**: a class is trusted only when its declaring package appears verbatim in the trusted list.
+Subpackages are *not* trusted transitively; each must be registered explicitly.
+If you receive messages from untrusted sources, register only the specific packages you need.
+To trust all packages without restriction, use `mapper.addTrustedPackages("+++*+++")` — though this is not recommended with untrusted sources.
+Classes in a non-trusted package are returned to the application as a `NonTrustedHeaderType` value instead of being deserialized.
+
+[source, java]
+----
+// Trusts com.example but NOT com.example.events
+mapper.addTrustedPackages("com.example");
+
+// Both must be listed explicitly
+mapper.addTrustedPackages("com.example", "com.example.events");
+----
 
 NOTE: Mapping `String` header values in a raw form is useful when communicating with systems that are not aware of the mapper's JSON format.
 
