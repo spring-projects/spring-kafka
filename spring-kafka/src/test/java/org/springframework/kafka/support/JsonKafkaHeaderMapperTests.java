@@ -623,6 +623,32 @@ public class JsonKafkaHeaderMapperTests {
 		verify(mockHeader, never()).key();
 	}
 
+	@Test
+	void subpackagesOfDefaultsAreNotTrustedTransitively() {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		assertThat(mapper.trusted("java.util.logging.FileHandler")).isFalse();
+		assertThat(mapper.trusted("java.lang.reflect.Method")).isFalse();
+		assertThat(mapper.trusted("java.util.concurrent.ForkJoinPool")).isFalse();
+	}
+
+	@Test
+	void exactMatchAgainstDefaultsStillWorks() {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		assertThat(mapper.trusted("java.util.HashMapr")).isTrue();
+		assertThat(mapper.trusted("java.lang.String")).isTrue();
+		assertThat(mapper.trusted("java.util.UUID")).isTrue();
+	}
+
+	@Test
+	void userAddedSubpackagesMustBeAddedExplicitly() {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		mapper.addTrustedPackages("com.acme");
+		assertThat(mapper.trusted("com.acme.OrderEvent")).isTrue();
+		assertThat(mapper.trusted("com.acme.events.OrderEvent")).isFalse();
+		mapper.addTrustedPackages("com.acme.events");
+		assertThat(mapper.trusted("com.acme.events.OrderEvent")).isTrue();
+	}
+
 	public static final class Foo {
 
 		private String bar = "bar";
