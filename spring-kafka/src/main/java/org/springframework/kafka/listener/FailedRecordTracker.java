@@ -213,7 +213,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 		return failedRecord;
 	}
 
-	private BackOff determineBackOff(ConsumerRecord<?, ?> record, Exception exception) {
+	BackOff determineBackOff(ConsumerRecord<?, ?> record, Exception exception) {
 		if (this.backOffFunction == null) {
 			return this.backOff;
 		}

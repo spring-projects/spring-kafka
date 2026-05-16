@@ -84,6 +84,9 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 
 		super(recoverer, backOff, backOffHandler);
 		this.fallbackBatchHandler = fallbackHandler;
+		if (this.fallbackBatchHandler instanceof FallbackBatchErrorHandler handler) {
+			handler.setFailureTracker(getFailureTracker());
+		}
 	}
 
 	@Override
