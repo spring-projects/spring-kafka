@@ -68,6 +68,8 @@ class FallbackBatchErrorHandler extends ExceptionClassifier implements CommonErr
 
 	private boolean reclassifyOnExceptionChange = true;
 
+	private @Nullable FailedRecordTracker failureTracker;
+
 	/**
 	 * Construct an instance with a default {@link FixedBackOff} (unlimited attempts with
 	 * a 5 second back off).
@@ -139,6 +141,10 @@ class FallbackBatchErrorHandler extends ExceptionClassifier implements CommonErr
 		this.reclassifyOnExceptionChange = reclassifyOnExceptionChange;
 	}
 
+	void setFailureTracker(FailedRecordTracker failedRecordTracker) {
+		this.failureTracker = failedRecordTracker;
+	}
+
 	@Override
 	public void handleBatch(Exception thrownException, @Nullable ConsumerRecords<?, ?> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container, Runnable invokeListener) {
@@ -149,7 +155,9 @@ class FallbackBatchErrorHandler extends ExceptionClassifier implements CommonErr
 		}
 		this.retrying.put(Thread.currentThread(), true);
 		try {
-			ErrorHandlingUtils.retryBatch(thrownException, records, consumer, container, invokeListener, this.backOff,
+			BackOff backOffToUse = this.failureTracker == null ? this.backOff :
+					this.failureTracker.determineBackOff(records.iterator().next(), thrownException);
+			ErrorHandlingUtils.retryBatch(thrownException, records, consumer, container, invokeListener, backOffToUse,
 					this.seeker, this.recoverer, this.logger, getLogLevel(), this.retryListeners, getExceptionMatcher(),
 					this.reclassifyOnExceptionChange);
 		}
