@@ -3249,10 +3249,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.isCountAck) {
 				countAcks();
 			}
-			else if (this.isTimeAck) {
+			if (this.isTimeAck) {
 				timedAcks();
 			}
-			else if (!this.isManualImmediateAck) {
+			if (!this.isCountAck && !this.isTimeAck && !this.isManualImmediateAck) {
 				commitIfNecessary();
 				this.count = 0;
 			}
