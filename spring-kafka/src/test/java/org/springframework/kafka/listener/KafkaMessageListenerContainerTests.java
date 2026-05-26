@@ -523,6 +523,52 @@ public class KafkaMessageListenerContainerTests {
 		verify(consumer.get(), times(2)).commitSync(anyMap(), any());
 	}
 
+	@SuppressWarnings("unchecked")
+	@Test
+	void testCountTimeAckModeCommitsOnTimeExpiry() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), List.of(
+				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
+				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+
+		// Each poll sleeps briefly so the ackTime elapses across a few poll cycles
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(100);
+			return consumerRecords;
+		});
+
+		TopicPartitionOffset[] topicPartitions = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
+		ContainerProperties containerProps = new ContainerProperties(topicPartitions);
+		containerProps.setGroupId("grp");
+		containerProps.setClientId("clientId");
+		containerProps.setAckMode(AckMode.COUNT_TIME);
+		containerProps.setAckCount(1000);  // never reached — only 2 records per poll
+		containerProps.setAckTime(300);    // fires after ~3 polls (3 * 100 ms)
+		containerProps.setMissingTopicsFatal(false);
+		containerProps.setMessageListener((MessageListener<Integer, String>) message -> { });
+
+		CountDownLatch commitLatch = new CountDownLatch(1);
+		willAnswer(i -> {
+			records.clear();  // stop feeding records after the first time-based commit
+			commitLatch.countDown();
+			return null;
+		}).given(consumer).commitSync(anyMap(), any());
+
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.start();
+		assertThat(commitLatch.await(10, TimeUnit.SECONDS))
+				.as("COUNT_TIME ack mode must commit when ackTime elapses even if ackCount is not reached")
+				.isTrue();
+		container.stop();
+	}
+
 	@Test
 	public void testRecordAck() throws Exception {
 		logger.info("Start record ack");
