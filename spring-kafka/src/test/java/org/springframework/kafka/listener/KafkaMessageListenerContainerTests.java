@@ -3350,6 +3350,61 @@ public class KafkaMessageListenerContainerTests {
 		container.stop();
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	public void testAckModeCountTimeCommitsWhenTimeElapsed() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		Map<String, Object> cfProps = new HashMap<>();
+		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000);
+		given(cf.getConfigurationProperties()).willReturn(cfProps);
+		TopicPartition topicPartition = new TopicPartition("foo", 0);
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(topicPartition, Collections.singletonList(
+				new ConsumerRecord<>("foo", 0, 0L, 1, "foo")));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			return consumerRecords;
+		});
+		final CountDownLatch commitLatch = new CountDownLatch(1);
+		willAnswer(i -> {
+			commitLatch.countDown();
+			return null;
+		}).given(consumer).commitSync(anyMap(), eq(Duration.ofSeconds(42)));
+		given(consumer.assignment()).willReturn(records.keySet());
+		TopicPartitionOffset[] topicPartitionOffset = new TopicPartitionOffset[] {
+				new TopicPartitionOffset("foo", 0) };
+		ContainerProperties containerProps = new ContainerProperties(topicPartitionOffset);
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.COUNT_TIME);
+		containerProps.setAckCount(Integer.MAX_VALUE);
+		containerProps.setAckTime(10);
+		containerProps.setClientId("clientId");
+		containerProps.setMissingTopicsFatal(false);
+		AtomicInteger recordCount = new AtomicInteger();
+		containerProps.setMessageListener((MessageListener) r -> {
+			recordCount.incrementAndGet();
+		});
+		Properties consumerProps = new Properties();
+		consumerProps.setProperty(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, "42000"); // wins
+		containerProps.setKafkaConsumerProperties(consumerProps);
+		containerProps.setMissingTopicsFatal(false);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		try {
+			container.start();
+			assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			assertThat(recordCount.get()).isGreaterThan(0);
+			verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(1L)),
+					Duration.ofSeconds(42));
+		}
+		finally {
+			container.stop();
+		}
+	}
+
 	@SuppressWarnings({ "unchecked", "rawtypes"})
 	@Test
 	public void testCommitErrorHandlerCalled() throws Exception {
