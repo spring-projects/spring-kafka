@@ -3363,7 +3363,7 @@ public class KafkaMessageListenerContainerTests {
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(topicPartition, Collections.singletonList(
 				new ConsumerRecord<>("foo", 0, 0L, 1, "foo")));
-		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			return consumerRecords;
