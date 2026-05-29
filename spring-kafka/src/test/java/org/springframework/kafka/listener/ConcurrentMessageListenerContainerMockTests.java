@@ -46,6 +46,7 @@ import org.apache.kafka.common.errors.GroupAuthorizationException;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaResourceHolder;
@@ -65,6 +66,7 @@ import org.springframework.util.CollectionUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -80,6 +82,7 @@ import static org.mockito.Mockito.verify;
  * @author Wang Zhiyang
  * @author Soby Chacko
  * @author Minchul Son
+ * @author Nikita Kibitkin
  *
  * @since 2.2.4
  *
@@ -1384,6 +1387,95 @@ public class ConcurrentMessageListenerContainerMockTests {
 			}
 
 		};
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void afterRollbackProcessorReceivesFullBatchWhenWantsPollResult() throws InterruptedException {
+		// GH-4439
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		Consumer consumer = mock(Consumer.class);
+		TopicPartition tp0 = new TopicPartition("foo", 0);
+		ConsumerRecord record1 = new ConsumerRecord("foo", 0, 0L, "k", "v1");
+		ConsumerRecord record2 = new ConsumerRecord("foo", 0, 1L, "k", "v2");
+		ConsumerRecords records = new ConsumerRecords(
+				Collections.singletonMap(tp0, List.of(record1, record2)), Map.of());
+		ConsumerRecords empty = new ConsumerRecords(Collections.emptyMap(), Map.of());
+		AtomicInteger pollCount = new AtomicInteger();
+		willAnswer(invocation -> {
+			Thread.sleep(10);
+			return pollCount.incrementAndGet() < 2 ? records : empty;
+		}).given(consumer).poll(any());
+		willAnswer(invocation -> {
+			((ConsumerRebalanceListener) invocation.getArgument(1))
+					.onPartitionsAssigned(List.of(tp0));
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any());
+		given(consumer.position(any())).willReturn(0L);
+		given(consumerFactory.createConsumer("grp", "", "-0", KafkaTestUtils.defaultPropertyOverrides()))
+				.willReturn(consumer);
+
+		ContainerProperties containerProperties = new ContainerProperties("foo");
+		containerProperties.setGroupId("grp");
+		containerProperties.setMissingTopicsFatal(false);
+		containerProperties.setMessageListener(new BatchMessageListener<String, String>() {
+
+			@Override
+			public boolean wantsPollResult() {
+				return true;
+			}
+
+			@Override
+			public void onMessage(List<ConsumerRecord<String, String>> data) {
+				throw new UnsupportedOperationException("expected ConsumerRecords overload");
+			}
+
+			@Override
+			public void onMessage(ConsumerRecords<String, String> recs, @Nullable Acknowledgment ack,
+					Consumer<String, String> consumer) {
+				throw new RuntimeException("listener fails on purpose");
+			}
+
+		});
+
+		KafkaAwareTransactionManager tm = mock(KafkaAwareTransactionManager.class);
+		ProducerFactory pf = mock(ProducerFactory.class);
+		given(tm.getProducerFactory()).willReturn(pf);
+		Producer producer = mock(Producer.class);
+		given(pf.createProducer()).willReturn(producer);
+		containerProperties.setKafkaAwareTransactionManager(tm);
+
+		CountDownLatch rollbackLatch = new CountDownLatch(1);
+		willAnswer(inv -> {
+			TransactionSynchronizationManager.bindResource(pf,
+					new KafkaResourceHolder<>(producer, Duration.ofSeconds(5L)));
+			return null;
+		}).given(tm).getTransaction(any());
+		willAnswer(inv -> {
+			TransactionSynchronizationManager.unbindResource(pf);
+			return null;
+		}).given(tm).commit(any());
+		willAnswer(inv -> {
+			TransactionSynchronizationManager.unbindResource(pf);
+			rollbackLatch.countDown();
+			return null;
+		}).given(tm).rollback(any());
+
+		AfterRollbackProcessor<String, String> afterRollbackProcessor = mock(AfterRollbackProcessor.class);
+
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(
+				consumerFactory, containerProperties);
+		container.setAfterRollbackProcessor(afterRollbackProcessor);
+		container.setBeanName("test-gh-4439");
+		container.start();
+
+		assertThat(rollbackLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+
+		ArgumentCaptor<List<ConsumerRecord<String, String>>> captor = ArgumentCaptor.forClass(List.class);
+		verify(afterRollbackProcessor, atLeastOnce()).processBatch(any(ConsumerRecords.class), captor.capture(),
+				any(Consumer.class), any(), any(Exception.class), anyBoolean(), any());
+		assertThat(captor.getValue()).containsExactly(record1, record2);
 	}
 
 	public static class TestMessageListener1 implements MessageListener<String, String>, ConsumerSeekAware {
