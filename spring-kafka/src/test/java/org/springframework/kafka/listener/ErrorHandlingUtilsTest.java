@@ -97,9 +97,9 @@ class ErrorHandlingUtilsTest {
 
 	private void doRetries() {
 		ErrorHandlingUtils.retryBatch(
-				thrownException, consumerRecords, consumer, container, listener, backOff,
+				thrownException, consumerRecords, consumer, container, listener, backOff.start(),
 				seeker, recoverer, logger, KafkaException.Level.INFO, retryListeners,
-				exceptionMatcher, true
+				exceptionMatcher, true, false
 		);
 	}
 

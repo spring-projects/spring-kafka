@@ -289,6 +289,31 @@ public class FallbackBatchErrorHandlerTests {
 		assertThat(retries.get()).isEqualTo(3);
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void reclassifyResetBackOffOnExceptionChange() {
+		AtomicReference<Exception> thrown = new AtomicReference<>();
+		DefaultErrorHandler eh = new DefaultErrorHandler((cr, ex) ->  {
+			thrown.set(ex);
+		}, new FixedBackOff(0L, 3));
+		eh.setResetStateOnExceptionChange(true);
+		ConsumerRecords records = new ConsumerRecords(
+				Map.of(new TopicPartition("foo", 0),
+						List.of(new ConsumerRecord("foo", 0, 0L, null, "bar"))), Map.of());
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.isRunning()).willReturn(true);
+		AtomicInteger retries = new AtomicInteger();
+		eh.handleBatch(new IllegalStateException(), records, mock(Consumer.class), container,
+				() -> {
+					retries.incrementAndGet();
+					throw new ListenerExecutionFailedException("", new IllegalArgumentException());
+				});
+		assertThat(thrown.get()).isInstanceOf(ListenerExecutionFailedException.class)
+				.extracting("cause")
+				.isInstanceOf(IllegalArgumentException.class);
+		assertThat(retries.get()).isEqualTo(4);
+	}
+
 	private boolean getRetryingFieldValue(FallbackBatchErrorHandler errorHandler) {
 		Field field = ReflectionUtils.findField(FallbackBatchErrorHandler.class, "retrying");
 		ReflectionUtils.makeAccessible(field);
