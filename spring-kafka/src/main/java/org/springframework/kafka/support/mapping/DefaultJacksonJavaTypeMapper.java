@@ -89,7 +89,7 @@ public class DefaultJacksonJavaTypeMapper implements JacksonJavaTypeMapper, Bean
 
 	private final Map<String, Class<?>> idClassMapping = new ConcurrentHashMap<String, Class<?>>();
 
-	private final Map<Class<?>, byte[]> classIdMapping = new ConcurrentHashMap<Class<?>, byte[]>();
+	private final Map<String, byte[]> classIdMapping = new ConcurrentHashMap<String, byte[]>();
 
 	private String classIdFieldName = DEFAULT_CLASSID_FIELD_NAME;
 
@@ -153,8 +153,9 @@ public class DefaultJacksonJavaTypeMapper implements JacksonJavaTypeMapper, Bean
 	}
 
 	protected void addHeader(Headers headers, String headerName, Class<?> clazz) {
-		if (this.classIdMapping.containsKey(clazz)) {
-			headers.add(new RecordHeader(headerName, this.classIdMapping.get(clazz)));
+		byte[] alias = this.classIdMapping.get(clazz.getName());
+		if (alias != null) {
+			headers.add(new RecordHeader(headerName, alias));
 		}
 		else {
 			headers.add(new RecordHeader(headerName, clazz.getName().getBytes(StandardCharsets.UTF_8)));
@@ -187,7 +188,7 @@ public class DefaultJacksonJavaTypeMapper implements JacksonJavaTypeMapper, Bean
 		for (Map.Entry<String, Class<?>> entry : this.idClassMapping.entrySet()) {
 			String id = entry.getKey();
 			Class<?> clazz = entry.getValue();
-			this.classIdMapping.put(clazz, id.getBytes(StandardCharsets.UTF_8));
+			this.classIdMapping.put(clazz.getName(), id.getBytes(StandardCharsets.UTF_8));
 		}
 	}
 
