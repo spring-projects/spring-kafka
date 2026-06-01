@@ -17,6 +17,9 @@
 package org.springframework.kafka.support.serializer;
 
 import java.io.IOException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -61,6 +64,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
  * @author Torsten Schleede
  * @author Gary Russell
  * @author Ivan Ponomarev
+ * @author Soby Chacko
  */
 public class JsonSerializationTests {
 
@@ -431,6 +435,24 @@ public class JsonSerializationTests {
 		ser.setAddTypeInfo(false);
 		Map<String, Object> configs2 = Map.of(JsonSerializer.ADD_TYPE_INFO_HEADERS, true);
 		assertThatIllegalStateException().isThrownBy(() -> ser.configure(configs2, false));
+	}
+
+	@Test
+	void typeMappingHonoredWhenClassLoadedByDifferentClassLoader() throws Exception {
+		DefaultJacksonJavaTypeMapper mapper = new DefaultJacksonJavaTypeMapper();
+		mapper.setIdClassMapping(Map.of("my-alias", Foo.class));
+
+		URL codeSourceUrl = Foo.class.getProtectionDomain().getCodeSource().getLocation();
+		try (URLClassLoader isolatedLoader = new URLClassLoader(new URL[] { codeSourceUrl }, null)) {
+			Class<?> reloadedClass = isolatedLoader.loadClass(Foo.class.getName());
+			assertThat(reloadedClass).isNotSameAs(Foo.class);
+
+			Headers headers = new RecordHeaders();
+			mapper.fromClass(reloadedClass, headers);
+
+			String typeHeader = new String(headers.lastHeader("__TypeId__").value(), StandardCharsets.UTF_8);
+			assertThat(typeHeader).isEqualTo("my-alias");
+		}
 	}
 
 	public static JavaType fooBarJavaType(byte[] data, Headers headers) {
