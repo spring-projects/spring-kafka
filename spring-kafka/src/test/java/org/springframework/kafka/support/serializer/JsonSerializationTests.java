@@ -439,7 +439,7 @@ public class JsonSerializationTests {
 
 	@Test
 	void typeMappingHonoredWhenClassLoadedByDifferentClassLoader() throws Exception {
-		DefaultJacksonJavaTypeMapper mapper = new DefaultJacksonJavaTypeMapper();
+		DefaultJackson2JavaTypeMapper mapper = new DefaultJackson2JavaTypeMapper();
 		mapper.setIdClassMapping(Map.of("my-alias", Foo.class));
 
 		URL codeSourceUrl = Foo.class.getProtectionDomain().getCodeSource().getLocation();
