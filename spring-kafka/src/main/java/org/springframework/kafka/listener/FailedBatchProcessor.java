@@ -42,17 +42,28 @@ import org.springframework.util.backoff.BackOff;
 /**
  * Subclass of {@link FailedRecordProcessor} that can process (and recover) a batch. If
  * the listener throws a {@link BatchListenerFailedException}, the offsets prior to the
- * failed record are committed and the remaining records have seeks performed. When the
- * retries are exhausted, the failed record is sent to the recoverer instead of being
- * included in the seeks. If other exceptions are thrown, the fallback handler takes the processing.
+ * failed record are committed and the remaining records (starting from the failed one)
+ * are re-sought for redelivery. When retries are exhausted, the failed record is sent to
+ * the recoverer instead of being included in the seeks. Any other exception type is
+ * delegated to the fallback handler.
+ *
+ * <p><strong>Note:</strong> committing offsets for preceding records assumes those records
+ * were fully and irreversibly processed before the exception was thrown. Batch listeners
+ * that process records in parallel, use multi-step pipelines, or run inside a transaction
+ * should throw a plain {@link RuntimeException} instead of {@link BatchListenerFailedException}
+ * if they cannot guarantee that; doing so causes the full batch to be redelivered rather
+ * than silently skipping records whose side effects may not have completed.
  *
  * @author Gary Russell
  * @author Francois Rosiere
  * @author Wang Zhiyang
  * @author Artem Bilan
  * @author Leos Bitto
+ * @author Aditya Pal
+ *
  * @since 2.8
  *
+ * @see BatchListenerFailedException
  */
 public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 
