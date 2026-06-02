@@ -24,13 +24,36 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.kafka.KafkaException;
 
 /**
- * An exception thrown by user code to inform the framework which record in a batch has
- * failed.
+ * An exception thrown by a batch listener to indicate which record in the batch
+ * failed. The framework will commit the offsets of all records <em>before</em>
+ * the failed record and seek the remaining records (starting from the failed one)
+ * for redelivery.
  *
- * @author Gary Russell
+ * <p><strong>Important contract:</strong> throwing this exception carries an
+ * implicit assertion that every record before the indicated index (or before
+ * the provided {@link org.apache.kafka.clients.consumer.ConsumerRecord}) has
+ * been <em>fully and irreversibly</em> processed. The framework commits those
+ * preceding offsets immediately; they will not be redelivered.
+ *
+ * <p>This exception is <strong>not</strong> appropriate when:
+ * <ul>
+ *   <li>records are processed in parallel (e.g. using virtual threads or an
+ *       executor), because preceding records may still be in-flight when the
+ *       exception is thrown;</li>
+ *   <li>processing involves multiple steps (e.g. transform then produce to an
+ *       output topic), because earlier records may have completed only some
+ *       steps;</li>
+ *   <li>the listener is transactional and a full rollback is required on any
+ *       failure.</li>
+ * </ul>
+ * In those cases, throw a plain {@link RuntimeException} instead so that the
+ * entire batch is redelivered.
+ *
+ * @author Aditya Pal
  * @author Wang Zhiyang
  * @since 2.5
- *
+ * @see org.springframework.kafka.listener.DefaultErrorHandler
+ * @see org.springframework.kafka.listener.FailedBatchProcessor
  */
 public class BatchListenerFailedException extends KafkaException {
 
