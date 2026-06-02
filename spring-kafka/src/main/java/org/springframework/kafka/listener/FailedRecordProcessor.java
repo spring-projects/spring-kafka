@@ -56,7 +56,7 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 
 	private boolean commitRecovered;
 
-	private BiFunction<ConsumerRecord<?, ?>, Exception, BackOff> userBackOffFunction = (rec, ex) -> null;
+	private BiFunction<ConsumerRecord<?, ?>, Exception, @Nullable BackOff> userBackOffFunction = (rec, ex) -> null;
 
 	private boolean seekAfterError = true;
 
@@ -94,7 +94,7 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 	 * @param backOffFunction the function.
 	 * @since 2.6
 	 */
-	public void setBackOffFunction(BiFunction<ConsumerRecord<?, ?>, Exception, BackOff> backOffFunction) {
+	public void setBackOffFunction(BiFunction<ConsumerRecord<?, ?>, Exception, @Nullable BackOff> backOffFunction) {
 		Assert.notNull(backOffFunction, "'backOffFunction' cannot be null");
 		this.userBackOffFunction = backOffFunction;
 	}

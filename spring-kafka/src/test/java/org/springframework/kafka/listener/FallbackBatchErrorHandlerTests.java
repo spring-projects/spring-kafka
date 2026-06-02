@@ -289,7 +289,6 @@ public class FallbackBatchErrorHandlerTests {
 		assertThat(retries.get()).isEqualTo(3);
 	}
 
-	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Test
 	void reclassifyResetBackOffOnExceptionChange() {
 		AtomicReference<Exception> thrown = new AtomicReference<>();
@@ -297,9 +296,9 @@ public class FallbackBatchErrorHandlerTests {
 			thrown.set(ex);
 		}, new FixedBackOff(0L, 3));
 		eh.setResetStateOnExceptionChange(true);
-		ConsumerRecords records = new ConsumerRecords(
+		ConsumerRecords<String, String> records = new ConsumerRecords<>(
 				Map.of(new TopicPartition("foo", 0),
-						List.of(new ConsumerRecord("foo", 0, 0L, null, "bar"))), Map.of());
+						List.of(new ConsumerRecord<>("foo", 0, 0L, null, "bar"))), Map.of());
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
 		given(container.isRunning()).willReturn(true);
 		AtomicInteger retries = new AtomicInteger();
@@ -312,6 +311,46 @@ public class FallbackBatchErrorHandlerTests {
 				.extracting("cause")
 				.isInstanceOf(IllegalArgumentException.class);
 		assertThat(retries.get()).isEqualTo(4);
+	}
+
+	@Test
+	void usingBackOffFunction() {
+		AtomicReference<Exception> thrown = new AtomicReference<>();
+		DefaultErrorHandler eh = new DefaultErrorHandler((cr, ex) ->  {
+			thrown.set(ex);
+		}, new FixedBackOff(0L, 2));
+		eh.setBackOffFunction((cr, ex) -> ex instanceof UnsupportedOperationException ?
+				new FixedBackOff(0L, 1) : null);
+		ConsumerRecords<String, String> records = new ConsumerRecords<>(
+				Map.of(new TopicPartition("foo", 0),
+						List.of(new ConsumerRecord<>("foo", 0, 0L, null, "bar"))), Map.of());
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		given(container.isRunning()).willReturn(true);
+
+		// first thrown exception is UnsupportedOperationException, so BackOffFunction should cause 1 retry
+		AtomicInteger retries = new AtomicInteger();
+		eh.handleBatch(new UnsupportedOperationException(), records, mock(Consumer.class), container,
+				() -> {
+					retries.incrementAndGet();
+					throw new ListenerExecutionFailedException("", new IllegalArgumentException());
+				});
+		assertThat(thrown.get()).isInstanceOf(ListenerExecutionFailedException.class)
+				.extracting("cause")
+				.isInstanceOf(IllegalArgumentException.class);
+		assertThat(retries.get()).isEqualTo(1);
+
+		// first thrown exception is IllegalArgumentException, so BackOffFunction should return null
+		// which means that DefaultErrorHandler should use its the default FixedBackOff with 2 retries
+		retries.set(0);
+		eh.handleBatch(new IllegalArgumentException(), records, mock(Consumer.class), container,
+				() -> {
+					retries.incrementAndGet();
+					throw new ListenerExecutionFailedException("", new IllegalArgumentException());
+				});
+		assertThat(thrown.get()).isInstanceOf(ListenerExecutionFailedException.class)
+				.extracting("cause")
+				.isInstanceOf(IllegalArgumentException.class);
+		assertThat(retries.get()).isEqualTo(2);
 	}
 
 	private boolean getRetryingFieldValue(FallbackBatchErrorHandler errorHandler) {
