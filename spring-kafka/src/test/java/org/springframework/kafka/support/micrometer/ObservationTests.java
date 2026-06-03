@@ -247,7 +247,7 @@ public class ObservationTests {
 		assertThat(templateSpan).isNotNull();
 		assertThat(templateSpan.getTags()).containsAllEntriesOf(Map.of("key", "value"));
 
-		assertThat(spanFromCallback.get()).isNotNull();
+		await().untilAsserted(() -> assertThat(spanFromCallback.get()).isNotNull());
 		listenerContainer1.start();
 		MessageListenerContainer listenerContainer2 = rler.getListenerContainer("obs2");
 		assertThat(listenerContainer1).isNotNull();
