@@ -112,7 +112,7 @@ public final class ErrorHandlingUtils {
 	 * @param exceptionMatcher the exception matcher.
 	 * @param reClassifyOnExceptionChange true to reclassify the exception if a different exception
 	 * is thrown during retry.
-	 * @param resetStateOnExceptionChange true to if a different exception thrown during retry should end this method.
+	 * @param resetStateOnExceptionChange true if a different exception thrown during retry should end this method.
 	 * @return a new exception if resetStateOnExceptionChange was true and a different exception has occurred
 	 * 	 (retry with a possibly different BackOffExecution is expected if non-null is returned)
      * @since 4.1.0

@@ -89,3 +89,10 @@ The `StreamsBuilderFactoryBean` now supports configuring the `groupProtocol` pro
 This allows you to explicitly manage whether the underlying Kafka Streams consumers rely on the `classic` protocol or opt into the newer `streams` group protocol (KIP-1071: Server-side rebalance for Streams).
 
 See xref:streams.adoc#streams-config[Configuration] in the Kafka Streams documentation for more details.
+
+[[x41-back-off-function]]
+=== BackOffFunction Support In FailedBatchProcessor
+
+`FailedBatchProcessor` now supports setting `BackOffFunction` and `resetStateOnExceptionChange` for the batch message processing the same way as `FailedRecordProcessor` already does for single message processing. This enables using xref:kafka/annotation-error-handling.adoc#default-eh[DefaultErrorHandler] for consistent classification of the exceptions for both single and batch message processing.
+
+Please note that to keep backward compatibility, the default value for `resetStateOnExceptionChange` is `false` for `FailedBatchProcessor`, which is different from `FailedRecordProcessor`. If you want to have the same behavior for both, you need to call `setResetStateOnExceptionChange(true)` on your `FailedBatchProcessor` instance.

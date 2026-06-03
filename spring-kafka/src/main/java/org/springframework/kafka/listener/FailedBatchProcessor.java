@@ -79,7 +79,7 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 	 * @param fallbackHandler the fallback handler.
 	 * @since 2.9
 	 */
-	@SuppressWarnings("this-escape") // geFailureTracker() returns an already initialized final field
+	@SuppressWarnings("this-escape") // getFailureTracker() returns an already initialized final field
 	public FailedBatchProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
 			@Nullable BackOffHandler backOffHandler, CommonErrorHandler fallbackHandler) {
 
