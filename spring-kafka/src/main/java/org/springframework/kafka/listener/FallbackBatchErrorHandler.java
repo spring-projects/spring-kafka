@@ -36,6 +36,7 @@ import org.springframework.kafka.KafkaException;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.backoff.BackOff;
+import org.springframework.util.backoff.BackOffExecution;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
@@ -47,6 +48,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * performed so that the batch will be redelivered on the next poll.
  *
  * @author Gary Russell
+ * @author Leos Bitto
  * @since 2.3.7
  *
  */
@@ -67,6 +69,10 @@ class FallbackBatchErrorHandler extends ExceptionClassifier implements CommonErr
 	private boolean ackAfterHandle = true;
 
 	private boolean reclassifyOnExceptionChange = true;
+
+	private boolean resetStateOnExceptionChange = false;
+
+	private @Nullable FailedRecordTracker failureTracker;
 
 	/**
 	 * Construct an instance with a default {@link FixedBackOff} (unlimited attempts with
@@ -130,13 +136,30 @@ class FallbackBatchErrorHandler extends ExceptionClassifier implements CommonErr
 
 	/**
 	 * Set to false to not reclassify the exception if different from the previous
-	 * failure. If the changed exception is classified as retryable, the existing back off
-	 * sequence is used; a new sequence is not started. Default true.
+	 * failure. Default true. If the changed exception is classified as retryable, the
+	 * existing back off sequence is used when resetStateOnExceptionChange is set to
+	 * false; a new sequence is started when resetStateOnExceptionChange is set to true.
 	 * @param reclassifyOnExceptionChange false to not reclassify.
 	 * @since 2.9.7
 	 */
 	public void setReclassifyOnExceptionChange(boolean reclassifyOnExceptionChange) {
 		this.reclassifyOnExceptionChange = reclassifyOnExceptionChange;
+	}
+
+	/**
+	 * Set to false to keep the same back off sequence even when the exception changes
+	 * in subsequent retries. Default false. If set to true, a new sequence is started
+	 * when the exception changes.
+	 * @param resetStateOnExceptionChange true to start a new back off sequence
+	 * when the exception changes in subsequent retries
+	 * @since 3.3.16
+	 */
+	void setResetStateOnExceptionChange(boolean resetStateOnExceptionChange) {
+		this.resetStateOnExceptionChange = resetStateOnExceptionChange;
+	}
+
+	void setFailureTracker(FailedRecordTracker failedRecordTracker) {
+		this.failureTracker = failedRecordTracker;
 	}
 
 	@Override
@@ -149,9 +172,17 @@ class FallbackBatchErrorHandler extends ExceptionClassifier implements CommonErr
 		}
 		this.retrying.put(Thread.currentThread(), true);
 		try {
-			ErrorHandlingUtils.retryBatch(thrownException, records, consumer, container, invokeListener, this.backOff,
-					this.seeker, this.recoverer, this.logger, getLogLevel(), this.retryListeners, getClassifier(),
-					this.reclassifyOnExceptionChange);
+			BackOffExecution backOffExecution = null;
+			while (thrownException != null) {
+				if (backOffExecution == null || this.resetStateOnExceptionChange) {
+					BackOff backOffToUse = this.failureTracker == null ? this.backOff :
+							this.failureTracker.determineBackOff(records.iterator().next(), thrownException);
+					backOffExecution = backOffToUse.start();
+				}
+				thrownException = ErrorHandlingUtils.retryBatch(thrownException, records, consumer, container, invokeListener,
+						backOffExecution, this.seeker, this.recoverer, this.logger, getLogLevel(), this.retryListeners,
+						getClassifier(), this.reclassifyOnExceptionChange, this.resetStateOnExceptionChange);
+			}
 		}
 		finally {
 			this.retrying.remove(Thread.currentThread());
