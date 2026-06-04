@@ -44,9 +44,11 @@ import org.springframework.kafka.test.utils.KafkaTestUtils
 import org.springframework.messaging.handler.annotation.SendTo
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig
+import org.springframework.util.backoff.FixedBackOff
 import java.time.Duration
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 
 /**
@@ -62,7 +64,7 @@ import java.util.concurrent.TimeUnit
 @DirtiesContext
 @EmbeddedKafka(topics = ["kotlinAsyncTestTopic1", "kotlinAsyncTestTopic2",
 		"kotlinAsyncBatchTestTopic1", "kotlinAsyncBatchTestTopic2", "kotlinReplyTopic1",
-		"kotlinAsyncTestTopicCommonHandler"], partitions = 1)
+		"kotlinAsyncTestTopicCommonHandler", "kotlinAsyncTestTopicBoundedRetry"], partitions = 1)
 class EnableKafkaKotlinCoroutinesTests {
 
 	@Autowired
@@ -117,6 +119,21 @@ class EnableKafkaKotlinCoroutinesTests {
 		assertThat(this.config.commonHandlerLatch.await(10, TimeUnit.SECONDS)).isTrue()
 	}
 
+	@Test
+	fun `test suspend function bounded retries with CommonErrorHandler`() {
+		// GH-4465: an always-failing suspend @KafkaListener with
+		// DefaultErrorHandler(FixedBackOff(interval, n)) must be delivered exactly
+		// n + 1 times (initial delivery + n retries) and then stop, matching the
+		// behaviour of a blocking listener with the same configuration.
+		this.template.send("kotlinAsyncTestTopicBoundedRetry", "fail")
+		// Wait for the recoverer to run (which happens after retries are exhausted).
+		assertThat(this.config.boundedRetryRecoveredLatch.await(10, TimeUnit.SECONDS)).isTrue()
+		// Give the container a generous window in which any unbounded re-delivery
+		// loop would visibly grow the counter past the expected bound.
+		Thread.sleep(2_000)
+		assertThat(this.config.boundedRetryDeliveries.get()).isEqualTo(3)
+	}
+
 	@KafkaListener(id = "sendTopic", topics = ["kotlinAsyncTestTopic3"],
 			containerFactory = "kafkaListenerContainerFactory")
 	class Listener {
@@ -156,6 +173,10 @@ class EnableKafkaKotlinCoroutinesTests {
 		val batchLatch2 = CountDownLatch(1)
 
 		val commonHandlerLatch = CountDownLatch(1)
+
+		val boundedRetryDeliveries = AtomicInteger()
+
+		val boundedRetryRecoveredLatch = CountDownLatch(1)
 
 		@Value("\${" + EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
 		private lateinit var brokerAddresses: String
@@ -244,6 +265,21 @@ class EnableKafkaKotlinCoroutinesTests {
 			return factory
 		}
 
+		@Bean
+		fun boundedRetryErrorHandler(): DefaultErrorHandler {
+			return DefaultErrorHandler({ _, _ -> boundedRetryRecoveredLatch.countDown() },
+					FixedBackOff(100L, 2L))
+		}
+
+		@Bean
+		fun kafkaListenerContainerFactoryWithBoundedRetry(): ConcurrentKafkaListenerContainerFactory<String, String> {
+			val factory: ConcurrentKafkaListenerContainerFactory<String, String>
+					= ConcurrentKafkaListenerContainerFactory()
+			factory.setConsumerFactory(kcf())
+			factory.setCommonErrorHandler(boundedRetryErrorHandler())
+			return factory
+		}
+
 		@KafkaListener(id = "kotlin", topics = ["kotlinAsyncTestTopic1"],
 				containerFactory = "kafkaListenerContainerFactory")
 		suspend fun listen(value: String, acknowledgment: Acknowledgment) {
@@ -280,6 +316,13 @@ class EnableKafkaKotlinCoroutinesTests {
 			if (value == "fail") {
 				throw RuntimeException("Test exception for CommonErrorHandler")
 			}
+		}
+
+		@KafkaListener(id = "kotlin-bounded-retry", topics = ["kotlinAsyncTestTopicBoundedRetry"],
+				containerFactory = "kafkaListenerContainerFactoryWithBoundedRetry")
+		suspend fun listenBoundedRetry(value: String) {
+			boundedRetryDeliveries.incrementAndGet()
+			throw RuntimeException("Always fail (bounded retry)")
 		}
 
 	}
