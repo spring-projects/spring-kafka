@@ -52,6 +52,7 @@ import org.springframework.util.backoff.BackOffExecution;
  * @author Antonio Tomac
  * @author Wang Zhiyang
  * @author Sanghyeok An
+ * @author Leos Bitto
  *
  * @since 2.8
  *
@@ -79,7 +80,7 @@ public final class ErrorHandlingUtils {
 	 * @param logLevel the log level.
 	 * @param retryListeners the retry listeners.
 	 * @param exceptionMatcher the exception matcher.
-	 * @param reClassifyOnExceptionChange true to reset the state if a different exception
+	 * @param reClassifyOnExceptionChange true to reclassify the exception if a different exception
 	 * is thrown during retry.
 	 * @since 2.9.7
 	 */
@@ -88,8 +89,40 @@ public final class ErrorHandlingUtils {
 			CommonErrorHandler seeker, BiConsumer<ConsumerRecords<?, ?>, Exception> recoverer, LogAccessor logger,
 			KafkaException.Level logLevel, List<RetryListener> retryListeners, ExceptionMatcher exceptionMatcher,
 			boolean reClassifyOnExceptionChange) {
+		retryBatch(thrownException, records, consumer, container, invokeListener, backOff.start(), seeker, recoverer,
+				logger, logLevel, retryListeners, exceptionMatcher, reClassifyOnExceptionChange, false);
+	}
 
-		BackOffExecution execution = backOff.start();
+	/**
+	 * Retry a complete batch by pausing the consumer and then, in a loop, poll the
+	 * consumer, wait for the next back off, then call the listener. When retries are
+	 * exhausted, call the recoverer with the {@link ConsumerRecords}.
+	 * @param thrownException the exception.
+	 * @param records the records.
+	 * @param consumer the consumer.
+	 * @param container the container.
+	 * @param invokeListener the {@link Runnable} to run (call the listener).
+	 * @param execution the backOff execution to use for the retries.
+	 * @param seeker the common error handler that re-seeks the entire batch.
+	 * @param recoverer the recoverer.
+	 * @param logger the logger.
+	 * @param logLevel the log level.
+	 * @param retryListeners the retry listeners.
+	 * @param exceptionMatcher the exception matcher.
+	 * @param reClassifyOnExceptionChange true to reclassify the exception if a different exception
+	 * is thrown during retry.
+	 * @param resetStateOnExceptionChange true if a different exception thrown during retry should end this method.
+	 * @return a new exception if resetStateOnExceptionChange was true and a different exception has occurred
+	 * (retry with a possibly different BackOffExecution is expected if non-null is returned)
+	 * @since 4.0.7
+	 */
+	@Nullable
+	public static Exception retryBatch(Exception thrownException, ConsumerRecords<?, ?> records, Consumer<?, ?> consumer,
+			MessageListenerContainer container, Runnable invokeListener, BackOffExecution execution,
+			CommonErrorHandler seeker, BiConsumer<ConsumerRecords<?, ?>, Exception> recoverer, LogAccessor logger,
+			KafkaException.Level logLevel, List<RetryListener> retryListeners, ExceptionMatcher exceptionMatcher,
+			boolean reClassifyOnExceptionChange, boolean resetStateOnExceptionChange) {
+
 		long nextBackOff = execution.nextBackOff();
 		String failed = null;
 		Set<TopicPartition> assignment = consumer.assignment();
@@ -148,7 +181,7 @@ public final class ErrorHandlingUtils {
 				}
 				try {
 					invokeListener.run();
-					return;
+					return null;
 				}
 				catch (Exception ex) {
 					listen(retryListeners, records, ex, attempt++);
@@ -164,6 +197,10 @@ public final class ErrorHandlingUtils {
 							&& !exceptionMatcher.match(newException)) {
 
 						break;
+					}
+					if (resetStateOnExceptionChange && !Objects.requireNonNull(newException).getClass()
+							.equals(Objects.requireNonNull(lastException).getClass())) {
+						return newException;
 					}
 				}
 				nextBackOff = execution.nextBackOff();
@@ -186,6 +223,7 @@ public final class ErrorHandlingUtils {
 				consumerPauseResumeEventPublisher.publishConsumerResumedEvent(assignment2);
 			}
 		}
+		return null;
 	} // NOSONAR NCSS line count
 
 	private static void listen(List<RetryListener> listeners, ConsumerRecords<?, ?> records,

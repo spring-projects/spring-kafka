@@ -50,6 +50,7 @@ import org.springframework.util.backoff.BackOff;
  * @author Francois Rosiere
  * @author Wang Zhiyang
  * @author Artem Bilan
+ * @author Leos Bitto
  * @since 2.8
  *
  */
@@ -79,11 +80,15 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 	 * @param fallbackHandler the fallback handler.
 	 * @since 2.9
 	 */
+	@SuppressWarnings("this-escape") // getFailureTracker() returns an already initialized final field
 	public FailedBatchProcessor(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
 			@Nullable BackOffHandler backOffHandler, CommonErrorHandler fallbackHandler) {
 
 		super(recoverer, backOff, backOffHandler);
 		this.fallbackBatchHandler = fallbackHandler;
+		if (this.fallbackBatchHandler instanceof FallbackBatchErrorHandler handler) {
+			handler.setFailureTracker(getFailureTracker());
+		}
 	}
 
 	@Override
@@ -104,16 +109,24 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 
 	/**
 	 * Set to {@code false} to not reclassify the exception if different from the previous
-	 * failure. If the changed exception is classified as retryable, the existing back off
-	 * sequence is used; a new sequence is not started. Default true. Only applies when
-	 * the fallback batch error handler (for exceptions other than
-	 * {@link BatchListenerFailedException}) is the default.
+	 * failure. Default true. If the changed exception is classified as retryable, the existing
+	 * back off sequence is used if resetStateOnExceptionChange is false; a new sequence is started
+	 * if resetStateOnExceptionChange is true. Only applies when the fallback batch error handler
+	 * (for exceptions other than {@link BatchListenerFailedException}) is the default.
 	 * @param reclassifyOnExceptionChange false to not reclassify.
 	 * @since 2.9.7
 	 */
 	public void setReclassifyOnExceptionChange(boolean reclassifyOnExceptionChange) {
 		if (this.fallbackBatchHandler instanceof FallbackBatchErrorHandler handler) {
 			handler.setReclassifyOnExceptionChange(reclassifyOnExceptionChange);
+		}
+	}
+
+	@Override
+	public void setResetStateOnExceptionChange(boolean resetStateOnExceptionChange) {
+		super.setResetStateOnExceptionChange(resetStateOnExceptionChange);
+		if (this.fallbackBatchHandler instanceof FallbackBatchErrorHandler handler) {
+			handler.setResetStateOnExceptionChange(resetStateOnExceptionChange);
 		}
 	}
 
