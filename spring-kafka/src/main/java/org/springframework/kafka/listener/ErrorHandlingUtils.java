@@ -114,7 +114,7 @@ public final class ErrorHandlingUtils {
 	 * @param resetStateOnExceptionChange true if a different exception thrown during retry should end this method.
 	 * @return a new exception if resetStateOnExceptionChange was true and a different exception has occurred
 	 * (retry with a possibly different BackOffExecution is expected if non-null is returned)
-	 * @since 4.0.7
+	 * @since 3.3.16, 4.0.6
 	 */
 	@Nullable
 	public static Exception retryBatch(Exception thrownException, ConsumerRecords<?, ?> records, Consumer<?, ?> consumer,

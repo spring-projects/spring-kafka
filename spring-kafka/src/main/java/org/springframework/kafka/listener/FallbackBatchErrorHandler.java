@@ -152,7 +152,7 @@ class FallbackBatchErrorHandler extends ExceptionClassifier implements CommonErr
 	 * when the exception changes.
 	 * @param resetStateOnExceptionChange true to start a new back off sequence
 	 * when the exception changes in subsequent retries
-	 * @since 4.0.7
+	 * @since 3.3.16, 4.0.6
 	 */
 	void setResetStateOnExceptionChange(boolean resetStateOnExceptionChange) {
 		this.resetStateOnExceptionChange = resetStateOnExceptionChange;
