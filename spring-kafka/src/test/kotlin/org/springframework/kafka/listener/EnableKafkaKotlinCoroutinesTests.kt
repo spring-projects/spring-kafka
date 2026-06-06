@@ -125,13 +125,19 @@ class EnableKafkaKotlinCoroutinesTests {
 		// DefaultErrorHandler(FixedBackOff(interval, n)) must be delivered exactly
 		// n + 1 times (initial delivery + n retries) and then stop, matching the
 		// behaviour of a blocking listener with the same configuration.
+		//
+		// The recovered latch only signals the *first* recovery, so under the bug
+		// (#4465) it still trips while subsequent cycles keep re-delivering the
+		// record. The actual regression check is the delivery counter, which must
+		// reach 3 and stay there.
 		this.template.send("kotlinAsyncTestTopicBoundedRetry", "fail")
-		// Wait for the recoverer to run (which happens after retries are exhausted).
 		assertThat(this.config.boundedRetryRecoveredLatch.await(10, TimeUnit.SECONDS)).isTrue()
-		// Give the container a generous window in which any unbounded re-delivery
-		// loop would visibly grow the counter past the expected bound.
-		Thread.sleep(2_000)
-		assertThat(this.config.boundedRetryDeliveries.get()).isEqualTo(3)
+		await()
+			.pollDelay(Duration.ofSeconds(2))
+			.atMost(Duration.ofSeconds(3))
+			.untilAsserted {
+				assertThat(this.config.boundedRetryDeliveries.get()).isEqualTo(3)
+			}
 	}
 
 	@KafkaListener(id = "sendTopic", topics = ["kotlinAsyncTestTopic3"],
