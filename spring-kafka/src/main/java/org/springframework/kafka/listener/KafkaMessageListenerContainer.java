@@ -1522,8 +1522,17 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					failedRecord.observation.scoped(() -> invokeErrorHandlerBySingleRecord(failedRecord));
 				}
 				catch (RecordInRetryException e) {
-					// Keep retryable async failures for the next poll loop.
-					this.failedRecords.addLast(failedRecord);
+					// Retry is in progress: the seek-after-handling error handler has
+					// repositioned the consumer to the failed record's offset, so the
+					// next poll will re-deliver it and a fresh FailedRecordTuple will
+					// be produced through the async failure callback. The
+					// FailedRecordTracker entry is keyed by topic-partition-offset and
+					// persists across loop iterations, so the attempt counter continues
+					// to advance correctly. Re-queueing the tuple here would cause the
+					// record to be processed twice per loop (once from the queue, once
+					// from the seek-induced re-delivery) and, after recovery resets the
+					// tracker entry, leaves the duplicate in the queue to start a new
+					// retry cycle — the unbounded re-delivery reported in GH-4465.
 				}
 				catch (Exception e) {
 					this.logger.warn(() ->
