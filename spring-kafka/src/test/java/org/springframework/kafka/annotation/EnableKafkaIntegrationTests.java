@@ -184,6 +184,7 @@ import static org.mockito.Mockito.spy;
  * @author Wang Zhiyang
  * @author Borahm Lee
  * @author Sean Sullivan
+ * @author Abhishek Moondra
  */
 @SpringJUnitConfig
 @DirtiesContext
@@ -2480,7 +2481,7 @@ public class EnableKafkaIntegrationTests {
 
 		@KafkaListener(id = "ackWithAutoContainer", topics = "annotated28", errorHandler = "badAckConfigErrorHandler",
 				containerFactory = "withNoReplyTemplateContainerFactory")
-		public void ackWithAutoContainerListener(String payload, Acknowledgment ack) {
+		public void ackWithAutoContainerListener(String payload, @Nullable Acknowledgment ack) {
 			// empty
 		}
 

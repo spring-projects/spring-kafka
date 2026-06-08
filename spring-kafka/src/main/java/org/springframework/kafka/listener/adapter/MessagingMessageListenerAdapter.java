@@ -40,11 +40,11 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.ShareConsumer;
 import org.apache.kafka.common.TopicPartition;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import reactor.core.publisher.Mono;
 
 import org.springframework.core.MethodParameter;
+import org.springframework.core.Nullness;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.expression.BeanResolver;
 import org.springframework.expression.Expression;
@@ -98,6 +98,7 @@ import org.springframework.util.TypeUtils;
  * @author Huijin Hong
  * @author Soby Chacko
  * @author Sanghyeok An
+ * @author Abhishek Moondra
  */
 public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware, AsyncRepliesAware {
 
@@ -883,7 +884,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			}
 			this.hasAckParameter |= isAck;
 			if (isAck) {
-				this.noOpAck |= methodParameter.getParameterAnnotation(NonNull.class) != null;
+				this.noOpAck |= Nullness.forMethodParameter(methodParameter) == Nullness.NON_NULL;
 			}
 			isNotConvertible |= isAck;
 			boolean isConsumer = parameterIsType(parameterType, Consumer.class);

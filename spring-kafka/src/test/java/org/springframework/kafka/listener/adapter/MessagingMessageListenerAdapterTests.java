@@ -20,6 +20,8 @@ import java.lang.reflect.Method;
 import java.util.concurrent.CompletableFuture;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
@@ -31,6 +33,7 @@ import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.support.GenericMessage;
 
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.BDDMockito.willReturn;
@@ -41,6 +44,7 @@ import static org.mockito.Mockito.verify;
 
 /**
  * @author Gary Russell
+ * @author Abhishek Moondra
  * @since 1.1.2
  *
  */
@@ -118,7 +122,24 @@ public class MessagingMessageListenerAdapterTests {
 				.withStackTraceContaining("MANUAL");
 	}
 
-	public void test(Acknowledgment ack) {
+	@Test
+	void noOpAckWhenAcknowledgmentParameterIsNonNull() throws NoSuchMethodException {
+		KafkaListenerAnnotationBeanPostProcessor<String, String> bpp = new KafkaListenerAnnotationBeanPostProcessor<>();
+		Method method = getClass().getDeclaredMethod("testNonNullAck", Acknowledgment.class);
+		RecordMessagingMessageListenerAdapter<String, String> adapter =
+				new RecordMessagingMessageListenerAdapter<>(this, method);
+		adapter.setHandlerMethod(
+				new HandlerAdapter(bpp.getMessageHandlerMethodFactory().createInvocableHandlerMethod(this, method)));
+		// A non-null Acknowledgment parameter must substitute a no-op ack, not fail with "No Acknowledgment available"
+		assertThatNoException().isThrownBy(() -> adapter.onMessage(
+				new ConsumerRecord<>("foo", 0, 0L, null, "foo"), null, null));
+	}
+
+	public void test(@Nullable Acknowledgment ack) {
+
+	}
+
+	public void testNonNullAck(@NonNull Acknowledgment ack) {
 
 	}
 
