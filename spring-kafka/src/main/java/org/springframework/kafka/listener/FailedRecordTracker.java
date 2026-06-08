@@ -58,7 +58,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 
 	private final BackOff backOff;
 
-	private @Nullable BiFunction<ConsumerRecord<?, ?>, @Nullable Exception, BackOff> backOffFunction;
+	private @Nullable BiFunction<ConsumerRecord<?, ?>, @Nullable Exception, @Nullable BackOff> backOffFunction;
 
 	private final BackOffHandler backOffHandler;
 
@@ -113,7 +113,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 	 * @param backOffFunction the function.
 	 * @since 2.6
 	 */
-	public void setBackOffFunction(@Nullable BiFunction<ConsumerRecord<?, ?>, @Nullable Exception, BackOff> backOffFunction) {
+	public void setBackOffFunction(@Nullable BiFunction<ConsumerRecord<?, ?>, @Nullable Exception, @Nullable BackOff> backOffFunction) {
 		this.backOffFunction = backOffFunction;
 	}
 
@@ -215,7 +215,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 		return failedRecord;
 	}
 
-	private BackOff determineBackOff(ConsumerRecord<?, ?> record, @Nullable Exception exception) {
+	BackOff determineBackOff(ConsumerRecord<?, ?> record, @Nullable Exception exception) {
 		if (this.backOffFunction == null) {
 			return this.backOff;
 		}
