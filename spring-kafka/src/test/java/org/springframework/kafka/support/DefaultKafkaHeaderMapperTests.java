@@ -380,7 +380,7 @@ public class DefaultKafkaHeaderMapperTests {
 
 	@Test
 	void subpackagesOfDefaultsAreNotTrustedTransitively() {
-		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
 		assertThat(mapper.trusted("java.util.logging.FileHandler")).isFalse();
 		assertThat(mapper.trusted("java.lang.reflect.Method")).isFalse();
 		assertThat(mapper.trusted("java.util.concurrent.ForkJoinPool")).isFalse();
@@ -388,7 +388,7 @@ public class DefaultKafkaHeaderMapperTests {
 
 	@Test
 	void exactMatchAgainstDefaultsStillWorks() {
-		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
 		assertThat(mapper.trusted("java.util.HashMapr")).isTrue();
 		assertThat(mapper.trusted("java.lang.String")).isTrue();
 		assertThat(mapper.trusted("java.util.UUID")).isTrue();
@@ -396,7 +396,7 @@ public class DefaultKafkaHeaderMapperTests {
 
 	@Test
 	void userAddedSubpackagesMustBeAddedExplicitly() {
-		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
 		mapper.addTrustedPackages("com.acme");
 		assertThat(mapper.trusted("com.acme.OrderEvent")).isTrue();
 		assertThat(mapper.trusted("com.acme.events.OrderEvent")).isFalse();
