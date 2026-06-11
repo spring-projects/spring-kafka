@@ -41,7 +41,7 @@ public interface KafkaConsumerBackoffManager {
 	 * Provides the state that will be used for backing off.
 	 * @since 2.7
 	 */
-	class Context {
+	protected class Context {
 
 		/**
 		 * The time after which the message should be processed,
