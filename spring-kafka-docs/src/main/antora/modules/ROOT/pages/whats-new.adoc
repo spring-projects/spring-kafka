@@ -7,6 +7,12 @@
 This section covers the changes made from version 4.0 to version 4.1.
 For changes in earlier versions, see xref:appendix/change-history.adoc[Change History].
 
+[[x41-container-lifecycle-metrics]]
+=== Container Lifecycle Metrics
+
+The listener container now automatically tracks start and stop counts using Micrometer counters (`spring.kafka.container.start.count` and `spring.kafka.container.stop.count`), tagged with the container bean name.
+See xref:kafka/micrometer.adoc#monitoring-container-lifecycle[Monitoring Listener Container Lifecycle] for more information.
+
 [[x41-kafka-listener-ack-mode]]
 === `@KafkaListener` Changes
 
