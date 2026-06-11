@@ -330,6 +330,7 @@ configure(javaProjects) { subproject ->
 	tasks.withType(Javadoc) {
 		options.addBooleanOption('Xdoclint:syntax', true) // only check syntax with doclint
 		options.addBooleanOption('Werror', true) // fail build on Javadoc warnings
+        options.addBooleanOption('-no-fonts', true) // exclude fonts from module javadoc
 	}
 
 }
