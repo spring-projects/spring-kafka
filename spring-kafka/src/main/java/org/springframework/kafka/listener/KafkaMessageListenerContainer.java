@@ -1514,30 +1514,46 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			// Process only the records present at loop start; failures added concurrently
 			// are handled in the next loop iteration.
 			List<FailedRecordTuple<K, V>> failedRecordsSnapshot = new ArrayList<>(this.failedRecords);
+			if (failedRecordsSnapshot.isEmpty()) {
+				return;
+			}
+			// Group claimed failures by partition. A seek-after-handling error handler
+			// tracks/seeks only the first record in the list it is given, so handing
+			// each failed record over individually would have each per-record seek
+			// clobber the previous one and silently skip the earlier-offset records on
+			// the same partition (GH-4504).
+			Map<TopicPartition, List<FailedRecordTuple<K, V>>> failuresByPartition = new LinkedHashMap<>();
 			for (FailedRecordTuple<K, V> failedRecord : failedRecordsSnapshot) {
 				if (!this.failedRecords.removeFirstOccurrence(failedRecord)) {
 					continue;
 				}
+				TopicPartition tp = new TopicPartition(failedRecord.record.topic(), failedRecord.record.partition());
+				failuresByPartition.computeIfAbsent(tp, k -> new ArrayList<>()).add(failedRecord);
+			}
+			for (List<FailedRecordTuple<K, V>> partitionFailures : failuresByPartition.values()) {
+				partitionFailures.sort(Comparator.comparingLong(t -> t.record.offset()));
+				FailedRecordTuple<K, V> head = partitionFailures.get(0);
 				try {
-					failedRecord.observation.scoped(() -> invokeErrorHandlerBySingleRecord(failedRecord));
+					head.observation.scoped(() -> invokeErrorHandlerForFailedRecords(partitionFailures));
 				}
 				catch (RecordInRetryException e) {
-					// Retry is in progress: the seek-after-handling error handler has
-					// repositioned the consumer to the failed record's offset, so the
-					// next poll will re-deliver it and a fresh FailedRecordTuple will
-					// be produced through the async failure callback. The
-					// FailedRecordTracker entry is keyed by topic-partition-offset and
-					// persists across loop iterations, so the attempt counter continues
-					// to advance correctly. Re-queueing the tuple here would cause the
-					// record to be processed twice per loop (once from the queue, once
-					// from the seek-induced re-delivery) and, after recovery resets the
-					// tracker entry, leaves the duplicate in the queue to start a new
-					// retry cycle — the unbounded re-delivery reported in GH-4465.
+					// Retry is in progress for this partition: the seek-after-handling
+					// error handler has repositioned the consumer to the lowest failed
+					// offset, so the next poll will re-deliver the affected records and
+					// produce fresh FailedRecordTuples through the async failure
+					// callback. The FailedRecordTracker entry is keyed by
+					// topic-partition-offset and persists across loop iterations, so the
+					// attempt counter continues to advance correctly. Re-queueing the
+					// tuples here would cause each record to be processed twice per loop
+					// (once from the queue, once from the seek-induced re-delivery) and,
+					// after recovery resets the tracker entry, leaves the duplicate in
+					// the queue to start a new retry cycle — the unbounded re-delivery
+					// reported in GH-4465.
 				}
 				catch (Exception e) {
 					this.logger.warn(() ->
 							"Async failed record failed to complete, thus skip it. record :"
-									+ failedRecord
+									+ head
 									+ ", Exception : "
 									+ e.getMessage());
 				}
@@ -3033,9 +3049,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void invokeErrorHandlerBySingleRecord(FailedRecordTuple<K, V> failedRecordTuple) {
-			final ConsumerRecord<K, V> cRecord = failedRecordTuple.record;
-			RuntimeException rte = failedRecordTuple.ex;
+		private void invokeErrorHandlerForFailedRecords(List<FailedRecordTuple<K, V>> partitionFailures) {
+			FailedRecordTuple<K, V> head = partitionFailures.get(0);
+			RuntimeException rte = head.ex;
 			if (Objects.requireNonNull(this.commonErrorHandler).seeksAfterHandling() || rte instanceof CommitFailedException) {
 				try {
 					if (this.producer == null) {
@@ -3045,7 +3061,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				catch (Exception ex) { // NO SONAR
 					this.logger.error(ex, "Failed to commit before handling error");
 				}
-				List<ConsumerRecord<?, ?>> retryRecords = List.of(cRecord);
+				List<ConsumerRecord<?, ?>> retryRecords = new ArrayList<>(partitionFailures.size());
+				for (FailedRecordTuple<K, V> tuple : partitionFailures) {
+					retryRecords.add(tuple.record);
+				}
 				try {
 					this.commonErrorHandler.handleRemaining(rte, retryRecords, this.consumer,
 							KafkaMessageListenerContainer.this.thisOrParentContainer);
@@ -3056,18 +3075,24 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			else {
-				boolean handled = false;
-				try {
-					handled = this.commonErrorHandler.handleOne(rte, cRecord, this.consumer,
-							KafkaMessageListenerContainer.this.thisOrParentContainer);
-				}
-				catch (Exception ex) {
-					this.logger.error(ex, "ErrorHandler threw unexpected exception");
-				}
+				// Non-seeking handler: handleOne does not seek, so there is no risk of a
+				// later record's call clobbering an earlier one. Process each tuple
+				// independently and aggregate any unhandled records into remainingRecords.
 				Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new LinkedHashMap<>();
-				if (!handled) {
-					records.computeIfAbsent(new TopicPartition(cRecord.topic(), cRecord.partition()),
-							tp -> new ArrayList<>()).add(cRecord);
+				for (FailedRecordTuple<K, V> tuple : partitionFailures) {
+					ConsumerRecord<K, V> cRecord = tuple.record;
+					boolean handled = false;
+					try {
+						handled = this.commonErrorHandler.handleOne(tuple.ex, cRecord, this.consumer,
+								KafkaMessageListenerContainer.this.thisOrParentContainer);
+					}
+					catch (Exception ex) {
+						this.logger.error(ex, "ErrorHandler threw unexpected exception");
+					}
+					if (!handled) {
+						records.computeIfAbsent(new TopicPartition(cRecord.topic(), cRecord.partition()),
+								tp -> new ArrayList<>()).add(cRecord);
+					}
 				}
 				if (!records.isEmpty()) {
 					this.remainingRecords = new ConsumerRecords<>(records, Map.of());
