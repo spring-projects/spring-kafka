@@ -171,8 +171,13 @@ class EnableKafkaKotlinCoroutinesTests {
 				// The earlier-offset record is retried exactly n + 1 times.
 				assertThat(this.config.twoRecordRetryDeliveries["r1"]).isEqualTo(3)
 				// The later-offset record is delivered for each poll cycle that
-				// re-fetches it during r1's retry, plus its own n + 1 retry cycle.
-				assertThat(this.config.twoRecordRetryDeliveries["r2"]).isEqualTo(6)
+				// re-fetches it alongside r1 during r1's retry, plus its own
+				// n + 1 retry cycle once r1 is recovered. The async dispatch
+				// model invokes the listener on every polled record before any
+				// failure callback fires, so this is the bounded minimum given
+				// the blocking listener cannot be replicated without giving up
+				// per-poll parallelism.
+				assertThat(this.config.twoRecordRetryDeliveries["r2"]).isEqualTo(5)
 			}
 	}
 
