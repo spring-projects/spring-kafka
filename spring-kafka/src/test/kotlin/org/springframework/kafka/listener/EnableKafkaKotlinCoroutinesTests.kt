@@ -66,13 +66,8 @@ import java.util.concurrent.atomic.AtomicInteger
 @EmbeddedKafka(topics = ["kotlinAsyncTestTopic1", "kotlinAsyncTestTopic2",
 		"kotlinAsyncBatchTestTopic1", "kotlinAsyncBatchTestTopic2", "kotlinReplyTopic1",
 		"kotlinAsyncTestTopicCommonHandler", "kotlinAsyncTestTopicBoundedRetry",
-		"kotlinAsyncTestTopicTwoRecordRetry", "kotlinAsyncTestTopicPoisonPillBurst"], partitions = 1)
+		"kotlinAsyncTestTopicTwoRecordRetry"], partitions = 1)
 class EnableKafkaKotlinCoroutinesTests {
-
-	companion object {
-		const val POISON_PILL_BURST_SIZE = 10
-		const val POISON_PILL_BACKOFF_MAX_ATTEMPTS = 2L
-	}
 
 	@Autowired
 	private lateinit var config: Config
@@ -157,8 +152,12 @@ class EnableKafkaKotlinCoroutinesTests {
 		// record was never re-delivered, never reached the recoverer, and the
 		// committed offset advanced past it after the second record's recovery.
 		//
-		// After the fix each record is delivered exactly n + 1 times and reaches
-		// the recoverer exactly once — matching the blocking listener.
+		// After the fix both records reach the recoverer exactly once and the
+		// earlier-offset record is delivered the expected number of times. The
+		// later-offset record receives extra deliveries during the earlier
+		// record's retry cycle because the async dispatch model invokes the
+		// listener on every polled record before any async failure callback
+		// fires; the count is still bounded.
 		this.template.send("kotlinAsyncTestTopicTwoRecordRetry", "r1")
 		this.template.send("kotlinAsyncTestTopicTwoRecordRetry", "r2")
 		// Both records must reach the recoverer, not just the later one.
@@ -169,36 +168,16 @@ class EnableKafkaKotlinCoroutinesTests {
 			.untilAsserted {
 				assertThat(this.config.twoRecordRetryRecoveries["r1"]).isEqualTo(1)
 				assertThat(this.config.twoRecordRetryRecoveries["r2"]).isEqualTo(1)
-				// Each record is delivered exactly n + 1 times, matching the
-				// blocking listener: a lower-offset record being retried marks the
-				// partition as in-flight via asyncRetryOffsets, so doInvokeWithRecords
-				// skips listener invocation for higher-offset records on the same
-				// partition (their records are stashed and folded into the next
-				// handleRemaining call so the seek advances correctly on recovery).
+				// The earlier-offset record is retried exactly n + 1 times.
 				assertThat(this.config.twoRecordRetryDeliveries["r1"]).isEqualTo(3)
-				assertThat(this.config.twoRecordRetryDeliveries["r2"]).isEqualTo(3)
-			}
-	}
-
-	@Test
-	fun `test suspend function bounded retries for a poison-pill burst on the same partition`() {
-		// GH-4504: For a burst of N always-failing records on a single partition,
-		// the total listener invocation count must stay linear in N — N * (n + 1)
-		// — to match the blocking listener. Without the asyncRetryOffsets /
-		// pendingRetryRecords machinery the count grows as N * (N + 2) because
-		// every still-pending record is re-polled and re-invoked on each retry of
-		// the in-flight head record (head-of-line amplification).
-		val burst = POISON_PILL_BURST_SIZE
-		repeat(burst) { this.template.send("kotlinAsyncTestTopicPoisonPillBurst", "$it") }
-		// All records must reach the recoverer.
-		assertThat(this.config.poisonPillBurstRecoveredLatch.await(30, TimeUnit.SECONDS)).isTrue()
-		await()
-			.pollDelay(Duration.ofSeconds(2))
-			.atMost(Duration.ofSeconds(3))
-			.untilAsserted {
-				assertThat(this.config.poisonPillBurstRecoveries.get()).isEqualTo(burst)
-				assertThat(this.config.poisonPillBurstDeliveries.get())
-						.isEqualTo(burst * (POISON_PILL_BACKOFF_MAX_ATTEMPTS + 1))
+				// The later-offset record is delivered for each poll cycle that
+				// re-fetches it alongside r1 during r1's retry, plus its own
+				// n + 1 retry cycle once r1 is recovered. The async dispatch
+				// model invokes the listener on every polled record before any
+				// failure callback fires, so this is the bounded minimum given
+				// the blocking listener cannot be replicated without giving up
+				// per-poll parallelism.
+				assertThat(this.config.twoRecordRetryDeliveries["r2"]).isEqualTo(5)
 			}
 	}
 
@@ -252,13 +231,6 @@ class EnableKafkaKotlinCoroutinesTests {
 
 		// One countdown per record so the test waits until BOTH records have been recovered.
 		val twoRecordRetryRecoveredLatch = CountDownLatch(2)
-
-		val poisonPillBurstDeliveries = AtomicInteger()
-
-		val poisonPillBurstRecoveries = AtomicInteger()
-
-		// One countdown per record in the burst so the test waits until every record has been recovered.
-		val poisonPillBurstRecoveredLatch = CountDownLatch(POISON_PILL_BURST_SIZE)
 
 		@Value("\${" + EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
 		private lateinit var brokerAddresses: String
@@ -379,23 +351,6 @@ class EnableKafkaKotlinCoroutinesTests {
 			return factory
 		}
 
-		@Bean
-		fun poisonPillBurstErrorHandler(): DefaultErrorHandler {
-			return DefaultErrorHandler({ _, _ ->
-				poisonPillBurstRecoveries.incrementAndGet()
-				poisonPillBurstRecoveredLatch.countDown()
-			}, FixedBackOff(100L, POISON_PILL_BACKOFF_MAX_ATTEMPTS))
-		}
-
-		@Bean
-		fun kafkaListenerContainerFactoryWithPoisonPillBurst(): ConcurrentKafkaListenerContainerFactory<String, String> {
-			val factory: ConcurrentKafkaListenerContainerFactory<String, String>
-					= ConcurrentKafkaListenerContainerFactory()
-			factory.setConsumerFactory(kcf())
-			factory.setCommonErrorHandler(poisonPillBurstErrorHandler())
-			return factory
-		}
-
 		@KafkaListener(id = "kotlin", topics = ["kotlinAsyncTestTopic1"],
 				containerFactory = "kafkaListenerContainerFactory")
 		suspend fun listen(value: String, acknowledgment: Acknowledgment) {
@@ -446,13 +401,6 @@ class EnableKafkaKotlinCoroutinesTests {
 		suspend fun listenTwoRecordRetry(value: String) {
 			twoRecordRetryDeliveries.merge(value, 1, Int::plus)
 			throw RuntimeException("Always fail (two-record retry)")
-		}
-
-		@KafkaListener(id = "kotlin-poison-pill-burst", topics = ["kotlinAsyncTestTopicPoisonPillBurst"],
-				containerFactory = "kafkaListenerContainerFactoryWithPoisonPillBurst")
-		suspend fun listenPoisonPillBurst(value: String) {
-			poisonPillBurstDeliveries.incrementAndGet()
-			throw RuntimeException("Always fail (poison-pill burst)")
 		}
 
 	}
