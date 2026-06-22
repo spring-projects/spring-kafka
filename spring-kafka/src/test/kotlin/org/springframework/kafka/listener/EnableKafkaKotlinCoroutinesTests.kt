@@ -66,7 +66,7 @@ import java.util.concurrent.atomic.AtomicInteger
 @EmbeddedKafka(topics = ["kotlinAsyncTestTopic1", "kotlinAsyncTestTopic2",
 		"kotlinAsyncBatchTestTopic1", "kotlinAsyncBatchTestTopic2", "kotlinReplyTopic1",
 		"kotlinAsyncTestTopicCommonHandler", "kotlinAsyncTestTopicBoundedRetry",
-		"kotlinAsyncTestTopicTwoRecordRetry"], partitions = 1)
+		"kotlinAsyncTestTopicTwoRecordRetry", "kotlinAsyncTestTopicBurstRetry"], partitions = 1)
 class EnableKafkaKotlinCoroutinesTests {
 
 	@Autowired
@@ -139,6 +139,34 @@ class EnableKafkaKotlinCoroutinesTests {
 			.atMost(Duration.ofSeconds(3))
 			.untilAsserted {
 				assertThat(this.config.boundedRetryDeliveries.get()).isEqualTo(3)
+			}
+	}
+
+	@Test
+	fun `test suspend function bounded burst stays linear with N`() {
+		// GH-4504: the data-loss-only fix on this branch left the suspend listener
+		// re-executing every queued record on every retry cycle of the in-flight
+		// head, so the total listener invocations grew as N * (N + 2) (quadratic).
+		// The asyncRetryOffsets dispatch-loop skip bounds this at N * (n + 2) - 1
+		// (linear), one extra dispatch-loop delivery per non-head record on top of
+		// the blocking listener's N * (n + 1).
+		//
+		// Confirm the formula by measuring the actual invocation count for a
+		// moderate burst.
+		val burstSize = 10
+		val maxRetries = 2L
+		val expected = burstSize * (maxRetries.toInt() + 2) - 1
+		this.config.burstRetryRecoveredLatch = CountDownLatch(burstSize)
+		this.config.burstRetryDeliveries.set(0)
+		repeat(burstSize) { idx ->
+			this.template.send("kotlinAsyncTestTopicBurstRetry", "burst-$idx")
+		}
+		assertThat(this.config.burstRetryRecoveredLatch.await(60, TimeUnit.SECONDS)).isTrue()
+		await()
+			.pollDelay(Duration.ofSeconds(2))
+			.atMost(Duration.ofSeconds(4))
+			.untilAsserted {
+				assertThat(this.config.burstRetryDeliveries.get()).isEqualTo(expected)
 			}
 	}
 
@@ -236,6 +264,11 @@ class EnableKafkaKotlinCoroutinesTests {
 
 		// One countdown per record so the test waits until BOTH records have been recovered.
 		val twoRecordRetryRecoveredLatch = CountDownLatch(2)
+
+		val burstRetryDeliveries = AtomicInteger()
+
+		@Volatile
+		var burstRetryRecoveredLatch = CountDownLatch(1)
 
 		@Value("\${" + EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
 		private lateinit var brokerAddresses: String
@@ -356,6 +389,21 @@ class EnableKafkaKotlinCoroutinesTests {
 			return factory
 		}
 
+		@Bean
+		fun burstRetryErrorHandler(): DefaultErrorHandler {
+			return DefaultErrorHandler({ _, _ -> burstRetryRecoveredLatch.countDown() },
+					FixedBackOff(100L, 2L))
+		}
+
+		@Bean
+		fun kafkaListenerContainerFactoryWithBurstRetry(): ConcurrentKafkaListenerContainerFactory<String, String> {
+			val factory: ConcurrentKafkaListenerContainerFactory<String, String>
+					= ConcurrentKafkaListenerContainerFactory()
+			factory.setConsumerFactory(kcf())
+			factory.setCommonErrorHandler(burstRetryErrorHandler())
+			return factory
+		}
+
 		@KafkaListener(id = "kotlin", topics = ["kotlinAsyncTestTopic1"],
 				containerFactory = "kafkaListenerContainerFactory")
 		suspend fun listen(value: String, acknowledgment: Acknowledgment) {
@@ -406,6 +454,13 @@ class EnableKafkaKotlinCoroutinesTests {
 		suspend fun listenTwoRecordRetry(value: String) {
 			twoRecordRetryDeliveries.merge(value, 1, Int::plus)
 			throw RuntimeException("Always fail (two-record retry)")
+		}
+
+		@KafkaListener(id = "kotlin-burst-retry", topics = ["kotlinAsyncTestTopicBurstRetry"],
+				containerFactory = "kafkaListenerContainerFactoryWithBurstRetry")
+		suspend fun listenBurstRetry(value: String) {
+			burstRetryDeliveries.incrementAndGet()
+			throw RuntimeException("Always fail (burst retry)")
 		}
 
 	}
