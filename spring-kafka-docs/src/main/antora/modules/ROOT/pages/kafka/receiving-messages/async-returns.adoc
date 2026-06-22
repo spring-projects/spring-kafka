@@ -45,5 +45,9 @@ If your listener performs non-idempotent work per delivery (an outbound HTTP cal
 * Use `@RetryableTopic` (non-blocking retry).
   Failing records are routed to a separate retry topic so the main partition keeps advancing and later records are not re-executed during a peer's retry.
 * Make the listener idempotent (the Kafka default at-least-once delivery already expects this).
+
+This choice can be made per topic rather than application-wide.
+Events whose correctness depends on strict per-partition ordering (for example, state transitions keyed by an entity id) can stay on a seek-based handler and rely on partition count plus key distribution for throughput.
+Events that do not require ordering (search index updates, notifications, downstream enrichment) can run on `@RetryableTopic` listeners so a failing record does not re-execute its partition peers.
 ====
 
