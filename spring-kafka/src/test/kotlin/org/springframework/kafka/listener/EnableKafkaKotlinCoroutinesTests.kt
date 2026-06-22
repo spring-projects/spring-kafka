@@ -152,12 +152,13 @@ class EnableKafkaKotlinCoroutinesTests {
 		// record was never re-delivered, never reached the recoverer, and the
 		// committed offset advanced past it after the second record's recovery.
 		//
-		// After the fix both records reach the recoverer exactly once and the
-		// earlier-offset record is delivered the expected number of times. The
-		// later-offset record receives extra deliveries during the earlier
-		// record's retry cycle because the async dispatch model invokes the
-		// listener on every polled record before any async failure callback
-		// fires; the count is still bounded.
+		// After the fix both records reach the recoverer exactly once. The
+		// earlier-offset record is delivered exactly n + 1 times. The later-
+		// offset record is delivered one extra time over the blocking-listener
+		// bound (the iter-0 dispatch invocation that fired before any retry
+		// state was registered on the partition); subsequent retry iterations
+		// skip it via asyncRetryOffsets so the count does not grow with the
+		// burst size.
 		this.template.send("kotlinAsyncTestTopicTwoRecordRetry", "r1")
 		this.template.send("kotlinAsyncTestTopicTwoRecordRetry", "r2")
 		// Both records must reach the recoverer, not just the later one.
@@ -174,11 +175,13 @@ class EnableKafkaKotlinCoroutinesTests {
 				// timing: 3 if r1 finishes before r2 is ever polled (matches
 				// the blocking listener), up to 5 if r1 and r2 share the first
 				// poll and r2 is re-fetched alongside r1 on every retry cycle.
-				// The real proof of the fix is the recoveries assertion above
-				// (both records reach the recoverer exactly once); bound the
-				// delivery count to the same window the blocking listener could
-				// see plus the two incidental re-deliveries from the async
-				// dispatch model.
+				// The amplification fix in this commit tightens this to 4 in
+				// practice (the iter-0 dispatch invocation plus r2's own n + 1
+				// retry cycle once r1 is recovered), but the strict bound is
+				// asserted by the burst regression test below — here we keep
+				// the wider bound that holds with or without the dispatch-loop
+				// skip, since the real proof of the fix is the recoveries
+				// assertion above.
 				assertThat(this.config.twoRecordRetryDeliveries["r2"]).isBetween(3, 5)
 			}
 	}
