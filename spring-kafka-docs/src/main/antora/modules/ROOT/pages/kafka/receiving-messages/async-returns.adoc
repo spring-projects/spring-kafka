@@ -49,5 +49,10 @@ If your listener performs non-idempotent work per delivery (an outbound HTTP cal
 This choice can be made per topic rather than application-wide.
 Events whose correctness depends on strict per-partition ordering (for example, state transitions keyed by an entity id) can stay on a seek-based handler and rely on partition count plus key distribution for throughput.
 Events that do not require ordering (search index updates, notifications, downstream enrichment) can run on `@RetryableTopic` listeners so a failing record does not re-execute its partition peers.
+
+Async return types also do not preserve per-partition processing order when records on the same partition have mixed outcomes: while a failing record is in its retry / backoff cycle, a successful later-offset record on the same partition can complete its listener body first.
+Kafka still delivers in order and the committed offset stays consistent, but the listener bodies run concurrently, so the side effects can land out of partition order.
+A blocking listener avoids this because it processes the partition strictly one record at a time — the earlier-offset record runs to completion (success or recovery) before the next record on the partition is invoked.
+If your consumer relies on per-key processing order (idempotent updates keyed by entity id, ordered state transitions), the blocking listener is the correct model regardless of which error handler you use.
 ====
 
