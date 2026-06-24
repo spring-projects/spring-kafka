@@ -1549,7 +1549,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					continue;
 				}
 				try {
-					failedRecord.observation.scoped(() -> invokeErrorHandlerForFailedRecords(List.of(failedRecord)));
+					failedRecord.observation.scoped(() -> invokeErrorHandlerBySingleRecord(failedRecord));
 				}
 				catch (RecordInRetryException e) {
 					partitionsInRetry.add(tp);
@@ -3061,9 +3061,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void invokeErrorHandlerForFailedRecords(List<FailedRecordTuple<K, V>> partitionFailures) {
-			FailedRecordTuple<K, V> head = partitionFailures.get(0);
-			RuntimeException rte = head.ex;
+		private void invokeErrorHandlerBySingleRecord(FailedRecordTuple<K, V> failedRecordTuple) {
+			final ConsumerRecord<K, V> cRecord = failedRecordTuple.record;
+			RuntimeException rte = failedRecordTuple.ex;
 			if (Objects.requireNonNull(this.commonErrorHandler).seeksAfterHandling() || rte instanceof CommitFailedException) {
 				try {
 					if (this.producer == null) {
@@ -3073,10 +3073,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				catch (Exception ex) { // NO SONAR
 					this.logger.error(ex, "Failed to commit before handling error");
 				}
-				List<ConsumerRecord<?, ?>> retryRecords = new ArrayList<>(partitionFailures.size());
-				for (FailedRecordTuple<K, V> tuple : partitionFailures) {
-					retryRecords.add(tuple.record);
-				}
+				List<ConsumerRecord<?, ?>> retryRecords = List.of(cRecord);
 				try {
 					this.commonErrorHandler.handleRemaining(rte, retryRecords, this.consumer,
 							KafkaMessageListenerContainer.this.thisOrParentContainer);
@@ -3087,24 +3084,18 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 			}
 			else {
-				// Non-seeking handler: handleOne does not seek, so there is no risk of a
-				// later record's call clobbering an earlier one. Process each tuple
-				// independently and aggregate any unhandled records into remainingRecords.
+				boolean handled = false;
+				try {
+					handled = this.commonErrorHandler.handleOne(rte, cRecord, this.consumer,
+							KafkaMessageListenerContainer.this.thisOrParentContainer);
+				}
+				catch (Exception ex) {
+					this.logger.error(ex, "ErrorHandler threw unexpected exception");
+				}
 				Map<TopicPartition, List<ConsumerRecord<K, V>>> records = new LinkedHashMap<>();
-				for (FailedRecordTuple<K, V> tuple : partitionFailures) {
-					ConsumerRecord<K, V> cRecord = tuple.record;
-					boolean handled = false;
-					try {
-						handled = this.commonErrorHandler.handleOne(tuple.ex, cRecord, this.consumer,
-								KafkaMessageListenerContainer.this.thisOrParentContainer);
-					}
-					catch (Exception ex) {
-						this.logger.error(ex, "ErrorHandler threw unexpected exception");
-					}
-					if (!handled) {
-						records.computeIfAbsent(new TopicPartition(cRecord.topic(), cRecord.partition()),
-								tp -> new ArrayList<>()).add(cRecord);
-					}
+				if (!handled) {
+					records.computeIfAbsent(new TopicPartition(cRecord.topic(), cRecord.partition()),
+							tp -> new ArrayList<>()).add(cRecord);
 				}
 				if (!records.isEmpty()) {
 					this.remainingRecords = new ConsumerRecords<>(records, Map.of());
