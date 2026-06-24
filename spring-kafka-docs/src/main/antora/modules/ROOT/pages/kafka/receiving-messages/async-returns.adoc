@@ -30,3 +30,29 @@ If some exception occurs within the listener method that prevents creation of th
 
 If a `KafkaListenerErrorHandler` is configured on a listener with an async return type (including Kotlin suspend functions), the error handler is invoked after a failure.
 See xref:kafka/annotation-error-handling.adoc[Handling Exceptions] for more information about this error handler and its purpose.
+
+[IMPORTANT]
+====
+With a seek-after-handling error handler such as `DefaultErrorHandler`, an async listener can re-execute records that are queued behind a failing record on the same partition.
+When the head record enters its retry cycle, the consumer is seeked back to its offset, and every subsequent poll re-fetches and re-invokes the listener on the records that follow it on that partition.
+The total listener invocations grow with how many failing records are queued behind the head, not just with `maxAttempts`.
+
+This does not affect blocking listeners, because the synchronous throw aborts the batch iteration before the later records are invoked.
+For async listeners (suspend / `Mono` / `CompletableFuture`), the dispatch loop has already invoked the next record before the failure callback fires.
+
+If your listener performs non-idempotent work per delivery (an outbound HTTP call, a DB write that is not transactional with the offset commit), prefer one of the following:
+
+* Use `@RetryableTopic` (non-blocking retry).
+  Failing records are routed to a separate retry topic so the main partition keeps advancing and later records are not re-executed during a peer's retry.
+* Make the listener idempotent (the Kafka default at-least-once delivery already expects this).
+
+This choice can be made per topic rather than application-wide.
+Events whose correctness depends on strict per-partition ordering (for example, state transitions keyed by an entity id) can stay on a seek-based handler and rely on partition count plus key distribution for throughput.
+Events that do not require ordering (search index updates, notifications, downstream enrichment) can run on `@RetryableTopic` listeners so a failing record does not re-execute its partition peers.
+
+Async return types also do not preserve per-partition processing order when records on the same partition have mixed outcomes: while a failing record is in its retry / backoff cycle, a successful later-offset record on the same partition can complete its listener body first.
+Kafka still delivers in order and the committed offset stays consistent, but the listener bodies run concurrently, so the side effects can land out of partition order.
+A blocking listener avoids this because it processes the partition strictly one record at a time — the earlier-offset record runs to completion (success or recovery) before the next record on the partition is invoked.
+If your consumer relies on per-key processing order (idempotent updates keyed by entity id, ordered state transitions), the blocking listener is the correct model regardless of which error handler you use.
+====
+

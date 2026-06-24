@@ -1514,25 +1514,53 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			// Process only the records present at loop start; failures added concurrently
 			// are handled in the next loop iteration.
 			List<FailedRecordTuple<K, V>> failedRecordsSnapshot = new ArrayList<>(this.failedRecords);
+			if (failedRecordsSnapshot.isEmpty()) {
+				return;
+			}
+			// Sort by (topic, partition, offset) so that for a seek-after-handling error
+			// handler we always hand the lowest offset on a partition over first; this
+			// way, when the handler registers a seek-back, any subsequent records on the
+			// same partition can be dropped from this iteration and rely on the seek to
+			// re-fetch them, avoiding the per-record seek clobbering that silently
+			// skipped the earlier-offset record (GH-4504). For non-seeking handlers
+			// (e.g. RetryTopic) the sort is harmless and each record is processed
+			// individually to keep the existing dispatch semantics.
+			failedRecordsSnapshot.sort(Comparator
+					.comparing((FailedRecordTuple<K, V> t) -> t.record.topic())
+					.thenComparingInt(t -> t.record.partition())
+					.thenComparingLong(t -> t.record.offset()));
+			Set<TopicPartition> partitionsInRetry = new HashSet<>();
 			for (FailedRecordTuple<K, V> failedRecord : failedRecordsSnapshot) {
 				if (!this.failedRecords.removeFirstOccurrence(failedRecord)) {
+					continue;
+				}
+				TopicPartition tp = new TopicPartition(failedRecord.record.topic(), failedRecord.record.partition());
+				if (partitionsInRetry.contains(tp)) {
+					// A lower-offset record on this partition is already in retry: the
+					// seek-after-handling error handler has repositioned the consumer to
+					// that offset, so the next poll will re-deliver this record and a
+					// fresh FailedRecordTuple will be produced through the async failure
+					// callback. Processing it now would have its per-record seek
+					// override the in-retry seek and silently skip the earlier-offset
+					// record (GH-4504). Dropping it from the queue here without
+					// re-queueing also avoids the unbounded re-delivery loop fixed by
+					// GH-4465 (which was caused by re-queueing tuples whose seek had
+					// already been performed by the error handler).
 					continue;
 				}
 				try {
 					failedRecord.observation.scoped(() -> invokeErrorHandlerBySingleRecord(failedRecord));
 				}
 				catch (RecordInRetryException e) {
+					partitionsInRetry.add(tp);
 					// Retry is in progress: the seek-after-handling error handler has
-					// repositioned the consumer to the failed record's offset, so the
-					// next poll will re-deliver it and a fresh FailedRecordTuple will
-					// be produced through the async failure callback. The
-					// FailedRecordTracker entry is keyed by topic-partition-offset and
-					// persists across loop iterations, so the attempt counter continues
-					// to advance correctly. Re-queueing the tuple here would cause the
-					// record to be processed twice per loop (once from the queue, once
-					// from the seek-induced re-delivery) and, after recovery resets the
-					// tracker entry, leaves the duplicate in the queue to start a new
-					// retry cycle — the unbounded re-delivery reported in GH-4465.
+					// repositioned the consumer to this offset and the
+					// FailedRecordTracker entry keyed by topic-partition-offset persists
+					// across loop iterations, so the attempt counter continues to
+					// advance correctly. Re-queueing the tuple here would cause it to be
+					// processed twice per loop (once from the queue, once from the
+					// seek-induced re-delivery) — the unbounded re-delivery reported in
+					// GH-4465.
 				}
 				catch (Exception e) {
 					this.logger.warn(() ->
