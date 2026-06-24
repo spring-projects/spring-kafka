@@ -2086,9 +2086,21 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				return;
 			}
 			try {
-				if (this.commonErrorHandler != null) {
-					this.commonErrorHandler.handleOtherException(e, this.consumer,
-							KafkaMessageListenerContainer.this.thisOrParentContainer, this.isBatchListener);
+				ConsumerExceptionHandler handler =
+						this.containerProperties.getConsumerExceptionHandler();
+
+				if (handler != null) {
+					handler.handle(
+							e,
+							this.consumer,
+							KafkaMessageListenerContainer.this.thisOrParentContainer);
+				}
+				else if (this.commonErrorHandler != null) {
+					this.commonErrorHandler.handleOtherException(
+							e,
+							this.consumer,
+							KafkaMessageListenerContainer.this.thisOrParentContainer,
+							this.isBatchListener);
 				}
 				else {
 					this.logger.error(e, "Consumer exception");
