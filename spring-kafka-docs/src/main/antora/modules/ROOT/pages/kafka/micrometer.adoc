@@ -93,6 +93,26 @@ This class is a super for the mentioned above `MicrometerConsumerListener`, `Mic
 However, it can be used for any Kafka client use-cases.
 The class needs to be extended and its `bindClient()` and `unbindClient()` API have to be called to connect Kafka client metrics with a Micrometer collector.
 
+
+[[monitoring-container-lifecycle]]
+== Monitoring Listener Container Lifecycle
+
+Starting with version 4.1.0, the listener container will automatically create and update Micrometer ``Counter``s for container start and stop events, if `Micrometer` is detected on the classpath, and a single `MeterRegistry` is present in the application context.
+The counters can be disabled by setting the ``ContainerProperty``'s `micrometerEnabled` to `false`.
+
+Two counters are maintained - one for container start events and one for container stop events.
+
+The counters are named as follows:
+
+* `spring.kafka.container.start.count` - incremented each time the container is started
+* `spring.kafka.container.stop.count` - incremented each time the container is stopped (including abnormal stops)
+
+Both counters have the following tag:
+
+* `name` : (container bean name)
+
+This feature is useful for monitoring container restarts, detecting unexpected stops, and tracking the lifecycle of listener containers in production environments.
+
 [[observation]]
 == Micrometer Observation
 
