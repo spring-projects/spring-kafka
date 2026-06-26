@@ -16,12 +16,14 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.core.log.LogAccessor;
@@ -177,6 +179,10 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 
 	public void clearThreadState() {
 		this.failureTracker.clearThreadState();
+	}
+
+	public void clearThreadStateFor(Collection<TopicPartition> partitions) {
+		this.failureTracker.clearThreadStateFor(partitions);
 	}
 
 }
