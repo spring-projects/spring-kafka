@@ -246,6 +246,13 @@ class FailedRecordTracker implements RecoveryStrategy {
 		this.failures.remove(Thread.currentThread());
 	}
 
+	void clearThreadStateFor(java.util.Collection<TopicPartition> partitions) {
+		Map<TopicPartition, FailedRecord> map = this.failures.get(Thread.currentThread());
+		if (map != null) {
+			partitions.forEach(map::remove);
+		}
+	}
+
 	ConsumerAwareRecordRecoverer getRecoverer() {
 		return this.recoverer;
 	}

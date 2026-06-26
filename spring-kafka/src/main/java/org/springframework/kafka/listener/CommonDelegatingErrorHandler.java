@@ -101,6 +101,12 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 	}
 
 	@Override
+	public void clearThreadStateFor(Collection<TopicPartition> partitions) {
+		this.defaultErrorHandler.clearThreadStateFor(partitions);
+		this.delegates.values().forEach(h -> h.clearThreadStateFor(partitions));
+	}
+
+	@Override
 	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions,
 			Runnable publishPause) {
 
