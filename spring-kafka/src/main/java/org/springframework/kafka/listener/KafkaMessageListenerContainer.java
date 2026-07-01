@@ -869,24 +869,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final ConcurrentLinkedDeque<FailedRecordTuple<K, V>> failedRecords = new ConcurrentLinkedDeque<>();
 
-		// Lowest in-flight retry offset per partition for the async path. Populated only
-		// when a seek-after-handling error handler throws RecordInRetryException (i.e.,
-		// the tracker is going to use its backoff budget). Consulted by
-		// doInvokeWithRecords to skip listener invocation for records on the same
-		// partition at higher offsets — those records will be re-fetched by the next
-		// poll after the retry resolves, so re-invoking the listener on them in the
-		// meantime only inflates the delivery count (GH-4504, head-of-line
-		// amplification). Accessed only on the consumer thread.
+		// Per-partition in-flight retry offset for the async seek-after-handling path
+		// (GH-4504 amplification bound). Consumer thread only.
 		private final Map<TopicPartition, Long> asyncRetryOffsets = new HashMap<>();
 
-		// True once any record on this consumer has caused the error handler to throw
-		// RecordInRetryException — i.e., the handler is a multi-attempt one. Gates the
-		// dispatch-loop sync-failure detection that populates asyncRetryOffsets within
-		// the same poll iteration: for publish-and-done recoverers (e.g.
-		// DeadLetterPublishingRecoverer wired into a @RetryableTopic flow) the failure
-		// callback fires synchronously but no RecordInRetryException is thrown, so the
-		// gate stays false and subsequent records on the partition continue to be
-		// invoked rather than being silently skipped past the recoverer.
+		// Gates the dispatch-loop sync-failure detection so publish-and-done recoverers
+		// (DeadLetterPublishingRecoverer into a retry topic) — which fire the callback
+		// synchronously without throwing RecordInRetryException — do not cause the
+		// remaining records on the partition to be silently skipped past the recoverer.
 		private boolean seenMultiAttemptRetry;
 
 		private boolean isListenerAdapterObservationAware = false;
@@ -1532,20 +1522,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		protected void handleAsyncFailure() {
-			// Process only the records present at loop start; failures added concurrently
-			// are handled in the next loop iteration.
 			List<FailedRecordTuple<K, V>> failedRecordsSnapshot = new ArrayList<>(this.failedRecords);
 			if (failedRecordsSnapshot.isEmpty()) {
 				return;
 			}
-			// Sort by (topic, partition, offset) so that for a seek-after-handling error
-			// handler we always hand the lowest offset on a partition over first; this
-			// way, when the handler registers a seek-back, any subsequent records on the
-			// same partition can be dropped from this iteration and rely on the seek to
-			// re-fetch them, avoiding the per-record seek clobbering that silently
-			// skipped the earlier-offset record (GH-4504). For non-seeking handlers
-			// (e.g. RetryTopic) the sort is harmless and each record is processed
-			// individually to keep the existing dispatch semantics.
+			// Hand the lowest offset per partition to the handler first, so a
+			// seek-back covers the higher offsets and per-record seek clobbering
+			// does not silently skip the earlier-offset record (GH-4504).
 			failedRecordsSnapshot.sort(Comparator
 					.comparing((FailedRecordTuple<K, V> t) -> t.record.topic())
 					.thenComparingInt(t -> t.record.partition())
@@ -1557,16 +1540,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				TopicPartition tp = new TopicPartition(failedRecord.record.topic(), failedRecord.record.partition());
 				if (partitionsInRetry.contains(tp)) {
-					// A lower-offset record on this partition is already in retry: the
-					// seek-after-handling error handler has repositioned the consumer to
-					// that offset, so the next poll will re-deliver this record and a
-					// fresh FailedRecordTuple will be produced through the async failure
-					// callback. Processing it now would have its per-record seek
-					// override the in-retry seek and silently skip the earlier-offset
-					// record (GH-4504). Dropping it from the queue here without
-					// re-queueing also avoids the unbounded re-delivery loop fixed by
-					// GH-4465 (which was caused by re-queueing tuples whose seek had
-					// already been performed by the error handler).
+					// Head on this partition is already in retry; the seek will
+					// re-deliver this record next poll. Re-queueing here would
+					// double-process (GH-4465) and clobber the head's seek (GH-4504).
 					continue;
 				}
 				try {
@@ -1576,14 +1552,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					partitionsInRetry.add(tp);
 					this.seenMultiAttemptRetry = true;
 					this.asyncRetryOffsets.put(tp, failedRecord.record.offset());
-					// Retry is in progress: the seek-after-handling error handler has
-					// repositioned the consumer to this offset and the
-					// FailedRecordTracker entry keyed by topic-partition-offset persists
-					// across loop iterations, so the attempt counter continues to
-					// advance correctly. Re-queueing the tuple here would cause it to be
-					// processed twice per loop (once from the queue, once from the
-					// seek-induced re-delivery) — the unbounded re-delivery reported in
-					// GH-4465.
+					// Do not re-queue: the seek + FailedRecordTracker keep the
+					// attempt counter advancing across polls. Re-queueing caused
+					// the unbounded re-delivery reported in GH-4465.
 					continue;
 				}
 				catch (Exception e) {
@@ -1595,23 +1566,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					this.asyncRetryOffsets.remove(tp);
 					continue;
 				}
-				// handleRemaining returned normally — the record was recovered or the
-				// non-seeking handler routed it elsewhere. If this partition had an
-				// in-flight retry on this offset, the dispatch loop has been skipping
-				// the records queued behind the head on every retry cycle, so the
-				// consumer position is parked at the seeked-back offset of the head
-				// (records past the head have been polled but skipped from listener
-				// invocation, not advanced past). Seek explicitly to one past the
-				// recovered offset so the next poll re-fetches the still-failing
-				// records on this partition and the dispatch loop can pick them up;
-				// without this the consumer would re-fetch the recovered head and
-				// start a fresh retry cycle on it. Per-partition asyncRetryOffsets
-				// entries from skipped records have already been cleared individually
-				// by removeOffsetsInBatch in the dispatch loop, so no wholesale clear
-				// of offsetsInThisBatch is needed here (and a wholesale clear would
-				// wipe ack tracking for unrelated in-flight records on the partition,
-				// which is the regression that took 48d486bc out of the previous
-				// attempt at this fix).
+				// Advance past the recovered head so the next poll re-fetches the
+				// still-failing records; without this the consumer re-fetches the
+				// recovered head and starts a fresh retry cycle. A wholesale
+				// offsetsInThisBatch clear here would wipe ack tracking for
+				// unrelated in-flight records (the 48d486bc regression) —
+				// removeOffsetsInBatch already handled the individual entries.
 				Long inFlight = this.asyncRetryOffsets.get(tp);
 				if (inFlight != null && inFlight == failedRecord.record.offset()) {
 					try {
@@ -2827,14 +2787,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					continue;
 				}
 				if (shouldSkipForAsyncRetry(cRecord)) {
-					// A lower-offset record on this partition is currently being retried
-					// by a seek-after-handling error handler. Skip listener invocation
-					// for this record — the seek for the in-flight retry will re-fetch
-					// it on the next poll, and re-invoking the listener now only
-					// inflates the delivery count (GH-4504). Drop the offset from
-					// offsetsInThisBatch so an out-of-commit container (manual ack +
-					// async replies) does not stay paused waiting for an async ack on a
-					// record the listener was never called on.
+					// Head on this partition is in async retry; the seek will re-fetch
+					// this record next poll. Drop the offset from offsetsInThisBatch so
+					// an out-of-commit container does not wait on an ack that will never
+					// come (the listener is not invoked for this record — GH-4504).
 					removeOffsetsInBatch(List.of(cRecord));
 					continue;
 				}
@@ -2844,13 +2800,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						&& this.commonErrorHandler != null
 						&& this.commonErrorHandler.seeksAfterHandling()
 						&& failedSyncForRecord(cRecord)) {
-					// Identity on peekLast keeps an unrelated cross-partition callback
-					// that raced to the tail from tagging this partition (which would
-					// stall it until rebalance); handleAsyncFailure catches the miss on
-					// the next poll. The seenMultiAttemptRetry gate keeps publish-and-done
-					// recoverers (DeadLetterPublishingRecoverer routing to a retry topic)
-					// out of this path. putIfAbsent preserves any lower-offset retry
-					// already in flight on this partition.
+					// peekLast + identity: an unrelated cross-partition callback that
+					// raced to the tail just misses this optimization (handleAsyncFailure
+					// picks it up next poll) instead of stalling the partition until
+					// rebalance. putIfAbsent preserves any lower-offset in-flight retry.
 					this.asyncRetryOffsets.putIfAbsent(
 							new TopicPartition(cRecord.topic(), cRecord.partition()), cRecord.offset());
 				}
