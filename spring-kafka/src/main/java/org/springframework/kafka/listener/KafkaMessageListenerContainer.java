@@ -2838,25 +2838,19 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					removeOffsetsInBatch(List.of(cRecord));
 					continue;
 				}
-				int failedBefore = this.failedRecords.size();
 				this.logger.trace(() -> "Processing " + KafkaUtils.format(cRecord));
 				doInvokeRecordListener(cRecord, iterator);
 				if (this.seenMultiAttemptRetry
 						&& this.commonErrorHandler != null
 						&& this.commonErrorHandler.seeksAfterHandling()
-						&& this.failedRecords.size() > failedBefore) {
-					// The async listener's failure callback fired synchronously while
-					// invoking this record (typical for suspend functions that throw or
-					// pre-completed Mono / CompletableFuture results). The
-					// seenMultiAttemptRetry gate confirms the handler is multi-attempt
-					// (RecordInRetryException has been thrown at least once on this
-					// consumer), so it is safe to mark the partition as in-retry now and
-					// have the rest of the polled batch on this partition skipped by the
-					// check above — without the gate, a publish-and-done recoverer
-					// (DeadLetterPublishingRecoverer routing to a retry topic) would
-					// also trip this and the subsequent records on the partition would
-					// be silently skipped past the recoverer. putIfAbsent preserves any
-					// lower-offset retry already in flight on this partition.
+						&& failedSyncForRecord(cRecord)) {
+					// Identity on peekLast keeps an unrelated cross-partition callback
+					// that raced to the tail from tagging this partition (which would
+					// stall it until rebalance); handleAsyncFailure catches the miss on
+					// the next poll. The seenMultiAttemptRetry gate keeps publish-and-done
+					// recoverers (DeadLetterPublishingRecoverer routing to a retry topic)
+					// out of this path. putIfAbsent preserves any lower-offset retry
+					// already in flight on this partition.
 					this.asyncRetryOffsets.putIfAbsent(
 							new TopicPartition(cRecord.topic(), cRecord.partition()), cRecord.offset());
 				}
@@ -2879,6 +2873,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			Long retryOffset = this.asyncRetryOffsets.get(new TopicPartition(cRecord.topic(), cRecord.partition()));
 			return retryOffset != null && cRecord.offset() > retryOffset;
+		}
+
+		private boolean failedSyncForRecord(ConsumerRecord<K, V> cRecord) {
+			FailedRecordTuple<K, V> lastFailure = this.failedRecords.peekLast();
+			return lastFailure != null && lastFailure.record == cRecord;
 		}
 
 		private boolean checkImmediatePause(Iterator<ConsumerRecord<K, V>> iterator) {
