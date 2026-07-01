@@ -33,22 +33,23 @@ See xref:kafka/annotation-error-handling.adoc[Handling Exceptions] for more info
 
 [IMPORTANT]
 ====
-With a seek-after-handling error handler such as `DefaultErrorHandler`, an async listener can re-execute records that are queued behind a failing record on the same partition.
-When the head record enters its retry cycle, the consumer is seeked back to its offset, and every subsequent poll re-fetches and re-invokes the listener on the records that follow it on that partition.
-The total listener invocations grow with how many failing records are queued behind the head, not just with `maxAttempts`.
+With a seek-after-handling error handler such as `DefaultErrorHandler`, an async listener receives one extra dispatch-loop delivery per failing record on the same partition compared to a blocking listener.
+The dispatch loop invokes the listener on every polled record before any async failure callback fires, so the first poll of a poison-pill burst invokes every record once before any retry state is registered on the partition.
+After that, subsequent retry cycles of the head record skip the records queued behind it, so the total invocation count stays linear with the burst size rather than growing with backlog depth.
 
+For `N` always-failing records on a single partition with `maxAttempts = n`, the suspend listener receives `N * (n + 2) - 1` total invocations vs the blocking listener's `N * (n + 1)`.
+The iter-0 dispatch invocation cannot be elided without giving up the per-poll parallelism that is the point of async listeners.
 This does not affect blocking listeners, because the synchronous throw aborts the batch iteration before the later records are invoked.
-For async listeners (suspend / `Mono` / `CompletableFuture`), the dispatch loop has already invoked the next record before the failure callback fires.
 
 If your listener performs non-idempotent work per delivery (an outbound HTTP call, a DB write that is not transactional with the offset commit), prefer one of the following:
 
 * Use `@RetryableTopic` (non-blocking retry).
-  Failing records are routed to a separate retry topic so the main partition keeps advancing and later records are not re-executed during a peer's retry.
+  Failing records are routed to a separate retry topic so the main partition keeps advancing and no record receives an extra dispatch-loop delivery.
 * Make the listener idempotent (the Kafka default at-least-once delivery already expects this).
 
 This choice can be made per topic rather than application-wide.
 Events whose correctness depends on strict per-partition ordering (for example, state transitions keyed by an entity id) can stay on a seek-based handler and rely on partition count plus key distribution for throughput.
-Events that do not require ordering (search index updates, notifications, downstream enrichment) can run on `@RetryableTopic` listeners so a failing record does not re-execute its partition peers.
+Events that do not require ordering (search index updates, notifications, downstream enrichment) can run on `@RetryableTopic` listeners so a failing record does not receive an extra dispatch-loop delivery.
 
 Async return types also do not preserve per-partition processing order when records on the same partition have mixed outcomes: while a failing record is in its retry / backoff cycle, a successful later-offset record on the same partition can complete its listener body first.
 Kafka still delivers in order and the committed offset stays consistent, but the listener bodies run concurrently, so the side effects can land out of partition order.

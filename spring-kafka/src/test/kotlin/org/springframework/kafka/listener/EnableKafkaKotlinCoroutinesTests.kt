@@ -66,7 +66,7 @@ import java.util.concurrent.atomic.AtomicInteger
 @EmbeddedKafka(topics = ["kotlinAsyncTestTopic1", "kotlinAsyncTestTopic2",
 		"kotlinAsyncBatchTestTopic1", "kotlinAsyncBatchTestTopic2", "kotlinReplyTopic1",
 		"kotlinAsyncTestTopicCommonHandler", "kotlinAsyncTestTopicBoundedRetry",
-		"kotlinAsyncTestTopicTwoRecordRetry"], partitions = 1)
+		"kotlinAsyncTestTopicTwoRecordRetry", "kotlinAsyncTestTopicBurstRetry"], partitions = 1)
 class EnableKafkaKotlinCoroutinesTests {
 
 	@Autowired
@@ -123,15 +123,9 @@ class EnableKafkaKotlinCoroutinesTests {
 
 	@Test
 	fun `test suspend function bounded retries with CommonErrorHandler`() {
-		// GH-4465: an always-failing suspend @KafkaListener with
-		// DefaultErrorHandler(FixedBackOff(interval, n)) must be delivered exactly
-		// n + 1 times (initial delivery + n retries) and then stop, matching the
-		// behaviour of a blocking listener with the same configuration.
-		//
-		// The recovered latch only signals the *first* recovery, so under the bug
-		// (#4465) it still trips while subsequent cycles keep re-delivering the
-		// record. The actual regression check is the delivery counter, which must
-		// reach 3 and stay there.
+		// GH-4465: FixedBackOff(interval, n) must stop at n + 1 deliveries. The
+		// recovered latch only signals the first recovery, so the delivery
+		// counter is the actual regression check.
 		this.template.send("kotlinAsyncTestTopicBoundedRetry", "fail")
 		assertThat(this.config.boundedRetryRecoveredLatch.await(10, TimeUnit.SECONDS)).isTrue()
 		await()
@@ -143,24 +137,34 @@ class EnableKafkaKotlinCoroutinesTests {
 	}
 
 	@Test
+	fun `test suspend function bounded burst stays linear with N`() {
+		// GH-4504: assert the burst stays linear (upper bound N * (n + 2)); the
+		// pre-fix quadratic N * (N + 2) blows past it. Bound not exact so
+		// poll-batching does not flake the assertion.
+		val burstSize = 10
+		val maxRetries = 2L
+		this.config.burstRetryRecoveredLatch = CountDownLatch(burstSize)
+		this.config.burstRetryDeliveries.set(0)
+		repeat(burstSize) { idx ->
+			this.template.send("kotlinAsyncTestTopicBurstRetry", "burst-$idx")
+		}
+		assertThat(this.config.burstRetryRecoveredLatch.await(60, TimeUnit.SECONDS)).isTrue()
+		await()
+			.pollDelay(Duration.ofSeconds(2))
+			.atMost(Duration.ofSeconds(4))
+			.untilAsserted {
+				assertThat(this.config.burstRetryDeliveries.get())
+					.isBetween(burstSize * (maxRetries.toInt() + 1), burstSize * (maxRetries.toInt() + 2))
+			}
+	}
+
+	@Test
 	fun `test suspend function bounded retries for two records on the same partition`() {
-		// GH-4504: With two always-failing records on the same partition delivered
-		// to a suspend @KafkaListener with DefaultErrorHandler(FixedBackOff), the
-		// earlier-offset record was silently skipped: per-record async failure
-		// handling registered a seek to the first failed offset, which was then
-		// clobbered by the second record's seek before the next poll. The first
-		// record was never re-delivered, never reached the recoverer, and the
-		// committed offset advanced past it after the second record's recovery.
-		//
-		// After the fix both records reach the recoverer exactly once and the
-		// earlier-offset record is delivered the expected number of times. The
-		// later-offset record receives extra deliveries during the earlier
-		// record's retry cycle because the async dispatch model invokes the
-		// listener on every polled record before any async failure callback
-		// fires; the count is still bounded.
+		// GH-4504: two always-failing records on the same partition — the
+		// earlier-offset record was silently skipped past the recoverer under
+		// the bug. After the fix both reach the recoverer.
 		this.template.send("kotlinAsyncTestTopicTwoRecordRetry", "r1")
 		this.template.send("kotlinAsyncTestTopicTwoRecordRetry", "r2")
-		// Both records must reach the recoverer, not just the later one.
 		assertThat(this.config.twoRecordRetryRecoveredLatch.await(15, TimeUnit.SECONDS)).isTrue()
 		await()
 			.pollDelay(Duration.ofSeconds(2))
@@ -168,17 +172,11 @@ class EnableKafkaKotlinCoroutinesTests {
 			.untilAsserted {
 				assertThat(this.config.twoRecordRetryRecoveries["r1"]).isEqualTo(1)
 				assertThat(this.config.twoRecordRetryRecoveries["r2"]).isEqualTo(1)
-				// The earlier-offset record is retried exactly n + 1 times.
 				assertThat(this.config.twoRecordRetryDeliveries["r1"]).isEqualTo(3)
-				// The later-offset record's delivery count depends on poll
-				// timing: 3 if r1 finishes before r2 is ever polled (matches
-				// the blocking listener), up to 5 if r1 and r2 share the first
-				// poll and r2 is re-fetched alongside r1 on every retry cycle.
-				// The real proof of the fix is the recoveries assertion above
-				// (both records reach the recoverer exactly once); bound the
-				// delivery count to the same window the blocking listener could
-				// see plus the two incidental re-deliveries from the async
-				// dispatch model.
+				// r2's count varies with poll timing (3 if r1 finishes before r2
+				// is polled; up to 5 if they share polls). The strict linear
+				// bound is asserted by the burst test; the primary proof here is
+				// the recoveries assertion above.
 				assertThat(this.config.twoRecordRetryDeliveries["r2"]).isBetween(3, 5)
 			}
 	}
@@ -233,6 +231,11 @@ class EnableKafkaKotlinCoroutinesTests {
 
 		// One countdown per record so the test waits until BOTH records have been recovered.
 		val twoRecordRetryRecoveredLatch = CountDownLatch(2)
+
+		val burstRetryDeliveries = AtomicInteger()
+
+		@Volatile
+		var burstRetryRecoveredLatch = CountDownLatch(1)
 
 		@Value("\${" + EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
 		private lateinit var brokerAddresses: String
@@ -353,6 +356,21 @@ class EnableKafkaKotlinCoroutinesTests {
 			return factory
 		}
 
+		@Bean
+		fun burstRetryErrorHandler(): DefaultErrorHandler {
+			return DefaultErrorHandler({ _, _ -> burstRetryRecoveredLatch.countDown() },
+					FixedBackOff(100L, 2L))
+		}
+
+		@Bean
+		fun kafkaListenerContainerFactoryWithBurstRetry(): ConcurrentKafkaListenerContainerFactory<String, String> {
+			val factory: ConcurrentKafkaListenerContainerFactory<String, String>
+					= ConcurrentKafkaListenerContainerFactory()
+			factory.setConsumerFactory(kcf())
+			factory.setCommonErrorHandler(burstRetryErrorHandler())
+			return factory
+		}
+
 		@KafkaListener(id = "kotlin", topics = ["kotlinAsyncTestTopic1"],
 				containerFactory = "kafkaListenerContainerFactory")
 		suspend fun listen(value: String, acknowledgment: Acknowledgment) {
@@ -403,6 +421,13 @@ class EnableKafkaKotlinCoroutinesTests {
 		suspend fun listenTwoRecordRetry(value: String) {
 			twoRecordRetryDeliveries.merge(value, 1, Int::plus)
 			throw RuntimeException("Always fail (two-record retry)")
+		}
+
+		@KafkaListener(id = "kotlin-burst-retry", topics = ["kotlinAsyncTestTopicBurstRetry"],
+				containerFactory = "kafkaListenerContainerFactoryWithBurstRetry")
+		suspend fun listenBurstRetry(value: String) {
+			burstRetryDeliveries.incrementAndGet()
+			throw RuntimeException("Always fail (burst retry)")
 		}
 
 	}

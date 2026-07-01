@@ -16,10 +16,13 @@
 
 package org.springframework.kafka.listener;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -33,6 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import io.micrometer.observation.Observation;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -1476,6 +1480,89 @@ public class ConcurrentMessageListenerContainerMockTests {
 		verify(afterRollbackProcessor, atLeastOnce()).processBatch(any(ConsumerRecords.class), captor.capture(),
 				any(Consumer.class), any(), any(Exception.class), anyBoolean(), any());
 		assertThat(captor.getValue()).containsExactly(record1, record2);
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	@DisplayName("failedSyncForRecord: peekLast + identity across scenarios (GH-4504)")
+	void failedSyncForRecordPeekLastIdentityAcrossScenarios() throws Exception {
+		// Verifies the peekLast + identity check that replaces the size-delta
+		// signal in doInvokeWithRecords. The size delta could grow from an
+		// unrelated cross-partition async callback and mistag cRecord's
+		// partition, stalling it until rebalance. See GH-4504.
+
+		ConsumerFactory cf = mock(ConsumerFactory.class);
+		Consumer consumer = mock(Consumer.class);
+		ConsumerRecords empty = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
+		given(consumer.poll(any())).willReturn(empty);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		ContainerProperties props = new ContainerProperties("t");
+		props.setGroupId("g");
+		props.setMessageListener((MessageListener<String, String>) rec -> { });
+		props.setMissingTopicsFatal(false);
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(cf, props);
+		container.start();
+		try {
+			KafkaMessageListenerContainer child = (KafkaMessageListenerContainer) KafkaTestUtils
+					.getPropertyValue(container, "containers", List.class).get(0);
+			Object listenerConsumer = null;
+			long deadline = System.currentTimeMillis() + 10_000;
+			while (listenerConsumer == null && System.currentTimeMillis() < deadline) {
+				listenerConsumer = KafkaTestUtils.getPropertyValue(child, "listenerConsumer");
+				if (listenerConsumer == null) {
+					Thread.sleep(20);
+				}
+			}
+			assertThat(listenerConsumer).isNotNull();
+
+			Deque failedRecords = KafkaTestUtils.getPropertyValue(child,
+					"listenerConsumer.failedRecords", Deque.class);
+
+			Class<?> tupleClass = Class.forName(
+					"org.springframework.kafka.listener.KafkaMessageListenerContainer$FailedRecordTuple");
+			Constructor<?> tupleCtor = tupleClass.getDeclaredConstructors()[0];
+			tupleCtor.setAccessible(true);
+
+			Method helper = listenerConsumer.getClass().getDeclaredMethod(
+					"failedSyncForRecord", ConsumerRecord.class);
+			helper.setAccessible(true);
+
+			RuntimeException ex = new RuntimeException("test");
+			Observation obs = Observation.NOOP;
+
+			ConsumerRecord<String, String> pA_off10 = new ConsumerRecord<>("t", 0, 10L, "kA", "vA");
+			ConsumerRecord<String, String> pA_off10_dup = new ConsumerRecord<>("t", 0, 10L, "kA", "vA");
+			ConsumerRecord<String, String> pB_off20 = new ConsumerRecord<>("t", 1, 20L, "kB", "vB");
+
+			// 1. empty deque: peekLast is null → no sync failure
+			failedRecords.clear();
+			assertThat((Boolean) helper.invoke(listenerConsumer, pA_off10)).isFalse();
+
+			// 2. race case: cross-partition tuple sits at the tail → must not
+			//    tag pA_off10's partition
+			failedRecords.addLast(tupleCtor.newInstance(pB_off20, ex, obs));
+			assertThat((Boolean) helper.invoke(listenerConsumer, pA_off10)).isFalse();
+
+			// 3. sync-failure case: cRecord's own tuple at the tail → detected
+			failedRecords.clear();
+			failedRecords.addLast(tupleCtor.newInstance(pA_off10, ex, obs));
+			assertThat((Boolean) helper.invoke(listenerConsumer, pA_off10)).isTrue();
+
+			// 4. acknowledged false negative: cRecord failed sync but an
+			//    unrelated callback appended after it, so peekLast is no longer
+			//    cRecord's tuple. handleAsyncFailure catches this next poll.
+			failedRecords.addLast(tupleCtor.newInstance(pB_off20, ex, obs));
+			assertThat((Boolean) helper.invoke(listenerConsumer, pA_off10)).isFalse();
+
+			// 5. identity, not equality: a distinct ConsumerRecord instance
+			//    with the same topic + partition + offset does not match
+			failedRecords.clear();
+			failedRecords.addLast(tupleCtor.newInstance(pA_off10_dup, ex, obs));
+			assertThat((Boolean) helper.invoke(listenerConsumer, pA_off10)).isFalse();
+		}
+		finally {
+			container.stop();
+		}
 	}
 
 	public static class TestMessageListener1 implements MessageListener<String, String>, ConsumerSeekAware {
