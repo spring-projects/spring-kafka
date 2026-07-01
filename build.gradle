@@ -14,7 +14,7 @@ plugins {
 	id 'base'
 	id 'idea'
 	id 'io.freefair.aggregate-javadoc' version '9.2.0'
-	id 'io.spring.nullability' version '0.0.13' apply false
+	id 'io.spring.nullability' version '0.0.14' apply false
 }
 
 
@@ -34,7 +34,7 @@ ext {
 	assertjVersion = '3.27.7'
 	awaitilityVersion = '4.3.0'
 	hamcrestVersion = '3.0'
-	hibernateValidationVersion = '9.1.0.Final'
+	hibernateValidationVersion = '9.1.1.Final'
 	jacksonBomVersion = '2.21.4'
 	jackson3Version = '3.1.4'
 	jaywayJsonPathVersion = '3.0.0'
