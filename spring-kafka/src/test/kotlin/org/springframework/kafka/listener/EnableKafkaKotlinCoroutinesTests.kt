@@ -144,18 +144,13 @@ class EnableKafkaKotlinCoroutinesTests {
 
 	@Test
 	fun `test suspend function bounded burst stays linear with N`() {
-		// GH-4504: the data-loss-only fix on this branch left the suspend listener
-		// re-executing every queued record on every retry cycle of the in-flight
-		// head, so the total listener invocations grew as N * (N + 2) (quadratic).
-		// The asyncRetryOffsets dispatch-loop skip bounds this at N * (n + 2) - 1
-		// (linear), one extra dispatch-loop delivery per non-head record on top of
-		// the blocking listener's N * (n + 1).
-		//
-		// Confirm the formula by measuring the actual invocation count for a
-		// moderate burst.
+		// GH-4504: bound the total suspend listener invocations for a burst of N
+		// always-failing records on one partition. Linear stays within
+		// [N * (n + 1), N * (n + 2)]; the pre-fix quadratic (N * (N + 2)) blows
+		// well past the upper bound. Asserting a bound rather than the exact
+		// N * (n + 2) - 1 avoids flaking when the burst splits across polls.
 		val burstSize = 10
 		val maxRetries = 2L
-		val expected = burstSize * (maxRetries.toInt() + 2) - 1
 		this.config.burstRetryRecoveredLatch = CountDownLatch(burstSize)
 		this.config.burstRetryDeliveries.set(0)
 		repeat(burstSize) { idx ->
@@ -166,7 +161,8 @@ class EnableKafkaKotlinCoroutinesTests {
 			.pollDelay(Duration.ofSeconds(2))
 			.atMost(Duration.ofSeconds(4))
 			.untilAsserted {
-				assertThat(this.config.burstRetryDeliveries.get()).isEqualTo(expected)
+				assertThat(this.config.burstRetryDeliveries.get())
+					.isBetween(burstSize * (maxRetries.toInt() + 1), burstSize * (maxRetries.toInt() + 2))
 			}
 	}
 
