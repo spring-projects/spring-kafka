@@ -73,6 +73,20 @@ public class JsonKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 			"org.springframework.util"
 	);
 
+	/**
+	 * Types that are never trusted for header deserialization, even when their package is
+	 * trusted, because constructing them from an untrusted header value has a network side
+	 * effect. For example, deserializing a {@code java.net.InetAddress} calls
+	 * {@code InetAddress.getByName()}, which performs a DNS lookup during deserialization.
+	 * Such headers are returned to the application as a {@link NonTrustedHeaderType}.
+	 */
+	private static final Set<String> UNTRUSTED_TYPES = Set.of(
+			"java.net.InetAddress",
+			"java.net.Inet4Address",
+			"java.net.Inet6Address",
+			"java.net.InetSocketAddress"
+	);
+
 	private static final List<String> DEFAULT_TO_STRING_CLASSES = List.of(
 			"org.springframework.util.MimeType",
 			"org.springframework.http.MediaType"
@@ -235,6 +249,13 @@ public class JsonKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * If any of the supplied packages is {@code "*"}, all packages are trusted.
 	 * If a class for a non-trusted package is encountered, the header is returned to the
 	 * application with value of type {@link NonTrustedHeaderType}.
+	 * <p>
+	 * A small set of types whose construction has a network side effect
+	 * ({@code java.net.InetAddress}, {@code java.net.Inet4Address},
+	 * {@code java.net.Inet6Address} and {@code java.net.InetSocketAddress}, since
+	 * deserializing them performs a DNS lookup) is never trusted, even if {@code java.net}
+	 * or {@code "*"} is trusted; such headers, and arrays of them, are always returned as a
+	 * {@link NonTrustedHeaderType}.
 	 * @param packagesToTrust the packages to trust.
 	 */
 	public void addTrustedPackages(String... packagesToTrust) {
@@ -422,7 +443,22 @@ public class JsonKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 		if (TRUSTED_ARRAY_TYPES.contains(requestedType)) {
 			return true;
 		}
-		String type = requestedType.startsWith("[") ? requestedType.substring(2) : requestedType;
+		String type = requestedType;
+		int start = 0;
+		int end = type.length();
+		while (start < end && type.charAt(start) == '[') {
+			start++;
+		}
+		if (start < end && type.charAt(start) == 'L' && type.charAt(end - 1) == ';') {
+			start++;
+			end--;
+		}
+		if (start > 0 || end < type.length()) {
+			type = type.substring(start, end);
+		}
+		if (UNTRUSTED_TYPES.contains(type)) {
+			return false;
+		}
 		if (!this.trustedPackages.isEmpty()) {
 			int lastDot = type.lastIndexOf('.');
 			if (lastDot < 0) {
