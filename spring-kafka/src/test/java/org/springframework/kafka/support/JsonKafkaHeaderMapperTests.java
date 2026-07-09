@@ -171,6 +171,90 @@ public class JsonKafkaHeaderMapperTests {
 		assertThat(headers.get("fix")).isInstanceOf(Foo.class);
 	}
 
+	@ParameterizedTest
+	@ValueSource(strings = { "java.net.InetAddress", "java.net.Inet4Address", "java.net.Inet6Address",
+			"java.net.InetSocketAddress" })
+	void networkSideEffectTypesAreNeverTrusted(String type) {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		Map<String, Object> headers = new HashMap<>();
+		mapper.toHeaders(inboundHeaders(type), headers);
+		assertThat(headers.get("host")).isInstanceOf(NonTrustedHeaderType.class);
+		assertThat(((NonTrustedHeaderType) headers.get("host")).getUntrustedType()).isEqualTo(type);
+	}
+
+	@Test
+	void networkSideEffectTypesNotTrustedEvenWithWildcard() {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		mapper.addTrustedPackages("*");
+		Map<String, Object> headers = new HashMap<>();
+		mapper.toHeaders(inboundHeaders("java.net.InetAddress"), headers);
+		assertThat(headers.get("host")).isInstanceOf(NonTrustedHeaderType.class);
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "[Ljava.net.InetAddress;", "[Ljava.net.Inet4Address;", "[Ljava.net.Inet6Address;",
+			"[Ljava.net.InetSocketAddress;", "[[Ljava.net.InetAddress;", "[[Ljava.net.Inet4Address;",
+			"[[[Ljava.net.InetAddress;" })
+	void networkSideEffectArrayTypesAreNeverTrusted(String type) {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		RecordHeaders recordHeaders = new RecordHeaders();
+		recordHeaders.add(new RecordHeader(JsonKafkaHeaderMapper.JSON_TYPES,
+				("{\"host\":\"" + type + "\"}").getBytes(StandardCharsets.UTF_8)));
+		recordHeaders.add(new RecordHeader("host", "[\"spring.kafka.invalid\"]".getBytes(StandardCharsets.UTF_8)));
+		Map<String, Object> headers = new HashMap<>();
+		mapper.toHeaders(recordHeaders, headers);
+		assertThat(headers.get("host")).isInstanceOf(NonTrustedHeaderType.class);
+	}
+
+	@Test
+	void realInetAddressArrayTypeIsNeverTrusted() {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		String type = java.net.InetAddress[].class.getName();
+		assertThat(type).isEqualTo("[Ljava.net.InetAddress;");
+		RecordHeaders recordHeaders = new RecordHeaders();
+		recordHeaders.add(new RecordHeader(JsonKafkaHeaderMapper.JSON_TYPES,
+				("{\"host\":\"" + type + "\"}").getBytes(StandardCharsets.UTF_8)));
+		recordHeaders.add(new RecordHeader("host", "[\"spring.kafka.invalid\"]".getBytes(StandardCharsets.UTF_8)));
+		Map<String, Object> headers = new HashMap<>();
+		mapper.toHeaders(recordHeaders, headers);
+		assertThat(headers.get("host")).isInstanceOf(NonTrustedHeaderType.class);
+		assertThat(((NonTrustedHeaderType) headers.get("host")).getUntrustedType()).isEqualTo(type);
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "[[Ljava.lang.String;", "[[Ljava.net.URI;" })
+	void benignMultiDimensionalArraysAreTrusted(String type) {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		RecordHeaders recordHeaders = new RecordHeaders();
+		recordHeaders.add(new RecordHeader(JsonKafkaHeaderMapper.JSON_TYPES,
+				("{\"h\":\"" + type + "\"}").getBytes(StandardCharsets.UTF_8)));
+		recordHeaders.add(new RecordHeader("h", "[[\"https://example.com\"]]".getBytes(StandardCharsets.UTF_8)));
+		Map<String, Object> headers = new HashMap<>();
+		mapper.toHeaders(recordHeaders, headers);
+		assertThat(headers.get("h")).isNotInstanceOf(NonTrustedHeaderType.class);
+	}
+
+	@Test
+	void trustedTypeArraysAreTrustedAtAnyDepth() {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		RecordHeaders recordHeaders = new RecordHeaders();
+		recordHeaders.add(new RecordHeader(JsonKafkaHeaderMapper.JSON_TYPES,
+				"{\"uris\":\"[[Ljava.net.URI;\"}".getBytes(StandardCharsets.UTF_8)));
+		recordHeaders.add(new RecordHeader("uris", "[[\"https://example.com\"]]".getBytes(StandardCharsets.UTF_8)));
+		Map<String, Object> headers = new HashMap<>();
+		mapper.toHeaders(recordHeaders, headers);
+		assertThat(headers.get("uris")).isInstanceOf(URI[][].class);
+		assertThat(((URI[][]) headers.get("uris"))[0][0]).isEqualTo(URI.create("https://example.com"));
+	}
+
+	private static RecordHeaders inboundHeaders(String type) {
+		RecordHeaders recordHeaders = new RecordHeaders();
+		recordHeaders.add(new RecordHeader(JsonKafkaHeaderMapper.JSON_TYPES,
+				("{\"host\":\"" + type + "\"}").getBytes(StandardCharsets.UTF_8)));
+		recordHeaders.add(new RecordHeader("host", "\"spring.kafka.invalid\"".getBytes(StandardCharsets.UTF_8)));
+		return recordHeaders;
+	}
+
 	@Test
 	void testTrustedPackages() {
 		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
