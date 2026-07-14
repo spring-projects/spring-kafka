@@ -584,13 +584,14 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	}
 
 	@Override
-	public CompletableFuture<SendResult<K, V>> sendDefault(Integer partition, K key, @Nullable V data) {
+	public CompletableFuture<SendResult<K, V>> sendDefault(Integer partition, @Nullable K key, @Nullable V data) {
 		Assert.state(this.defaultTopic != null, "'defaultTopic' must not be null");
 		return send(this.defaultTopic, partition, key, data);
 	}
 
 	@Override
-	public CompletableFuture<SendResult<K, V>> sendDefault(Integer partition, Long timestamp, K key, @Nullable V data) {
+	public CompletableFuture<SendResult<K, V>> sendDefault(@Nullable Integer partition, Long timestamp, @Nullable K key,
+			@Nullable V data) {
 		Assert.state(this.defaultTopic != null, "'defaultTopic' must not be null");
 		return send(this.defaultTopic, partition, timestamp, key, data);
 	}
@@ -608,14 +609,14 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 	}
 
 	@Override
-	public CompletableFuture<SendResult<K, V>> send(String topic, Integer partition, K key, @Nullable V data) {
+	public CompletableFuture<SendResult<K, V>> send(String topic, Integer partition, @Nullable K key, @Nullable V data) {
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, partition, key, data);
 		return observeSend(producerRecord);
 	}
 
 	@Override
-	public CompletableFuture<SendResult<K, V>> send(String topic, Integer partition, Long timestamp, K key,
-			@Nullable V data) {
+	public CompletableFuture<SendResult<K, V>> send(String topic, @Nullable Integer partition, Long timestamp,
+			@Nullable K key, @Nullable V data) {
 
 		ProducerRecord<K, V> producerRecord = new ProducerRecord<>(topic, partition, timestamp, key, data);
 		return observeSend(producerRecord);
