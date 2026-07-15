@@ -1,7 +1,7 @@
 version: '3'
 services:
   broker:
-    image: bitnami/kafka:3.7.0
+    image: apache/kafka:latest
     hostname: broker
     container_name: broker
     ports:
