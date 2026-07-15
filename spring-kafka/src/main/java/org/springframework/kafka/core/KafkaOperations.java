@@ -86,7 +86,7 @@ public interface KafkaOperations<K, V> {
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
 	 */
-	CompletableFuture<SendResult<K, V>> sendDefault(Integer partition, K key, @Nullable V data);
+	CompletableFuture<SendResult<K, V>> sendDefault(Integer partition, @Nullable K key, @Nullable V data);
 
 	/**
 	 * Send the data to the default topic with the provided key and partition.
@@ -97,7 +97,8 @@ public interface KafkaOperations<K, V> {
 	 * @return a Future for the {@link SendResult}.
 	 * @since 1.3
 	 */
-	CompletableFuture<SendResult<K, V>> sendDefault(Integer partition, Long timestamp, K key, @Nullable V data);
+	CompletableFuture<SendResult<K, V>> sendDefault(@Nullable Integer partition, Long timestamp, @Nullable K key,
+			@Nullable V data);
 
 	/**
 	 * Send the data to the provided topic with no key or partition.
@@ -124,7 +125,7 @@ public interface KafkaOperations<K, V> {
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
 	 */
-	CompletableFuture<SendResult<K, V>> send(String topic, Integer partition, K key, @Nullable V data);
+	CompletableFuture<SendResult<K, V>> send(String topic, Integer partition, @Nullable K key, @Nullable V data);
 
 	/**
 	 * Send the data to the provided topic with the provided key and partition.
@@ -136,7 +137,8 @@ public interface KafkaOperations<K, V> {
 	 * @return a Future for the {@link SendResult}.
 	 * @since 1.3
 	 */
-	CompletableFuture<SendResult<K, V>> send(String topic, Integer partition, Long timestamp, K key, @Nullable V data);
+	CompletableFuture<SendResult<K, V>> send(String topic, @Nullable Integer partition, Long timestamp,
+			@Nullable K key, @Nullable V data);
 
 	/**
 	 * Send the provided {@link ProducerRecord}.
