@@ -225,6 +225,18 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private final List<Advice> adviceChain = new ArrayList<>();
 
+	private @Nullable ConsumerExceptionHandler consumerExceptionHandler;
+
+	public @Nullable ConsumerExceptionHandler getConsumerExceptionHandler() {
+		return this.consumerExceptionHandler;
+	}
+
+	public void setConsumerExceptionHandler(
+			@Nullable ConsumerExceptionHandler consumerExceptionHandler) {
+
+		this.consumerExceptionHandler = consumerExceptionHandler;
+	}
+
 	@Nullable
 	private Function<ConsumerRecord<?, ?>, Map<String, String>> micrometerTagsProvider;
 
