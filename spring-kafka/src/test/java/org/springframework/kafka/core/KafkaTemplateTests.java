@@ -185,6 +185,10 @@ public class KafkaTemplateTests {
 		received = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
 		assertThat(received).has(allOf(keyValue(null, "qux"), partition(1)));
 
+		template.sendDefault(0, null, "quux");
+		received = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
+		assertThat(received).has(allOf(keyValue(null, "quux"), partition(0)));
+
 		template.send(MessageBuilder.withPayload("fiz")
 				.setHeader(KafkaHeaders.TOPIC, INT_KEY_TOPIC)
 				.setHeader(KafkaHeaders.PARTITION, 0)
@@ -249,6 +253,16 @@ public class KafkaTemplateTests {
 		ConsumerRecord<Integer, String> r2 = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
 		assertThat(r2).has(value("foo-ts2"));
 		assertThat(r2).has(timestamp(1487694048610L));
+
+		template.sendDefault(null, 1487694048620L, null, "foo-ts3");
+		ConsumerRecord<Integer, String> r3 = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
+		assertThat(r3).has(value("foo-ts3"));
+		assertThat(r3).has(timestamp(1487694048620L));
+
+		template.send(INT_KEY_TOPIC, null, 1487694048630L, null, "foo-ts4");
+		ConsumerRecord<Integer, String> r4 = KafkaTestUtils.getSingleRecord(consumer, INT_KEY_TOPIC);
+		assertThat(r4).has(value("foo-ts4"));
+		assertThat(r4).has(timestamp(1487694048630L));
 
 		Map<MetricName, ? extends Metric> metrics = template.execute(Producer::metrics);
 		assertThat(metrics).isNotNull();
