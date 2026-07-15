@@ -82,7 +82,7 @@ public interface KafkaOperations<K, V> {
 	/**
 	 * Send the data to the default topic with the provided key and partition.
 	 * @param partition the partition.
-	 * @param key the key.
+	 * @param key the key, or {@code null} for a keyless record.
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
 	 */
@@ -90,9 +90,9 @@ public interface KafkaOperations<K, V> {
 
 	/**
 	 * Send the data to the default topic with the provided key and partition.
-	 * @param partition the partition.
+	 * @param partition the partition, or {@code null} to let the producer select the target partition.
 	 * @param timestamp the timestamp of the record.
-	 * @param key the key.
+	 * @param key the key, or {@code null} for a keyless record.
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
 	 * @since 1.3
@@ -121,7 +121,7 @@ public interface KafkaOperations<K, V> {
 	 * Send the data to the provided topic with the provided key and partition.
 	 * @param topic the topic.
 	 * @param partition the partition.
-	 * @param key the key.
+	 * @param key the key, or {@code null} for a keyless record.
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
 	 */
@@ -130,9 +130,9 @@ public interface KafkaOperations<K, V> {
 	/**
 	 * Send the data to the provided topic with the provided key and partition.
 	 * @param topic the topic.
-	 * @param partition the partition.
+	 * @param partition the partition, or {@code null} to let the producer select the target partition.
 	 * @param timestamp the timestamp of the record.
-	 * @param key the key.
+	 * @param key the key, or {@code null} for a keyless record.
 	 * @param data the data.
 	 * @return a Future for the {@link SendResult}.
 	 * @since 1.3
