@@ -166,6 +166,15 @@ public interface CommonErrorHandler extends DeliveryAttemptAware {
 	}
 
 	/**
+	 * Clear thread state only for the given partitions. Called after a successful batch
+	 * invocation to avoid resetting backoff state for partitions that are still retrying.
+	 * @param partitions the partitions whose retry state should be cleared.
+	 * @since 4.0
+	 */
+	default void clearThreadStateFor(Collection<TopicPartition> partitions) {
+	}
+
+	/**
 	 * Return true if the offset should be committed for a handled error (no exception
 	 * thrown).
 	 * @return true to commit.

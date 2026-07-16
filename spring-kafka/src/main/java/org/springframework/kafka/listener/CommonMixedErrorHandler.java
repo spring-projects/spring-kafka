@@ -16,11 +16,13 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.util.Assert;
@@ -103,6 +105,12 @@ public class CommonMixedErrorHandler implements CommonErrorHandler {
 	public void clearThreadState() {
 		this.batchErrorHandler.clearThreadState();
 		this.recordErrorHandler.clearThreadState();
+	}
+
+	@Override
+	public void clearThreadStateFor(Collection<TopicPartition> partitions) {
+		this.batchErrorHandler.clearThreadStateFor(partitions);
+		this.recordErrorHandler.clearThreadStateFor(partitions);
 	}
 
 	@Override
