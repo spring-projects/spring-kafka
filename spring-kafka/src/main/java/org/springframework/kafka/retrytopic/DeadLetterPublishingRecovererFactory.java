@@ -434,8 +434,17 @@ public class DeadLetterPublishingRecovererFactory {
 
 	@Nullable
 	private Header getOriginaTimeStampHeader(ConsumerRecord<?, ?> consumerRecord) {
-		return consumerRecord.headers()
+		Header header = consumerRecord.headers()
 				.lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP);
+		if (header != null) {
+			byte[] value = header.value();
+			if (value == null || value.length == 0 || value.length > Long.BYTES) {
+				LOGGER.debug(() -> "Unexpected length for " + RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP
+						+ " header: " + (value == null ? "null" : value.length) + "; using record timestamp");
+				return null;
+			}
+		}
+		return header;
 	}
 
 	private enum ListenerExceptionLoggingStrategy {

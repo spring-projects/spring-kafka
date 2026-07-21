@@ -44,6 +44,7 @@ import org.springframework.kafka.support.Acknowledgment;
  * @param <K> the record key type.
  * @param <V> the record value type.
  * @author Tomaz Fernandes
+ * @author Soby Chacko
  * @since 2.7
  *
  */
@@ -123,6 +124,12 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 	private Optional<Long> maybeGetBackoffTimestamp(ConsumerRecord<K, V> data) {
 		return Optional
 				.ofNullable(data.headers().lastHeader(this.backoffTimestampHeader))
+				.filter(timestampHeader -> {
+					byte[] value = timestampHeader.value();
+					return value != null
+							&& value.length > 0
+							&& value.length <= Long.BYTES;
+				})
 				.map(timestampHeader -> new BigInteger(timestampHeader.value()).longValue())
 				.filter(ts -> ts - Instant.now(this.clock).toEpochMilli() <= MAX_BACKOFF_MS);
 	}

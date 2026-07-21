@@ -53,6 +53,7 @@ import static org.mockito.Mockito.times;
 
 /**
  * @author Tomaz Fernandes
+ * @author Soby Chacko
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
@@ -269,6 +270,36 @@ class KafkaBackoffAwareMessageListenerAdapterTests {
 		adapter.onMessage(data, ack, consumer);
 
 		// then - backoff manager is never consulted, delegate still gets the record
+		then(kafkaConsumerBackoffManager).shouldHaveNoInteractions();
+		then(delegate).should(times(1)).onMessage(data, ack, consumer);
+	}
+
+	@Test
+	void shouldIgnoreBackoffHeaderWhenValueIsEmpty() {
+		given(data.headers()).willReturn(headers);
+		given(headers.lastHeader(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP)).willReturn(header);
+		given(header.value()).willReturn(new byte[0]);
+
+		KafkaBackoffAwareMessageListenerAdapter<Object, Object> adapter =
+				new KafkaBackoffAwareMessageListenerAdapter<>(delegate, kafkaConsumerBackoffManager, listenerId, clock);
+
+		adapter.onMessage(data, ack, consumer);
+
+		then(kafkaConsumerBackoffManager).shouldHaveNoInteractions();
+		then(delegate).should(times(1)).onMessage(data, ack, consumer);
+	}
+
+	@Test
+	void shouldIgnoreBackoffHeaderWhenValueIsOversized() {
+		given(data.headers()).willReturn(headers);
+		given(headers.lastHeader(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP)).willReturn(header);
+		given(header.value()).willReturn(new byte[Long.BYTES + 1]);
+
+		KafkaBackoffAwareMessageListenerAdapter<Object, Object> adapter =
+				new KafkaBackoffAwareMessageListenerAdapter<>(delegate, kafkaConsumerBackoffManager, listenerId, clock);
+
+		adapter.onMessage(data, ack, consumer);
+
 		then(kafkaConsumerBackoffManager).shouldHaveNoInteractions();
 		then(delegate).should(times(1)).onMessage(data, ack, consumer);
 	}
