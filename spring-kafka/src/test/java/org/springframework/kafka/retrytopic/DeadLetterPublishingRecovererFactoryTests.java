@@ -67,6 +67,7 @@ import static org.mockito.Mockito.times;
 /**
  * @author Tomaz Fernandes
  * @author Gary Russell
+ * @author Soby Chacko
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
@@ -220,6 +221,60 @@ class DeadLetterPublishingRecovererFactoryTests {
 		then(destinationTopicResolver)
 				.should(times(2))
 				.resolveDestinationTopic("id", testTopic, 128, e, originalTimestamp);
+	}
+
+	@Test
+	void shouldFallBackToRecordTimestampWhenOriginalTimestampHeaderIsEmpty() {
+		RuntimeException e = new RuntimeException();
+		ConsumerRecord consumerRecord = new ConsumerRecord(testTopic, 0, 0, originalTimestamp,
+				TimestampType.CREATE_TIME, -1, -1, key, value, new RecordHeaders(), Optional.empty());
+		consumerRecord.headers().add(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP, new byte[0]);
+
+		given(destinationTopicResolver.resolveDestinationTopic("id", testTopic, 1, e, originalTimestamp))
+				.willReturn(destinationTopic);
+		given(destinationTopic.isNoOpsTopic()).willReturn(false);
+		given(destinationTopic.getDestinationName()).willReturn(testRetryTopic);
+		given(destinationTopicResolver.getDestinationTopicByName("id", testRetryTopic)).willReturn(destinationTopic);
+		willReturn(kafkaOperations).given(destinationTopic).getKafkaOperations();
+		given(kafkaOperations.send(any(ProducerRecord.class))).willReturn(completableFuture);
+
+		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(
+				this.destinationTopicResolver);
+		factory.create("id").accept(consumerRecord, e);
+
+		then(kafkaOperations).should(times(1)).send(producerRecordCaptor.capture());
+		ProducerRecord<?, ?> sent = producerRecordCaptor.getValue();
+		assertThat(sent.topic()).isEqualTo(testRetryTopic);
+		Header originalTimestampHeader = sent.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP);
+		assertThat(originalTimestampHeader).isNotNull();
+		assertThat(new BigInteger(originalTimestampHeader.value()).longValue()).isEqualTo(originalTimestamp);
+	}
+
+	@Test
+	void shouldFallBackToRecordTimestampWhenOriginalTimestampHeaderIsOversized() {
+		RuntimeException e = new RuntimeException();
+		ConsumerRecord consumerRecord = new ConsumerRecord(testTopic, 0, 0, originalTimestamp,
+				TimestampType.CREATE_TIME, -1, -1, key, value, new RecordHeaders(), Optional.empty());
+		consumerRecord.headers().add(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP, new byte[Long.BYTES + 1]);
+
+		given(destinationTopicResolver.resolveDestinationTopic("id", testTopic, 1, e, originalTimestamp))
+				.willReturn(destinationTopic);
+		given(destinationTopic.isNoOpsTopic()).willReturn(false);
+		given(destinationTopic.getDestinationName()).willReturn(testRetryTopic);
+		given(destinationTopicResolver.getDestinationTopicByName("id", testRetryTopic)).willReturn(destinationTopic);
+		willReturn(kafkaOperations).given(destinationTopic).getKafkaOperations();
+		given(kafkaOperations.send(any(ProducerRecord.class))).willReturn(completableFuture);
+
+		DeadLetterPublishingRecovererFactory factory = new DeadLetterPublishingRecovererFactory(
+				this.destinationTopicResolver);
+		factory.create("id").accept(consumerRecord, e);
+
+		then(kafkaOperations).should(times(1)).send(producerRecordCaptor.capture());
+		ProducerRecord<?, ?> sent = producerRecordCaptor.getValue();
+		assertThat(sent.topic()).isEqualTo(testRetryTopic);
+		Header originalTimestampHeader = sent.headers().lastHeader(RetryTopicHeaders.DEFAULT_HEADER_ORIGINAL_TIMESTAMP);
+		assertThat(originalTimestampHeader).isNotNull();
+		assertThat(new BigInteger(originalTimestampHeader.value()).longValue()).isEqualTo(originalTimestamp);
 	}
 
 	@Test
