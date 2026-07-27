@@ -17,6 +17,7 @@
 package org.springframework.kafka.core;
 
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -27,6 +28,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -312,6 +314,57 @@ public class KafkaAdminTests {
 
 		};
 		assertThat(admin.clusterId()).isEqualTo("null");
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void clusterIdFailureIsNotRetriedWithinRetryInterval() throws Exception {
+		AtomicInteger attempts = new AtomicInteger();
+		AdminClient mock = mock(AdminClient.class);
+		DescribeClusterResult result = mock(DescribeClusterResult.class);
+		KafkaFuture<String> fut = mock(KafkaFuture.class);
+		given(fut.get(30, TimeUnit.SECONDS)).willThrow(new TimeoutException("test"));
+		given(result.clusterId()).willReturn(fut);
+		given(mock.describeCluster()).willReturn(result);
+		KafkaAdmin admin = new KafkaAdmin(Map.of()) {
+
+			@Override
+			protected Admin createAdmin() {
+				attempts.incrementAndGet();
+				return mock;
+			}
+
+		};
+		assertThat(admin.clusterId()).isNull();
+		assertThat(admin.clusterId()).isNull();
+		assertThat(admin.clusterId()).isNull();
+		assertThat(attempts.get()).isEqualTo(1);
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void clusterIdIsFetchedAgainAfterRetryInterval() throws Exception {
+		AtomicInteger attempts = new AtomicInteger();
+		AdminClient mock = mock(AdminClient.class);
+		DescribeClusterResult result = mock(DescribeClusterResult.class);
+		KafkaFuture<String> fut = mock(KafkaFuture.class);
+		given(fut.get(30, TimeUnit.SECONDS)).willThrow(new TimeoutException("test"))
+				.willReturn("some-cluster");
+		given(result.clusterId()).willReturn(fut);
+		given(mock.describeCluster()).willReturn(result);
+		KafkaAdmin admin = new KafkaAdmin(Map.of()) {
+
+			@Override
+			protected Admin createAdmin() {
+				attempts.incrementAndGet();
+				return mock;
+			}
+
+		};
+		admin.setClusterIdRetryInterval(Duration.ZERO);
+		assertThat(admin.clusterId()).isNull();
+		assertThat(admin.clusterId()).isEqualTo("some-cluster");
+		assertThat(attempts.get()).isEqualTo(2);
 	}
 
 	@Test
