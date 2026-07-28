@@ -345,7 +345,7 @@ See xref:kafka/seek.adoc#seek[Seek API Docs] for more details.
 [[x32-annotation-partition-offset-seek-position]]
 === @PartitionOffset support for SeekPosition
 Adding `seekPosition` property to `@PartitionOffset` support for `TopicPartitionOffset.SeekPosition`.
-See xref:kafka/receiving-messages/listener-annotation.adoc#manual-assignment[manual-assignment] for more details.
+See xref:kafka/receiving-messages/listener-annotation.adoc#topic-partition-assignment[Topic Partition Assignment] for more details.
 
 [[x32-topic-partition-offset-constructor]]
 === New constructor in TopicPartitionOffset that accepts a function to compute the offset to seek to
@@ -829,7 +829,7 @@ See xref:kafka/events.adoc[Application Events] and xref:kafka/events.adoc#idle-c
 When using manual partition assignment, you can now specify a wildcard for determining which partitions should be reset to the initial offset.
 In addition, if the listener implements `ConsumerSeekAware`, `onPartitionsAssigned()` is called after the manual assignment.
 (Also added in version 2.5.5).
-See xref:kafka/receiving-messages/listener-annotation.adoc#manual-assignment[Explicit Partition Assignment] for more information.
+See xref:kafka/receiving-messages/listener-annotation.adoc#topic-partition-assignment[Topic Partition Assignment] for more information.
 
 Convenience methods have been added to `AbstractConsumerSeekAware` to make seeking easier.
 See <<seek>> for more information.

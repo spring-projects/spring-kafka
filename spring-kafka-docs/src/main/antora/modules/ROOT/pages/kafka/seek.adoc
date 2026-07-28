@@ -23,7 +23,7 @@ When using group management, `onPartitionsAssigned` is called when partitions ar
 You can use this method, for example, for setting initial offsets for the partitions, by calling the callback.
 You can also use this method to associate this thread's callback with the assigned partitions (see the example below).
 You must use the callback argument, not the one passed into `registerSeekCallback`.
-Starting with version 2.5.5, this method is called, even when using xref:kafka/receiving-messages/listener-annotation.adoc#manual-assignment[manual partition assignment].
+Starting with version 2.5.5, this method is called, even when using xref:kafka/receiving-messages/listener-annotation.adoc#topic-partition-assignment[Topic Partition Assignment].
 
 `onPartitionsRevoked` is called when the container is stopped or Kafka revokes assignments.
 You should discard this thread's callback and remove any associations to the revoked partitions.
