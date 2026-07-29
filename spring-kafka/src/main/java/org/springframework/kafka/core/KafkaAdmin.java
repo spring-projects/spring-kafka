@@ -93,6 +93,13 @@ public class KafkaAdmin extends KafkaResourceFactory
 	 */
 	public static final Duration DEFAULT_CLOSE_TIMEOUT = Duration.ofSeconds(10);
 
+	/**
+	 * The default interval between attempts to obtain the cluster id after a failed
+	 * attempt, as 5 minutes.
+	 * @since 4.1.1
+	 */
+	public static final Duration DEFAULT_CLUSTER_ID_RETRY_INTERVAL = Duration.ofMinutes(5);
+
 	private static final int DEFAULT_OPERATION_TIMEOUT = 30;
 
 	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(KafkaAdmin.class));
@@ -109,6 +116,8 @@ public class KafkaAdmin extends KafkaResourceFactory
 
 	private Duration closeTimeout = DEFAULT_CLOSE_TIMEOUT;
 
+	private Duration clusterIdRetryInterval = DEFAULT_CLUSTER_ID_RETRY_INTERVAL;
+
 	private int operationTimeout = DEFAULT_OPERATION_TIMEOUT;
 
 	private boolean fatalIfBrokerNotAvailable;
@@ -120,6 +129,8 @@ public class KafkaAdmin extends KafkaResourceFactory
 	private boolean modifyTopicConfigs;
 
 	private @Nullable String clusterId;
+
+	private volatile long lastClusterIdFailure;
 
 	/**
 	 * Create an instance with an {@link Admin} based on the supplied
@@ -230,6 +241,20 @@ public class KafkaAdmin extends KafkaResourceFactory
 	 */
 	public @Nullable String getClusterId() {
 		return this.clusterId;
+	}
+
+	/**
+	 * Set the minimum interval between attempts to fetch the cluster id from the broker
+	 * after a failed attempt. Defaults to
+	 * {@link #DEFAULT_CLUSTER_ID_RETRY_INTERVAL 5 minutes}. Set to {@link Duration#ZERO}
+	 * to attempt a fetch on every {@link #clusterId()} call.
+	 * @param clusterIdRetryInterval the interval.
+	 * @since 4.1.1
+	 * @see #clusterId()
+	 */
+	public void setClusterIdRetryInterval(Duration clusterIdRetryInterval) {
+		Assert.notNull(clusterIdRetryInterval, "'clusterIdRetryInterval' cannot be null");
+		this.clusterIdRetryInterval = clusterIdRetryInterval;
 	}
 
 	@Override
@@ -346,10 +371,19 @@ public class KafkaAdmin extends KafkaResourceFactory
 		return newTopicsList;
 	}
 
+	/**
+	 * Return the cluster id, fetching it from the broker on the first call. A failed
+	 * fetch is remembered and not attempted again until the
+	 * {@link #setClusterIdRetryInterval(Duration) clusterIdRetryInterval} has elapsed;
+	 * each attempt creates an {@link Admin} instance and blocks for up to
+	 * {@link #setOperationTimeout(int) operationTimeout}, so retrying on every call can
+	 * stall callers such as an observation-enabled listener container.
+	 * @return the cluster id, or null if it has not been fetched successfully.
+	 */
 	@Override
 	@Nullable
 	public String clusterId() {
-		if (this.clusterId == null) {
+		if (this.clusterId == null && clusterIdFetchDue()) {
 			try (Admin client = createAdmin()) {
 				this.clusterId = client.describeCluster().clusterId().get(this.operationTimeout, TimeUnit.SECONDS);
 				if (this.clusterId == null) {
@@ -360,10 +394,17 @@ public class KafkaAdmin extends KafkaResourceFactory
 				Thread.currentThread().interrupt();
 			}
 			catch (Exception ex) {
+				this.lastClusterIdFailure = System.currentTimeMillis();
 				LOGGER.error(ex, "Could not obtain cluster info");
 			}
 		}
 		return this.clusterId;
+	}
+
+	private boolean clusterIdFetchDue() {
+		long lastFailure = this.lastClusterIdFailure;
+		return lastFailure == 0
+				|| System.currentTimeMillis() - lastFailure >= this.clusterIdRetryInterval.toMillis();
 	}
 
 	@Override

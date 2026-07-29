@@ -98,3 +98,11 @@ This enables consistent exception classification across both single and batch pr
 
 Note that to preserve backward compatibility, the default value for `resetStateOnExceptionChange` is `false` in `FailedBatchProcessor`, unlike `FailedRecordProcessor` where it defaults to `true`.
 If you want consistent behavior across both, call `setResetStateOnExceptionChange(true)` on your `DefaultErrorHandler` instance.
+
+[[x41-kafka-admin-cluster-id-retry]]
+=== `KafkaAdmin` Cluster Id Retry Interval
+
+When `KafkaAdmin.clusterId()` cannot retrieve the cluster id from the broker, the failure is now remembered and the fetch is not attempted again until the new `clusterIdRetryInterval` has elapsed; it defaults to 5 minutes.
+Previously every call retried, so an observation-enabled listener container created an `Admin` instance and blocked for up to the operation timeout on each record while the cluster id was unavailable.
+This changes the default behavior: set `clusterIdRetryInterval` to `Duration.ZERO` on the `KafkaAdmin` to opt out and attempt the fetch on every call, as before.
+See xref:kafka/micrometer.adoc#observation[Micrometer Observation] for more information.
