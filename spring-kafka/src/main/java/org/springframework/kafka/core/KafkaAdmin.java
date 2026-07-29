@@ -373,9 +373,9 @@ public class KafkaAdmin extends KafkaResourceFactory
 
 	/**
 	 * Return the cluster id, fetching it from the broker on the first call. A failed
-	 * fetch is remembered and not attempted again until
-	 * {@link #setClusterIdRetryInterval(Duration)} has elapsed; each attempt creates an
-	 * {@link Admin} instance and blocks for up to
+	 * fetch is remembered and not attempted again until the
+	 * {@link #setClusterIdRetryInterval(Duration) clusterIdRetryInterval} has elapsed;
+	 * each attempt creates an {@link Admin} instance and blocks for up to
 	 * {@link #setOperationTimeout(int) operationTimeout}, so retrying on every call can
 	 * stall callers such as an observation-enabled listener container.
 	 * @return the cluster id, or null if it has not been fetched successfully.

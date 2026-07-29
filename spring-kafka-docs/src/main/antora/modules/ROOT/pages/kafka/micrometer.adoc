@@ -120,6 +120,10 @@ The sender and receiver contexts `remoteServiceName` properties are set to the K
 If, for some reason - perhaps lack of admin permissions, you cannot retrieve the cluster id, starting with version 3.1, you can set a manual `clusterId` on the `KafkaAdmin` and inject it into ``KafkaTemplate``s and listener containers.
 When it is `null` (default), the admin will invoke the `describeCluster` admin operation to retrieve it from the broker.
 
+Starting with version 4.1.1, a failed `describeCluster` attempt is remembered and is not retried until the `clusterIdRetryInterval` of the `KafkaAdmin` has elapsed; it defaults to 5 minutes.
+Each attempt creates an `Admin` instance and blocks for up to the `operationTimeout`, so, without this interval, every observed operation pays that cost while the cluster id is unavailable.
+Set `clusterIdRetryInterval` to `Duration.ZERO` to attempt the fetch on every call, as in earlier versions.
+
 [[batch-listener-obs]]
 === Batch Listener Observations
 
