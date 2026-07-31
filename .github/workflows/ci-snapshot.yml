@@ -7,6 +7,7 @@ on:
     branches:
       - main
       - '*.x'
+      - '*.x-internal'
 
   schedule:
     - cron: '0 5 * * *'
@@ -20,7 +21,11 @@ jobs:
     uses: spring-io/spring-github-workflows/.github/workflows/spring-artifactory-gradle-snapshot.yml@main
     with:
       gradleTasks: ${{ github.event_name == 'schedule' && '--rerun-tasks' || '' }}
+      artifactoryUrl: ${{ vars.COMMERCIAL && 'https://usw1.packages.broadcom.com' }}
+      targetRepository: ${{ vars.COMMERCIAL && 'spring-enterprise-maven-dev-local' }}
+      artifactoryProjectKey: ${{ vars.COMMERCIAL && 'spring' }}
+      runner: ${{ vars.COMMERCIAL && 'ubuntu22-2-8' || 'ubuntu-latest' }}
     secrets:
       DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
-      ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_USERNAME }}
-      ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_PASSWORD }}
+      ARTIFACTORY_USERNAME: ${{ secrets.COMMERCIAL_ARTIFACTORY_USERNAME || secrets.ARTIFACTORY_USERNAME }}
+      ARTIFACTORY_PASSWORD: ${{ secrets.COMMERCIAL_ARTIFACTORY_PASSWORD || secrets.ARTIFACTORY_PASSWORD }}

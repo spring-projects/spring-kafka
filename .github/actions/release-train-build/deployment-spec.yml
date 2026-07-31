@@ -1,0 +1,15 @@
+artifactory:
+  artifacts:
+    - pattern: "/**/spring-*.zip"
+      properties:
+        zip.deployed: "false"
+    - pattern: "/**/spring-*-docs.zip"
+      properties:
+        zip.type: "docs"
+    - pattern: "/**/spring-*-dist.zip"
+      properties:
+        zip.type: "dist"
+maven-central:
+  excludes:
+    - "/**/*.zip"
+    - "/**/*.zip.asc"
