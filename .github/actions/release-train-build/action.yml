@@ -1,0 +1,36 @@
+name: Build Release
+runs:
+  using: composite
+  steps:
+    - name: Build Release
+      shell: bash
+      run: |
+        echo Build and Publish
+
+        printf "allprojects {
+                    afterEvaluate {
+                        pluginManager.withPlugin('maven-publish') {
+                            publishing {
+                                repositories {
+                                    maven {
+                                        url = System.getenv('GITHUB_WORKSPACE') + '/deployment-repository'
+                                        name = 'deployment'
+                                    }
+                                }
+                            }
+                        }
+
+                        repositories {
+                            maven {
+                                name = 'Release Train'
+                                url = System.getenv('RELEASE_TRAIN_MAVEN_REPOSITORY_URL')
+                                credentials {
+                                    username = System.getenv('RELEASE_TRAIN_MAVEN_REPOSITORY_USERNAME')
+                                    password = System.getenv('RELEASE_TRAIN_MAVEN_REPOSITORY_PASSWORD')
+                                }
+                            }
+                        }
+                    }
+                }" > repositories-init.gradle
+
+        ./gradlew build publishAllPublicationsToDeploymentRepository --init-script repositories-init.gradle -x test

@@ -1,0 +1,21 @@
+name: Post-Release
+
+on:
+  push:
+    tags:
+      - v*
+
+run-name: Post-release for ${{ github.ref_name }}
+
+jobs:
+  release:
+    permissions:
+      contents: write
+      issues: write
+
+    uses: spring-io/spring-github-workflows/.github/workflows/spring-post-release.yml@main
+    with:
+      preview: true
+    secrets:
+      GH_ACTIONS_REPO_TOKEN: ${{ secrets.GH_ACTIONS_REPO_TOKEN }}
+      SPRING_RELEASE_CHAT_WEBHOOK_URL: ${{ secrets.SPRING_RELEASE_GCHAT_WEBHOOK_URL }}
