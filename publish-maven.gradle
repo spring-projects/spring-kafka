@@ -1,0 +1,65 @@
+allprojects {
+	apply plugin: 'maven-publish'
+
+	publishing {
+		publications {
+			mavenJava(MavenPublication) {
+				pom {
+					afterEvaluate {
+						name = project.description
+						description = project.description
+					}
+					url = linkScmUrl
+					organization {
+						name = 'Spring IO'
+						url = 'https://spring.io/projects/spring-kafka'
+					}
+					licenses {
+						license {
+							name = 'Apache License, Version 2.0'
+							url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+							distribution = 'repo'
+						}
+					}
+					scm {
+						url = linkScmUrl
+						connection = linkScmConnection
+						developerConnection = linkScmDevConnection
+					}
+					developers {
+						developer {
+							id = 'sobychacko'
+							name = 'Soby Chacko'
+							email = 'soby.chacko@broadcom.com'
+							roles = ['project lead']
+						}
+						developer {
+							id = 'garyrussell'
+							name = 'Gary Russell'
+							email = 'github@gprussell.net'
+							roles = ['project founder and project lead emeritus']
+						}
+						developer {
+							id = 'artembilan'
+							name = 'Artem Bilan'
+							email = 'artem.bilan@broadcom.com'
+							roles = ['contributor']
+						}
+					}
+					issueManagement {
+						system = 'GitHub'
+						url = linkIssue
+					}
+				}
+				versionMapping {
+					usage('java-api') {
+						fromResolutionResult()
+					}
+					usage('java-runtime') {
+						fromResolutionResult()
+					}
+				}
+			}
+		}
+	}
+}

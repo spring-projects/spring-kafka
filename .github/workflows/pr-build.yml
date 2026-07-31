@@ -8,4 +8,11 @@ on:
 
 jobs:
   build-pull-request:
-    uses: spring-io/spring-github-workflows/.github/workflows/spring-gradle-pull-request-build.yml@v7
+    uses: spring-io/spring-github-workflows/.github/workflows/spring-gradle-pull-request-build.yml@main
+    # Uncomment when we switch to hosted runners
+    # with:
+    #   runner: ${{ vars.COMMERCIAL && 'ubuntu22-2-8' || 'ubuntu-latest' }}
+    # The secrets in PRs are available only for Dependabot scope. Used only by private repositories.
+    secrets:
+      ARTIFACTORY_USERNAME: ${{ secrets.ARTIFACTORY_RO_USERNAME }}
+      ARTIFACTORY_PASSWORD: ${{ secrets.ARTIFACTORY_RO_PASSWORD }}

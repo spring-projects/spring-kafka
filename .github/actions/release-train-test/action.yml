@@ -1,0 +1,23 @@
+name: Test Release
+runs:
+  using: composite
+  steps:
+    - name: Test Release
+      shell: bash
+      run:  |
+        printf "allprojects {
+            afterEvaluate {
+               repositories {
+                    maven {
+                        name = 'Release Train'
+                        url = System.getenv('RELEASE_TRAIN_MAVEN_REPOSITORY_URL')
+                        credentials {
+                            username = System.getenv('RELEASE_TRAIN_MAVEN_REPOSITORY_USERNAME')
+                            password = System.getenv('RELEASE_TRAIN_MAVEN_REPOSITORY_PASSWORD')
+                        }
+                    }
+                }
+            }
+        }" > repositories-init.gradle
+
+        ./gradlew check --init-script repositories-init.gradle

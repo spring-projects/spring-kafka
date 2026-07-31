@@ -1,0 +1,38 @@
+def artifactoryUsername = System.getenv('ARTIFACTORY_USERNAME')
+def artifactoryPassword = System.getenv('ARTIFACTORY_PASSWORD')
+def isDependabotPr = System.getenv('GITHUB_ACTOR') == 'dependabot[bot]'
+
+def releaseRepository = 'https://repo.spring.io/artifactory/spring-commercial-release-remote'
+def snapshotRepository = 'https://repo.spring.io/artifactory/spring-commercial-snapshot-remote'
+
+if (isCI && !isDependabotPr) {
+	releaseRepository = 'https://usw1.packages.broadcom.com/artifactory/spring-enterprise-maven-prod-local'
+	snapshotRepository = 'https://usw1.packages.broadcom.com/artifactory/spring-enterprise-maven-dev-local'
+}
+
+allprojects {
+
+	repositories {
+		maven {
+			url releaseRepository
+			if (isCI) {
+				credentials {
+					username = artifactoryUsername
+					password = artifactoryPassword
+				}
+			}
+		}
+		if (version.endsWith('SNAPSHOT')) {
+			maven {
+				url snapshotRepository
+				if (isCI) {
+					credentials {
+						username = artifactoryUsername
+						password = artifactoryPassword
+					}
+				}
+			}
+		}
+	}
+
+}

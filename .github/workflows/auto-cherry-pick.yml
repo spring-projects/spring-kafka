@@ -5,9 +5,10 @@ on:
     branches:
       - main
       - '*.x'
+      - '*.x-internal'
 
 jobs:
   cherry-pick-commit:
-    uses: spring-io/spring-github-workflows/.github/workflows/spring-cherry-pick.yml@v7
+    uses: spring-io/spring-github-workflows/.github/workflows/spring-cherry-pick.yml@main
     secrets:
       GH_ACTIONS_REPO_TOKEN: ${{ secrets.GH_ACTIONS_REPO_TOKEN }}

@@ -7,6 +7,7 @@ on:
     branches:
       - main
       - '*.x'
+      - '*.x-internal'
 
 concurrency:
   group: group-ci-for-${{ github.ref }}
@@ -18,8 +19,12 @@ jobs:
       fail-fast: false
       matrix:
         testJavaVersion: [ 17, 21, 25, 26 ]
+        # Uncomment when we switch to hosted runners
+        # os: ${{ fromJSON(vars.COMMERCIAL && '["ubuntu22-2-8", "win22-8-32"]' || '["ubuntu-latest", "macos-latest", "windows-latest"]') }}
         os: [ ubuntu-latest, macos-latest, windows-latest ]
         exclude:
+          # Uncomment when we switch to hosted runners
+          # - os: ${{ vars.COMMERCIAL && 'ubuntu22-2-8' || 'ubuntu-latest' }}
           - os: ubuntu-latest
             testJavaVersion: 25
 
@@ -29,3 +34,5 @@ jobs:
       runner: ${{ matrix.os }}
     secrets:
       DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
+      ARTIFACTORY_USERNAME: ${{ secrets.COMMERCIAL_ARTIFACTORY_USERNAME || secrets.ARTIFACTORY_USERNAME }}
+      ARTIFACTORY_PASSWORD: ${{ secrets.COMMERCIAL_ARTIFACTORY_PASSWORD || secrets.ARTIFACTORY_PASSWORD }}
