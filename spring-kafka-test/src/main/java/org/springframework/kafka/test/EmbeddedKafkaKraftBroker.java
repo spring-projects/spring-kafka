@@ -42,7 +42,6 @@ import java.util.stream.Collectors;
 
 import kafka.server.KafkaConfig;
 import org.apache.commons.logging.LogFactory;
-import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.CreateTopicsResult;
@@ -484,7 +483,7 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 	@Override
 	public String getBrokersAsString() {
 		Assert.notNull(this.cluster, "cluster cannot be null");
-		String brokersString = (String) this.cluster.clientProperties().get(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG);
+		String brokersString = this.cluster.bootstrapServers();
 		return Objects.requireNonNull(brokersString);
 	}
 
