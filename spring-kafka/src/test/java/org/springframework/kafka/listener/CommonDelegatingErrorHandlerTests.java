@@ -17,23 +17,32 @@
 package org.springframework.kafka.listener;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaProducerException;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.util.backoff.FixedBackOff;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -45,6 +54,7 @@ import static org.mockito.Mockito.verify;
  * @author Adrian Chlebosz
  * @author Antonin Arquey
  * @author Dan Blackney
+ * @author Alexander Makarov
  * @since 2.8
  *
  */
@@ -267,6 +277,57 @@ public class CommonDelegatingErrorHandlerTests {
 		assertThatThrownBy(() -> delegatingErrorHandler.setErrorHandlers(delegates))
 				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessage("All delegates must return the same value when calling 'seeksAfterHandling()'");
+	}
+
+	@Test
+	void testOnPartitionsAssignedDelegates() {
+		var def = mock(CommonErrorHandler.class);
+		var one = mock(CommonErrorHandler.class);
+		var two = mock(CommonErrorHandler.class);
+		var eh = new CommonDelegatingErrorHandler(def);
+		eh.setErrorHandlers(Map.of(IllegalStateException.class, one, IllegalArgumentException.class, two));
+		var consumer = mock(Consumer.class);
+		var partitions = List.of(new TopicPartition("foo", 0));
+		Runnable publishPause = () -> {
+		};
+
+		eh.onPartitionsAssigned(consumer, partitions, publishPause);
+
+		verify(def).onPartitionsAssigned(consumer, partitions, publishPause);
+		verify(one).onPartitionsAssigned(consumer, partitions, publishPause);
+		verify(two).onPartitionsAssigned(consumer, partitions, publishPause);
+	}
+
+	@Test
+	void testRePauseOnRebalanceDuringBatchRetry() {
+		var recovered = new ArrayList<ConsumerRecord<?, ?>>();
+		var defaultHandler = new DefaultErrorHandler((cr, ex) -> recovered.add(cr), new FixedBackOff(0L, 1L));
+		var eh = new CommonDelegatingErrorHandler(defaultHandler);
+		Map<TopicPartition, List<ConsumerRecord<Object, Object>>> map = new HashMap<>();
+		map.put(new TopicPartition("foo", 0),
+				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0L, "foo", "bar")));
+		ConsumerRecords<?, ?> records = new ConsumerRecords<>(map, Map.of());
+		var consumer = mock(Consumer.class);
+		given(consumer.assignment()).willReturn(map.keySet());
+		var pubPauseCalled = new AtomicBoolean();
+		// a rebalance completes while the retry back off is in progress
+		willAnswer(inv -> {
+			eh.onPartitionsAssigned(consumer, List.of(new TopicPartition("foo", 1)),
+					() -> pubPauseCalled.set(true));
+			return records;
+		}).given(consumer).poll(any());
+		var container = mock(KafkaMessageListenerContainer.class);
+		given(container.getContainerFor(any(), anyInt())).willReturn(container);
+		given(container.isRunning()).willReturn(true);
+
+		eh.handleBatch(new RuntimeException(), records, consumer, container, () -> {
+			throw new RuntimeException();
+		});
+
+		assertThat(recovered).hasSize(1);
+		// the newly assigned partitions must be re-paused so that their records are not fetched and discarded
+		assertThat(pubPauseCalled.get()).isTrue();
+		verify(consumer, atLeast(2)).pause(any());
 	}
 
 	private Exception wrap(Exception ex) {
