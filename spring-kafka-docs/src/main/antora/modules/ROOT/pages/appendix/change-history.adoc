@@ -667,10 +667,10 @@ See xref:kafka/annotation-error-handling.adoc#backoff-handlers[Back Off Handlers
 === Listener Container Changes
 
 `interceptBeforeTx` now works with all transaction managers (previously it was only applied when a `KafkaAwareTransactionManager` was used).
-See <<interceptBeforeTx>>.
+See xref:kafka/container-props.adoc#interceptBeforeTx[interceptBeforeTx].
 
 A new container property `pauseImmediate` is provided which allows the container to pause the consumer after the current record is processed, instead of after all the records from the previous poll have been processed.
-See <<pauseImmediate>>.
+See xref:kafka/container-props.adoc#pauseImmediate[pauseImmediate].
 
 Events related to consumer authentication and authorization
 
@@ -701,7 +701,7 @@ See xref:kafka/sending-messages.adoc#replying-template[Using `ReplyingKafkaTempl
 == What's New in 2.8 Since 2.7
 
 This section covers the changes made from version 2.7 to version 2.8.
-For changes in earlier version, see xref:appendix.adoc#history[Change History].
+For changes in earlier version, see xref:appendix/change-history.adoc[Change History].
 
 [[x28-kafka-client]]
 === Kafka Client Version
@@ -731,14 +731,14 @@ See xref:kafka/receiving-messages/ooo-commits.adoc[Manually Committing Offsets] 
 It is now possible to specify whether the listener method is a batch listener on the method itself.
 This allows the same container factory to be used for both record and batch listeners.
 
-See <<batch-listeners>> for more information.
+See xref:kafka/receiving-messages/listener-annotation.adoc#batch-listeners[Batch Listeners] for more information.
 
 Batch listeners can now handle conversion exceptions.
 
 See xref:kafka/annotation-error-handling.adoc#batch-listener-conv-errors[Conversion Errors with Batch Error Handlers] for more information.
 
 `RecordFilterStrategy`, when used with batch listeners, can now filter the entire batch in one call.
-See the note at the end of <<batch-listeners>> for more information.
+See the note at the end of xref:kafka/receiving-messages/listener-annotation.adoc#batch-listeners[Batch Listeners] for more information.
 
 The `@KafkaListener` annotation now has the `filter` attribute, to override the container factory's `RecordFilterStrategy` for just this listener.
 
@@ -882,7 +882,7 @@ See xref:streams.adoc#streams-config[Configuration] for more information.
 
 New methods `createOrModifyTopics` and `describeTopics` have been added.
 `KafkaAdmin.NewTopics` has been added to facilitate configuring multiple topics in a single bean.
-See <<configuring-topics>> for more information.
+See xref:kafka/configuring-topics.adoc[Configuring Topics] for more information.
 
 [[x27-conv]]
 === `MessageConverter` Changes
@@ -939,7 +939,7 @@ In addition, if the listener implements `ConsumerSeekAware`, `onPartitionsAssign
 See xref:kafka/receiving-messages/listener-annotation.adoc#topic-partition-assignment[Topic Partition Assignment] for more information.
 
 Convenience methods have been added to `AbstractConsumerSeekAware` to make seeking easier.
-See <<seek>> for more information.
+See xref:kafka/seek.adoc[Seeking to a Specific Offset] for more information.
 
 [[errorhandler-changes]]
 === ErrorHandler Changes
@@ -960,7 +960,7 @@ See xref:kafka/sending-messages.adoc#producer-factory[Using `DefaultKafkaProduce
 == Changes between 2.4 and 2.5
 
 This section covers the changes made from version 2.4 to version 2.5.
-For changes in earlier version, see xref:appendix.adoc#history[Change History].
+For changes in earlier version, see xref:appendix/change-history.adoc[Change History].
 
 [[x25-factory-listeners]]
 === Consumer/Producer Factory Changes
@@ -992,7 +992,7 @@ This version requires the 2.5.0 `kafka-clients`.
 [[x25-delivery]]
 === Delivery Attempts Header
 
-There is now an option to to add a header which tracks delivery attempts when using certain error handlers and after rollback processors.
+There is now an option to add a header which tracks delivery attempts when using certain error handlers and after rollback processors.
 See xref:kafka/annotation-error-handling.adoc#delivery-header[Delivery Attempts Header] for more information.
 
 [[x25-message-return]]
@@ -1143,7 +1143,7 @@ This section covers the changes made from version 2.2 to version 2.3.
 [[cb-2-2-and-2-3-tips-tricks-and-examples]]
 === Tips, Tricks and Examples
 
-A new chapter xref:index.adoc#tips-n-tricks[Tips, Tricks and Examples] has been added.
+A new chapter xref:tips.adoc[Tips, Tricks and Examples] has been added.
 Please submit GitHub issues and/or pull requests for additional entries in that chapter.
 
 [[cb-2-2-and-2-3-kafka-client-2.2]]
@@ -1192,10 +1192,10 @@ A `CompositeRecordInterceptor` is also provided in case you need to invoke multi
 See xref:kafka/receiving-messages/message-listener-container.adoc[Message Listener Containers] for more information.
 
 The `ConsumerSeekAware` has new methods allowing you to perform seeks relative to the beginning, end, or current position and to seek to the first offset greater than or equal to a time stamp.
-See <<seek>> for more information.
+See xref:kafka/seek.adoc[Seeking to a Specific Offset] for more information.
 
 A convenience class `AbstractConsumerSeekAware` is now provided to simplify seeking.
-See <<seek>> for more information.
+See xref:kafka/seek.adoc[Seeking to a Specific Offset] for more information.
 
 The `ContainerProperties` provides an `idleBetweenPolls` option to let the main loop in the listener container to sleep between `KafkaConsumer.poll()` calls.
 See its JavaDocs and xref:kafka/receiving-messages/message-listener-container.adoc#kafka-container[Using `KafkaMessageListenerContainer`] for more information.
@@ -1232,7 +1232,7 @@ See xref:kafka/annotation-error-handling.adoc#dead-letters[Publishing Dead-lette
 === TopicBuilder
 
 A new class `TopicBuilder` is provided for more convenient creation of `NewTopic` ``@Bean``s for automatic topic provisioning.
-See <<configuring-topics>> for more information.
+See xref:kafka/configuring-topics.adoc[Configuring Topics] for more information.
 
 [[cb-2-2-and-2-3-kafka-streams-changes]]
 === Kafka Streams Changes
@@ -1336,7 +1336,7 @@ A `ConsumerStoppedEvent` is now emitted when a consumer stops.
 See xref:kafka/thread-safety.adoc[Thread Safety] for more information.
 
 Batch listeners can optionally receive the complete `ConsumerRecords<?, ?>` object instead of a `List<ConsumerRecord<?, ?>`.
-See <<batch-listeners>> for more information.
+See xref:kafka/receiving-messages/listener-annotation.adoc#batch-listeners[Batch Listeners] for more information.
 
 The `DefaultAfterRollbackProcessor` and `SeekToCurrentErrorHandler` can now recover (skip) records that keep failing, and, by default, does so after 10 failures.
 They can be configured to publish failed records to a dead-letter topic.
@@ -1509,7 +1509,7 @@ See xref:kafka/receiving-messages/annotation-send-to.adoc[Forwarding Listener Re
 === Message Listeners
 
 Message listeners can now be aware of the `Consumer` object.
-See <<message-listeners>> for more information.
+See xref:kafka/receiving-messages/message-listeners.adoc[Message Listeners] for more information.
 
 [[cb-1-3-and-2-0-using-consumerawarerebalancelistener]]
 === Using `ConsumerAwareRebalanceListener`
@@ -1607,4 +1607,4 @@ When explicitly assigning partitions, you can now configure the initial offset r
 You can now seek the position of each topic or partition.
 You can use this to set the initial position during initialization when group management is in use and Kafka assigns the partitions.
 You can also seek when an idle container is detected or at any arbitrary point in your application's execution.
-See <<seek>> for more information.
+See xref:kafka/seek.adoc[Seeking to a Specific Offset] for more information.
