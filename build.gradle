@@ -52,7 +52,7 @@ ext {
 								.filter { f -> f.name.endsWith('.java') || f.name.endsWith('.kt') }
 					}
 	modifiedFiles.finalizeValueOnRead()
-
+	
 	idPrefix = 'kafka'
 
 	javaProjects = subprojects - project(':spring-kafka-bom') - project(':spring-kafka-docs')
