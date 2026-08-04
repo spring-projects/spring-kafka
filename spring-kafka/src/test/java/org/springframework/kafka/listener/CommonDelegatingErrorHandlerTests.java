@@ -17,12 +17,16 @@
 package org.springframework.kafka.listener;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.KafkaException;
@@ -33,6 +37,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -267,6 +273,27 @@ public class CommonDelegatingErrorHandlerTests {
 		assertThatThrownBy(() -> delegatingErrorHandler.setErrorHandlers(delegates))
 				.isInstanceOf(IllegalArgumentException.class)
 				.hasMessage("All delegates must return the same value when calling 'seeksAfterHandling()'");
+	}
+
+	@Test
+	void onPartitionsAssignedIsForwardedToDefaultAndDelegates() {
+		var defaultHandler = mock(CommonErrorHandler.class);
+		var one = mock(CommonErrorHandler.class);
+		var two = mock(CommonErrorHandler.class);
+		var eh = new CommonDelegatingErrorHandler(defaultHandler);
+		eh.setErrorHandlers(Map.of(IllegalStateException.class, one, IllegalArgumentException.class, two));
+
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		Collection<TopicPartition> partitions = List.of(new TopicPartition("topic", 0));
+		AtomicInteger publishPauseInvocations = new AtomicInteger();
+		Runnable publishPause = publishPauseInvocations::incrementAndGet;
+
+		eh.onPartitionsAssigned(consumer, partitions, publishPause);
+
+		verify(defaultHandler).onPartitionsAssigned(same(consumer), eq(partitions), same(publishPause));
+		verify(one).onPartitionsAssigned(same(consumer), eq(partitions), same(publishPause));
+		verify(two).onPartitionsAssigned(same(consumer), eq(partitions), same(publishPause));
+		assertThat(publishPauseInvocations).hasValue(0);
 	}
 
 	private Exception wrap(Exception ex) {
