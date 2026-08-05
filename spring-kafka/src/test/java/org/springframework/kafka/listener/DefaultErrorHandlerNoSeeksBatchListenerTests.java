@@ -98,7 +98,7 @@ public class DefaultErrorHandlerNoSeeksBatchListenerTests {
 		assertThat(this.config.deliveryLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.pollLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
-		this.registry.stop();
+		this.registry.getListenerContainer(CONTAINER_ID).stop();
 		assertThat(this.config.closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		InOrder inOrder = inOrder(this.consumer);
 		inOrder.verify(this.consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
