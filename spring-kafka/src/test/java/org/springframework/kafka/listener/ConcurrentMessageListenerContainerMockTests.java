@@ -221,8 +221,9 @@ public class ConcurrentMessageListenerContainerMockTests {
 		assertThat(latch1.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(System.currentTimeMillis() - t1).isGreaterThanOrEqualTo(500L);
 		firstEvent.set(true);
+		long t2 = System.currentTimeMillis();
 		assertThat(latch2.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(System.currentTimeMillis() - t1).isLessThan(1000L);
+		assertThat(System.currentTimeMillis() - t2).isLessThan(500L);
 		container.stop();
 	}
 
