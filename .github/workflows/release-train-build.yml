@@ -31,7 +31,7 @@ jobs:
       id: "prevent-re-runs"
       run: |-
         if [ "$GITHUB_RUN_ATTEMPT" -gt 1 ]; then
-          echo "Re-runs are prohibited. Use the 'Release Train – Retry' workflow to retry build failures"
+          echo "Re-runs are prohibited. Use the 'Release Train – Retry' workflow to retry build failures"
           exit 1
         fi
     - name: "Set up Java"
@@ -39,7 +39,7 @@ jobs:
       uses: "actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95" # v5.6.0
       with:
         distribution: "liberica"
-        java-version: "17"
+        java-version: "25"
     - name: "Check Out Code"
       id: "check-out-code"
       uses: "actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0" # v7.0.0
