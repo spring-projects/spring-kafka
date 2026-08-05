@@ -1496,6 +1496,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			debugRecords(records);
 
+			// If the poll returned nothing, run the tx-offset fix a second time now that
+			// the consumer's fetch position may have advanced past a transaction marker
+			// that arrived in a separate batch after the records were committed. The fix
+			// at the top of this method runs before the poll, so it sees the pre-poll
+			// position; this call sees the post-poll position and can correct the lag.
+			if (records == null || records.count() == 0) {
+				fixTxOffsetsIfNeeded();
+			}
 			invokeIfHaveRecords(records);
 			if (this.remainingRecords == null) {
 				resumeConsumerIfNecessary();
