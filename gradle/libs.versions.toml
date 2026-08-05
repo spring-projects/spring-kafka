@@ -18,7 +18,6 @@ jackson3Version = "3.2.1"
 jaywayJsonPathVersion = "3.0.0"
 junitJupiterVersion = "6.1.2"
 kafkaVersion = "4.3.1"
-kotlinVersion = "2.3.21"
 kotlinCoroutinesVersion = "1.10.2"
 log4jVersion = "2.25.5"
 mockitoVersion = "5.23.0"
@@ -53,7 +52,6 @@ org-springframework-boot-starter = { module = "org.springframework.boot:spring-b
 spring-data-bom = { module = "org.springframework.data:spring-data-bom", version.ref = "springDataVersion" }
 spring-framework-bom = { module = "org.springframework:spring-framework-bom", version.ref = "springVersion" }
 tools-jackson-bom = { module = "tools.jackson:jackson-bom", version.ref = "jackson3Version" }
-kotlin-stdlib-jdk8 = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8", version.ref = "kotlinVersion" }
 com-github-spotbugs-annotations = { module = "com.github.spotbugs:spotbugs-annotations", version.ref = "spotbugsVersion" }
 
 [plugins]
