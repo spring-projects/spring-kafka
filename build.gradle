@@ -1,6 +1,6 @@
 buildscript {
 	ext.isCI = System.getenv('GITHUB_ACTION')
-	ext.kotlinVersion = libs.versions.kotlinVersion.get()
+	ext.kotlinVersion = '2.3.21'
 	repositories {
 		gradlePluginPortal()
 		mavenCentral()
@@ -31,27 +31,6 @@ ext {
 	linkScmUrl = 'https://github.com/spring-projects/spring-kafka'
 	linkScmConnection = 'https://github.com/spring-projects/spring-kafka.git'
 	linkScmDevConnection = 'git@github.com:spring-projects/spring-kafka.git'
-
-	assertjVersion = libs.versions.assertjVersion.get()
-	awaitilityVersion = libs.versions.awaitilityVersion.get()
-	hamcrestVersion = libs.versions.hamcrestVersion.get()
-	hibernateValidationVersion = libs.versions.hibernateValidationVersion.get()
-	jacksonBomVersion = libs.versions.jacksonVersion.get()
-	jackson3Version = libs.versions.jackson3Version.get()
-	jaywayJsonPathVersion = libs.versions.jaywayJsonPathVersion.get()
-	junitJupiterVersion = libs.versions.junitJupiterVersion.get()
-	kafkaVersion = libs.versions.kafkaVersion.get()
-	kotlinCoroutinesVersion = libs.versions.kotlinCoroutinesVersion.get()
-	log4jVersion = libs.versions.log4jVersion.get()
-	micrometerDocsVersion = libs.versions.micrometerDocsVersion.get()
-	micrometerVersion = libs.versions.micrometerVersion.get()
-	micrometerTracingVersion = libs.versions.micrometerTracingVersion.get()
-	mockitoVersion = libs.versions.mockitoVersion.get()
-	reactorVersion = libs.versions.reactorVersion.get()
-	slf4jVersion = libs.versions.slf4jVersion.get()
-	springBootVersion = libs.versions.springBootVersion.get() // docs module
-	springDataVersion = libs.versions.springDataVersion.get()
-	springVersion = libs.versions.springVersion.get()
 
 	idPrefix = 'kafka'
 
@@ -156,14 +135,13 @@ configure(javaProjects) { subproject ->
 
 	// dependencies that are common across all java projects
 	dependencies {
-		def spotBugs = 'com.github.spotbugs:spotbugs-annotations:4.9.8'
-		compileOnly spotBugs
-		testRuntimeOnly spotBugs
+		compileOnly libs.com.github.spotbugs.annotations
+		testRuntimeOnly libs.com.github.spotbugs.annotations
 
 		testImplementation 'org.junit.jupiter:junit-jupiter-api'
 		testImplementation 'org.junit.jupiter:junit-jupiter-params'
 		testImplementation 'org.jetbrains.kotlin:kotlin-reflect'
-		testImplementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
+		testImplementation libs.kotlin.stdlib.jdk8
 		testImplementation libs.org.awaitility
 		testImplementation libs.org.hamcrest.core
 		testImplementation libs.org.assertj.core
@@ -389,12 +367,12 @@ project ('spring-kafka-test') {
 		api libs.org.slf4j.api
 		api 'org.springframework:spring-context'
 		api 'org.springframework:spring-test'
-		api "org.apache.kafka:kafka-clients:${libs.versions.kafkaVersion.get()}:test"
+		api(libs.apache.kafka.clients) { artifact { classifier = 'test' } }
 		api libs.apache.kafka.server
 		api libs.apache.kafka.test.common.runtime
 		api libs.apache.kafka.metadata
 		api libs.apache.kafka.server.common
-		api "org.apache.kafka:kafka-server-common:${libs.versions.kafkaVersion.get()}:test"
+		api(libs.apache.kafka.server.common) { artifact { classifier = 'test' } }
 		api libs.apache.kafka.streams.test.utils
 		api 'org.junit.jupiter:junit-jupiter-api'
 		api 'org.junit.platform:junit-platform-launcher'

@@ -23,6 +23,7 @@ kotlinCoroutinesVersion = "1.10.2"
 log4jVersion = "2.25.5"
 mockitoVersion = "5.23.0"
 slf4jVersion = "2.0.18"
+spotbugsVersion = "4.9.8"
 
 [libraries]
 com-fasterxml-jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version.ref = "jacksonVersion" }
@@ -52,6 +53,8 @@ org-springframework-boot-starter = { module = "org.springframework.boot:spring-b
 spring-data-bom = { module = "org.springframework.data:spring-data-bom", version.ref = "springDataVersion" }
 spring-framework-bom = { module = "org.springframework:spring-framework-bom", version.ref = "springVersion" }
 tools-jackson-bom = { module = "tools.jackson:jackson-bom", version.ref = "jackson3Version" }
+kotlin-stdlib-jdk8 = { module = "org.jetbrains.kotlin:kotlin-stdlib-jdk8", version.ref = "kotlinVersion" }
+com-github-spotbugs-annotations = { module = "com.github.spotbugs:spotbugs-annotations", version.ref = "spotbugsVersion" }
 
 [plugins]
 aggregate-javadoc = { id = "io.freefair.aggregate-javadoc", version = "9.2.0" }
