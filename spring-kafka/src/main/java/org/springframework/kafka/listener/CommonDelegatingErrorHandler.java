@@ -16,11 +16,14 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import org.apache.kafka.common.TopicPartition;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -95,6 +98,12 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 	public void clearThreadState() {
 		this.defaultErrorHandler.clearThreadState();
 		this.delegates.values().forEach(CommonErrorHandler::clearThreadState);
+	}
+
+	@Override
+	public void clearThreadStateFor(Collection<TopicPartition> partitions) {
+		this.defaultErrorHandler.clearThreadStateFor(partitions);
+		this.delegates.values().forEach(h -> h.clearThreadStateFor(partitions));
 	}
 
 	@Override
