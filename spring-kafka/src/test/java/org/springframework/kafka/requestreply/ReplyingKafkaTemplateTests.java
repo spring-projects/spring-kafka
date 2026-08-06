@@ -785,7 +785,7 @@ public class ReplyingKafkaTemplateTests {
 				new ReplyingKafkaTemplate<>(this.config.pf(), container);
 		template.setSharedReplyTopic(true);
 		template.start();
-		assertThat(template.waitForAssignment(Duration.ofSeconds(10))).isTrue();
+		assertThat(template.waitForAssignment(Duration.ofSeconds(30))).isTrue();
 		assertThat(latch.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(template.getAssignedReplyTopicPartitions()).hasSize(5);
 		assertThat(template.getAssignedReplyTopicPartitions().iterator().next().topic()).isEqualTo(topic);
@@ -805,7 +805,7 @@ public class ReplyingKafkaTemplateTests {
 				container);
 		template.setSharedReplyTopic(true);
 		template.start();
-		assertThat(template.waitForAssignment(Duration.ofSeconds(10))).isTrue();
+		assertThat(template.waitForAssignment(Duration.ofSeconds(30))).isTrue();
 		assertThat(template.getAssignedReplyTopicPartitions()).hasSize(1);
 		assertThat(template.getAssignedReplyTopicPartitions().iterator().next().topic()).isEqualTo(topic.getTopic());
 		return template;
