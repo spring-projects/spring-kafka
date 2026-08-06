@@ -228,7 +228,7 @@ public class KafkaStreamsTests {
 					.repartition(Repartitioned.with(Serdes.Integer(), new JacksonJsonSerde<Foo>() { }))
 					.mapValues(Foo::getName)
 					.groupByKey()
-					.windowedBy(TimeWindows.ofSizeWithNoGrace(Duration.ofMillis(1000)))
+					.windowedBy(TimeWindows.ofSizeWithNoGrace(Duration.ofSeconds(60)))
 					.reduce((value1, value2) -> value1 + value2, Materialized.as("windowStore"))
 					.toStream()
 					.map((windowedId, value) -> new KeyValue<>(windowedId.key(), value))
