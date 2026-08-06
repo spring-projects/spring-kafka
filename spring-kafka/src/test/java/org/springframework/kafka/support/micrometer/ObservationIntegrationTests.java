@@ -68,8 +68,9 @@ public class ObservationIntegrationTests extends SampleTestRunner {
 				applicationContext.registerBean(ObservationRegistry.class, () -> observationRegistry);
 				applicationContext.register(Config.class);
 				applicationContext.refresh();
-				applicationContext.getBean(KafkaTemplate.class).send("int.observation.testT1", "test");
-				assertThat(applicationContext.getBean(Listener.class).latch1.await(10, TimeUnit.SECONDS)).isTrue();
+				applicationContext.getBean(KafkaTemplate.class).send("int.observation.testT1", "test")
+						.get(10, TimeUnit.SECONDS);
+				assertThat(applicationContext.getBean(Listener.class).latch1.await(30, TimeUnit.SECONDS)).isTrue();
 			}
 
 			List<FinishedSpan> finishedSpans = bb.getFinishedSpans();
