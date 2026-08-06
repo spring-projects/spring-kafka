@@ -71,10 +71,10 @@ public class DeliveryHeaderTests {
 	@Test
 	void deliveryAttempts(@Autowired Config config, @Autowired KafkaTemplate<Integer, String> template,
 			@Autowired RetryTopicClassLevel retryTopicClassLevel)
-			throws InterruptedException {
+			throws Exception {
 
-		template.send("dh1", "test");
-		template.send(DH_CLASS_LEVEL_1, "test");
+		template.send("dh1", "test").get(10, TimeUnit.SECONDS);
+		template.send(DH_CLASS_LEVEL_1, "test").get(10, TimeUnit.SECONDS);
 		assertThat(config.latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(retryTopicClassLevel.latchClassLevel.await(10, TimeUnit.SECONDS)).isTrue();
 
