@@ -56,6 +56,7 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
@@ -78,10 +79,13 @@ class RetryTopicConfigurationIntegrationTests {
 					throws InterruptedException {
 
 		Consumer<Integer, String> consumer = cf.createConsumer("grp2", "");
-		Map<String, List<PartitionInfo>> topics = consumer.listTopics();
-		assertThat(topics.keySet()).contains("RetryTopicConfigurationIntegrationTests.1",
-				"RetryTopicConfigurationIntegrationTests.1-dlt", "RetryTopicConfigurationIntegrationTests.1-retry-100",
-				"RetryTopicConfigurationIntegrationTests.1-retry-110");
+		// Retry topics are created dynamically at startup; wait for them to appear.
+		await().untilAsserted(() -> {
+			Map<String, List<PartitionInfo>> topics = consumer.listTopics();
+			assertThat(topics.keySet()).contains("RetryTopicConfigurationIntegrationTests.1",
+					"RetryTopicConfigurationIntegrationTests.1-dlt", "RetryTopicConfigurationIntegrationTests.1-retry-100",
+					"RetryTopicConfigurationIntegrationTests.1-retry-110");
+		});
 		template.send(TOPIC1, "foo");
 		assertThat(config.latch.await(10, TimeUnit.SECONDS)).isTrue();
 		verify(componentFactory).destinationTopicResolver();
