@@ -64,12 +64,14 @@ public class PartitionResolverTests {
 
 	@Test
 	void testNullPartition(@Autowired KafkaOperations<Integer, String> template,
-			@Autowired EmbeddedKafkaBroker broker, @Autowired Config config) throws InterruptedException {
+			@Autowired EmbeddedKafkaBroker broker, @Autowired Config config) throws Exception {
 
 		Map<String, Object> producerProps = KafkaTestUtils.producerProps(broker);
 		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(producerProps);
 		KafkaTemplate<Integer, String> kt = new KafkaTemplate<>(pf);
-		kt.send("partition.resolver.tests", 1, null, "test");
+		// Block until the message is confirmed in the broker so the 10-second latch
+		// window isn't eaten by producer metadata fetch time on a slow CI machine.
+		kt.send("partition.resolver.tests", 1, null, "test").get(10, TimeUnit.SECONDS);
 		assertThat(config.latch.await(10, TimeUnit.SECONDS)).isTrue();
 		@SuppressWarnings("unchecked")
 		ArgumentCaptor<ProducerRecord<Integer, String>> captor = ArgumentCaptor.forClass(ProducerRecord.class);
