@@ -178,6 +178,7 @@ import org.springframework.util.StringUtils;
  * @author Minchul Son
  * @author Youngjoo Kim
  * @author Bill Kim
+ * @author Hakaze Arimu
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -1321,8 +1322,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private @Nullable MicrometerHolder obtainMicrometerHolder() {
 			MicrometerHolder holder = null;
 			try {
+				// Skip legacy timers when observation is active as mixed tag key sets break Prometheus registration.
 				if (KafkaUtils.MICROMETER_PRESENT && this.containerProperties.isMicrometerEnabled()
-						&& !this.observationEnabled) {
+						&& !this.containerProperties.isObservationEnabled()) {
 
 					Function<@Nullable Object, Map<String, String>> mergedProvider =
 							cr -> this.containerProperties.getMicrometerTags();
@@ -2570,8 +2572,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
+		/**
+		 * Emit a short-lived observation per record when {@code recordObservationsInBatch} is true.
+		 * Does not invoke the listener or open a scope around listener execution; the batch
+		 * listener still runs via {@link #doInvokeBatchListenerBody} outside these observations
+		 * (see docs: per-record batch observations are not propagated to the listener method).
+		 * @param recordList the records in the batch.
+		 */
 		private void invokeBatchWithIndividualRecordObservation(List<ConsumerRecord<K, V>> recordList) {
-			// Create individual observations for each record without scopes
 			for (ConsumerRecord<K, V> record : recordList) {
 				Observation observation = KafkaListenerObservation.LISTENER_OBSERVATION.observation(
 						this.containerProperties.getObservationConvention(),
@@ -2582,6 +2590,51 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				observation.observe(() -> {
 					this.logger.debug(() -> "Observing record in batch: " + KafkaUtils.format(record));
 				});
+			}
+		}
+
+		/**
+		 * Observe the entire batch listener invocation when observation is enabled but
+		 * per-record observations are not. Uses the first record for context tags so meters
+		 * share the same low-cardinality keys as non-batch listeners.
+		 * @param records the consumer records for the batch.
+		 * @param recordList the list of records passed to the listener.
+		 */
+		private void invokeBatchOnMessageWithObservation(final ConsumerRecords<K, V> records,
+				List<ConsumerRecord<K, V>> recordList) {
+
+			if (recordList.isEmpty()) {
+				// No record to derive messaging source tags; still invoke the listener.
+				doInvokeBatchListenerBody(records, recordList);
+				return;
+			}
+			ConsumerRecord<K, V> contextRecord = recordList.get(0);
+			Observation observation = KafkaListenerObservation.LISTENER_OBSERVATION.observation(
+					this.containerProperties.getObservationConvention(),
+					DefaultKafkaListenerObservationConvention.INSTANCE,
+					() -> new KafkaRecordReceiverContext(contextRecord, getListenerId(), getClientId(),
+							this.consumerGroupId, this::clusterId),
+					this.observationRegistry);
+			observation.observe(() -> doInvokeBatchListenerBody(records, recordList));
+		}
+
+		/**
+		 * Invoke the batch listener (full poll result or list).
+		 * @param records the consumer records for the batch.
+		 * @param recordList the list of records passed to the listener.
+		 */
+		private void doInvokeBatchListenerBody(final ConsumerRecords<K, V> records,
+				List<ConsumerRecord<K, V>> recordList) {
+
+			if (this.wantsFullRecords) {
+				Objects.requireNonNull(this.batchListener).onMessage(records, // NOSONAR
+						this.isAnyManualAck
+								? new ConsumerBatchAcknowledgment(records, recordList)
+								: null,
+						this.consumer);
+			}
+			else {
+				doInvokeBatchOnMessage(records, recordList); // NOSONAR
 			}
 		}
 
@@ -2608,18 +2661,17 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			try {
 				if (this.observationEnabled) {
+					// recordObservationsInBatch: emit per-record spans only (listener runs below, unobserved)
 					invokeBatchWithIndividualRecordObservation(recordList);
 				}
 
-				if (this.wantsFullRecords) {
-					Objects.requireNonNull(this.batchListener).onMessage(records, // NOSONAR
-							this.isAnyManualAck
-									? new ConsumerBatchAcknowledgment(records, recordList)
-									: null,
-							this.consumer);
+				if (this.containerProperties.isObservationEnabled() && !this.observationEnabled) {
+					// Batch-level observation wraps the listener (same meter tags as non-batch)
+					invokeBatchOnMessageWithObservation(records, recordList);
 				}
 				else {
-					doInvokeBatchOnMessage(records, recordList); // NOSONAR
+					// Listener body: unobserved when recordObservationsInBatch, or when observation is off
+					doInvokeBatchListenerBody(records, recordList);
 				}
 				batchInterceptAfter(records, null);
 				successTimer(sample, null);

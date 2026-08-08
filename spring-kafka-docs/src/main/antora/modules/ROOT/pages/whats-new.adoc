@@ -6,3 +6,26 @@
 
 This section covers the changes made from version 4.1 to version 4.2.
 For changes in earlier versions, see xref:appendix/change-history.adoc[Change History].
+
+[[x42-listener-observation-tags]]
+=== Listener Observation Meter Tags
+
+When `observationEnabled` is `true`, batch listeners create a batch-level observation (unless `recordObservationsInBatch` is enabled for per-record observations) using the same low-cardinality meter tags as non-batch listeners.
+Optional tag values use the Micrometer placeholder `none` when unavailable.
+This prevents Prometheus registration failures when an application mixes batch and non-batch listeners under the `spring.kafka.listener` meter name.
+See xref:kafka/micrometer.adoc#batch-listener-obs[Batch Listener Observations].
+
+==== Backward Compatibility
+
+These changes affect existing meters and dashboards:
+
+* **Batch listeners with `observationEnabled=true`:** Previously these used legacy `MicrometerHolder` timers with `name` / `result` / `exception` tags.
+They now emit observation-based meters with `messaging.*` tags (and Micrometer's `error` tag).
+Dashboards or recording rules that matched the old tag structure will stop matching and must be updated to the observation tag keys.
+
+* **All listeners (batch and non-batch) without a consumer group:** `messaging.kafka.consumer.group` was previously omitted from the low-cardinality tag set when no group was configured.
+It is now always present with value `none` (and the same applies to high-cardinality optional tags such as `messaging.kafka.client_id` and `messaging.consumer.id` when unavailable).
+Exact label-set matching queries that assumed the tag was absent need to be revised.
+
+These behavioral changes are intentional so that all `spring.kafka.listener` meters share one consistent tag key set for Prometheus.
+They ship in **4.2** only (they cannot be backported to 4.1).
