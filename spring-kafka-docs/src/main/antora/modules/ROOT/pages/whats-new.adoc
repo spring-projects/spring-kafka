@@ -7,6 +7,14 @@
 This section covers the changes made from version 4.0 to version 4.1.
 For changes in earlier versions, see xref:appendix/change-history.adoc[Change History].
 
+[[x41-batch-listener-observation-tags]]
+=== Batch Listener Observation Tags
+
+When `observationEnabled` is `true`, batch listeners create a batch-level observation (unless `recordObservationsInBatch` is enabled for per-record observations) using the same low-cardinality meter tags as non-batch listeners.
+Optional tag values use the Micrometer placeholder `none` when unavailable.
+This prevents Prometheus registration failures when an application mixes batch and non-batch listeners under the `spring.kafka.listener` meter name.
+See xref:kafka/micrometer.adoc#batch-listener-obs[Batch Listener Observations].
+
 [[x41-kafka-listener-ack-mode]]
 === `@KafkaListener` Changes
 

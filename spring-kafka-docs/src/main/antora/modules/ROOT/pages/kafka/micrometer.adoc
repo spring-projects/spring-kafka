@@ -100,7 +100,9 @@ Using Micrometer for observation is now supported, since version 3.0, for the `K
 
 Set `observationEnabled` to `true` on the `KafkaTemplate` and `ContainerProperties` to enable observation; this will disable xref:kafka/micrometer.adoc[Micrometer Timers] because the timers will now be managed with each observation.
 
-IMPORTANT: Micrometer Observation does not support batch listener; this will enable Micrometer Timers
+When observation is enabled for a batch listener and `recordObservationsInBatch` is `false` (the default), a single batch-level observation is created for the whole batch invocation.
+This uses the same low-cardinality meter tags as non-batch listeners so Prometheus does not reject mixed batch and non-batch meters under the `spring.kafka.listener` name.
+See xref:kafka/micrometer.adoc#batch-listener-obs[Batch Listener Observations].
 
 Refer to {micrometer-tracing-reference-url}[Micrometer Tracing] for more information.
 
@@ -127,10 +129,12 @@ Set `clusterIdRetryInterval` to `Duration.ZERO` to attempt the fetch on every ca
 [[batch-listener-obs]]
 === Batch Listener Observations
 
-When using a batch listener, by default, no observations are created, even if a `ObservationRegistry` is present.
-This is because the scope of an observation is tied to the thread, and with a batch listener, there is no one-to-one mapping between an observation and a record.
+When using a batch listener with `observationEnabled` set to `true` and `recordObservationsInBatch` left at the default (`false`), Spring for Apache Kafka creates **one observation for the entire batch** (using the first record for messaging source tags).
+That observation uses the same low-cardinality keys as a non-batch listener (`spring.kafka.listener.id`, `messaging.*`, and Micrometer's `error` tag), so mixing batch and non-batch listeners does not break Prometheus registration of `spring.kafka.listener` meters.
+Optional tag values that are unavailable use the Micrometer placeholder `none`.
 
-To enable per-record observations in a batch listener, set the container factory property `recordObservationsInBatch` to `true`.
+There is still no one-to-one mapping between an observation and each record in the batch.
+To enable **per-record** observations in a batch listener, set the container factory property `recordObservationsInBatch` to `true`.
 
 [source,java]
 ----
