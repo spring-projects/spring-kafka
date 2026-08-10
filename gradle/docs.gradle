@@ -33,12 +33,12 @@ tasks.register('generateAntoraResources') {
 
 def generateAttributes() {
 	def springDoc = "https://docs.spring.io"
-	def springFrameworkReferenceUrl = "$springDoc/spring-framework/reference/${generateVersionWithoutPatch(springVersion)}"
-	def springBootUrl = "$springDoc/spring-boot/${generateVersionWithoutPatch(springBootVersion)}"
+	def springFrameworkReferenceUrl = "$springDoc/spring-framework/reference/${generateVersionWithoutPatch(libs.versions.springVersion.get())}"
+	def springBootUrl = "$springDoc/spring-boot/${generateVersionWithoutPatch(libs.versions.springBootVersion.get())}"
 	def springIntegrationUrl = "$springDoc/spring-integration/reference"
 	def kafkaPage = "https://kafka.apache.org"
-	def kafkaUrl = "$kafkaPage/${kafkaVersion.split('\\.')[0,1].join('')}"
-	def micrometerTracingReferenceUrl = "https://docs.micrometer.io/tracing/reference/${generateVersionWithoutPatch(micrometerTracingVersion)}"
+	def kafkaUrl = "$kafkaPage/${libs.versions.kafkaVersion.get().split('\\.')[0,1].join('')}"
+	def micrometerTracingReferenceUrl = "https://docs.micrometer.io/tracing/reference/${generateVersionWithoutPatch(libs.versions.micrometerTracingVersion.get())}"
 
 	return [
 		'project-version': project.version,
