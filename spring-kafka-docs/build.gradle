@@ -1,6 +1,6 @@
 plugins {
-    id 'org.antora' version '1.0.0'
-    id 'io.spring.antora.generate-antora-yml' version '0.0.1'
+    alias(libs.plugins.antora)
+    alias(libs.plugins.io.spring.antora.generate.yml)
 }
 
 apply from: "${rootDir}/gradle/docs.gradle"
@@ -26,8 +26,14 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask).configur
     }
 }
 
+configurations {
+	[compileClasspath, runtimeClasspath, testCompileClasspath, testRuntimeClasspath].each {
+		it.extendsFrom(dependencyManagement)
+	}
+}
+
 dependencies {
-    implementation "org.springframework.boot:spring-boot-starter:$springBootVersion"
+    implementation libs.org.springframework.boot.starter
     implementation project (':spring-kafka')
     implementation 'org.jetbrains.kotlin:kotlin-stdlib'
     implementation 'com.fasterxml.jackson.core:jackson-core'

@@ -17,14 +17,10 @@ buildscript {
 plugins {
 	id 'base'
 	id 'idea'
-	id 'org.ajoberstar.grgit' version '5.3.3'
-	id 'io.spring.nohttp' version '0.0.11'
-	id 'io.spring.dependency-management' version '1.1.7' apply false
-	id 'io.freefair.aggregate-javadoc' version '8.11'
-	id 'io.spring.nullability' version '0.0.14' apply false
+	alias(libs.plugins.aggregate.javadoc)
+	alias(libs.plugins.nullability) apply false
 }
 
-apply plugin: 'io.spring.nohttp'
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
@@ -49,52 +45,14 @@ ext {
 		'https://docs.spring.io/spring-framework/docs/current/javadoc-api/'
 	] as String[]
 
-
-	modifiedFiles =
-			files()
-					.from {
-						files(grgit.status().unstaged.modified)
-								.filter { f -> f.name.endsWith('.java') || f.name.endsWith('.kt') }
-					}
-	modifiedFiles.finalizeValueOnRead()
-
-	assertjVersion = '3.27.7'
-	awaitilityVersion = '4.3.0'
-	hamcrestVersion = '3.0'
-	hibernateValidationVersion = '9.0.1.Final'
-	jacksonBomVersion = '2.20.2'
-	jackson3Version = '3.0.4'
-	jaywayJsonPathVersion = '2.9.0'
-	junit4Version = '4.13.2'
-	junitJupiterVersion = '6.0.3'
-	kafkaVersion = '4.1.2'
-	kotlinCoroutinesVersion = '1.10.2'
-	log4jVersion = '2.25.5'
-	micrometerDocsVersion = '1.0.4'
-	micrometerVersion = '1.16.6'
-	micrometerTracingVersion = '1.6.6'
-	mockitoVersion = '5.19.0'
-	reactorVersion = '2025.0.6'
-	slf4jVersion = '2.0.18'
-	springBootVersion = '3.5.0' // docs module
-	springDataVersion = '2025.1.6'
-	springVersion = '7.0.8'
-
 	idPrefix = 'kafka'
 
 	javaProjects = subprojects - project(':spring-kafka-bom') - project(':spring-kafka-docs')
 
 }
 
-nohttp {
-	source.include '**/src/**'
-	source.exclude '**/*.gif', '**/*.ks', '**/.gradle/**'
-}
-
 allprojects {
 	group = 'org.springframework.kafka'
-
-	apply plugin: 'io.spring.dependency-management'
 
 	repositories {
 		mavenCentral()
@@ -106,25 +64,26 @@ allprojects {
 //		maven { url 'https://repository.apache.org/content/groups/staging/' }
 	}
 
-	dependencyManagement {
-		resolutionStrategy {
-			cacheChangingModulesFor 0, 'seconds'
-		}
-		applyMavenExclusions = false
-		generatedPomCustomization {
-			enabled = false
+	configurations {
+		dependencyManagement {
+			canBeConsumed = false
+			canBeResolved = false
 		}
 
-		imports {
-			mavenBom "com.fasterxml.jackson:jackson-bom:$jacksonBomVersion"
-			mavenBom "tools.jackson:jackson-bom:$jackson3Version"
-			mavenBom "org.junit:junit-bom:$junitJupiterVersion"
-			mavenBom "io.micrometer:micrometer-bom:$micrometerVersion"
-			mavenBom "io.micrometer:micrometer-tracing-bom:$micrometerTracingVersion"
-			mavenBom "io.projectreactor:reactor-bom:$reactorVersion"
-			mavenBom "org.springframework.data:spring-data-bom:$springDataVersion"
-			mavenBom "org.springframework:spring-framework-bom:$springVersion"
+		configureEach {
+			resolutionStrategy.cacheChangingModulesFor 0, 'minutes'
 		}
+	}
+
+	dependencies {
+		dependencyManagement(platform(libs.com.fasterxml.jackson.bom))
+		dependencyManagement(platform(libs.tools.jackson.bom))
+		dependencyManagement(platform(libs.org.junit.bom))
+		dependencyManagement(platform(libs.spring.framework.bom))
+		dependencyManagement(platform(libs.io.projectreactor.bom))
+		dependencyManagement(platform(libs.spring.data.bom))
+		dependencyManagement(platform(libs.io.micrometer.bom))
+		dependencyManagement(platform(libs.io.micrometer.tracing.bom))
 	}
 }
 
@@ -167,8 +126,13 @@ configure(javaProjects) { subproject ->
 		}
 	}
 
-
 	eclipse.project.natures += 'org.springframework.ide.eclipse.core.springnature'
+
+	configurations {
+		[compileClasspath, runtimeClasspath, testCompileClasspath, testRuntimeClasspath].each {
+			it.extendsFrom(dependencyManagement)
+		}
+	}
 
 	// dependencies that are common across all java projects
 	dependencies {
@@ -180,15 +144,15 @@ configure(javaProjects) { subproject ->
 		// To avoid compiler warnings about @API annotations in JUnit code
 		testCompileOnly 'org.apiguardian:apiguardian-api:1.0.0'
 
-		testRuntimeOnly "org.apache.logging.log4j:log4j-slf4j-impl:$log4jVersion"
+		testRuntimeOnly libs.apache.logging.log4j.slf4j.impl
 
 		testImplementation 'org.jetbrains.kotlin:kotlin-reflect'
 		testImplementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8'
-		testImplementation("org.awaitility:awaitility:$awaitilityVersion") {
+		testImplementation(libs.org.awaitility) {
 			exclude group: 'org.hamcrest'
 		}
-		testImplementation "org.hamcrest:hamcrest-core:$hamcrestVersion"
-		optionalApi "org.assertj:assertj-core:$assertjVersion"
+		testImplementation libs.org.hamcrest.core
+		optionalApi libs.org.assertj.core
 	}
 
 	// enable all compiler warnings; individual projects may customize further
@@ -346,10 +310,10 @@ project ('spring-kafka') {
 		api 'org.springframework:spring-context'
 		api 'org.springframework:spring-messaging'
 		api 'org.springframework:spring-tx'
-		api "org.apache.kafka:kafka-clients:$kafkaVersion"
+		api libs.apache.kafka.clients
 		api 'io.micrometer:micrometer-observation'
-		optionalApi "org.apache.kafka:kafka-streams:$kafkaVersion"
-		optionalApi "org.jetbrains.kotlinx:kotlinx-coroutines-reactor:$kotlinCoroutinesVersion"
+		optionalApi libs.apache.kafka.streams
+		optionalApi "org.jetbrains.kotlinx:kotlinx-coroutines-reactor:${libs.versions.kotlinCoroutinesVersion.get()}"
 		optionalApi 'com.fasterxml.jackson.core:jackson-core'
 		optionalApi 'com.fasterxml.jackson.core:jackson-databind'
 		optionalApi 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
@@ -370,7 +334,7 @@ project ('spring-kafka') {
 			exclude group: 'org.springframework'
 			exclude group: 'io.micrometer'
 		}
-		optionalApi "com.jayway.jsonpath:json-path:$jaywayJsonPathVersion"
+		optionalApi libs.com.jayway.jsonpath
 
 		optionalApi 'io.projectreactor:reactor-core'
 		optionalApi 'io.micrometer:micrometer-core'
@@ -378,8 +342,8 @@ project ('spring-kafka') {
 
 		testImplementation project (':spring-kafka-test')
 		testImplementation 'io.projectreactor:reactor-test'
-		testImplementation "org.mockito:mockito-junit-jupiter:$mockitoVersion"
-		testImplementation "org.hibernate.validator:hibernate-validator:$hibernateValidationVersion"
+		testImplementation libs.org.mockito.junit.jupiter
+		testImplementation libs.org.hibernate.validator
 		testImplementation ('io.micrometer:micrometer-tracing-integration-test') {
 			exclude group: 'org.mockito'
 		}
@@ -416,25 +380,25 @@ project ('spring-kafka-test') {
 	description = 'Spring Kafka Test Support'
 
 	dependencies {
-		api "org.slf4j:slf4j-api:$slf4jVersion"
+		api libs.org.slf4j.api
 		api 'org.springframework:spring-context'
 		api 'org.springframework:spring-test'
 
-		api "org.apache.kafka:kafka-clients:$kafkaVersion:test"
-		api "org.apache.kafka:kafka-server:$kafkaVersion"
-		api "org.apache.kafka:kafka-test-common-runtime:$kafkaVersion"
-		api "org.apache.kafka:kafka-metadata:$kafkaVersion"
-		api "org.apache.kafka:kafka-server-common:$kafkaVersion"
-		api "org.apache.kafka:kafka-server-common:$kafkaVersion:test"
-		api "org.apache.kafka:kafka-streams-test-utils:$kafkaVersion"
+		api(libs.apache.kafka.clients) { artifact { classifier = 'test' } }
+		api libs.apache.kafka.server
+		api libs.apache.kafka.test.common.runtime
+		api libs.apache.kafka.metadata
+		api libs.apache.kafka.server.common
+		api(libs.apache.kafka.server.common) { artifact { classifier = 'test' } }
+		api libs.apache.kafka.streams.test.utils
 		api 'org.junit.jupiter:junit-jupiter-api'
 		api 'org.junit.platform:junit-platform-launcher'
-		optionalApi "org.hamcrest:hamcrest-core:$hamcrestVersion"
-		optionalApi "org.mockito:mockito-core:$mockitoVersion"
-		optionalApi ("junit:junit:$junit4Version") {
+		optionalApi libs.org.hamcrest.core
+		optionalApi libs.org.mockito.core
+		optionalApi (libs.org.junit4) {
 			exclude group: 'org.hamcrest', module: 'hamcrest-core'
 		}
-		optionalApi "org.apache.logging.log4j:log4j-core:$log4jVersion"
+		optionalApi libs.apache.logging.log4j.core
 	}
 }
 
@@ -443,7 +407,7 @@ configurations {
 }
 
 dependencies {
-	micrometerDocs "io.micrometer:micrometer-docs-generator:$micrometerDocsVersion"
+	micrometerDocs libs.io.micrometer.docs.generator
 }
 
 def observationInputDir = file('spring-kafka/src/main/java/org/springframework/kafka/support/micrometer').absolutePath
@@ -472,6 +436,8 @@ dependencies {
 	}
 }
 
+configurations.javadocClasspath.extendsFrom(configurations.dependencyManagement)
+
 javadoc {
 	title = "${rootProject.description} ${version} API"
 	options {
@@ -487,7 +453,12 @@ javadoc {
 	}
 
 	destinationDir = file('build/api')
-	classpath = files().from { files(javaProjects.collect { it.sourceSets.main.compileClasspath }) }
+
+	notCompatibleWithConfigurationCache('Task requires resolving transitive dependencies from all subprojects')
+
+	doFirst {
+		classpath += files(javaProjects.collect { it.sourceSets.main.compileClasspath })
+	}
 }
 
 tasks.register('api') {
@@ -518,17 +489,17 @@ tasks.register('distZip', Zip) {
 	description = "Builds -${archiveClassifier} archive, containing all jars and docs, " +
 			"suitable for community download page."
 
-	ext.baseDir = "${project.name}-${project.version}"
+	def baseDir = "${project.name}-${project.version}"
 
 	from('src/dist') {
 		include 'readme.txt'
 		include 'notice.txt'
-		into "${baseDir}"
+		into baseDir
 	}
 
 	from("$project.rootDir") {
 		include 'LICENSE.txt'
-		into "${baseDir}"
+		into baseDir
 	}
 
 	from(zipTree(docsZip.archiveFile)) {
