@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -25,6 +26,7 @@ import java.util.Map.Entry;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.kafka.support.ExceptionMatcher;
@@ -39,6 +41,7 @@ import org.springframework.util.Assert;
  * @author Adrian Chlebosz
  * @author Antonin Arquey
  * @author Dan Blackney
+ * @author Burak Kalayci
  * @since 2.8
  *
  */
@@ -95,6 +98,15 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 	public void clearThreadState() {
 		this.defaultErrorHandler.clearThreadState();
 		this.delegates.values().forEach(CommonErrorHandler::clearThreadState);
+	}
+
+	@Override
+	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions,
+			Runnable publishPause) {
+
+		this.defaultErrorHandler.onPartitionsAssigned(consumer, partitions, publishPause);
+		this.delegates.values()
+				.forEach(handler -> handler.onPartitionsAssigned(consumer, partitions, publishPause));
 	}
 
 	@Override
