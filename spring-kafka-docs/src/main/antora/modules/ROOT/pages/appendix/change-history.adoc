@@ -1,6 +1,113 @@
 [[history]]
 = Change History
 
+[[whats-new-in-4-1-since-4.0]]
+== What's New in 4.1 Since 4.0
+:page-section-summary-toc: 1
+
+This section covers the changes made from version 4.0 to version 4.1.
+For changes in earlier versions, see xref:appendix/change-history.adoc[Change History].
+
+[[x41-kafka-listener-ack-mode]]
+=== `@KafkaListener` Changes
+
+The `@KafkaListener` annotation now supports an `ackMode` attribute, allowing individual listeners to override the container factory's default acknowledgment mode without creating separate container factory beans.
+The attribute also supports SpEL expressions and property placeholders.
+See xref:kafka/receiving-messages/listener-annotation.adoc[`@KafkaListener` Annotation] for more information.
+
+[[x41-share-ack-mode]]
+=== Share Consumer Acknowledgment Modes
+
+The boolean `setExplicitShareAcknowledgment(boolean)` property on `ContainerProperties` has been replaced by the `ShareAckMode` enum (`EXPLICIT`, `MANUAL`, `IMPLICIT`).
+The deprecated method still works: `true` maps to `MANUAL`, `false` maps to `EXPLICIT`.
+Default behavior is unchanged — applications using the default require no migration.
+See xref:kafka/kafka-queues.adoc#share-record-acknowledgment[Record Acknowledgment] for mode descriptions and xref:kafka/kafka-queues.adoc#share-ack-mode-migration[Migration from 4.0] for upgrade details.
+
+[[x41-share-sync-async-commits]]
+=== Share Consumer Async Commits
+
+A new `syncShareCommits` property on `ContainerProperties` controls whether the share container uses `commitSync()` (default) or `commitAsync()` for acknowledgment commits.
+Set to `false` for higher throughput when slight ack-durability lag is acceptable.
+See xref:kafka/kafka-queues.adoc#share-sync-async-commits[Synchronous vs Asynchronous Commits] for details.
+
+[[x41-share-consumer-error-handling]]
+=== Share Consumer Error Handling
+
+Share consumer containers now provide configurable error handling:
+
+* **Poll-level**: `RecordDeserializationException` and `CorruptRecordException` from `poll()` are caught so the consumer thread continues; undeserializable records are REJECTed and the next poll proceeds.
+* **Listener-level**: A `ShareConsumerRecordRecoverer` interface decides whether to ACCEPT, RELEASE, or REJECT when the listener throws.
+The default is `ShareConsumerRecordRecoverer.REJECTING`; `RELEASING` is also available.
+You can set a custom recoverer on the factory or container.
+* See xref:kafka/kafka-queues.adoc#share-error-handling[Share consumer error handling] in the Kafka Queues documentation.
+
+[[x41-share-consumer-lifecycle-events]]
+=== Share Consumer Lifecycle Events
+
+`ShareKafkaMessageListenerContainer` now publishes stop and failure lifecycle events in addition to `ConsumerStartingEvent` and `ConsumerStartedEvent`:
+
+* `ShareConsumerStoppingEvent` (new): published before the underlying `ShareConsumer` is closed.
+A new event class is introduced because `ShareConsumer` is a separate client API from `Consumer`, so the existing `ConsumerStoppingEvent` is not reusable.
+* `ConsumerStoppedEvent`: published after the share consumer is closed, with a `reason` of `NORMAL`, `ABNORMAL`, or `ERROR`.
+* `ConsumerFailedToStartEvent`: published when a share consumer fails to start.
+Any already-constructed consumers from the same startup attempt are closed quietly.
+
+See xref:kafka/kafka-queues.adoc#share-container-lifecycle-events[Lifecycle Events] for details.
+
+[[x41-share-acknowledgment-renew]]
+=== ShareAcknowledgment.renew()
+
+`ShareAcknowledgment` now supports `renew()` to extend the acquisition lock when processing exceeds the broker's lock duration (KIP-1222, Kafka 4.2).
+See xref:kafka/kafka-queues.adoc#share-acknowledgment-api[ShareAcknowledgment API] in the Kafka Queues documentation for details.
+
+[[x41-retry-topic-builder-default]]
+=== `RetryTopicConfigurationBuilder` Default Strategy Change
+
+The default value of `sameIntervalTopicReuseStrategy` in `RetryTopicConfigurationBuilder` has been changed from `MULTIPLE_TOPICS` to `SINGLE_TOPIC` to align with the `@RetryableTopic` annotation default.
+See xref:retrytopic/topic-naming.adoc[Topic Naming] for more information.
+
+[[x41-kafka-streams-native-dlq]]
+=== Kafka Streams Native DLQ Support
+
+Spring for Apache Kafka now provides exception handlers that support Kafka Streams DLQ (KIP-1034, Kafka 4.2):
+
+- xref:streams.adoc#streams-deser-recovery[`RecoveringDeserializationExceptionHandler`] (updated).
+- xref:streams.adoc#streams-processing-recovery[`RecoveringProcessingExceptionHandler`] (new).
+- xref:streams.adoc#streams-production-recovery[`RecoveringProductionExceptionHandler`] (new).
+
+The provided exception handlers support multiple Kafka Streams DLQ enabling strategies and dead-letter topic resolution options:
+
+- The Kafka Streams property xref:streams.adoc#dead-letter-queue-topic-name-property[`errors.dead.letter.queue.topic.name`].
+- An implementation of the new xref:streams.adoc#dead-letter-destination-resolver[`KafkaStreamsDeadLetterDestinationResolver`] functional interface for dynamic resolution.
+- The `setDeadLetterTopicName()` method of the xref:streams.adoc#dead-letter-queue-topic-name-property[`StreamsBuilderFactoryBean`].
+
+`RecoveringDeserializationExceptionHandler.KSTREAM_DESERIALIZATION_RECOVERER` has been deprecated in favor of `RecoveringDeserializationExceptionHandler.RECOVERER` to align with the new handlers properties.
+
+[[x41-kafka-streams-group-protocol]]
+=== Kafka Streams Group Protocol Configuration
+
+The `StreamsBuilderFactoryBean` now supports configuring the `groupProtocol` property.
+This allows you to explicitly manage whether the underlying Kafka Streams consumers rely on the `classic` protocol or opt into the newer `streams` group protocol (KIP-1071: Server-side rebalance for Streams).
+
+See xref:streams.adoc#streams-config[Configuration] in the Kafka Streams documentation for more details.
+
+[[x41-back-off-function]]
+=== BackOffFunction Support in FailedBatchProcessor
+
+`FailedBatchProcessor` now supports `setBackOffFunction` and `setResetStateOnExceptionChange` for batch message processing, the same way `FailedRecordProcessor` already does for single message processing.
+This enables consistent exception classification across both single and batch processing when using xref:kafka/annotation-error-handling.adoc#default-eh[DefaultErrorHandler].
+
+Note that to preserve backward compatibility, the default value for `resetStateOnExceptionChange` is `false` in `FailedBatchProcessor`, unlike `FailedRecordProcessor` where it defaults to `true`.
+If you want consistent behavior across both, call `setResetStateOnExceptionChange(true)` on your `DefaultErrorHandler` instance.
+
+[[x41-kafka-admin-cluster-id-retry]]
+=== `KafkaAdmin` Cluster Id Retry Interval
+
+When `KafkaAdmin.clusterId()` cannot retrieve the cluster id from the broker, the failure is now remembered and the fetch is not attempted again until the new `clusterIdRetryInterval` has elapsed; it defaults to 5 minutes.
+Previously every call retried, so an observation-enabled listener container created an `Admin` instance and blocked for up to the operation timeout on each record while the cluster id was unavailable.
+This changes the default behavior: set `clusterIdRetryInterval` to `Duration.ZERO` on the `KafkaAdmin` to opt out and attempt the fetch on every call, as before.
+See xref:kafka/micrometer.adoc#observation[Micrometer Observation] for more information.
+
 [[whats-new-in-4-0-since-3-3]]
 == What's New in 4.0 Since 3.3
 :page-section-summary-toc: 1
