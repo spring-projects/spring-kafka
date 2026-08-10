@@ -51,6 +51,7 @@ import static org.mockito.Mockito.verify;
  * @author Adrian Chlebosz
  * @author Antonin Arquey
  * @author Dan Blackney
+ * @author Burak Kalayci
  * @since 2.8
  *
  */
