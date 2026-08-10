@@ -1,0 +1,61 @@
+[versions]
+# Spring Portfolio dependencies. Usually managed by release train
+micrometerTracingVersion = "1.7.0"
+micrometerVersion = "1.17.0"
+micrometerDocsVersion = "1.0.4"
+reactorVersion = "2025.0.6"
+springBootVersion = "4.0.3"
+springDataVersion = "2026.0.0"
+springVersion = "7.0.8"
+
+# Third-party dependencies
+assertjVersion = "3.27.7"
+awaitilityVersion = "4.3.0"
+hamcrestVersion = "3.0"
+hibernateValidationVersion = "9.1.3.Final"
+jacksonVersion = "2.21.5"
+jackson3Version = "3.1.5"
+jaywayJsonPathVersion = "3.0.0"
+junitJupiterVersion = "6.0.3"
+kafkaVersion = "4.2.1"
+kotlinCoroutinesVersion = "1.10.2"
+log4jVersion = "2.25.5"
+mockitoVersion = "5.23.0"
+slf4jVersion = "2.0.18"
+spotbugsVersion = "4.9.8"
+
+[libraries]
+com-fasterxml-jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version.ref = "jacksonVersion" }
+com-jayway-jsonpath = { module = "com.jayway.jsonpath:json-path", version.ref = "jaywayJsonPathVersion" }
+io-micrometer-bom = { module = "io.micrometer:micrometer-bom", version.ref = "micrometerVersion" }
+io-micrometer-tracing-bom = { module = "io.micrometer:micrometer-tracing-bom", version.ref = "micrometerTracingVersion" }
+io-micrometer-docs-generator = { module = "io.micrometer:micrometer-docs-generator", version.ref = "micrometerDocsVersion" }
+io-projectreactor-bom = { module = "io.projectreactor:reactor-bom", version.ref = "reactorVersion" }
+apache-kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafkaVersion" }
+apache-kafka-streams = { module = "org.apache.kafka:kafka-streams", version.ref = "kafkaVersion" }
+apache-kafka-server = { module = "org.apache.kafka:kafka-server", version.ref = "kafkaVersion" }
+apache-kafka-test-common-runtime = { module = "org.apache.kafka:kafka-test-common-runtime", version.ref = "kafkaVersion" }
+apache-kafka-metadata = { module = "org.apache.kafka:kafka-metadata", version.ref = "kafkaVersion" }
+apache-kafka-server-common = { module = "org.apache.kafka:kafka-server-common", version.ref = "kafkaVersion" }
+apache-kafka-streams-test-utils = { module = "org.apache.kafka:kafka-streams-test-utils", version.ref = "kafkaVersion" }
+apache-logging-log4j-bom = { module = "org.apache.logging.log4j:log4j-bom", version.ref = "log4jVersion" }
+org-assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertjVersion" }
+org-awaitility = { module = "org.awaitility:awaitility", version.ref = "awaitilityVersion" }
+org-hamcrest-core = { module = "org.hamcrest:hamcrest-core", version.ref = "hamcrestVersion" }
+org-hibernate-validator = { module = "org.hibernate.validator:hibernate-validator", version.ref = "hibernateValidationVersion" }
+org-jetbrains-kotlinx-coroutines-bom = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-bom", version.ref = "kotlinCoroutinesVersion" }
+org-junit-bom = { module = "org.junit:junit-bom", version.ref = "junitJupiterVersion" }
+org-mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockitoVersion" }
+org-mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockitoVersion" }
+org-slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4jVersion" }
+org-springframework-boot-starter = { module = "org.springframework.boot:spring-boot-starter", version.ref = "springBootVersion" }
+spring-data-bom = { module = "org.springframework.data:spring-data-bom", version.ref = "springDataVersion" }
+spring-framework-bom = { module = "org.springframework:spring-framework-bom", version.ref = "springVersion" }
+tools-jackson-bom = { module = "tools.jackson:jackson-bom", version.ref = "jackson3Version" }
+com-github-spotbugs-annotations = { module = "com.github.spotbugs:spotbugs-annotations", version.ref = "spotbugsVersion" }
+
+[plugins]
+aggregate-javadoc = { id = "io.freefair.aggregate-javadoc", version = "9.2.0" }
+nullability = { id = "io.spring.nullability", version = "0.0.14" }
+antora = { id = "org.antora", version = "1.0.0" }
+io-spring-antora-generate-yml = { id = "io.spring.antora.generate-antora-yml", version = "0.0.1" }
