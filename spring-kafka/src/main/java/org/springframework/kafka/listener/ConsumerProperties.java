@@ -386,7 +386,7 @@ public class ConsumerProperties {
 	}
 
 	/**
-	 * Set the interval between retries after and
+	 * Set the interval between retries after an
 	 * {@link org.apache.kafka.common.errors.AuthenticationException} or
 	 * {@code org.apache.kafka.common.errors.AuthorizationException} is thrown by
 	 * {@code KafkaConsumer}. By default the field is null and retries are disabled. In
