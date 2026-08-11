@@ -94,12 +94,12 @@ public class EmbeddedKafkaContextCustomizerTests {
 		EmbeddedKafka annotationWithPorts =
 				AnnotationUtils.findAnnotation(TestWithEmbeddedKafkaMulti.class, EmbeddedKafka.class);
 		EmbeddedKafkaContextCustomizer customizer = new EmbeddedKafkaContextCustomizer(annotationWithPorts);
-		ConfigurableApplicationContext context = new GenericApplicationContext();
-		customizer.customizeContext(context, null);
-		context.refresh();
-
-		assertThat(context.getBean(EmbeddedKafkaBroker.class).getBrokersAsString())
-				.matches("localhost:[0-9]+,localhost:[0-9]+");
+		try (ConfigurableApplicationContext context = new GenericApplicationContext()) {
+			customizer.customizeContext(context, null);
+			context.refresh();
+			assertThat(context.getBean(EmbeddedKafkaBroker.class).getBrokersAsString())
+					.matches("localhost:[0-9]+,localhost:[0-9]+");
+		}
 	}
 
 	@Test
@@ -108,14 +108,13 @@ public class EmbeddedKafkaContextCustomizerTests {
 		EmbeddedKafka annotationWithPorts =
 				AnnotationUtils.findAnnotation(TestWithEmbeddedKafkaTransactionFactor.class, EmbeddedKafka.class);
 		EmbeddedKafkaContextCustomizer customizer = new EmbeddedKafkaContextCustomizer(annotationWithPorts);
-		ConfigurableApplicationContext context = new GenericApplicationContext();
-		customizer.customizeContext(context, null);
-		context.refresh();
-
-		EmbeddedKafkaBroker embeddedKafkaBroker = context.getBean(EmbeddedKafkaBroker.class);
-		Map<String, Object> properties = (Map<String, Object>) KafkaTestUtils.getPropertyValue(embeddedKafkaBroker, "brokerProperties");
-
-		assertThat(properties.get("transaction.state.log.replication.factor")).isEqualTo("2");
+		try (ConfigurableApplicationContext context = new GenericApplicationContext()) {
+			customizer.customizeContext(context, null);
+			context.refresh();
+			EmbeddedKafkaBroker embeddedKafkaBroker = context.getBean(EmbeddedKafkaBroker.class);
+			Map<String, Object> properties = (Map<String, Object>) KafkaTestUtils.getPropertyValue(embeddedKafkaBroker, "brokerProperties");
+			assertThat(properties.get("transaction.state.log.replication.factor")).isEqualTo("2");
+		}
 	}
 
 	@EmbeddedKafka
