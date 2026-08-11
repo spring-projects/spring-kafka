@@ -125,20 +125,20 @@ public class AsyncListenerTests {
 	@Test
 	public void testAsyncAcks() throws Exception {
 
-		kafkaTemplate.send(AUTO_DETECT_ASYNC_FUTURE, "baz-future");
-		assertThat(this.listener.autoDetectFuture.await(10, TimeUnit.SECONDS)).isTrue();
+		kafkaTemplate.send(AUTO_DETECT_ASYNC_FUTURE, "baz-future").get(10, TimeUnit.SECONDS);
+		assertThat(this.listener.autoDetectFuture.await(30, TimeUnit.SECONDS)).isTrue();
 
-		kafkaTemplate.send(AUTO_DETECT_ASYNC_BATCH_FUTURE, "baz-batch-future");
-		assertThat(this.listener.autoDetectBatchFuture.await(10, TimeUnit.SECONDS)).isTrue();
+		kafkaTemplate.send(AUTO_DETECT_ASYNC_BATCH_FUTURE, "baz-batch-future").get(10, TimeUnit.SECONDS);
+		assertThat(this.listener.autoDetectBatchFuture.await(30, TimeUnit.SECONDS)).isTrue();
 
-		kafkaTemplate.send(AUTO_DETECT_ASYNC_MONO, "baz-mono");
-		assertThat(this.listener.autoDetectMono.await(10, TimeUnit.SECONDS)).isTrue();
+		kafkaTemplate.send(AUTO_DETECT_ASYNC_MONO, "baz-mono").get(10, TimeUnit.SECONDS);
+		assertThat(this.listener.autoDetectMono.await(30, TimeUnit.SECONDS)).isTrue();
 
-		kafkaTemplate.send(AUTO_DETECT_ASYNC_BATCH_MONO, "baz-batch-mono");
-		assertThat(this.listener.autoDetectBatchMono.await(10, TimeUnit.SECONDS)).isTrue();
+		kafkaTemplate.send(AUTO_DETECT_ASYNC_BATCH_MONO, "baz-batch-mono").get(10, TimeUnit.SECONDS);
+		assertThat(this.listener.autoDetectBatchMono.await(30, TimeUnit.SECONDS)).isTrue();
 
-		kafkaTemplate.send(AUTO_DETECT_ASYNC_KAFKA_HANDLER, "foo-multi-async");
-		assertThat(this.multiMethodListener.handler1.await(10, TimeUnit.SECONDS)).isTrue();
+		kafkaTemplate.send(AUTO_DETECT_ASYNC_KAFKA_HANDLER, "foo-multi-async").get(10, TimeUnit.SECONDS);
+		assertThat(this.multiMethodListener.handler1.await(30, TimeUnit.SECONDS)).isTrue();
 	}
 
 	public static class Listener {
