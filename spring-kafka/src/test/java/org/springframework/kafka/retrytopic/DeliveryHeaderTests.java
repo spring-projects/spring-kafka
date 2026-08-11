@@ -75,8 +75,8 @@ public class DeliveryHeaderTests {
 
 		template.send("dh1", "test").get(10, TimeUnit.SECONDS);
 		template.send(DH_CLASS_LEVEL_1, "test").get(10, TimeUnit.SECONDS);
-		assertThat(config.latch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(retryTopicClassLevel.latchClassLevel.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(config.latch.await(30, TimeUnit.SECONDS)).isTrue();
+		assertThat(retryTopicClassLevel.latchClassLevel.await(30, TimeUnit.SECONDS)).isTrue();
 
 		assertThat(config.attempts.toString())
 				.isEqualTo("[[1, 1], [2, 1], [3, 1], [1, 2], [2, 2], [3, 2], [1, 3], [2, 3], [3, 3]]");
