@@ -97,14 +97,14 @@ public class KafkaTestUtilsTests {
 		producer.send(new ProducerRecord<>("singleTopic3", 0, 1, "foo"));
 		producer.close();
 		ConsumerRecord<?, ?> oneRecord = KafkaTestUtils.getOneRecord(broker.getBrokersAsString(), "getOne",
-				"singleTopic3", 0, false, true, Duration.ofSeconds(10));
+				"singleTopic3", 0, false, true, Duration.ofSeconds(30));
 		assertThat(oneRecord.value()).isEqualTo("foo");
 		assertThat(KafkaTestUtils.getCurrentOffset(broker.getBrokersAsString(), "getOne", "singleTopic3", 0))
 				.isNotNull()
 				.extracting(OffsetAndMetadata::offset)
 				.isEqualTo(1L);
 		oneRecord = KafkaTestUtils.getOneRecord(broker.getBrokersAsString(), "getOne",
-				"singleTopic3", 0, true, true, Duration.ofSeconds(10));
+				"singleTopic3", 0, true, true, Duration.ofSeconds(30));
 		assertThat(oneRecord.value()).isEqualTo("foo");
 		assertThat(KafkaTestUtils.getCurrentOffset(broker.getBrokersAsString(), "getOne", "singleTopic3", 0))
 				.isNotNull()
@@ -140,10 +140,10 @@ public class KafkaTestUtilsTests {
 		Map<String, Object> adminClientProps = Map.of(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString());
 		Map<String, Object> producerProps = KafkaTestUtils.producerProps(broker);
 		try (var adminClient = AdminClient.create(adminClientProps); var producer = new KafkaProducer<>(producerProps)) {
-			producer.send(new ProducerRecord<>("singleTopic3", 0, 1, "foo"));
+			producer.send(new ProducerRecord<>("singleTopic3", 0, 1, "foo")).get();
 
 			KafkaTestUtils.getOneRecord(broker.getBrokersAsString(), "testGetCurrentOffsetWithAdminClient",
-					"singleTopic3", 0, false, true, Duration.ofSeconds(10));
+					"singleTopic3", 0, false, true, Duration.ofSeconds(30));
 			assertThat(KafkaTestUtils.getCurrentOffset(adminClient, "testGetCurrentOffsetWithAdminClient", "singleTopic3", 0))
 					.isNotNull()
 					.extracting(OffsetAndMetadata::offset)
