@@ -289,10 +289,14 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 	public void destroy() {
 		AtomicReference<@Nullable Throwable> shutdownFailure = new AtomicReference<>();
 		Utils.closeQuietly(cluster, "embedded Kafka cluster", shutdownFailure);
-		if (shutdownFailure.get() != null) {
-			throw new IllegalStateException("Failed to shut down embedded Kafka cluster", shutdownFailure.get());
-		}
 		this.cluster = null;
+		if (shutdownFailure.get() != null) {
+			// Log rather than throw: KRaft clusters can emit internal errors (e.g.
+			// FaultHandlerException on UpdateVoter) during teardown of multi-node
+			// clusters. The tests have already completed at this point, so propagating
+			// this would mask real results and show a spurious executionError in CI.
+			LOGGER.warn(shutdownFailure.get(), () -> "Failed to shut down embedded Kafka cluster cleanly");
+		}
 	}
 
 	private void addDefaultBrokerPropsIfAbsent() {
