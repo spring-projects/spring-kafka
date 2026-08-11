@@ -149,9 +149,10 @@ public class BatchIndividualRecordObservationTests {
 	}
 
 	@Test
-	void batchIndividualRecordObservationDisabledCreatesNoIndividualObservations(
+	void batchLevelObservationWhenRecordObservationsInBatchDisabled(
 			@Autowired BatchListenerWithoutIndividualObservation batchListener,
-			@Autowired KafkaTemplate<Integer, String> template, @Autowired TestObservationHandler observationHandler)
+			@Autowired KafkaTemplate<Integer, String> template, @Autowired TestObservationHandler observationHandler,
+			@Autowired MeterRegistry meterRegistry)
 			throws InterruptedException {
 
 		// Clear any existing observations
@@ -164,10 +165,19 @@ public class BatchIndividualRecordObservationTests {
 		// Wait for batch processing
 		assertThat(batchListener.latch.await(10, TimeUnit.SECONDS)).isTrue();
 
-		// When individual record observation is disabled, no individual observations should be created
+		// When individual record observation is disabled, one observation is created for the batch
 		assertThat(observationHandler.getStartedObservations())
-				.as("No individual observations should be created when batch individual observation is disabled")
-				.isZero();
+				.as("Batch-level observation should be created when recordObservationsInBatch is false")
+				.isGreaterThanOrEqualTo(1);
+
+		// Meters use observation tags (not legacy name/result/exception tags)
+		assertThat(meterRegistry.find("spring.kafka.listener")
+				.tagKeys("spring.kafka.listener.id", "messaging.system", "messaging.operation",
+						"messaging.source.name", "messaging.source.kind", "messaging.kafka.consumer.group")
+				.timers())
+				.isNotEmpty();
+		assertThat(meterRegistry.find("spring.kafka.listener").tagKeys("name", "result", "exception").timers())
+				.isEmpty();
 	}
 
 	@Configuration

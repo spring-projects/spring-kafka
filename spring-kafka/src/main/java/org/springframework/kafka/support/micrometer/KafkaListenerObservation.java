@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.support.micrometer;
 
+import io.micrometer.common.KeyValue;
 import io.micrometer.common.KeyValues;
 import io.micrometer.common.docs.KeyName;
 import io.micrometer.observation.Observation.Context;
@@ -33,6 +34,7 @@ import org.springframework.util.StringUtils;
  * @author Christian Mergenthaler
  * @author Wang Zhiyang
  * @author Christian Fredriksson
+ * @author Hakaze Arimu
  *
  * @since 3.0
  *
@@ -227,21 +229,18 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		@Override
 		@NonNull
 		public KeyValues getLowCardinalityKeyValues(KafkaRecordReceiverContext context) {
+			// Always include optional tags (use "none" when missing) so batch and non-batch
+			// listeners register meters with a consistent tag set for Prometheus.
 			String groupId = context.getGroupId();
-			KeyValues keyValues = KeyValues.of(
+			return KeyValues.of(
 					ListenerLowCardinalityTags.LISTENER_ID.withValue(context.getListenerId()),
 					ListenerLowCardinalityTags.MESSAGING_SYSTEM.withValue("kafka"),
 					ListenerLowCardinalityTags.MESSAGING_OPERATION.withValue("process"),
 					ListenerLowCardinalityTags.MESSAGING_SOURCE_NAME.withValue(context.getSource()),
-					ListenerLowCardinalityTags.MESSAGING_SOURCE_KIND.withValue("topic")
+					ListenerLowCardinalityTags.MESSAGING_SOURCE_KIND.withValue("topic"),
+					ListenerLowCardinalityTags.MESSAGING_CONSUMER_GROUP.withValue(
+							StringUtils.hasText(groupId) ? groupId : KeyValue.NONE_VALUE)
 			);
-
-			if (StringUtils.hasText(groupId)) {
-				keyValues = keyValues
-						.and(ListenerLowCardinalityTags.MESSAGING_CONSUMER_GROUP.withValue(groupId));
-			}
-
-			return keyValues;
 		}
 
 		@Override
@@ -249,22 +248,14 @@ public enum KafkaListenerObservation implements ObservationDocumentation {
 		public KeyValues getHighCardinalityKeyValues(KafkaRecordReceiverContext context) {
 			String clientId = context.getClientId();
 			String consumerId = getConsumerId(context.getGroupId(), clientId);
-			KeyValues keyValues = KeyValues.of(
+			return KeyValues.of(
 					ListenerHighCardinalityTags.MESSAGING_PARTITION.withValue(context.getPartition()),
-					ListenerHighCardinalityTags.MESSAGING_OFFSET.withValue(context.getOffset())
+					ListenerHighCardinalityTags.MESSAGING_OFFSET.withValue(context.getOffset()),
+					ListenerHighCardinalityTags.MESSAGING_CLIENT_ID.withValue(
+							StringUtils.hasText(clientId) ? clientId : KeyValue.NONE_VALUE),
+					ListenerHighCardinalityTags.MESSAGING_CONSUMER_ID.withValue(
+							StringUtils.hasText(consumerId) ? consumerId : KeyValue.NONE_VALUE)
 			);
-
-			if (StringUtils.hasText(clientId)) {
-				keyValues = keyValues
-						.and(ListenerHighCardinalityTags.MESSAGING_CLIENT_ID.withValue(clientId));
-			}
-
-			if (StringUtils.hasText(consumerId)) {
-				keyValues = keyValues
-						.and(ListenerHighCardinalityTags.MESSAGING_CONSUMER_ID.withValue(consumerId));
-			}
-
-			return keyValues;
 		}
 
 		@Override
