@@ -264,6 +264,17 @@ class ShareKafkaListenerIntegrationTests {
 					this.kafkaListenerEndpointRegistry.getListenerContainers().forEach(container ->
 							assertThat(container.isRunning()).isTrue());
 				});
+		// Allow share consumers time to fully subscribe to the share group.
+		// Container "running" only means the thread started, not that the consumer
+		// has completed the share group join protocol with the broker. On a loaded
+		// CI machine the FindCoordinator → JoinGroup → assignment round-trips can
+		// each take several seconds, so 2 s is not always sufficient.
+		try {
+			Thread.sleep(5000);
+		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
 	}
 
 	@Configuration
