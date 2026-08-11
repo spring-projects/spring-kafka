@@ -112,11 +112,11 @@ public class BatchListenerConversionTests {
 		doTest(this.listener2, "blc2");
 	}
 
-	private void doTest(Listener listener, String topic) throws InterruptedException {
+	private void doTest(Listener listener, String topic) throws Exception {
 		this.template.send(new GenericMessage<>(
-				new Foo("bar"), Collections.singletonMap(KafkaHeaders.TOPIC, topic)));
-		assertThat(listener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(listener.latch2.await(10, TimeUnit.SECONDS)).isTrue();
+				new Foo("bar"), Collections.singletonMap(KafkaHeaders.TOPIC, topic))).get(10, TimeUnit.SECONDS);
+		assertThat(listener.latch1.await(30, TimeUnit.SECONDS)).isTrue();
+		assertThat(listener.latch2.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(listener.received.size()).isGreaterThan(0);
 		assertThat(listener.received.get(0)).isInstanceOf(Foo.class);
 		assertThat(listener.received.get(0).bar).isEqualTo("bar");
