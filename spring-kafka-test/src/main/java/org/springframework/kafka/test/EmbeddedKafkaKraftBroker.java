@@ -227,27 +227,44 @@ public class EmbeddedKafkaKraftBroker implements EmbeddedKafkaBroker {
 		if (this.cluster != null) {
 			return;
 		}
-		try {
-			KafkaClusterTestKit.Builder clusterBuilder = new KafkaClusterTestKit.Builder(
-					new TestKitNodes.Builder()
-							.setCombined(true)
-							.setNumBrokerNodes(this.count)
-							.setNumControllerNodes(this.count)
-							.build());
-			this.brokerProperties.forEach((k, v) -> setConfigProperty(clusterBuilder, (String) k, v));
-			this.cluster = clusterBuilder.build();
-		}
-		catch (Exception ex) {
-			throw new IllegalStateException("Failed to create embedded cluster", ex);
+
+		// KRaft quorum formation can time out on a loaded CI machine; retry with a fresh
+		// cluster instance rather than failing the whole test suite on the first attempt.
+		int maxAttempts = 3;
+		Exception lastException = null;
+		for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+			try {
+				KafkaClusterTestKit.Builder clusterBuilder = new KafkaClusterTestKit.Builder(
+						new TestKitNodes.Builder()
+								.setCombined(true)
+								.setNumBrokerNodes(this.count)
+								.setNumControllerNodes(this.count)
+								.build());
+				this.brokerProperties.forEach((k, v) -> setConfigProperty(clusterBuilder, (String) k, v));
+				this.cluster = clusterBuilder.build();
+			}
+			catch (Exception ex) {
+				throw new IllegalStateException("Failed to create embedded cluster", ex);
+			}
+
+			try {
+				this.cluster.format();
+				this.cluster.startup();
+				this.cluster.waitForReadyBrokers();
+				lastException = null;
+				break;
+			}
+			catch (Exception ex) {
+				lastException = ex;
+				LOGGER.warn("KRaft cluster startup attempt " + attempt + " of " + maxAttempts + " failed: " + ex.getMessage());
+				Utils.closeQuietly(this.cluster, "embedded Kafka cluster");
+				this.cluster = null;
+			}
 		}
 
-		try {
-			this.cluster.format();
-			this.cluster.startup();
-			this.cluster.waitForReadyBrokers();
-		}
-		catch (Exception ex) {
-			throw new IllegalStateException("Failed to start test Kafka cluster", ex);
+		if (lastException != null) {
+			throw new IllegalStateException("Failed to start test Kafka cluster after " + maxAttempts + " attempts",
+					lastException);
 		}
 
 		createKafkaTopics(this.topics);
