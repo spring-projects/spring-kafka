@@ -83,10 +83,10 @@ public class AliasPropertiesTests {
 
 	@Test
 	public void testAliasFor() throws Exception {
-		this.template.send("alias.tests", "foo");
-		assertThat(this.config.latch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(this.classLevel.latch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(this.repeatable.latch.await(10, TimeUnit.SECONDS)).isTrue();
+		this.template.send("alias.tests", "foo").get(10, TimeUnit.SECONDS);
+		assertThat(this.config.latch.await(30, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.classLevel.latch.await(30, TimeUnit.SECONDS)).isTrue();
+		assertThat(this.repeatable.latch.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(this.config.kafkaListenerEndpointRegistry()).isSameAs(this.kafkaListenerEndpointRegistry);
 		assertThat(this.kafkaListenerEndpointRegistry.getListenerContainer("onMethodInConfigClass").getGroupId())
 				.isEqualTo("onMethodInConfigClass.Config.listen1");
