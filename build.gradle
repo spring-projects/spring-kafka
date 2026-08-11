@@ -82,7 +82,6 @@ allprojects {
 		dependencyManagement(platform(libs.spring.data.bom))
 		dependencyManagement(platform(libs.io.micrometer.bom))
 		dependencyManagement(platform(libs.io.micrometer.tracing.bom))
-		dependencyManagement(platform(libs.org.jetbrains.kotlinx.coroutines.bom))
 	}
 }
 
@@ -310,7 +309,7 @@ project ('spring-kafka') {
 		api 'io.micrometer:micrometer-observation'
 
 		optionalApi libs.apache.kafka.streams
-		optionalApi 'org.jetbrains.kotlinx:kotlinx-coroutines-reactor'
+		optionalApi libs.org.jetbrains.kotlinx.coroutines.reactor
 		optionalApi 'com.fasterxml.jackson.core:jackson-core'
 		optionalApi 'com.fasterxml.jackson.core:jackson-databind'
 		optionalApi 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
