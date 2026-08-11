@@ -313,7 +313,7 @@ project ('spring-kafka') {
 		api libs.apache.kafka.clients
 		api 'io.micrometer:micrometer-observation'
 		optionalApi libs.apache.kafka.streams
-		optionalApi "org.jetbrains.kotlinx:kotlinx-coroutines-reactor:${libs.versions.kotlinCoroutinesVersion.get()}"
+		optionalApi libs.org.jetbrains.kotlinx.coroutines.reactor
 		optionalApi 'com.fasterxml.jackson.core:jackson-core'
 		optionalApi 'com.fasterxml.jackson.core:jackson-databind'
 		optionalApi 'com.fasterxml.jackson.datatype:jackson-datatype-jdk8'
