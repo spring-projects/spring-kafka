@@ -43,7 +43,7 @@ org-assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertj
 org-awaitility = { module = "org.awaitility:awaitility", version.ref = "awaitilityVersion" }
 org-hamcrest-core = { module = "org.hamcrest:hamcrest-core", version.ref = "hamcrestVersion" }
 org-hibernate-validator = { module = "org.hibernate.validator:hibernate-validator", version.ref = "hibernateValidationVersion" }
-org-jetbrains-kotlinx-coroutines-bom = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-bom", version.ref = "kotlinCoroutinesVersion" }
+org-jetbrains-kotlinx-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor", version.ref = "kotlinCoroutinesVersion" }
 org-junit-bom = { module = "org.junit:junit-bom", version.ref = "junitJupiterVersion" }
 org-mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockitoVersion" }
 org-mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version.ref = "mockitoVersion" }
