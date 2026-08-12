@@ -712,10 +712,10 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 				.willReturn(firstConsumer);
 		given(this.shareConsumerFactory.createShareConsumer(any(), eq("failedStartContainer-1"), any()))
 				.willReturn(secondConsumer);
-		lenient().willAnswer(invocation -> {
+		lenient().doAnswer(invocation -> {
 			Thread.sleep(200);
 			return new ConsumerRecords<>(Collections.emptyMap(), Map.of());
-		}).given(firstConsumer).poll(Duration.ofMillis(1000));
+		}).when(firstConsumer).poll(Duration.ofMillis(1000));
 
 		ShareKafkaMessageListenerContainer<String, String> container =
 				new ShareKafkaMessageListenerContainer<>(this.shareConsumerFactory, containerProperties);
