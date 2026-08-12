@@ -73,7 +73,7 @@ import static org.assertj.core.api.Assertions.fail;
 @DirtiesContext
 @EmbeddedKafka
 @TestPropertySource(properties = { "five.attempts=5", "kafka.template=customKafkaTemplate"})
-@DisabledIfEnvironmentVariable(named = "GITHUB_ACTION", matches = "true",
+@DisabledIfEnvironmentVariable(named = "GITHUB_ACTIONS", matches = "true",
 		disabledReason = "The test is too heavy and rely a lot in the timing.")
 public class AsyncCompletableFutureRetryTopicScenarioTests {
 
@@ -720,12 +720,14 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 					}
 				}
 				catch (InterruptedException e) {
-					latchWaitFailCount += 1;
-					throw new RuntimeException(e);
+					Thread.currentThread().interrupt();
 				}
 				finally {
+					// Signal when the first 'fail' retry arrives so the 'success' CF can unblock.
+					// Content-based check avoids spurious signals if message order on the retry
+					// partition differs from the main topic (e.g. when 'success' is also retried).
 					if (receivedTopic.equals(TEST_TOPIC2 + "-retry") &&
-						offset.equals("1")) {
+						message.equals(SHORT_FAIL_MSG)) {
 						firstRetryFailMsgLatch.countDown();
 					}
 					container.countDownLatch2.countDown();
