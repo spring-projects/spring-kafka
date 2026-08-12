@@ -38,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -241,10 +241,10 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 				.willReturn(firstConsumer);
 		given(this.shareConsumerFactory.createShareConsumer(any(), eq("failedStartContainer-1")))
 				.willReturn(secondConsumer);
-		lenient().willAnswer(invocation -> {
+		lenient().doAnswer(invocation -> {
 			Thread.sleep(200);
 			return new ConsumerRecords<>(Collections.emptyMap(), Map.of());
-		}).given(firstConsumer).poll(Duration.ofMillis(1000));
+		}).when(firstConsumer).poll(Duration.ofMillis(1000));
 
 		ShareKafkaMessageListenerContainer<String, String> container =
 				new ShareKafkaMessageListenerContainer<>(this.shareConsumerFactory, containerProperties);
