@@ -53,28 +53,6 @@ ext {
 					}
 	modifiedFiles.finalizeValueOnRead()
 
-	assertjVersion = '3.27.7'
-	awaitilityVersion = '4.3.0'
-	hamcrestVersion = '3.0'
-	hibernateValidationVersion = '9.0.1.Final'
-	jacksonBomVersion = '2.20.2'
-	jackson3Version = '3.0.4'
-	jaywayJsonPathVersion = '2.9.0'
-	junit4Version = '4.13.2'
-	junitJupiterVersion = '6.0.3'
-	kafkaVersion = '4.1.2'
-	kotlinCoroutinesVersion = '1.10.2'
-	log4jVersion = '2.25.5'
-	micrometerDocsVersion = '1.0.4'
-	micrometerVersion = '1.16.7-INTERNAL-SNAPSHOT'
-	micrometerTracingVersion = '1.6.7-INTERNAL-SNAPSHOT'
-	mockitoVersion = '5.19.0'
-	reactorVersion = '2025.0.7-INTERNAL-SNAPSHOT'
-	slf4jVersion = '2.0.18'
-	springBootVersion = '3.5.0' // docs module
-	springDataVersion = '2025.1.6'
-	springVersion = '7.0.9-INTERNAL-SNAPSHOT'
-
 	idPrefix = 'kafka'
 
 	javaProjects = subprojects - project(':spring-kafka-bom') - project(':spring-kafka-docs')
