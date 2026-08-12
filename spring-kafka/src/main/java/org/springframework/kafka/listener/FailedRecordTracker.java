@@ -18,6 +18,7 @@ package org.springframework.kafka.listener;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -246,7 +247,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 		this.failures.remove(Thread.currentThread());
 	}
 
-	void clearThreadStateFor(java.util.Collection<TopicPartition> partitions) {
+	void clearThreadStateFor(Collection<TopicPartition> partitions) {
 		Map<TopicPartition, FailedRecord> map = this.failures.get(Thread.currentThread());
 		if (map != null) {
 			partitions.forEach(map::remove);

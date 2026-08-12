@@ -189,6 +189,24 @@ public class FailedRecordTrackerTests {
 	}
 
 	@Test
+	void clearThreadStateForLeavesOtherPartitionsIntact() {
+		AtomicBoolean recovered = new AtomicBoolean();
+		FailedRecordTracker tracker = new FailedRecordTracker((r, e) -> recovered.set(true),
+				new FixedBackOff(0L, 2L), mock(LogAccessor.class));
+		ConsumerRecord<?, ?> recordP0 = new ConsumerRecord<>("topic", 0, 0L, "k", "v");
+		ConsumerRecord<?, ?> recordP1 = new ConsumerRecord<>("topic", 1, 0L, "k", "v");
+		// Both partitions fail once
+		assertThat(tracker.skip(recordP0, new RuntimeException())).isFalse();
+		assertThat(tracker.skip(recordP1, new RuntimeException())).isFalse();
+		// Partition 1 batch succeeds: clear only its state, P0 must be left intact
+		tracker.clearThreadStateFor(List.of(new TopicPartition("topic", 1)));
+		// P0 continues progressing through its backoff without being reset
+		assertThat(tracker.skip(recordP0, new RuntimeException())).isFalse();
+		assertThat(tracker.skip(recordP0, new RuntimeException())).isTrue();
+		assertThat(recovered.get()).isTrue();
+	}
+
+	@Test
 	void exceptionChangesWithTimestampedException() throws InterruptedException {
 		FixedBackOff bo1 = new FixedBackOff(0L, 5L);
 		FailedRecordTracker tracker = new FailedRecordTracker((rec, ex) -> { }, bo1, mock(LogAccessor.class));
