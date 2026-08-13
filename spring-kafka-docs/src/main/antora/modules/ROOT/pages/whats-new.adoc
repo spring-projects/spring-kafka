@@ -7,6 +7,14 @@
 This section covers the changes made from version 4.1 to version 4.2.
 For changes in earlier versions, see xref:appendix/change-history.adoc[Change History].
 
+[[x42-error-handler-partition-scoped-clear]]
+=== Partition-Scoped Thread State Clearing in Error Handlers
+
+`CommonErrorHandler` now has a `clearThreadStateFor(Collection<TopicPartition>)` default method.
+In a non-concurrent container with multiple partitions, the container calls this method after a successful batch to clear retry state only for the partitions present in that batch, rather than wiping state for all partitions via `clearThreadState()`.
+This fixes a bug where a healthy batch from one partition would reset the backoff retry counter for an unrelated failing partition, preventing broken records from ever reaching the dead-letter topic.
+Implementations of `CommonErrorHandler` that maintain per-partition state (such as custom subclasses of `FailedRecordProcessor`) may override this method to apply the same scoping.
+
 [[x42-listener-observation-tags]]
 === Listener Observation Meter Tags
 
