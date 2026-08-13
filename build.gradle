@@ -51,6 +51,20 @@ gradle.projectsEvaluated {
 allprojects {
 	group = 'org.springframework.kafka'
 
+	// 'Created-By' records the exact JDK build that produced a jar, so it changes
+	// whenever a CI runner picks up a different JDK patch release. That rewrites the
+	// jar bytes and, with them, the runtime classpath fingerprint of every Test task
+	// consuming the jar - a guaranteed build cache miss for an artifact whose code is
+	// unchanged. The attribute is provenance metadata and cannot affect runtime
+	// behaviour, so keep publishing it but leave it out of the cache key.
+	normalization {
+		runtimeClasspath {
+			metaInf {
+				ignoreAttribute('Created-By')
+			}
+		}
+	}
+
 	repositories {
 		mavenCentral()
 		maven { url 'https://repo.spring.io/milestone' }
