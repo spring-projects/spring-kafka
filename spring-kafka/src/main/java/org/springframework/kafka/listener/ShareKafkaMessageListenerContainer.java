@@ -351,7 +351,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 	 */
 	private class ShareListenerConsumer implements Runnable {
 
-		private final LogAccessor logger = ShareKafkaMessageListenerContainer.this.logger;
+		private LogAccessor logger = ShareKafkaMessageListenerContainer.this.logger;
 
 		private final ShareConsumer<K, V> consumer;
 
