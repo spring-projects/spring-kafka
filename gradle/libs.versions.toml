@@ -5,7 +5,7 @@ micrometerVersion = "1.16.7"
 micrometerDocsVersion = "1.0.4"
 reactorVersion = "2025.0.7"
 springBootVersion = "3.5.16"
-springDataVersion = "2025.1.6"
+springDataVersion = "2025.1.7"
 springVersion = "7.0.9"
 
 # Third-party dependencies
