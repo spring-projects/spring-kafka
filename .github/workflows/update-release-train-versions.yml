@@ -1,0 +1,26 @@
+name: Update Release Train Dependency Versions
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-train:
+        description: 'The branch in spring-io/release-train to fetch release-versions.json from, e.g. 2026.1'
+        required: true
+        type: string
+
+jobs:
+  update-release-train-versions:
+    if: vars.COMMERCIAL
+    uses: spring-io/spring-github-workflows/.github/workflows/spring-update-release-train-versions.yml@main
+    with:
+      release-train: ${{ inputs.release-train }}
+      version-keys: >-
+        {
+          "micrometerVersion": "micrometer",
+          "micrometerTracingVersion": "micrometer-tracing",
+          "reactorVersion": "reactor",
+          "springDataVersion": "spring-data-bom",
+          "springVersion": "spring-framework"
+        }
+    secrets:
+      GH_ACTIONS_REPO_TOKEN: ${{ secrets.GH_ACTIONS_REPO_TOKEN }}
