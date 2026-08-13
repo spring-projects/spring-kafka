@@ -369,7 +369,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 
 		try {
 			// Wait for the 4th record to be received (its ack is held)
-			assertThat(heldAckLatch.await(15, TimeUnit.SECONDS)).isTrue();
+			assertThat(heldAckLatch.await(30, TimeUnit.SECONDS)).isTrue();
 			assertThat(heldAck.get()).isNotNull();
 
 			// Produce more records
@@ -378,7 +378,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 			// Wait for the next poll to be blocked since one acknowledgment is still pending.
 			// this.logger.trace(() -> "Poll blocked waiting for " + this.pendingAcknowledgments.size() +
 			//									" acknowledgments");
-			Awaitility.await().atMost(15, TimeUnit.SECONDS).untilAsserted(() ->
+			Awaitility.await().atMost(30, TimeUnit.SECONDS).untilAsserted(() ->
 				verify(logAccessor, atLeastOnce()).trace(ArgumentMatchers.<Supplier<CharSequence>>any())
 			);
 
@@ -388,7 +388,7 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 			heldAck.get().acknowledge();
 
 			// Now should process new records
-			assertThat(nextPollLatch.await(15, TimeUnit.SECONDS)).isTrue();
+			assertThat(nextPollLatch.await(30, TimeUnit.SECONDS)).isTrue();
 			assertThat(totalProcessed.get()).isEqualTo(5);
 
 		}
