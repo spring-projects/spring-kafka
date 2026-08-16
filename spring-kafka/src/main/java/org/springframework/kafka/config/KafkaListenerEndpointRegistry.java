@@ -389,6 +389,7 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	@Override
 	public void stop() {
 		this.running = false;
+		this.contextRefreshed = false;
 		for (MessageListenerContainer listenerContainer : getListenerContainers()) {
 			listenerContainer.stop();
 		}
@@ -397,6 +398,7 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	@Override
 	public void stop(Runnable callback) {
 		this.running = false;
+		this.contextRefreshed = false;
 		Collection<MessageListenerContainer> listenerContainersToStop = getListenerContainers();
 		if (!listenerContainersToStop.isEmpty()) {
 			AggregatingCallback aggregatingCallback = new AggregatingCallback(listenerContainersToStop.size(),
