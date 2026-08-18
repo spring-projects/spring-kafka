@@ -34,6 +34,7 @@ import org.springframework.util.Assert;
  * @author Artem Bilan
  * @author Wang Zhiyang
  * @author Mahesh Aravind V
+ * @author Jiwoo Lee
  *
  * @since 2.7.9
  *
@@ -120,6 +121,11 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 		}
 		Serializer<Object> delegate = findDelegate(data);
 		return delegate.serialize(topic, headers, data);
+	}
+
+	@Override
+	public void close() {
+		this.delegates.values().forEach(Serializer::close);
 	}
 
 	protected  <T> Serializer<T> findDelegate(T data) {
