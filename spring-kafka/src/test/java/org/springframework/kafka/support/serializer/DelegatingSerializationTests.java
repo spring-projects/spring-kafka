@@ -53,6 +53,7 @@ import static org.mockito.Mockito.verify;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Soby Chacko
+ * @author Jiwoo Lee
  *
  * @since 2.3
  *
@@ -306,6 +307,19 @@ public class DelegatingSerializationTests {
 						() -> serializer.serialize("foo", new Bytes(foo)))
 				.withMessageMatching("No matching delegate for type: " + Bytes.class.getName()
 						+ "; supported types: \\[(java.lang.Number, \\[B|\\[B, java.lang.Number)]");
+	}
+
+	@Test
+	void byTypeCloseClosesDelegates() {
+		Serializer<String> stringSerializer = spy(new StringSerializer());
+		Serializer<byte[]> bytesSerializer = spy(new ByteArraySerializer());
+		DelegatingByTypeSerializer serializer = new DelegatingByTypeSerializer(
+				Map.of(String.class, stringSerializer, byte[].class, bytesSerializer));
+
+		serializer.close();
+
+		verify(stringSerializer).close();
+		verify(bytesSerializer).close();
 	}
 
 }
