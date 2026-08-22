@@ -3,7 +3,7 @@
 micrometerTracingVersion = "1.8.0-M1"
 micrometerVersion = "1.18.0-M1"
 micrometerDocsVersion = "1.0.4"
-reactorVersion = "2026.0.0-M1"
+reactorVersion = "2026.0.0-SNAPSHOT"
 springBootVersion = "4.0.7"
 springDataVersion = "2026.1.0-M1"
 springVersion = "7.1.0-M1"
