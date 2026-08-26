@@ -19,22 +19,28 @@ package org.springframework.kafka.support.serializer;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.BytesDeserializer;
 import org.apache.kafka.common.serialization.BytesSerializer;
+import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.apache.kafka.common.serialization.IntegerSerializer;
+import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 /**
  * @author Gary Russell
  * @author Wang Zhiyang
+ * @author Rene Choi
  *
  * @since 2.8
  *
@@ -129,6 +135,32 @@ public class DelegatingByTopicSerializationTests {
 		configs.put(DelegatingByTopicSerializer.KEY_SERIALIZATION_TOPIC_DEFAULT, ByteArrayDeserializer.class);
 		deserializer.configure(configs, true);
 		assertThatDeserializer(deserializer);
+	}
+
+	@Test
+	void closeClosesDefaultSerializerDelegate() {
+		Serializer<?> patternDelegate = spy(new StringSerializer());
+		Serializer<?> defaultDelegate = spy(new ByteArraySerializer());
+		DelegatingByTopicSerializer serializer = new DelegatingByTopicSerializer(
+				Map.of(Pattern.compile("foo"), patternDelegate), defaultDelegate);
+
+		serializer.close();
+
+		verify(patternDelegate).close();
+		verify(defaultDelegate).close();
+	}
+
+	@Test
+	void closeClosesDefaultDeserializerDelegate() {
+		Deserializer<?> patternDelegate = spy(new StringDeserializer());
+		Deserializer<?> defaultDelegate = spy(new ByteArrayDeserializer());
+		DelegatingByTopicDeserializer deserializer = new DelegatingByTopicDeserializer(
+				Map.of(Pattern.compile("foo"), patternDelegate), defaultDelegate);
+
+		deserializer.close();
+
+		verify(patternDelegate).close();
+		verify(defaultDelegate).close();
 	}
 
 	private void assertThatSerializer(DelegatingByTopicSerializer serializer) {
