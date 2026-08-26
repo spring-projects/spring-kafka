@@ -43,6 +43,7 @@ import org.springframework.util.StringUtils;
  * @author Wang Zhiyang
  * @author Sanghyeok An
  * @author Borahm Lee
+ * @author Rene Choi
  *
  * @since 2.8
  *
@@ -315,14 +316,20 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 
 	@Override
 	public void close() {
-		this.delegates.values().forEach(delegate -> {
-			try {
-				delegate.close();
-			}
-			catch (IOException ex) {
-				LOGGER.error(ex, () -> "Failed to close " + delegate);
-			}
-		});
+		this.delegates.values().forEach(this::closeDelegate);
+		closeDelegate(this.defaultDelegate);
+	}
+
+	private void closeDelegate(@Nullable T delegate) {
+		if (delegate == null) {
+			return;
+		}
+		try {
+			delegate.close();
+		}
+		catch (IOException ex) {
+			LOGGER.error(ex, () -> "Failed to close " + delegate);
+		}
 	}
 
 }
