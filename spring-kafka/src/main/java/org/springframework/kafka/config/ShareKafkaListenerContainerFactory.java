@@ -218,13 +218,16 @@ public class ShareKafkaListenerContainerFactory<K, V>
 
 	@Override
 	public ShareKafkaMessageListenerContainer<K, V> createContainer(String... topics) {
-		return createContainerInstance(new KafkaListenerEndpointAdapter() {
+		KafkaListenerEndpoint endpoint = new KafkaListenerEndpointAdapter() {
 
 			@Override
 			public Collection<String> getTopics() {
 				return Arrays.asList(topics);
 			}
-		});
+		};
+		ShareKafkaMessageListenerContainer<K, V> instance = createContainerInstance(endpoint);
+		initializeContainer(instance, endpoint);
+		return instance;
 	}
 
 	@Override
