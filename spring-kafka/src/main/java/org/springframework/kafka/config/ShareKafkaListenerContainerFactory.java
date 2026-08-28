@@ -51,6 +51,7 @@ import org.springframework.util.Assert;
  * @param <V> the value type
  *
  * @author Soby Chacko
+ * @author Kumar Gaurav
  *
  * @since 4.0
  */
@@ -242,13 +243,16 @@ public class ShareKafkaListenerContainerFactory<K, V>
 
 	@Override
 	public ShareKafkaMessageListenerContainer<K, V> createContainer(String... topics) {
-		return createContainerInstance(new KafkaListenerEndpointAdapter() {
+		KafkaListenerEndpoint endpoint = new KafkaListenerEndpointAdapter() {
 
 			@Override
 			public Collection<String> getTopics() {
 				return Arrays.asList(topics);
 			}
-		});
+		};
+		ShareKafkaMessageListenerContainer<K, V> instance = createContainerInstance(endpoint);
+		initializeContainer(instance, endpoint);
+		return instance;
 	}
 
 	@Override

@@ -29,6 +29,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.kafka.config.ShareKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ShareConsumerFactory;
 import org.springframework.kafka.event.ConsumerFailedToStartEvent;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -48,6 +50,7 @@ import static org.mockito.Mockito.mock;
  * by integration tests in {@link ShareKafkaMessageListenerContainerIntegrationTests}.
  *
  * @author Soby Chacko
+ * @author Kumar Gaurav
  * @since 4.0
  */
 @ExtendWith(MockitoExtension.class)
@@ -184,6 +187,29 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 
 		assertThat(container.getContainerProperties().isExplicitShareAcknowledgment())
 				.isTrue();
+	}
+
+	/**
+	 * The programmatic entry point must configure the container the same way the
+	 * endpoint-driven one does. {@code createListenerContainer(KafkaListenerEndpoint)}
+	 * calls {@code initializeContainer(...)}; {@code createContainer(String...)} must
+	 * too, otherwise every factory-level setting is silently dropped.
+	 */
+	@Test
+	void createContainerByTopicsShouldApplyFactoryConfiguration() {
+		ApplicationEventPublisher publisher = mock(ApplicationEventPublisher.class);
+		ShareKafkaListenerContainerFactory<String, String> factory =
+				new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
+		factory.setApplicationEventPublisher(publisher);
+		factory.setAutoStartup(false);
+		factory.setPhase(42);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				factory.createContainer("test-topic");
+
+		assertThat(container.getApplicationEventPublisher()).isSameAs(publisher);
+		assertThat(container.isAutoStartup()).isFalse();
+		assertThat(container.getPhase()).isEqualTo(42);
 	}
 
 	@Test
