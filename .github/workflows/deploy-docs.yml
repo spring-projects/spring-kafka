@@ -12,6 +12,7 @@ on:
 
 permissions:
   actions: write
+  contents: read
 
 jobs:
   dispatch-docs-build:
