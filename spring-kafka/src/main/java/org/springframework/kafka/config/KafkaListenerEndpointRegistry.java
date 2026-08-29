@@ -441,15 +441,10 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 		}
 	}
 
-	private static final class AggregatingCallback implements Runnable {
-
-		private final AtomicInteger count;
-
-		private final Runnable finishCallback;
+	private record AggregatingCallback(AtomicInteger count, Runnable finishCallback) implements Runnable {
 
 		private AggregatingCallback(int count, Runnable finishCallback) {
-			this.count = new AtomicInteger(count);
-			this.finishCallback = finishCallback;
+			this(new AtomicInteger(count), finishCallback);
 		}
 
 		@Override

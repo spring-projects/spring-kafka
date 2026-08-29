@@ -40,14 +40,12 @@ import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
  * @author Gary Russell
  * @author Joo Hyuk Kim
  * @author Artem Bilan
- * @author arimu1
  *
  * @since 2.8.9
  */
@@ -149,7 +147,7 @@ public class KafkaListenerEndpointRegistryTests {
 	}
 
 	@Test
-	void stopThenStartHonorsAutoStartupWhenAlwaysStartAfterRefreshTrue() {
+	void stopThenStartHonorsAutoStartupFalse() {
 		KafkaListenerEndpointRegistry registry = new KafkaListenerEndpointRegistry();
 		GenericApplicationContext context = new GenericApplicationContext();
 		context.refresh();
@@ -164,7 +162,7 @@ public class KafkaListenerEndpointRegistryTests {
 	}
 
 	@Test
-	void startAfterRefreshWithoutStopStartsContainersWhenAlwaysStartAfterRefreshTrue() {
+	void startAfterRefreshWithoutStopStartsContainerRegardlessOfAutoStartup() {
 		KafkaListenerEndpointRegistry registry = new KafkaListenerEndpointRegistry();
 		GenericApplicationContext context = new GenericApplicationContext();
 		context.refresh();
@@ -172,7 +170,7 @@ public class KafkaListenerEndpointRegistryTests {
 		MessageListenerContainer container = registerAutoStartupFalseContainer(registry, "listener");
 		registry.onApplicationEvent(new ContextRefreshedEvent(context));
 		registry.start();
-		verify(container, times(1)).start();
+		verify(container).start();
 	}
 
 	@Test
