@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+package org.springframework.kafka.listener
+
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -35,8 +37,6 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory
 import org.springframework.kafka.core.DefaultKafkaProducerFactory
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.kafka.core.ProducerFactory
-import org.springframework.kafka.listener.DefaultErrorHandler
-import org.springframework.kafka.listener.KafkaListenerErrorHandler
 import org.springframework.kafka.support.Acknowledgment
 import org.springframework.kafka.test.EmbeddedKafkaBroker
 import org.springframework.kafka.test.context.EmbeddedKafka
@@ -275,18 +275,18 @@ class EnableKafkaKotlinCoroutinesTests {
 		@Bean
 		fun errorHandler() : KafkaListenerErrorHandler {
 			return KafkaListenerErrorHandler { message, _ ->
-				error = true;
+				error = true
 				latch2.countDown()
-				message.payload;
+				message.payload
 			}
 		}
 
 		@Bean
 		fun errorHandlerBatch() : KafkaListenerErrorHandler {
 			return KafkaListenerErrorHandler { message, _ ->
-				batchError = true;
+				batchError = true
 				batchLatch2.countDown()
-				message.payload;
+				message.payload
 			}
 		}
 
