@@ -26,6 +26,7 @@ import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.streams.errors.ErrorHandlerContext;
 import org.apache.kafka.streams.errors.ProcessingExceptionHandler;
 import org.apache.kafka.streams.processor.api.Record;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.kafka.listener.ConsumerRecordRecoverer;
 
@@ -54,17 +55,25 @@ public class RecoveringProcessingExceptionHandler
 	 * {@inheritDoc}
 	 */
 	@Override
-	public Response handleError(ErrorHandlerContext context, Record<?, ?> record, Exception exception) {
+	public Response handleError(ErrorHandlerContext context, @Nullable Record<?, ?> record, Exception exception) {
+		if (record == null || context.topic() == null) {
+			// Raised from a punctuation callback: there is no source record to recover.
+			return fail();
+		}
+
+		byte[] sourceRawKey = context.sourceRawKey();
+		byte[] sourceRawValue = context.sourceRawValue();
+
 		ConsumerRecord<byte[], byte[]> sourceRecord = new ConsumerRecord<>(
 				context.topic(),
 				context.partition(),
 				context.offset(),
 				context.timestamp(),
 				TimestampType.NO_TIMESTAMP_TYPE,
-				context.sourceRawKey().length,
-				context.sourceRawValue().length,
-				context.sourceRawKey(),
-				context.sourceRawValue(),
+				sourceRawKey != null ? sourceRawKey.length : ConsumerRecord.NULL_SIZE,
+				sourceRawValue != null ? sourceRawValue.length : ConsumerRecord.NULL_SIZE,
+				sourceRawKey,
+				sourceRawValue,
 				context.headers(),
 				Optional.empty(),
 				Optional.empty());

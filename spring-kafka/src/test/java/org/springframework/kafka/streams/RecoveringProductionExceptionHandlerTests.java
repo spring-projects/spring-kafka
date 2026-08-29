@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.streams;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -25,10 +26,13 @@ import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.streams.errors.ErrorHandlerContext;
 import org.apache.kafka.streams.errors.ProductionExceptionHandler;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.support.KafkaHeaders;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Loïc Greffier
@@ -77,6 +81,31 @@ class RecoveringProductionExceptionHandlerTests
 				this.record.headers(),
 				Optional.empty(),
 				Optional.empty());
+	}
+
+	@Test
+	void shouldFailWhenThereIsNoSourceRecord() {
+		Map<String, Object> configs = new HashMap<>();
+		configs.put(RecoveringProductionExceptionHandler.RECOVERER, new Recoverer());
+		RecoveringProductionExceptionHandler handler = createHandler(configs);
+
+		// Streams builds a context with no topic when the failure is not tied to an input record
+		assertResponseShouldFail(handler.handleError(mock(ErrorHandlerContext.class), this.record,
+				new IllegalArgumentException()));
+		assertResponseShouldFail(handler.handleSerializationError(mock(ErrorHandlerContext.class), this.record,
+				new IllegalArgumentException(), ProductionExceptionHandler.SerializationExceptionOrigin.VALUE));
+	}
+
+	@Test
+	void shouldRecoverWhenTheRawKeyAndValueAreNotAvailable() {
+		Map<String, Object> configs = new HashMap<>();
+		configs.put(RecoveringProductionExceptionHandler.RECOVERER, new Recoverer());
+		RecoveringProductionExceptionHandler handler = createHandler(configs);
+		ErrorHandlerContext context = createMockContext();
+		given(context.sourceRawKey()).willReturn(null);
+		given(context.sourceRawValue()).willReturn(null);
+
+		assertResponseShouldResume(handler.handleError(context, this.record, new IllegalArgumentException()));
 	}
 
 	@Override

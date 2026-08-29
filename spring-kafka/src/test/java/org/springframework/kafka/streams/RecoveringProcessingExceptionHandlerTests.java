@@ -16,6 +16,7 @@
 
 package org.springframework.kafka.streams;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -26,10 +27,13 @@ import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.streams.errors.ErrorHandlerContext;
 import org.apache.kafka.streams.errors.ProcessingExceptionHandler;
 import org.apache.kafka.streams.processor.api.Record;
+import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.support.KafkaHeaders;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Loïc Greffier
@@ -77,6 +81,30 @@ class RecoveringProcessingExceptionHandlerTests
 				this.record.headers(),
 				Optional.empty(),
 				Optional.empty());
+	}
+
+	@Test
+	void shouldFailWhenTriggeredFromPunctuation() {
+		Map<String, Object> configs = new HashMap<>();
+		configs.put(RecoveringProcessingExceptionHandler.RECOVERER, new Recoverer());
+		RecoveringProcessingExceptionHandler handler = createHandler(configs);
+
+		// Kafka calls the handler from a punctuation callback with no record and a context
+		// whose topic and raw key and value are all null
+		assertResponseShouldFail(handler.handleError(mock(ErrorHandlerContext.class), null,
+				new IllegalArgumentException()));
+	}
+
+	@Test
+	void shouldRecoverWhenTheRawKeyAndValueAreNotAvailable() {
+		Map<String, Object> configs = new HashMap<>();
+		configs.put(RecoveringProcessingExceptionHandler.RECOVERER, new Recoverer());
+		RecoveringProcessingExceptionHandler handler = createHandler(configs);
+		ErrorHandlerContext context = createMockContext();
+		given(context.sourceRawKey()).willReturn(null);
+		given(context.sourceRawValue()).willReturn(null);
+
+		assertResponseShouldResume(handler.handleError(context, this.record, new IllegalArgumentException()));
 	}
 
 	@Override

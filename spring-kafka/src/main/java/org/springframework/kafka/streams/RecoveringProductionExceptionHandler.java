@@ -54,6 +54,11 @@ public class RecoveringProductionExceptionHandler
 	 */
 	@Override
 	public Response handleError(ErrorHandlerContext context, ProducerRecord<byte[], byte[]> record, Exception exception) {
+		if (context.topic() == null) {
+			// The error was not raised while processing an input record, so there is nothing to recover.
+			return fail();
+		}
+
 		return handleErrorCommon(context, buildConsumerRecord(context, record), exception, buildSourceRecord(context));
 	}
 
@@ -63,6 +68,11 @@ public class RecoveringProductionExceptionHandler
 	@SuppressWarnings("rawtypes")
 	@Override
 	public Response handleSerializationError(ErrorHandlerContext context, ProducerRecord record, Exception exception, SerializationExceptionOrigin origin) {
+		if (context.topic() == null) {
+			// The error was not raised while processing an input record, so there is nothing to recover.
+			return fail();
+		}
+
 		return handleErrorCommon(context, buildConsumerRecord(context, record), exception, buildSourceRecord(context));
 	}
 
@@ -107,16 +117,19 @@ public class RecoveringProductionExceptionHandler
 	}
 
 	private ConsumerRecord<byte[], byte[]> buildSourceRecord(ErrorHandlerContext context) {
+		byte[] sourceRawKey = context.sourceRawKey();
+		byte[] sourceRawValue = context.sourceRawValue();
+
 		return new ConsumerRecord<>(
 				context.topic(),
 				context.partition(),
 				context.offset(),
 				context.timestamp(),
 				TimestampType.NO_TIMESTAMP_TYPE,
-				context.sourceRawKey().length,
-				context.sourceRawValue().length,
-				context.sourceRawKey(),
-				context.sourceRawValue(),
+				sourceRawKey != null ? sourceRawKey.length : ConsumerRecord.NULL_SIZE,
+				sourceRawValue != null ? sourceRawValue.length : ConsumerRecord.NULL_SIZE,
+				sourceRawKey,
+				sourceRawValue,
 				context.headers(),
 				Optional.empty(),
 				Optional.empty());
