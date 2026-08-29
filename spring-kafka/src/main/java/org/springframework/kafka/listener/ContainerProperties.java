@@ -227,10 +227,28 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private @Nullable ConsumerExceptionHandler consumerExceptionHandler;
 
+	/**
+	 * Return the handler for consumer exceptions thrown outside listener invocation.
+	 * @return the handler, or null when no handler has been configured.
+	 * @since 4.2
+	 */
 	public @Nullable ConsumerExceptionHandler getConsumerExceptionHandler() {
 		return this.consumerExceptionHandler;
 	}
 
+	/**
+	 * Set a handler for consumer exceptions thrown outside listener invocation, such as
+	 * commit exceptions. When this handler is configured, it handles consumer
+	 * exceptions and the container's {@link CommonErrorHandler}
+	 * {@code handleOtherException()} method is not invoked for those exceptions. When
+	 * this handler is not configured, consumer exceptions are delegated to
+	 * {@code CommonErrorHandler.handleOtherException()}, if a
+	 * {@link CommonErrorHandler} is configured. A
+	 * {@link org.apache.kafka.clients.consumer.RetriableCommitFailedException}
+	 * continues to bypass both handlers.
+	 * @param consumerExceptionHandler the handler, or null to clear it.
+	 * @since 4.2
+	 */
 	public void setConsumerExceptionHandler(
 			@Nullable ConsumerExceptionHandler consumerExceptionHandler) {
 

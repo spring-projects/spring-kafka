@@ -22,11 +22,18 @@ import org.apache.kafka.clients.consumer.Consumer;
  * Callback for consumer exceptions occurring outside listener invocation.
  *
  * @author Aman Gautam
- * @since 4.1.1
+ * @since 4.2
  */
 @FunctionalInterface
 public interface ConsumerExceptionHandler {
 
+	/**
+	 * Handle an exception thrown by the Kafka {@link Consumer} outside of listener
+	 * invocation.
+	 * @param exception the exception thrown by the consumer.
+	 * @param consumer the consumer in use by the container.
+	 * @param container the listener container.
+	 */
 	void handle(Exception exception,
 			Consumer<?, ?> consumer,
 			MessageListenerContainer container);
