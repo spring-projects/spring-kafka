@@ -16,10 +16,12 @@
 
 package org.springframework.kafka.listener;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -39,6 +41,7 @@ import org.apache.kafka.clients.consumer.internals.ShareAcknowledgementMode;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.Uuid;
 import org.apache.kafka.common.errors.CorruptRecordException;
 import org.apache.kafka.common.errors.RecordDeserializationException;
 import org.jspecify.annotations.Nullable;
@@ -104,6 +107,7 @@ import org.springframework.util.Assert;
  * @author Soby Chacko
  * @author Maxwell Balla
  * @author Youngjoo Kim
+ * @author Omar Morales Ortega
  *
  * @since 4.0
  *
@@ -194,6 +198,44 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		finally {
 			this.lifecycleLock.unlock();
 		}
+	}
+
+	/**
+	 * Get the broker-assigned client instance IDs, keyed by the client id of
+	 * each running share consumer. The instance id correlates client metrics
+	 * with broker-side telemetry and is distinct from the client id returned by
+	 * {@link #getClientId()}. Returns an empty map when the container is not
+	 * running.
+	 * <p>
+	 * The client instance id is requested from each consumer sequentially, so
+	 * the worst-case wait is {@code concurrency x timeout}. Client telemetry
+	 * must be enabled ({@code enable.metrics.push=true}, the default).
+	 * @param timeout the maximum time to wait per consumer for the broker to
+	 * assign an instance id (must be non-negative; zero means do not wait)
+	 * @return the client instance ids keyed by client id; the value is
+	 * {@code null} for a consumer whose id was not assigned within the timeout
+	 * @see #metrics()
+	 */
+	public Map<String, Uuid> getClientInstanceIds(Duration timeout) {
+		List<ShareListenerConsumer> snapshot;
+		this.lifecycleLock.lock();
+		try {
+			snapshot = new ArrayList<>(this.consumers);
+		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
+		if (snapshot.isEmpty()) {
+			return Collections.emptyMap();
+		}
+		Map<String, Uuid> instanceIds = new LinkedHashMap<>();
+		for (ShareListenerConsumer consumer : snapshot) {
+			String consumerClientId = consumer.getClientId();
+			if (consumerClientId != null) {
+				instanceIds.put(consumerClientId, consumer.consumer.clientInstanceId(timeout));
+			}
+		}
+		return Collections.unmodifiableMap(instanceIds);
 	}
 
 	@Override
