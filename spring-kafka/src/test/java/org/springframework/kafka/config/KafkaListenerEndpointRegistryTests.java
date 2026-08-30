@@ -220,11 +220,10 @@ public class KafkaListenerEndpointRegistryTests {
 	private static MessageListenerContainer registerAutoStartupFalseContainer(KafkaListenerEndpointRegistry registry,
 			String id) {
 
-		KafkaListenerEndpoint endpoint = mock(KafkaListenerEndpoint.class);
-		@SuppressWarnings("unchecked")
-		KafkaListenerContainerFactory<MessageListenerContainer> factory = mock(KafkaListenerContainerFactory.class);
+		KafkaListenerEndpoint endpoint = mock();
 		given(endpoint.getId()).willReturn(id);
-		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		KafkaListenerContainerFactory<MessageListenerContainer> factory = mock();
+		MessageListenerContainer container = mock();
 		given(container.isAutoStartup()).willReturn(false);
 		given(factory.createListenerContainer(endpoint)).willReturn(container);
 		registry.registerListenerContainer(endpoint, factory);
