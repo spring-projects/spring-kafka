@@ -90,6 +90,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -103,6 +104,7 @@ import static org.mockito.Mockito.verify;
  * @author Soby Chacko
  * @author Mikhail Polivakha
  * @author Ngoc Nhan
+ * @author OhKyu Chan
  * @since 2.1.3
  *
  */
@@ -880,6 +882,19 @@ public class ReplyingKafkaTemplateTests {
 				.build();
 		// was NPE here
 		template.sendAndReceive(new ProducerRecord("foo", 0, "bar", "baz"), null).getSendFuture().get();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void setDefaultReplyTimeoutRejectsNegativeNamingItsOwnProperty() {
+		ProducerFactory pf = mock(ProducerFactory.class);
+		GenericMessageListenerContainer container = mock(GenericMessageListenerContainer.class);
+		given(container.getContainerProperties()).willReturn(new ContainerProperties("two"));
+		ReplyingKafkaTemplate template = new ReplyingKafkaTemplate(pf, container);
+
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> template.setDefaultReplyTimeout(Duration.ofMillis(-1)))
+				.withMessage("'defaultReplyTimeout' must be >= 0");
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
