@@ -389,6 +389,7 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	@Override
 	public void stop() {
 		this.running = false;
+		this.contextRefreshed = false;
 		for (MessageListenerContainer listenerContainer : getListenerContainers()) {
 			listenerContainer.stop();
 		}
@@ -397,6 +398,7 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 	@Override
 	public void stop(Runnable callback) {
 		this.running = false;
+		this.contextRefreshed = false;
 		Collection<MessageListenerContainer> listenerContainersToStop = getListenerContainers();
 		if (!listenerContainersToStop.isEmpty()) {
 			AggregatingCallback aggregatingCallback = new AggregatingCallback(listenerContainersToStop.size(),
@@ -439,15 +441,10 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 		}
 	}
 
-	private static final class AggregatingCallback implements Runnable {
-
-		private final AtomicInteger count;
-
-		private final Runnable finishCallback;
+	private record AggregatingCallback(AtomicInteger count, Runnable finishCallback) implements Runnable {
 
 		private AggregatingCallback(int count, Runnable finishCallback) {
-			this.count = new AtomicInteger(count);
-			this.finishCallback = finishCallback;
+			this(new AtomicInteger(count), finishCallback);
 		}
 
 		@Override
