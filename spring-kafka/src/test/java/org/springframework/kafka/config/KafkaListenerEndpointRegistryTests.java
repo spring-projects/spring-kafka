@@ -29,6 +29,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListenerContainer;
@@ -38,6 +39,8 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 /**
  * @author Gary Russell
@@ -144,6 +147,33 @@ public class KafkaListenerEndpointRegistryTests {
 	}
 
 	@Test
+	void stopThenStartHonorsAutoStartupFalse() {
+		KafkaListenerEndpointRegistry registry = new KafkaListenerEndpointRegistry();
+		GenericApplicationContext context = new GenericApplicationContext();
+		context.refresh();
+		registry.setApplicationContext(context);
+		MessageListenerContainer container = registerAutoStartupFalseContainer(registry, "listener");
+		registry.start();
+		verify(container, never()).start();
+		registry.onApplicationEvent(new ContextRefreshedEvent(context));
+		registry.stop();
+		registry.start();
+		verify(container, never()).start();
+	}
+
+	@Test
+	void startAfterRefreshWithoutStopStartsContainerRegardlessOfAutoStartup() {
+		KafkaListenerEndpointRegistry registry = new KafkaListenerEndpointRegistry();
+		GenericApplicationContext context = new GenericApplicationContext();
+		context.refresh();
+		registry.setApplicationContext(context);
+		MessageListenerContainer container = registerAutoStartupFalseContainer(registry, "listener");
+		registry.onApplicationEvent(new ContextRefreshedEvent(context));
+		registry.start();
+		verify(container).start();
+	}
+
+	@Test
 	void verifyUnregisteredListenerContainer() {
 		KafkaListenerEndpointRegistry registry = new KafkaListenerEndpointRegistry();
 		GenericApplicationContext applicationContext = new GenericApplicationContext();
@@ -185,6 +215,19 @@ public class KafkaListenerEndpointRegistryTests {
 
 	private static void registerWithListenerIds(KafkaListenerEndpointRegistry registry, List<String> names) {
 		names.forEach(name -> registerListenerWithId(registry, name));
+	}
+
+	private static MessageListenerContainer registerAutoStartupFalseContainer(KafkaListenerEndpointRegistry registry,
+			String id) {
+
+		KafkaListenerEndpoint endpoint = mock();
+		given(endpoint.getId()).willReturn(id);
+		KafkaListenerContainerFactory<MessageListenerContainer> factory = mock();
+		MessageListenerContainer container = mock();
+		given(container.isAutoStartup()).willReturn(false);
+		given(factory.createListenerContainer(endpoint)).willReturn(container);
+		registry.registerListenerContainer(endpoint, factory);
+		return container;
 	}
 
 	private static void registerListenerWithId(KafkaListenerEndpointRegistry registry, String id) {
