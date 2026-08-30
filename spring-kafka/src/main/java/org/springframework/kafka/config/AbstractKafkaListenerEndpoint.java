@@ -64,6 +64,7 @@ import org.springframework.util.ObjectUtils;
  * @author Wang Zhiyang
  * @author Sanghyeok An
  * @author Borahm Lee
+ * @author OhKyu Chan
  *
  * @see MethodKafkaListenerEndpoint
  */
@@ -218,7 +219,7 @@ public abstract class AbstractKafkaListenerEndpoint<K, V>
 	 * @see #setTopicPattern(Pattern)
 	 */
 	public void setTopicPartitions(TopicPartitionOffset... topicPartitions) {
-		Assert.notNull(topicPartitions, "'topics' must not be null");
+		Assert.notNull(topicPartitions, "'topicPartitions' must not be null");
 		this.topicPartitions.clear();
 		this.topicPartitions.addAll(Arrays.asList(topicPartitions));
 	}

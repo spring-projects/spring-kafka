@@ -74,6 +74,7 @@ import org.springframework.util.Assert;
  * @author Borahm Lee
  * @author Francois Rosiere
  * @author Mikhail Polivakha
+ * @author OhKyu Chan
  *
  * @since 2.1.3
  *
@@ -193,7 +194,7 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 	 */
 	public void setDefaultReplyTimeout(Duration defaultReplyTimeout) {
 		Assert.notNull(defaultReplyTimeout, "'defaultReplyTimeout' cannot be null");
-		Assert.isTrue(defaultReplyTimeout.toMillis() >= 0, "'replyTimeout' must be >= 0");
+		Assert.isTrue(defaultReplyTimeout.toMillis() >= 0, "'defaultReplyTimeout' must be >= 0");
 		this.defaultReplyTimeout = defaultReplyTimeout;
 	}
 
