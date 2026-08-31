@@ -37,3 +37,10 @@ Exact label-set matching queries that assumed the tag was absent need to be revi
 
 These behavioral changes are intentional so that all `spring.kafka.listener` meters share one consistent tag key set for Prometheus.
 They ship in **4.2** only (they cannot be backported to 4.1).
+
+[[x42-share-container-client-instance-ids]]
+=== Client Instance IDs for Share Consumers
+
+`ShareKafkaMessageListenerContainer` now exposes `getClientInstanceIds(Duration)`, returning the broker-assigned client _instance ids_ (KIP-714 telemetry `Uuid` values) of the running share consumers, keyed by `client.id`.
+This lets client-reported metrics be correlated with broker-side telemetry.
+See xref:kafka/kafka-queues.adoc#share-container-client-instance-ids[Client Instance IDs (Telemetry)].

@@ -172,6 +172,27 @@ Unlike `ConsumerStoppingEvent`, this event carries a `ShareConsumer` reference (
 
 These events can be consumed with `@EventListener` (see xref:kafka/events.adoc#event-consumption[Event Consumption]) to integrate share containers with the same monitoring and restart patterns available for regular containers.
 
+[[share-container-client-instance-ids]]
+=== Client Instance IDs (Telemetry)
+
+Apache Kafka supports broker-side client telemetry (KIP-714), where the broker assigns each client a telemetry _client instance id_ (a `Uuid`) that correlates client-reported metrics with broker-side observations.
+This is distinct from the `client.id` string the container manages (and to which it appends a `-n` suffix per concurrency).
+Retrieve the instance ids of the running share consumers with `getClientInstanceIds(Duration)`:
+
+[source,java]
+----
+Map<String, Uuid> instanceIds = container.getClientInstanceIds(Duration.ofSeconds(5));
+----
+
+The map is keyed by `client.id`; an empty map is returned when the container is not running, and a value is `null` when the broker has not yet assigned an id within the timeout.
+The id is requested from each consumer in turn, so the worst-case wait is `concurrency × timeout`.
+
+Telemetry must be enabled for an id to be available.
+This is governed by the standard `enable.metrics.push` client property (defined in `ConsumerConfig`, inherited by share consumers, default `true`); assignment additionally requires the cluster to have a matching client metrics subscription.
+If `enable.metrics.push` is `false`, the underlying client throws `IllegalStateException`.
+
+NOTE: `getClientInstanceIds(Duration)` was added in 4.2.
+
 [[share-container-concurrency]]
 === Concurrency
 

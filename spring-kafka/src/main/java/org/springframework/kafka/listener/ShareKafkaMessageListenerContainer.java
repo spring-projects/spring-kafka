@@ -214,6 +214,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 	 * assign an instance id (must be non-negative; zero means do not wait)
 	 * @return the client instance ids keyed by client id; the value is
 	 * {@code null} for a consumer whose id was not assigned within the timeout
+	 * @since 4.2
 	 * @see #metrics()
 	 */
 	public Map<String, Uuid> getClientInstanceIds(Duration timeout) {
