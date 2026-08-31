@@ -788,7 +788,7 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
 		Uuid instanceId = Uuid.randomUuid();
 		given(mockConsumer.clientInstanceId(any())).willReturn(instanceId);
-		given(mockConsumer.poll(any())).willAnswer(invocation -> {
+		lenient().when(mockConsumer.poll(any())).thenAnswer(invocation -> {
 			Thread.sleep(10);
 			return ConsumerRecords.empty();
 		});
@@ -820,7 +820,7 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		ShareConsumer<String, String> mockConsumer = mock(ShareConsumer.class);
 		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
 		given(mockConsumer.clientInstanceId(any())).willThrow(new IllegalStateException("telemetry disabled"));
-		given(mockConsumer.poll(any())).willAnswer(invocation -> {
+		lenient().when(mockConsumer.poll(any())).thenAnswer(invocation -> {
 			Thread.sleep(10);
 			return ConsumerRecords.empty();
 		});
