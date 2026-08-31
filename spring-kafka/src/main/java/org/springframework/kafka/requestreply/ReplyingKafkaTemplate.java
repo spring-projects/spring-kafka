@@ -75,6 +75,7 @@ import org.springframework.util.Assert;
  * @author Francois Rosiere
  * @author Mikhail Polivakha
  * @author OhKyu Chan
+ * @author Ngoc Nhan
  *
  * @since 2.1.3
  *
@@ -92,9 +93,9 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 
 	private final ConcurrentMap<Object, RequestReplyFuture<K, V, R>> futures = new ConcurrentHashMap<>();
 
-	private final byte[] replyTopic;
+	private final byte @Nullable [] replyTopic;
 
-	private final byte[] replyPartition;
+	private final byte @Nullable [] replyPartition;
 
 	private TaskScheduler scheduler = new ThreadPoolTaskScheduler();
 
