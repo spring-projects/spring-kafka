@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - '*.x'
+      - '*.x-internal'
 
 jobs:
   backport-issue:
