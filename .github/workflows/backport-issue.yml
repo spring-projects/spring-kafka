@@ -11,6 +11,6 @@ jobs:
     if: ${{ !github.event.forced && (contains(github.event.head_commit.message, 'Fixes:') || contains(github.event.head_commit.message, 'Closes:')) }}
     runs-on: ubuntu-latest
     steps:
-      - uses: spring-io/backport-bot@v0.0.2
+      - uses: spring-io/backport-bot@v0.0.3
         with:
           token: ${{ secrets.GH_ACTIONS_REPO_TOKEN }}
