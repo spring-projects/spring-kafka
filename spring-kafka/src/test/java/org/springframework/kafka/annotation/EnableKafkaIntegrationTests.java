@@ -1160,9 +1160,13 @@ public class EnableKafkaIntegrationTests {
 			assertThat(list.get(1)).isEqualTo("BAR");
 		}
 		else {
-			replies = KafkaTestUtils.getRecords(consumer);
-			assertThat(replies.count()).isGreaterThanOrEqualTo(1);
-			iterator = replies.iterator();
+			// FOO arrived as a single-element batch; the BAR reply may already be in the
+			// batch just polled, so only poll again when it is not.
+			if (!iterator.hasNext()) {
+				replies = KafkaTestUtils.getRecords(consumer);
+				assertThat(replies.count()).isGreaterThanOrEqualTo(1);
+				iterator = replies.iterator();
+			}
 			value = iterator.next().value();
 			list = (List) value;
 			assertThat(list).hasSize(1);
