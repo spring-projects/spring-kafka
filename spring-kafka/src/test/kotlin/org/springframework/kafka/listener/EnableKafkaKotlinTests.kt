@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+package org.springframework.kafka.listener
+
 import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -31,7 +33,6 @@ import org.springframework.kafka.annotation.EnableKafka
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory
 import org.springframework.kafka.core.*
-import org.springframework.kafka.listener.*
 import org.springframework.kafka.support.converter.JacksonJsonMessageConverter
 import org.springframework.kafka.test.EmbeddedKafkaBroker
 import org.springframework.kafka.test.context.EmbeddedKafka
@@ -158,7 +159,7 @@ class EnableKafkaKotlinTests {
 				invokeListener: Runnable
 			) {
 				if (!recs.isEmpty) {
-					batchError = true;
+					batchError = true
 					batchLatch2.countDown()
 				}
 			}
@@ -209,7 +210,7 @@ class EnableKafkaKotlinTests {
 					throw Exception("checked")
 				}
 			})
-			return container;
+			return container
 		}
 
 		@Bean
@@ -224,7 +225,7 @@ class EnableKafkaKotlinTests {
 					throw Exception("checked")
 				}
 			})
-			return container;
+			return container
 		}
 
 	}
