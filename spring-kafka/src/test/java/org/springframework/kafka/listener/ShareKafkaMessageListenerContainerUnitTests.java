@@ -300,7 +300,7 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("test-topic", 0, 0L, "key", "value");
 		ConsumerRecords<String, String> records = new ConsumerRecords<>(
-				Map.of(new TopicPartition("test-topic", 0), List.of(record)));
+				Map.of(new TopicPartition("test-topic", 0), List.of(record)), Map.of());
 
 		AtomicBoolean firstPoll = new AtomicBoolean(true);
 		given(mockConsumer.poll(any())).willAnswer(invocation -> {
@@ -308,7 +308,7 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 				return records;
 			}
 			Thread.sleep(50);
-			return new ConsumerRecords<>(Map.of());
+			return ConsumerRecords.empty();
 		});
 
 		CountDownLatch latch = new CountDownLatch(1);
@@ -338,7 +338,7 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("test-topic", 0, 0L, "key", "value");
 		ConsumerRecords<String, String> records = new ConsumerRecords<>(
-				Map.of(new TopicPartition("test-topic", 0), List.of(record)));
+				Map.of(new TopicPartition("test-topic", 0), List.of(record)), Map.of());
 
 		AtomicBoolean firstPoll = new AtomicBoolean(true);
 		given(mockConsumer.poll(any())).willAnswer(invocation -> {
@@ -346,7 +346,7 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 				return records;
 			}
 			Thread.sleep(50);
-			return new ConsumerRecords<>(Map.of());
+			return ConsumerRecords.empty();
 		});
 
 		CountDownLatch latch = new CountDownLatch(1);
@@ -762,7 +762,7 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		given(mockConsumer.clientInstanceId(any())).willReturn(instanceId);
 		given(mockConsumer.poll(any())).willAnswer(invocation -> {
 			Thread.sleep(10);
-			return new ConsumerRecords<>(Map.of());
+			return ConsumerRecords.empty();
 		});
 
 		ContainerProperties containerProperties = new ContainerProperties("test-topic");
@@ -794,7 +794,7 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		given(mockConsumer.clientInstanceId(any())).willThrow(new IllegalStateException("telemetry disabled"));
 		given(mockConsumer.poll(any())).willAnswer(invocation -> {
 			Thread.sleep(10);
-			return new ConsumerRecords<>(Map.of());
+			return ConsumerRecords.empty();
 		});
 
 		ContainerProperties containerProperties = new ContainerProperties("test-topic");
