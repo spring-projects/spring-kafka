@@ -31,6 +31,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -87,6 +88,7 @@ import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -938,6 +940,18 @@ public class ReplyingKafkaTemplateTests {
 			template.stop();
 			template.destroy();
 		}
+	}
+
+	@Test
+	public void replyTopicAndReplyPartitionCanBeNullDuringInitialization() {
+
+		ProducerFactory<Integer, String> pf = mock();
+		GenericMessageListenerContainer<Integer, String> container = mock();
+		given(container.getContainerProperties()).willReturn(new ContainerProperties((Pattern) null));
+		ReplyingKafkaTemplate<Integer, String, String> template = new ReplyingKafkaTemplate<>(pf, container);
+
+		assertThat(ReflectionTestUtils.getField(template, ReplyingKafkaTemplate.class, "replyTopic")).isNull();
+		assertThat(ReflectionTestUtils.getField(template, ReplyingKafkaTemplate.class, "replyPartition")).isNull();
 	}
 
 	@Configuration
