@@ -18,11 +18,13 @@ package org.springframework.kafka.listener.adapter;
 
 import java.lang.reflect.Method;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationHandler;
 import io.micrometer.observation.ObservationRegistry;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -44,6 +46,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -52,10 +55,15 @@ import static org.mockito.Mockito.verify;
  * @author Gary Russell
  * @author Abhishek Moondra
  * @author Kumar Gaurav
+ * @author Nikita Kibitkin
  * @since 1.1.2
  *
  */
 public class MessagingMessageListenerAdapterTests {
+
+	private final CompletableFuture<String> pendingFuture = new CompletableFuture<>();
+
+	private final AtomicBoolean monoCancelled = new AtomicBoolean();
 
 	@Test
 	void testFallbackType() {
@@ -156,6 +164,90 @@ public class MessagingMessageListenerAdapterTests {
 	}
 
 	@Test
+	void asyncResultCallbackCompletesAfterAck() throws NoSuchMethodException {
+		Method method = getClass().getDeclaredMethod("pendingFuture", String.class, Acknowledgment.class);
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		AtomicReference<CompletableFuture<Void>> inFlight = new AtomicReference<>();
+		RecordMessagingMessageListenerAdapter<String, String> adapter = asyncAdapter(method);
+		adapter.addCallbackForAsyncResult(consumer, inFlight::set);
+		Acknowledgment ack = mock(Acknowledgment.class);
+		adapter.onMessage(new ConsumerRecord<>("foo", 0, 0L, null, "foo"), ack, consumer);
+		assertThat(inFlight.get()).isNotNull().isNotDone();
+		verify(ack, never()).acknowledge();
+		this.pendingFuture.complete("done");
+		assertThat(inFlight.get()).isCompleted();
+		verify(ack).acknowledge();
+	}
+
+	@Test
+	void asyncResultCallbackOnlyForRegisteredConsumer() throws NoSuchMethodException {
+		Method method = getClass().getDeclaredMethod("pendingFuture", String.class, Acknowledgment.class);
+		AtomicReference<CompletableFuture<Void>> inFlight = new AtomicReference<>();
+		RecordMessagingMessageListenerAdapter<String, String> adapter = asyncAdapter(method);
+		adapter.addCallbackForAsyncResult(mock(Consumer.class), inFlight::set);
+		adapter.onMessage(new ConsumerRecord<>("foo", 0, 0L, null, "foo"), mock(Acknowledgment.class),
+				mock(Consumer.class));
+		assertThat(inFlight.get()).isNull();
+	}
+
+	@Test
+	void cancelledFutureIsNeitherAckedNorPassedToErrorHandler() throws NoSuchMethodException {
+		Method method = getClass().getDeclaredMethod("pendingFuture", String.class, Acknowledgment.class);
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		AtomicReference<CompletableFuture<Void>> inFlight = new AtomicReference<>();
+		RecordMessagingMessageListenerAdapter<String, String> adapter = asyncAdapter(method);
+		adapter.addCallbackForAsyncResult(consumer, inFlight::set);
+		AtomicBoolean retried = new AtomicBoolean();
+		adapter.setCallbackForAsyncFailure((record, ex) -> retried.set(true));
+		Acknowledgment ack = mock(Acknowledgment.class);
+		adapter.onMessage(new ConsumerRecord<>("foo", 0, 0L, null, "foo"), ack, consumer);
+		inFlight.get().cancel(true);
+		assertThat(this.pendingFuture).isCancelled();
+		verify(adapter, never()).asyncFailure(any(), any(), any(), any(), any());
+		verify(ack, never()).acknowledge();
+		assertThat(retried).isFalse();
+	}
+
+	@Test
+	void cancelledMonoIsDisposed() throws NoSuchMethodException {
+		Method method = getClass().getDeclaredMethod("pendingMono", String.class, Acknowledgment.class);
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		AtomicReference<CompletableFuture<Void>> inFlight = new AtomicReference<>();
+		RecordMessagingMessageListenerAdapter<String, String> adapter = asyncAdapter(method);
+		adapter.addCallbackForAsyncResult(consumer, inFlight::set);
+		Acknowledgment ack = mock(Acknowledgment.class);
+		adapter.onMessage(new ConsumerRecord<>("foo", 0, 0L, null, "foo"), ack, consumer);
+		assertThat(this.monoCancelled).isFalse();
+		inFlight.get().cancel(true);
+		assertThat(this.monoCancelled).isTrue();
+		verify(adapter, never()).asyncFailure(any(), any(), any(), any(), any());
+		verify(ack, never()).acknowledge();
+	}
+
+	@Test
+	void asyncResultCallbackNotInvokedForSyncResult() throws NoSuchMethodException {
+		Method method = getClass().getDeclaredMethod("sync", String.class, Acknowledgment.class);
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		AtomicReference<CompletableFuture<Void>> inFlight = new AtomicReference<>();
+		RecordMessagingMessageListenerAdapter<String, String> adapter = asyncAdapter(method);
+		adapter.addCallbackForAsyncResult(consumer, inFlight::set);
+		adapter.onMessage(new ConsumerRecord<>("foo", 0, 0L, null, "foo"), mock(Acknowledgment.class), consumer);
+		assertThat(inFlight.get()).isNull();
+	}
+
+	private RecordMessagingMessageListenerAdapter<String, String> asyncAdapter(Method method) {
+		KafkaListenerAnnotationBeanPostProcessor<String, String> bpp = new KafkaListenerAnnotationBeanPostProcessor<>();
+		RecordMessagingMessageListenerAdapter<String, String> adapter =
+				spy(new RecordMessagingMessageListenerAdapter<>(this, method));
+		adapter.setHandlerMethod(
+				new HandlerAdapter(bpp.getMessageHandlerMethodFactory().createInvocableHandlerMethod(this, method)));
+		RecordMessageConverter converter = mock(RecordMessageConverter.class);
+		willReturn(new GenericMessage<>("foo")).given(converter).toMessage(any(), any(), any(), any());
+		adapter.setMessageConverter(converter);
+		return adapter;
+	}
+
+	@Test
 	void testMissingAck() throws NoSuchMethodException, SecurityException {
 		KafkaListenerAnnotationBeanPostProcessor<String, String> bpp = new KafkaListenerAnnotationBeanPostProcessor<>();
 		Method method = getClass().getDeclaredMethod("test", Acknowledgment.class);
@@ -198,6 +290,21 @@ public class MessagingMessageListenerAdapterTests {
 	public Mono<String> mono(String data, Acknowledgment ack) {
 
 		return Mono.just(data);
+	}
+
+	public CompletableFuture<String> pendingFuture(String data, Acknowledgment ack) {
+
+		return this.pendingFuture;
+	}
+
+	public Mono<String> pendingMono(String data, Acknowledgment ack) {
+
+		return Mono.<String>never().doOnCancel(() -> this.monoCancelled.set(true));
+	}
+
+	public String sync(String data, Acknowledgment ack) {
+
+		return data;
 	}
 
 }
