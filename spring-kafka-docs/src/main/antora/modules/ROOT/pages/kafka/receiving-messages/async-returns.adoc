@@ -31,6 +31,35 @@ If some exception occurs within the listener method that prevents creation of th
 If a `KafkaListenerErrorHandler` is configured on a listener with an async return type (including Kotlin suspend functions), the error handler is invoked after a failure.
 See xref:kafka/annotation-error-handling.adoc[Handling Exceptions] for more information about this error handler and its purpose.
 
+[[async-returns-stop]]
+== Async Results and Container Stop
+
+By default, stopping the container does not wait for in-flight async results: the consumer thread leaves the poll loop, commits the offsets acknowledged so far and closes the consumer, while the async work returned by the listener keeps running on its own threads.
+During application shutdown this work can outlive the container stop and run against downstream beans (a database client, an HTTP client) that are destroyed after the container's `SmartLifecycle` phase; the acknowledgment of a result that completes after the stop is lost as well.
+
+Starting with versions 4.0.8, 4.1.2 and 4.2, set the container property `awaitAsyncResultsOnStop` to `true` to bind in-flight async results to the container's lifecycle.
+The consumer thread then waits for the outstanding results, within the container's `shutdownTimeout` measured from the stop request, before committing pending offsets and closing the consumer.
+Results that complete in time are acknowledged and their offsets committed as usual.
+Results still outstanding when the timeout expires are cancelled: the `Mono` subscription is disposed (which cancels a suspend function's coroutine), or `CompletableFuture.cancel(true)` is called (which does not interrupt code that is already running).
+A cancelled result is neither acknowledged nor passed to the error handler, so its record is redelivered after the partition is reassigned - the usual at-least-once contract for async listeners.
+
+Because the container's stop callback fires only after this wait, the container's lifecycle phase completes after the in-flight work has finished or been cancelled, and beans that are destroyed later in the shutdown sequence are no longer used by listener work.
+The `shutdownTimeout` therefore needs to cover the time the async work takes to complete; use a longer timeout if the work is expected to be cancelled too often.
+
+[source, java]
+----
+@Bean
+ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
+        ConsumerFactory<String, String> consumerFactory) {
+
+    ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();
+    factory.setConsumerFactory(consumerFactory);
+    factory.getContainerProperties().setAwaitAsyncResultsOnStop(true);
+    factory.getContainerProperties().setShutdownTimeout(30_000);
+    return factory;
+}
+----
+
 [IMPORTANT]
 ====
 With a seek-after-handling error handler such as `DefaultErrorHandler`, an async listener receives one extra dispatch-loop delivery per failing record on the same partition compared to a blocking listener.
