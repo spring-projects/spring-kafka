@@ -19,11 +19,15 @@ package org.springframework.kafka.listener;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.kafka.clients.consumer.ConsumerInterceptor;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.TopicPartition;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
@@ -63,7 +67,8 @@ import static org.awaitility.Awaitility.await;
 @DirtiesContext
 @EmbeddedKafka(topics = { AwaitAsyncResultsOnStopTests.FUTURE_TOPIC, AwaitAsyncResultsOnStopTests.FUTURE_CANCEL_TOPIC,
 		AwaitAsyncResultsOnStopTests.MONO_TOPIC, AwaitAsyncResultsOnStopTests.MONO_CANCEL_TOPIC,
-		AwaitAsyncResultsOnStopTests.CONCURRENT_TOPIC, AwaitAsyncResultsOnStopTests.DISABLED_TOPIC }, partitions = 2)
+		AwaitAsyncResultsOnStopTests.CONCURRENT_TOPIC, AwaitAsyncResultsOnStopTests.DISABLED_TOPIC,
+		AwaitAsyncResultsOnStopTests.BLOCKING_TOPIC }, partitions = 2)
 public class AwaitAsyncResultsOnStopTests {
 
 	static final String FUTURE_TOPIC = "aaros.future";
@@ -77,6 +82,8 @@ public class AwaitAsyncResultsOnStopTests {
 	static final String CONCURRENT_TOPIC = "aaros.concurrent";
 
 	static final String DISABLED_TOPIC = "aaros.disabled";
+
+	static final String BLOCKING_TOPIC = "aaros.blocking";
 
 	@Autowired
 	private KafkaTemplate<Integer, String> template;
@@ -133,6 +140,47 @@ public class AwaitAsyncResultsOnStopTests {
 		assertThat(doneAtStop).hasValue(2);
 		assertThat(committedOffset("concurrent", CONCURRENT_TOPIC, 0)).isEqualTo(1L);
 		assertThat(committedOffset("concurrent", CONCURRENT_TOPIC, 1)).isEqualTo(1L);
+	}
+
+	@Test
+	void blockingStopCommitsCompletedResultsBeforeReturning() throws Exception {
+		AsyncWork p0 = this.listener.blockingP0;
+		AsyncWork p1 = this.listener.blockingP1;
+		// both records must arrive in the same poll: with out of order acks the consumer is
+		// paused after the first unacked record, so send before starting the container
+		this.template.send(BLOCKING_TOPIC, 0, null, "p0").get(10, TimeUnit.SECONDS);
+		this.template.send(BLOCKING_TOPIC, 1, null, "p1").get(10, TimeUnit.SECONDS);
+		MessageListenerContainer container = this.registry.getListenerContainer("blocking");
+		container.start();
+		ContainerTestUtils.waitForAssignment(container, 2);
+		await().untilAsserted(() -> {
+			assertThat(p0.started).hasValue(1);
+			assertThat(p1.started).hasValue(1);
+		});
+		// p0 completes 500ms into the stop, p1 never completes and is cancelled at the timeout
+		Thread releaser = new Thread(() -> {
+			try {
+				Thread.sleep(500);
+			}
+			catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+			p0.proceed.countDown();
+		});
+		releaser.start();
+		long stopRequested = System.currentTimeMillis();
+		container.stop();
+		long stopReturned = System.currentTimeMillis();
+		releaser.join();
+		assertThat(stopReturned - stopRequested).isGreaterThanOrEqualTo(1900);
+		Long p0Committed = CommitTimes.COMMITS.get(new TopicPartition(BLOCKING_TOPIC, 0));
+		assertThat(p0Committed).isNotNull();
+		assertThat(p0Committed - stopRequested).isLessThan(1500);
+		assertThat(p0Committed).isLessThanOrEqualTo(stopReturned);
+		assertThat(CommitTimes.COMMITS).doesNotContainKey(new TopicPartition(BLOCKING_TOPIC, 1));
+		assertThat(p1.cancelled.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(committedOffset("blocking", BLOCKING_TOPIC, 0)).isEqualTo(1L);
+		assertThat(committedOffset("blocking", BLOCKING_TOPIC, 1)).isNull();
 	}
 
 	@Test
@@ -256,6 +304,10 @@ public class AwaitAsyncResultsOnStopTests {
 
 		final AsyncWork disabled = new AsyncWork();
 
+		final AsyncWork blockingP0 = new AsyncWork();
+
+		final AsyncWork blockingP1 = new AsyncWork();
+
 		@KafkaListener(id = "future", topics = FUTURE_TOPIC, containerFactory = "awaitOnStopFactory",
 				errorHandler = "errorHandler")
 		public CompletableFuture<Void> future(String in) {
@@ -289,6 +341,40 @@ public class AwaitAsyncResultsOnStopTests {
 		@KafkaListener(id = "disabled", topics = DISABLED_TOPIC, containerFactory = "kafkaListenerContainerFactory")
 		public CompletableFuture<Void> disabled(String in) {
 			return this.disabled.future();
+		}
+
+		@KafkaListener(id = "blocking", topics = BLOCKING_TOPIC, containerFactory = "awaitOnStopFactory",
+				autoStartup = "false",
+				properties = "interceptor.classes=org.springframework.kafka.listener.AwaitAsyncResultsOnStopTests$CommitTimes")
+		public CompletableFuture<Void> blocking(String in) {
+			return "p0".equals(in) ? this.blockingP0.future() : this.blockingP1.future();
+		}
+
+	}
+
+	/**
+	 * Records when each partition's offset was last committed.
+	 */
+	public static class CommitTimes implements ConsumerInterceptor<Integer, String> {
+
+		static final Map<TopicPartition, Long> COMMITS = new ConcurrentHashMap<>();
+
+		@Override
+		public ConsumerRecords<Integer, String> onConsume(ConsumerRecords<Integer, String> records) {
+			return records;
+		}
+
+		@Override
+		public void onCommit(Map<TopicPartition, OffsetAndMetadata> offsets) {
+			offsets.keySet().forEach(tp -> COMMITS.put(tp, System.currentTimeMillis()));
+		}
+
+		@Override
+		public void close() {
+		}
+
+		@Override
+		public void configure(Map<String, ?> configs) {
 		}
 
 	}

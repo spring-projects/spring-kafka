@@ -39,12 +39,16 @@ During application shutdown this work can outlive the container stop and run aga
 
 Starting with versions 4.0.8, 4.1.2 and 4.2, set the container property `awaitAsyncResultsOnStop` to `true` to bind in-flight async results to the container's lifecycle.
 The consumer thread then waits for the outstanding results, within the container's `shutdownTimeout` measured from the stop request, before committing pending offsets and closing the consumer.
-Results that complete in time are acknowledged and their offsets committed as usual.
+Results that complete in time are acknowledged and their offsets committed as they complete.
 Results still outstanding when the timeout expires are cancelled: the `Mono` subscription is disposed (which cancels a suspend function's coroutine), or `CompletableFuture.cancel(true)` is called (which does not interrupt code that is already running).
 A cancelled result is neither acknowledged nor passed to the error handler, so its record is redelivered after the partition is reassigned - the usual at-least-once contract for async listeners.
 
 Because the container's stop callback fires only after this wait, the container's lifecycle phase completes after the in-flight work has finished or been cancelled, and beans that are destroyed later in the shutdown sequence are no longer used by listener work.
 The `shutdownTimeout` therefore needs to cover the time the async work takes to complete; use a longer timeout if the work is expected to be cancelled too often.
+
+The blocking `stop()` still returns after `shutdownTimeout` at the latest.
+When results are cancelled at the timeout, the cancellation and the consumer close complete shortly after `stop()` returns, as for a blocking listener that runs past the timeout; the offsets of the results that completed during the wait are already committed at that point.
+The callback based `stop(Runnable)`, which the application context uses on shutdown, runs the callback only after the consumer is closed.
 
 [source, java]
 ----

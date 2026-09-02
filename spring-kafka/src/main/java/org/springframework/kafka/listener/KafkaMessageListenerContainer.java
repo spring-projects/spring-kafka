@@ -2181,9 +2181,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		/**
 		 * Wait for in-flight async results to complete, within the shutdown timeout
 		 * measured from the stop request, then cancel any that are still outstanding.
-		 * Results that complete while waiting acknowledge their records as usual, so the
-		 * subsequent {@link #commitPendingAcks()} commits their offsets; cancelled results
-		 * are not acknowledged and their records are redelivered.
+		 * Results that complete while waiting acknowledge their records as usual and their
+		 * offsets are committed as they complete, so a blocking {@code stop()} that expires
+		 * at the same deadline returns with those offsets already committed; cancelled
+		 * results are not acknowledged and their records are redelivered.
 		 */
 		private void awaitAsyncResults() {
 			Set<CompletableFuture<Void>> inFlight = this.inFlightAsyncResults;
@@ -2199,19 +2200,27 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (remaining <= 0) {
 					break;
 				}
-				try {
-					CompletableFuture.allOf(inFlight.toArray(new CompletableFuture<?>[0]))
-							.get(remaining, TimeUnit.MILLISECONDS);
+				// snapshot; a completion callback may have emptied the set since the loop check,
+				// and anyOf() with no futures would never complete
+				CompletableFuture<?>[] snapshot = inFlight.toArray(new CompletableFuture<?>[0]);
+				if (snapshot.length > 0) {
+					try {
+						CompletableFuture.anyOf(snapshot).get(remaining, TimeUnit.MILLISECONDS);
+					}
+					catch (@SuppressWarnings(UNUSED) TimeoutException e) {
+						break;
+					}
+					catch (@SuppressWarnings(UNUSED) InterruptedException e) {
+						Thread.currentThread().interrupt();
+						break;
+					}
+					catch (@SuppressWarnings(UNUSED) ExecutionException e) {
+						// a result was cancelled elsewhere; keep waiting for the others
+					}
 				}
-				catch (@SuppressWarnings(UNUSED) TimeoutException e) {
-					break;
-				}
-				catch (@SuppressWarnings(UNUSED) InterruptedException e) {
-					Thread.currentThread().interrupt();
-					break;
-				}
-				catch (@SuppressWarnings(UNUSED) ExecutionException e) {
-					// a result was cancelled elsewhere; keep waiting for the others
+				inFlight.removeIf(CompletableFuture::isDone);
+				if (this.kafkaTxManager == null) {
+					commitPendingAcks();
 				}
 			}
 			if (!inFlight.isEmpty()) {
@@ -2261,7 +2270,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (!Thread.currentThread().equals(this.consumerThread)) {
 				try {
 					this.acks.put(cRecord);
-					if (this.isManualImmediateAck || this.pausedForAsyncAcks) {  // NOSONAR (sync)
+					// no poll to wake once the container is stopping; a pending wakeup would
+					// abort the commit of this ack while the in-flight async results are awaited
+					if ((this.isManualImmediateAck || this.pausedForAsyncAcks) && isRunning()) {  // NOSONAR (sync)
 						this.consumer.wakeup();
 					}
 				}
@@ -2291,7 +2302,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					for (ConsumerRecord<K, V> cRecord : records) {
 						this.acks.put(cRecord);
 					}
-					if (this.isManualImmediateAck) {
+					if (this.isManualImmediateAck && isRunning()) {
 						this.consumer.wakeup();
 					}
 				}
