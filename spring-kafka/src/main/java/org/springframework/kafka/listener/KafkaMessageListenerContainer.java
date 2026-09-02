@@ -3715,8 +3715,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					commitOffsets(commits);
 				}
 				catch (@SuppressWarnings(UNUSED) WakeupException e) {
-					// ignore - not polling
-					this.logger.debug("Woken up during commit");
+					// a wakeup that landed after the poll returned (a stop request, or an ack
+					// from another thread) aborts the commit; the offsets were already removed
+					// from the pending map, so retry once now that the wakeup is consumed
+					this.logger.debug("Woken up during commit; retrying");
+					try {
+						commitOffsets(commits);
+					}
+					catch (@SuppressWarnings(UNUSED) WakeupException ex) {
+						this.logger.debug("Woken up during commit retry");
+					}
 				}
 			}
 		}
