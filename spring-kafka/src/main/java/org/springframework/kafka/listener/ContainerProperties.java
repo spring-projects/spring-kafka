@@ -1068,9 +1068,9 @@ public class ContainerProperties extends ConsumerProperties {
 	 * Set to true to wait for in-flight asynchronous listener results
 	 * ({@code CompletableFuture}, {@code Mono} or Kotlin suspend functions) to complete
 	 * when the container is stopped. The consumer thread waits, within the
-	 * {@link #setShutdownTimeout(long) shutdownTimeout}, before committing pending offsets
-	 * and closing the consumer, so results that complete in time are acknowledged and
-	 * their offsets committed. Results still outstanding when the timeout expires are
+	 * {@link #setShutdownTimeout(long) shutdownTimeout}, before closing the consumer;
+	 * results that complete in time are acknowledged and their offsets committed as they
+	 * complete. Results still outstanding when the timeout expires are
 	 * cancelled (the {@code Mono} subscription is disposed, the coroutine is cancelled, or
 	 * {@code CompletableFuture.cancel(true)} is called, which does not interrupt code that
 	 * is already running); a cancelled result is neither acknowledged nor passed to the
