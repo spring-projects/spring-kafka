@@ -662,6 +662,41 @@ public class JsonKafkaHeaderMapperTests {
 	}
 
 	@Test
+	void multiValueHeaderWithJsonTypesRoundTrip() {
+		// GIVEN
+		String multiValueStringHeader = "test-multi-value-string";
+		String multiValueIntHeader = "test-multi-value-int";
+
+		Message<String> message = MessageBuilder
+				.withPayload("test-multi-value-header")
+				.setHeader(multiValueStringHeader, List.of("value1", "value2"))
+				.setHeader(multiValueIntHeader, List.of(1, 2))
+				.build();
+
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		mapper.setMultiValueHeaderPatterns("test-multi-*");
+
+		Headers recordHeaders = new RecordHeaders();
+		mapper.fromHeaders(message.getHeaders(), recordHeaders);
+
+		assertThat(recordHeaders.headers(multiValueStringHeader)).hasSize(2);
+		assertThat(recordHeaders.headers(multiValueIntHeader)).hasSize(2);
+
+		// WHEN
+		Map<String, Object> mappedHeaders = new HashMap<>();
+		mapper.toHeaders(recordHeaders, mappedHeaders);
+
+		// THEN
+		assertThat(mappedHeaders)
+				.extractingByKey(multiValueStringHeader, InstanceOfAssertFactories.list(String.class))
+				.containsExactly("value1", "value2");
+
+		assertThat(mappedHeaders)
+				.extractingByKey(multiValueIntHeader, InstanceOfAssertFactories.list(Integer.class))
+				.containsExactly(1, 2);
+	}
+
+	@Test
 	void deserializationExceptionHeadersAreMappedAsNonByteArray() {
 		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
 

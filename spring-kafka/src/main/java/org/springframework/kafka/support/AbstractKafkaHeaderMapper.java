@@ -307,14 +307,26 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 	 * @since 4.0
 	 */
 	protected void fromUserHeader(String headerName, Header header, final Map<String, Object> headers) {
+		fromUserHeader(headerName, headerValueToAddIn(header), headers);
+	}
+
+	/**
+	 * Add the already converted header value to the target headers, collecting values
+	 * for headers matching a multi-value pattern into a {@link List}.
+	 * @param headerName the header name.
+	 * @param headerValue the converted header value.
+	 * @param headers the target headers.
+	 * @since 4.2
+	 */
+	protected void fromUserHeader(String headerName, @Nullable Object headerValue, final Map<String, Object> headers) {
 		if (!doesMatchMultiValueHeader(headerName)) {
-			headers.put(headerName, headerValueToAddIn(header));
+			headers.put(headerName, headerValue);
 		}
 		else {
 			@SuppressWarnings("unchecked")
 			List<Object> headerValues = (List<Object>)
 					headers.computeIfAbsent(headerName, key -> new ArrayList<>());
-			headerValues.add(headerValueToAddIn(header));
+			headerValues.add(headerValue);
 		}
 	}
 
