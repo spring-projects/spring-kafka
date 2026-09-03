@@ -349,7 +349,8 @@ public ProducerFactory<Integer, Object> producerFactory(Map<String, Object> conf
 ----
 
 Starting with version 2.8.3, you can configure the serializer to check if the map key is assignable from the target object, useful when a delegate serializer can serialize sub classes.
-In this case, if there are ambiguous matches, an ordered `Map`, such as a `LinkedHashMap` should be provided.
+In this mode, the most specific matching key in the class hierarchy is selected automatically, regardless of the map's iteration order.
+Map order only matters when a value is assignable to two _unrelated_ keys (for example, two different interfaces); in that ambiguous case, provide an ordered `Map`, such as a `LinkedHashMap`, to make the tie-break deterministic.
 
 [[by-topic]]
 === By Topic

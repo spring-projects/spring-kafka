@@ -16,10 +16,9 @@
 
 package org.springframework.kafka.support.serializer;
 
-import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.TreeMap;
 
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
@@ -35,28 +34,14 @@ import org.springframework.util.Assert;
  * @author Wang Zhiyang
  * @author Mahesh Aravind V
  * @author Jiwoo Lee
+ * @author Seonghun Lee
  *
  * @since 2.7.9
  *
  */
 public class DelegatingByTypeSerializer implements Serializer<Object> {
 
-	private static final Comparator<Class<?>> DELEGATES_ASSIGNABILITY_COMPARATOR =
-			(class1, class2) -> {
-
-				if (class1 == class2) {
-					return 0; // Classes are the same
-				}
-				if (class1.isAssignableFrom(class2)) {
-					return 1; // class2 is a superclass or superinterface of class1, so class2 should come first
-				}
-				if (class2.isAssignableFrom(class1)) {
-					return -1; // class1 is a superclass or superinterface of class2, so class1 should come first
-				}
-				return class1.getName().compareTo(class2.getName()); // If no inheritance relation, compare by name
-			};
-
-	private final Map<Class<?>, Serializer<?>> delegates = new TreeMap<>(DELEGATES_ASSIGNABILITY_COMPARATOR);
+	private final Map<Class<?>, Serializer<?>> delegates = new LinkedHashMap<>();
 
 	private final boolean assignable;
 
@@ -154,15 +139,26 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 			return (Serializer<T>) delegate;
 		}
 		else {
-			for (Entry<Class<?>, Serializer<?>> entry : delegates.entrySet()) {
-				if (entry.getKey().isAssignableFrom(data.getClass())) {
-					return (Serializer<T>) entry.getValue();
+			Serializer<?> delegate = delegates.get(data.getClass());
+			if (delegate == null) {
+				Class<?> mostSpecific = null;
+				for (Entry<Class<?>, Serializer<?>> entry : delegates.entrySet()) {
+					Class<?> candidate = entry.getKey();
+					if (candidate.isAssignableFrom(data.getClass())
+							&& (mostSpecific == null || mostSpecific.isAssignableFrom(candidate))) {
+
+						mostSpecific = candidate;
+						delegate = entry.getValue();
+					}
 				}
 			}
-			throw new SerializationException("No matching delegate for type: " + data.getClass().getName()
-					+ "; supported types: " + delegates.keySet().stream()
-					.map(Class::getName)
-					.toList());
+			if (delegate == null) {
+				throw new SerializationException("No matching delegate for type: " + data.getClass().getName()
+						+ "; supported types: " + delegates.keySet().stream()
+						.map(Class::getName)
+						.toList());
+			}
+			return (Serializer<T>) delegate;
 		}
 	}
 
