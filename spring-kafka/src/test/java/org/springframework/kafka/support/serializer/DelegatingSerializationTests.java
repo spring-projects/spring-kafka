@@ -54,6 +54,7 @@ import static org.mockito.Mockito.verify;
  * @author Artem Bilan
  * @author Soby Chacko
  * @author Jiwoo Lee
+ * @author Seonghun Lee
  *
  * @since 2.3
  *
@@ -310,6 +311,24 @@ public class DelegatingSerializationTests {
 	}
 
 	@Test
+	void assignableSelectsMostSpecificDespiteUnrelatedTypeInBetween() {
+		Serializer<?> ifaceSerializer = mock(Serializer.class);
+		Serializer<?> implSerializer = mock(Serializer.class);
+		Serializer<?> unrelatedSerializer = mock(Serializer.class);
+
+		// Using LinkedHashMap to ensure the order is always wrong
+		Map<Class<?>, Serializer<?>> delegates = new LinkedHashMap<>();
+		delegates.put(MiddleUnrelated.class, unrelatedSerializer);
+		delegates.put(AwareIface.class, ifaceSerializer);
+		delegates.put(ZebraImpl.class, implSerializer);
+
+		DelegatingByTypeSerializer serializer = new DelegatingByTypeSerializer(delegates, true);
+
+		assertThat(serializer.findDelegate(new ZebraImpl())).isSameAs(implSerializer);
+		assertThat(serializer.findDelegate(new MiddleUnrelated())).isSameAs(unrelatedSerializer);
+	}
+
+	@Test
 	void byTypeCloseClosesDelegates() {
 		Serializer<String> stringSerializer = spy(new StringSerializer());
 		Serializer<byte[]> bytesSerializer = spy(new ByteArraySerializer());
@@ -320,6 +339,15 @@ public class DelegatingSerializationTests {
 
 		verify(stringSerializer).close();
 		verify(bytesSerializer).close();
+	}
+
+	interface AwareIface {
+	}
+
+	static class MiddleUnrelated {
+	}
+
+	static class ZebraImpl implements AwareIface {
 	}
 
 }
