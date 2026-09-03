@@ -44,3 +44,13 @@ They ship in **4.2** only (they cannot be backported to 4.1).
 `ShareKafkaMessageListenerContainer` now exposes `getClientInstanceIds(Duration)`, returning the broker-assigned client _instance ids_ (KIP-714 telemetry `Uuid` values) of the running share consumers, keyed by `client.id`.
 This lets client-reported metrics be correlated with broker-side telemetry.
 See xref:kafka/kafka-queues.adoc#share-container-client-instance-ids[Client Instance IDs (Telemetry)].
+
+[[x42-header-mapper-from-user-header]]
+=== Converted-Value `fromUserHeader` Overload for Header Mappers
+
+`AbstractKafkaHeaderMapper` now provides a `protected fromUserHeader(String, Object, Map<String, Object>)` overload that accepts an already-converted header value and adds it to the target headers, collecting values for headers matching a multi-value pattern into a `List`.
+Custom `AbstractKafkaHeaderMapper` subclasses that decode header values themselves can route through this method to honor the configured multi-value header patterns without re-implementing the collection logic.
+This complements the existing `fromUserHeader(String, Header, Map<String, Object>)` method.
+
+The overload was introduced while fixing a defect where inbound multi-value headers carrying a `spring_json_header_types` entry (any non-`byte[]` value, such as `String` or `Integer`) collapsed to their last value instead of being collected into a `List`, contradicting the documented behavior.
+See xref:kafka/headers.adoc#multi-value-header[Support multi-value header mapping].
