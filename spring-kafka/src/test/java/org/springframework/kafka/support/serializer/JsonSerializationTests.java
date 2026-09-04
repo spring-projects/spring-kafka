@@ -158,7 +158,10 @@ public class JsonSerializationTests {
 		assertThatIllegalArgumentException()
 				.isThrownBy(() -> dummyEntityJsonDeserializer
 						.deserialize(topic, headers, jsonWriter.serialize(topic, entity)))
-				.withMessageContaining("not in the trusted packages");
+				.withMessageContaining("not in the trusted packages")
+				.withMessageContaining("spring.json.trusted.packages")
+				.withMessageContaining("addTrustedPackages")
+				.withMessageNotContaining("trust all (*)");
 	}
 
 	@Test
