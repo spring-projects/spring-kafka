@@ -57,6 +57,7 @@ import org.springframework.kafka.event.ConsumerStoppedEvent.Reason;
 import org.springframework.kafka.event.ShareConsumerStoppingEvent;
 import org.springframework.kafka.support.ShareAcknowledgment;
 import org.springframework.util.Assert;
+import org.springframework.util.StringUtils;
 
 /**
  * Share consumer container using the Java {@link ShareConsumer}.
@@ -265,7 +266,11 @@ public class ShareKafkaMessageListenerContainer<K, V>
 	}
 
 	private String determineClientId(int index) {
-		String baseClientId = this.clientId != null ? this.clientId : getBeanName();
+		String baseClientId = this.clientId;
+		if (baseClientId == null) {
+			String propertiesClientId = getContainerProperties().getClientId();
+			baseClientId = StringUtils.hasText(propertiesClientId) ? propertiesClientId : getBeanName();
+		}
 		if (this.concurrency > 1) {
 			return baseClientId + "-" + index;
 		}
