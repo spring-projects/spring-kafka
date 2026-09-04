@@ -82,7 +82,8 @@ You can trust additional packages with the `addTrustedPackages` method.
 Trust is **exact-package-name only**: a class is trusted only when its declaring package appears verbatim in the trusted list.
 Subpackages are *not* trusted transitively; each must be registered explicitly.
 If you receive messages from untrusted sources, register only the specific packages you need.
-To trust all packages without restriction, use `mapper.addTrustedPackages("+++*+++")` — though this is not recommended with untrusted sources.
+To trust every package, pass `+++*+++` to `addTrustedPackages` (for example, `mapper.addTrustedPackages("+++*+++")` or `spring.json.trusted.packages=+++*+++`).
+Trusting all packages means any type on the classpath can be deserialized from message headers, so prefer registering the specific packages you need.
 Classes in a non-trusted package are returned to the application as a `NonTrustedHeaderType` value instead of being deserialized.
 
 [source, java]
