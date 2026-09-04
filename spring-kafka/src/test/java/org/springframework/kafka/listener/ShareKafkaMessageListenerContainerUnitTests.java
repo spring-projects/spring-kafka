@@ -42,6 +42,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 /**
  * Unit tests for {@link ShareKafkaMessageListenerContainer}.
@@ -291,6 +292,66 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 			container.stop();
 			executor.destroy();
 		}
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void shouldUseClientIdFromContainerProperties() {
+		ShareConsumerFactory<String, String> mockFactory = mock(ShareConsumerFactory.class);
+		ShareConsumer<String, String> mockConsumer = mock(ShareConsumer.class);
+		given(mockFactory.createShareConsumer(any(), any())).willReturn(mockConsumer);
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+		containerProperties.setClientId("share-client-from-properties");
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("clientIdFromPropertiesContainer");
+		container.start();
+		container.stop();
+
+		verify(mockFactory).createShareConsumer(any(), eq("share-client-from-properties"));
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void shouldPreferTheClientIdSetOnTheContainer() {
+		ShareConsumerFactory<String, String> mockFactory = mock(ShareConsumerFactory.class);
+		ShareConsumer<String, String> mockConsumer = mock(ShareConsumer.class);
+		given(mockFactory.createShareConsumer(any(), any())).willReturn(mockConsumer);
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+		containerProperties.setClientId("share-client-from-properties");
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("clientIdOnContainerContainer");
+		container.setClientId("share-client-on-container");
+		container.start();
+		container.stop();
+
+		verify(mockFactory).createShareConsumer(any(), eq("share-client-on-container"));
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void shouldFallBackToTheBeanNameWhenNoClientIdIsConfigured() {
+		ShareConsumerFactory<String, String> mockFactory = mock(ShareConsumerFactory.class);
+		ShareConsumer<String, String> mockConsumer = mock(ShareConsumer.class);
+		given(mockFactory.createShareConsumer(any(), any())).willReturn(mockConsumer);
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("beanNameFallbackContainer");
+		container.start();
+		container.stop();
+
+		verify(mockFactory).createShareConsumer(any(), eq("beanNameFallbackContainer"));
 	}
 
 }
