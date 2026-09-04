@@ -279,9 +279,10 @@ public class DefaultJacksonJavaTypeMapper implements JacksonJavaTypeMapper, Bean
 					throw new IllegalArgumentException("The class '" + classId
 							+ "' is not in the trusted packages: "
 							+ this.trustedPackages + ". "
-							+ "If you believe this class is safe to deserialize, please provide its name. "
-							+ "If the serialization is only done by a trusted source, you can also enable "
-							+ "trust all (*).");
+							+ "If you believe this class is safe to deserialize, add its package via the "
+							+ "'spring.json.trusted.packages' property or the 'addTrustedPackages()' method. "
+							+ "Trusting all packages with '*' allows any type on the classpath to be "
+							+ "deserialized, so list the specific packages you need instead.");
 				}
 				else {
 					return this.typeFactory
