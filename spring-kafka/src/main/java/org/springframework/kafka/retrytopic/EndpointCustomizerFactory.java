@@ -147,7 +147,7 @@ public class EndpointCustomizerFactory {
 
 	private static TopicPartitionOffset[] getTopicPartitions(DestinationTopic.Properties properties,
 													RetryTopicNamesProviderFactory.RetryTopicNamesProvider namesProvider,
-													@Nullable TopicPartitionOffset[] topicPartitionOffsets) {
+													TopicPartitionOffset[] topicPartitionOffsets) {
 
 		return Stream.of(topicPartitionOffsets)
 				.map(tpo -> properties.isMainEndpoint()
@@ -182,7 +182,7 @@ public class EndpointCustomizerFactory {
 	private Collection<String> getTopics(MethodKafkaListenerEndpoint<?, ?> endpoint) {
 		Collection<String> topics = endpoint.getTopics();
 		if (topics.isEmpty()) {
-			@Nullable TopicPartitionOffset[] topicPartitionsToAssign = endpoint.getTopicPartitionsToAssign();
+			TopicPartitionOffset @Nullable [] topicPartitionsToAssign = endpoint.getTopicPartitionsToAssign();
 			if (topicPartitionsToAssign != null && topicPartitionsToAssign.length > 0) {
 				topics = Arrays.stream(topicPartitionsToAssign)
 						.map(TopicPartitionOffset::getTopic)

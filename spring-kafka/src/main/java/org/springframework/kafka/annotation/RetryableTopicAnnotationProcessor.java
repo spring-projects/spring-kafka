@@ -367,7 +367,9 @@ public class RetryableTopicAnnotationProcessor {
 			}
 			else if (resolved instanceof Collection<?> coll) {
 				for (Object item : coll) {
-					result.add(item.toString());
+					if (item != null) {
+						result.add(item.toString());
+					}
 				}
 			}
 			else if (resolved instanceof String str) {
