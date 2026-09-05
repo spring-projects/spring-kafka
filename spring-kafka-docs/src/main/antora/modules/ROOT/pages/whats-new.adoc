@@ -7,6 +7,14 @@
 This section covers the changes made from version 4.1 to version 4.2.
 For changes in earlier versions, see xref:appendix/change-history.adoc[Change History].
 
+[[x42-await-async-results-on-stop]]
+=== Awaiting Async Listener Results on Container Stop
+
+The new container property `awaitAsyncResultsOnStop` binds in-flight asynchronous listener results (`CompletableFuture`, `Mono`, Kotlin `suspend`) to the container's lifecycle.
+When `true`, the consumer thread waits for outstanding results within the `shutdownTimeout` before closing the consumer, committing the offsets of results as they complete; results still outstanding when the timeout expires are cancelled, are not acknowledged, and their records are redelivered.
+The property is `false` by default.
+See xref:kafka/receiving-messages/async-returns.adoc#async-returns-stop[Async Results and Container Stop].
+
 [[x42-error-handler-partition-scoped-clear]]
 === Partition-Scoped Thread State Clearing in Error Handlers
 

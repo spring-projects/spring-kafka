@@ -16,6 +16,8 @@
 
 package org.springframework.kafka.listener
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -32,6 +34,7 @@ import org.springframework.kafka.annotation.EnableKafka
 import org.springframework.kafka.annotation.KafkaHandler
 import org.springframework.kafka.annotation.KafkaListener
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory
+import org.springframework.kafka.config.KafkaListenerEndpointRegistry
 import org.springframework.kafka.core.ConsumerFactory
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory
 import org.springframework.kafka.core.DefaultKafkaProducerFactory
@@ -58,6 +61,7 @@ import java.util.concurrent.atomic.AtomicInteger
  * @author Wang ZhiYang
  * @author Artem Bilan
  * @author Youngjoo Kim
+ * @author Nikita Kibitkin
  *
  * @since 3.1
  */
@@ -66,7 +70,8 @@ import java.util.concurrent.atomic.AtomicInteger
 @EmbeddedKafka(topics = ["kotlinAsyncTestTopic1", "kotlinAsyncTestTopic2",
 		"kotlinAsyncBatchTestTopic1", "kotlinAsyncBatchTestTopic2", "kotlinReplyTopic1",
 		"kotlinAsyncTestTopicCommonHandler", "kotlinAsyncTestTopicBoundedRetry",
-		"kotlinAsyncTestTopicTwoRecordRetry", "kotlinAsyncTestTopicBurstRetry"], partitions = 1)
+		"kotlinAsyncTestTopicTwoRecordRetry", "kotlinAsyncTestTopicBurstRetry",
+		"kotlinAsyncTestTopicAwaitOnStop", "kotlinAsyncTestTopicCancelOnStop"], partitions = 1)
 class EnableKafkaKotlinCoroutinesTests {
 
 	@Autowired
@@ -74,6 +79,12 @@ class EnableKafkaKotlinCoroutinesTests {
 
 	@Autowired
 	private lateinit var template: KafkaTemplate<String, String>
+
+	@Autowired
+	private lateinit var registry: KafkaListenerEndpointRegistry
+
+	@Autowired
+	private lateinit var broker: EmbeddedKafkaBroker
 
 	@Test
 	fun `test listener`() {
@@ -181,6 +192,48 @@ class EnableKafkaKotlinCoroutinesTests {
 			}
 	}
 
+	@Test
+	fun `test suspend function completed within shutdown timeout is acknowledged`() {
+		this.template.send("kotlinAsyncTestTopicAwaitOnStop", "foo").get(10, TimeUnit.SECONDS)
+		assertThat(this.config.awaitOnStopStarted.await(10, TimeUnit.SECONDS)).isTrue()
+		val stopped = CountDownLatch(1)
+		var pendingAtStop = -1L
+		this.registry.getListenerContainer("kotlin-await-on-stop")!!.stop {
+			pendingAtStop = this.config.awaitOnStopDone.count
+			stopped.countDown()
+		}
+		// the container waits for the in-flight result
+		assertThat(stopped.await(1, TimeUnit.SECONDS)).isFalse()
+		this.config.awaitOnStopGate.complete(Unit)
+		assertThat(stopped.await(10, TimeUnit.SECONDS)).isTrue()
+		assertThat(pendingAtStop).isEqualTo(0L)
+		assertThat(committedOffset("kotlin-await-on-stop", "kotlinAsyncTestTopicAwaitOnStop")).isEqualTo(1L)
+	}
+
+	@Test
+	fun `test suspend function not completed within shutdown timeout is cancelled and redelivered`() {
+		this.template.send("kotlinAsyncTestTopicCancelOnStop", "foo").get(10, TimeUnit.SECONDS)
+		await().until { this.config.cancelOnStopStarted.get() == 1 }
+		val container = this.registry.getListenerContainer("kotlin-cancel-on-stop")!!
+		val stopped = CountDownLatch(1)
+		container.stop { stopped.countDown() }
+		assertThat(stopped.await(10, TimeUnit.SECONDS)).isTrue()
+		assertThat(this.config.cancelOnStopCancelled.await(10, TimeUnit.SECONDS)).isTrue()
+		assertThat(this.config.cancelOnStopDone.get()).isEqualTo(0)
+		assertThat(committedOffset("kotlin-cancel-on-stop", "kotlinAsyncTestTopicCancelOnStop")).isNull()
+		// the cancelled record is redelivered on restart
+		container.start()
+		await().until { this.config.cancelOnStopStarted.get() == 2 }
+		this.config.cancelOnStopGate.complete(Unit)
+		await().until { this.config.cancelOnStopDone.get() == 1 }
+		await().untilAsserted {
+			assertThat(committedOffset("kotlin-cancel-on-stop", "kotlinAsyncTestTopicCancelOnStop")).isEqualTo(1L)
+		}
+	}
+
+	private fun committedOffset(group: String, topic: String): Long? =
+		KafkaTestUtils.getCurrentOffset(this.broker.brokersAsString, group, topic, 0)?.offset()
+
 	@KafkaListener(id = "sendTopic", topics = ["kotlinAsyncTestTopic3"],
 			containerFactory = "kafkaListenerContainerFactory")
 	class Listener {
@@ -236,6 +289,21 @@ class EnableKafkaKotlinCoroutinesTests {
 
 		@Volatile
 		var burstRetryRecoveredLatch = CountDownLatch(1)
+
+		val awaitOnStopStarted = CountDownLatch(1)
+
+		val awaitOnStopGate = CompletableDeferred<Unit>()
+
+		val awaitOnStopDone = CountDownLatch(1)
+
+		// Counts deliveries: the first is cancelled on stop, the second is the redelivery.
+		val cancelOnStopStarted = AtomicInteger()
+
+		val cancelOnStopGate = CompletableDeferred<Unit>()
+
+		val cancelOnStopCancelled = CountDownLatch(1)
+
+		val cancelOnStopDone = AtomicInteger()
 
 		@Value("\${" + EmbeddedKafkaBroker.SPRING_EMBEDDED_KAFKA_BROKERS + "}")
 		private lateinit var brokerAddresses: String
@@ -371,6 +439,16 @@ class EnableKafkaKotlinCoroutinesTests {
 			return factory
 		}
 
+		@Bean
+		fun kafkaListenerContainerFactoryAwaitOnStop(): ConcurrentKafkaListenerContainerFactory<String, String> {
+			val factory: ConcurrentKafkaListenerContainerFactory<String, String>
+					= ConcurrentKafkaListenerContainerFactory()
+			factory.setConsumerFactory(kcf())
+			factory.containerProperties.isAwaitAsyncResultsOnStop = true
+			factory.containerProperties.shutdownTimeout = 2000
+			return factory
+		}
+
 		@KafkaListener(id = "kotlin", topics = ["kotlinAsyncTestTopic1"],
 				containerFactory = "kafkaListenerContainerFactory")
 		suspend fun listen(value: String, acknowledgment: Acknowledgment) {
@@ -428,6 +506,28 @@ class EnableKafkaKotlinCoroutinesTests {
 		suspend fun listenBurstRetry(value: String) {
 			burstRetryDeliveries.incrementAndGet()
 			throw RuntimeException("Always fail (burst retry)")
+		}
+
+		@KafkaListener(id = "kotlin-await-on-stop", topics = ["kotlinAsyncTestTopicAwaitOnStop"],
+				containerFactory = "kafkaListenerContainerFactoryAwaitOnStop")
+		suspend fun listenAwaitOnStop(value: String) {
+			awaitOnStopStarted.countDown()
+			awaitOnStopGate.await()
+			awaitOnStopDone.countDown()
+		}
+
+		@KafkaListener(id = "kotlin-cancel-on-stop", topics = ["kotlinAsyncTestTopicCancelOnStop"],
+				containerFactory = "kafkaListenerContainerFactoryAwaitOnStop")
+		suspend fun listenCancelOnStop(value: String) {
+			cancelOnStopStarted.incrementAndGet()
+			try {
+				cancelOnStopGate.await()
+			}
+			catch (e: CancellationException) {
+				cancelOnStopCancelled.countDown()
+				throw e
+			}
+			cancelOnStopDone.incrementAndGet()
 		}
 
 	}
