@@ -51,10 +51,14 @@ import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.event.ConsumerStoppedEvent.Reason;
 import org.springframework.kafka.event.ShareConsumerStoppingEvent;
 import org.springframework.kafka.listener.ContainerProperties.ShareAckMode;
+import org.springframework.kafka.support.ShareAcknowledgment;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -73,6 +77,7 @@ import static org.mockito.Mockito.verify;
  * @author Soby Chacko
  * @author Maxwell Balla
  * @author Kumar Gaurav
+ * @author OhKyu Chan
  * @since 4.0
  */
 @ExtendWith(MockitoExtension.class)
@@ -904,4 +909,72 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 			container.stop();
 		}
 	}
+
+	@Test
+	void terminalAcknowledgmentIsNotDowngradedByStaleRenewNotification() throws Exception {
+		ShareAcknowledgment ack = captureManualAcknowledgment();
+		ack.renew();
+		ack.acknowledge();
+		assertThat(KafkaTestUtils.getPropertyValue(ack, "acknowledgmentType", AtomicReference.class).get())
+				.isEqualTo(AcknowledgeType.ACCEPT);
+
+		// Exactly what processQueuedAcknowledgments() does when it drains the RENEW queued before the ACCEPT
+		ReflectionTestUtils.invokeMethod(ack, "notifyAcknowledged", AcknowledgeType.RENEW);
+
+		assertThat(KafkaTestUtils.getPropertyValue(ack, "acknowledgmentType", AtomicReference.class).get())
+				.isEqualTo(AcknowledgeType.ACCEPT);
+	}
+
+	@Test
+	void secondTerminalAcknowledgmentIsStillRejectedAfterStaleRenewNotification() throws Exception {
+		ShareAcknowledgment ack = captureManualAcknowledgment();
+		ack.renew();
+		ack.acknowledge();
+		ReflectionTestUtils.invokeMethod(ack, "notifyAcknowledged", AcknowledgeType.RENEW);
+
+		assertThatIllegalStateException().isThrownBy(ack::reject);
+	}
+
+	@SuppressWarnings("unchecked")
+	private ShareAcknowledgment captureManualAcknowledgment() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock(ShareConsumerFactory.class);
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+		ShareConsumer<String, String> mockConsumer = mock(ShareConsumer.class);
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("test-topic", 0, 0L, "key", "value");
+		ConsumerRecords<String, String> records = new ConsumerRecords<>(
+				Map.of(new TopicPartition("test-topic", 0), List.of(record)), Map.of());
+		AtomicBoolean firstPoll = new AtomicBoolean(true);
+		given(mockConsumer.poll(any())).willAnswer(invocation -> {
+			if (firstPoll.compareAndSet(true, false)) {
+				return records;
+			}
+			Thread.sleep(50);
+			return ConsumerRecords.empty();
+		});
+
+		AtomicReference<ShareAcknowledgment> captured = new AtomicReference<>();
+		CountDownLatch latch = new CountDownLatch(1);
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.MANUAL);
+		containerProperties.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>)
+				(rec, acknowledgment, consumer) -> {
+					captured.set(acknowledgment);
+					latch.countDown();
+				});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("staleRenewContainer");
+		container.start();
+		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+		// Stop first so the consumer thread no longer drains the queue; everything after this is deterministic.
+		container.stop();
+
+		ShareAcknowledgment ack = captured.get();
+		assertThat(ack).isNotNull();
+		return ack;
+	}
+
 }
