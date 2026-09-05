@@ -382,22 +382,22 @@ public class JsonKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 			logger.error(e, () -> "Could not load class for header: " + header.key());
 		}
 		if (String.class.equals(type) && (header.value().length == 0 || header.value()[0] != '"')) {
-			headers.put(header.key(), new String(header.value(), getCharset()));
+			fromUserHeader(header.key(), new String(header.value(), getCharset()), headers);
 		}
 		else {
 			if (trusted) {
 				try {
 					Object value = decodeValue(header, type);
-					headers.put(header.key(), value);
+					fromUserHeader(header.key(), value, headers);
 				}
 				catch (Exception e) {
 					logger.error(e, () ->
 							"Could not decode json type: " + requestedType + " for key: " + header.key());
-					headers.put(header.key(), header.value());
+					fromUserHeader(header.key(), header.value(), headers);
 				}
 			}
 			else {
-				headers.put(header.key(), new NonTrustedHeaderType(header.value(), requestedType));
+				fromUserHeader(header.key(), new NonTrustedHeaderType(header.value(), requestedType), headers);
 			}
 		}
 	}
