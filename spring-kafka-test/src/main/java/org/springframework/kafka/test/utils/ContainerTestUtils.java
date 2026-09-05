@@ -63,6 +63,9 @@ public final class ContainerTestUtils {
 		while (n++ < 600 && count < partitions) { // NOSONAR magic #
 			count = 0;
 			for (Object aContainer : containers) {
+				if (aContainer == null) {
+					continue;
+				}
 				if (getAssignedPartitions == null) {
 					getAssignedPartitions = getAssignedPartitionsMethod(aContainer.getClass());
 				}
