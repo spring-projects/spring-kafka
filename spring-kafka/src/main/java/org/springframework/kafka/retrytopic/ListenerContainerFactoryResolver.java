@@ -21,7 +21,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 
 import org.jspecify.annotations.Nullable;
 
@@ -121,17 +120,19 @@ public class ListenerContainerFactoryResolver {
 
 		ConcurrentKafkaListenerContainerFactory<?, ?> verifiedFactoryFromKafkaListenerAnnotation = verifyClass(
 				factoryFromKafkaListenerAnnotation);
-		return factoryResolvers
+		ConcurrentKafkaListenerContainerFactory<?, ?> resolvedFactory = factoryResolvers
 				.stream()
-				.map(resolver -> Optional.ofNullable(
-						resolver.resolveFactory(verifiedFactoryFromKafkaListenerAnnotation, config)))
-				.filter(Optional::isPresent)
-				.map(Optional::get)
+				.map(resolver -> resolver.resolveFactory(verifiedFactoryFromKafkaListenerAnnotation, config))
+				.filter(Objects::nonNull)
 				.findFirst()
-				.orElseThrow(() -> new IllegalArgumentException("Could not resolve a viable " +
-						"ConcurrentKafkaListenerContainerFactory to configure the retry topic. " +
-						"Try creating a bean with name " +
-						RetryTopicBeanNames.DEFAULT_LISTENER_CONTAINER_FACTORY_BEAN_NAME));
+				.orElse(null);
+		if (resolvedFactory == null) {
+			throw new IllegalArgumentException("Could not resolve a viable " +
+					"ConcurrentKafkaListenerContainerFactory to configure the retry topic. " +
+					"Try creating a bean with name " +
+					RetryTopicBeanNames.DEFAULT_LISTENER_CONTAINER_FACTORY_BEAN_NAME);
+		}
+		return resolvedFactory;
 	}
 
 	@Nullable
