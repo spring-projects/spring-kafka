@@ -76,6 +76,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	private volatile @Nullable Reason reason;
 
+	private long generation;
+
 	/**
 	 * Construct an instance with the supplied configuration properties.
 	 * The topic partitions are distributed evenly across the delegate
@@ -313,7 +315,42 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 			container = new KafkaMessageListenerContainer<>(this, this.consumerFactory, // NOSONAR
 					containerProperties, partitionSubset(containerProperties, i));
 		}
+		container.setErrorHandlerContainer(new ChildAwareMessageListenerContainer<>(this, this.generation));
 		return container;
+	}
+
+	void invokeIfGenerationCurrent(long childGeneration, Runnable operation) {
+		this.lifecycleLock.lock();
+		try {
+			if (this.generation == childGeneration) {
+				operation.run();
+			}
+		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
+	}
+
+	boolean stopIfGenerationCurrent(long childGeneration, Runnable callback, boolean normal) {
+		this.lifecycleLock.lock();
+		try {
+			if (this.generation != childGeneration) {
+				return false;
+			}
+			if (!isRunning()) {
+				callback.run();
+			}
+			else if (normal) {
+				stop(callback);
+			}
+			else {
+				stopAbnormally(callback);
+			}
+			return true;
+		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
 	}
 
 	private @Nullable TopicPartitionOffset @Nullable [] partitionSubset(ContainerProperties containerProperties, int index) {
@@ -545,6 +582,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	}
 
 	private void clearState() {
+		this.generation++;
 		this.containers.clear();
 		this.startedContainers.set(0);
 		this.reason = null;
