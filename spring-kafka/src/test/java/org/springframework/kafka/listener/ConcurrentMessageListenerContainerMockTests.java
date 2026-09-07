@@ -47,6 +47,7 @@ import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.GroupAuthorizationException;
+import org.apache.kafka.common.errors.WakeupException;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -858,6 +859,58 @@ public class ConcurrentMessageListenerContainerMockTests {
 		else {
 			verify(consumer).commitSync(any(), any());
 		}
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void commitRetriedAfterWakeup() throws InterruptedException {
+		TopicPartition tp0 = new TopicPartition("foo", 0);
+		ConsumerRecords records = new ConsumerRecords<>(
+				Map.of(tp0, List.of(new ConsumerRecord("foo", 0, 0, null, "bar"))), Map.of());
+		AtomicInteger pollPhase = new AtomicInteger();
+		Consumer consumer = mock(Consumer.class);
+		AtomicReference<ConsumerRebalanceListener> rebal = new AtomicReference<>();
+		willAnswer(invocation -> {
+			rebal.set(invocation.getArgument(1));
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any());
+		willAnswer(inv -> {
+			if (pollPhase.getAndIncrement() == 0) {
+				rebal.get().onPartitionsAssigned(List.of(tp0));
+				return records;
+			}
+			Thread.sleep(50);
+			return ConsumerRecords.empty();
+		}).given(consumer).poll(any());
+		AtomicInteger commitAttempts = new AtomicInteger();
+		CountDownLatch committed = new CountDownLatch(1);
+		willAnswer(inv -> {
+			// a wakeup that landed after the poll returned aborts the first attempt
+			if (commitAttempts.getAndIncrement() == 0) {
+				throw new WakeupException();
+			}
+			committed.countDown();
+			return null;
+		}).given(consumer).commitSync(any(Map.class), any(Duration.class));
+		ConsumerFactory cf = mock(ConsumerFactory.class);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		given(cf.getConfigurationProperties())
+				.willReturn(Collections.singletonMap(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"));
+		ContainerProperties containerProperties = new ContainerProperties("foo");
+		containerProperties.setGroupId("grp");
+		containerProperties.setAckMode(AckMode.MANUAL);
+		containerProperties.setMessageListener((AcknowledgingMessageListener<String, String>) (rec, ack) -> {
+			ack.acknowledge();
+		});
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(cf,
+				containerProperties);
+		container.start();
+		assertThat(committed.await(10, TimeUnit.SECONDS)).isTrue();
+		container.stop();
+		ArgumentCaptor<Map<TopicPartition, OffsetAndMetadata>> commits = ArgumentCaptor.forClass(Map.class);
+		verify(consumer, times(2)).commitSync(commits.capture(), any(Duration.class));
+		assertThat(commits.getAllValues().get(0)).containsEntry(tp0, new OffsetAndMetadata(1));
+		assertThat(commits.getAllValues().get(1)).isEqualTo(commits.getAllValues().get(0));
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })

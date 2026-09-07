@@ -42,9 +42,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -112,6 +114,7 @@ import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOp
 import org.springframework.kafka.listener.ContainerProperties.EOSMode;
 import org.springframework.kafka.listener.adapter.AsyncRepliesAware;
 import org.springframework.kafka.listener.adapter.FilteringMessageListenerAdapter;
+import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
 import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -179,6 +182,7 @@ import org.springframework.util.StringUtils;
  * @author Youngjoo Kim
  * @author Bill Kim
  * @author Hakaze Arimu
+ * @author Nikita Kibitkin
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -874,6 +878,15 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		// (GH-4504 amplification bound). Consumer thread only.
 		private final Map<TopicPartition, Long> asyncRetryOffsets = new HashMap<>();
 
+		// In-flight async results (CompletableFuture, Mono, suspend) awaited on stop when
+		// awaitAsyncResultsOnStop is enabled; added on the consumer thread, removed by
+		// completion callbacks on arbitrary threads. Null when the property is disabled.
+		private final @Nullable Set<CompletableFuture<Void>> inFlightAsyncResults;
+
+		private final @Nullable MessagingMessageListenerAdapter<K, V> asyncResultAdapter;
+
+		private volatile long stopRequestedAt;
+
 		// Gates the dispatch-loop sync-failure detection so publish-and-done recoverers
 		// (DeadLetterPublishingRecoverer into a retry topic) — which fire the callback
 		// synchronously without throwing RecordInRetryException — do not cause the
@@ -955,6 +968,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				throw new IllegalArgumentException("Listener must be one of 'MessageListener', "
 						+ "'BatchMessageListener', or the variants that are consumer aware and/or "
 						+ "Acknowledging not " + listener.getClass().getName());
+			}
+			this.asyncResultAdapter = this.containerProperties.isAwaitAsyncResultsOnStop()
+					? findMessagingAdapter(listener)
+					: null;
+			if (this.asyncResultAdapter != null) {
+				this.inFlightAsyncResults = ConcurrentHashMap.newKeySet();
+				this.asyncResultAdapter.addCallbackForAsyncResult(this.consumer, this::trackAsyncResult);
+			}
+			else {
+				this.inFlightAsyncResults = null;
 			}
 			this.listenerType = listenerType;
 			this.isConsumerAwareListener = listenerType.equals(ListenerType.ACKNOWLEDGING_CONSUMER_AWARE)
@@ -1887,6 +1910,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		void wakeIfNecessaryForStop() {
+			this.stopRequestedAt = System.currentTimeMillis();
 			if (this.polling.getAndSet(false)) {
 				this.consumer.wakeup();
 			}
@@ -2093,6 +2117,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			publishConsumerStoppingEvent(this.consumer);
 			Collection<TopicPartition> partitions = getAssignedPartitions();
 			if (!this.fatalError) {
+				awaitAsyncResults();
 				if (this.kafkaTxManager == null) {
 					commitPendingAcks();
 					try {
@@ -2112,6 +2137,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.monitorTask.cancel(true);
 			if (!this.taskSchedulerExplicitlySet) {
 				((ThreadPoolTaskScheduler) this.taskScheduler).destroy();
+			}
+			if (this.asyncResultAdapter != null) {
+				this.asyncResultAdapter.removeCallbackForAsyncResult(this.consumer);
 			}
 			this.consumer.close();
 			getAfterRollbackProcessor().clearThreadState();
@@ -2147,6 +2175,60 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			catch (Exception ex) {
 				this.logger.error(ex, "Consumer exception");
+			}
+		}
+
+		/**
+		 * Wait for in-flight async results to complete, within the shutdown timeout
+		 * measured from the stop request, then cancel any that are still outstanding.
+		 * Results that complete while waiting acknowledge their records as usual and their
+		 * offsets are committed as they complete, so a blocking {@code stop()} that expires
+		 * at the same deadline returns with those offsets already committed; cancelled
+		 * results are not acknowledged and their records are redelivered.
+		 */
+		private void awaitAsyncResults() {
+			Set<CompletableFuture<Void>> inFlight = this.inFlightAsyncResults;
+			if (inFlight == null || inFlight.isEmpty()) {
+				return;
+			}
+			long stopRequested = this.stopRequestedAt;
+			long deadline = (stopRequested > 0 ? stopRequested : System.currentTimeMillis())
+					+ this.containerProperties.getShutdownTimeout();
+			this.logger.debug(() -> "Waiting for " + inFlight.size() + " in-flight async result(s) before stopping");
+			while (!inFlight.isEmpty()) {
+				long remaining = deadline - System.currentTimeMillis();
+				if (remaining <= 0) {
+					break;
+				}
+				// snapshot; a completion callback may have emptied the set since the loop check,
+				// and anyOf() with no futures would never complete
+				CompletableFuture<?>[] snapshot = inFlight.toArray(new CompletableFuture<?>[0]);
+				if (snapshot.length > 0) {
+					try {
+						CompletableFuture.anyOf(snapshot).get(remaining, TimeUnit.MILLISECONDS);
+					}
+					catch (@SuppressWarnings(UNUSED) TimeoutException e) {
+						break;
+					}
+					catch (@SuppressWarnings(UNUSED) InterruptedException e) {
+						Thread.currentThread().interrupt();
+						break;
+					}
+					catch (@SuppressWarnings(UNUSED) ExecutionException e) {
+						// a result was cancelled elsewhere; keep waiting for the others
+					}
+				}
+				inFlight.removeIf(CompletableFuture::isDone);
+				if (this.kafkaTxManager == null) {
+					commitPendingAcks();
+				}
+			}
+			if (!inFlight.isEmpty()) {
+				List<CompletableFuture<Void>> outstanding = new ArrayList<>(inFlight);
+				this.logger.info(() -> "Cancelling " + outstanding.size()
+						+ " in-flight async result(s) not completed within shutdownTimeout; "
+						+ "their records are not acknowledged");
+				outstanding.forEach(result -> result.cancel(true));
 			}
 		}
 
@@ -2188,7 +2270,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (!Thread.currentThread().equals(this.consumerThread)) {
 				try {
 					this.acks.put(cRecord);
-					if (this.isManualImmediateAck || this.pausedForAsyncAcks) {  // NOSONAR (sync)
+					// no poll to wake once the container is stopping; a pending wakeup would
+					// abort the commit of this ack while the in-flight async results are awaited
+					if ((this.isManualImmediateAck || this.pausedForAsyncAcks) && isRunning()) {  // NOSONAR (sync)
 						this.consumer.wakeup();
 					}
 				}
@@ -2218,7 +2302,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					for (ConsumerRecord<K, V> cRecord : records) {
 						this.acks.put(cRecord);
 					}
-					if (this.isManualImmediateAck) {
+					if (this.isManualImmediateAck && isRunning()) {
 						this.consumer.wakeup();
 					}
 				}
@@ -3631,8 +3715,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					commitOffsets(commits);
 				}
 				catch (@SuppressWarnings(UNUSED) WakeupException e) {
-					// ignore - not polling
-					this.logger.debug("Woken up during commit");
+					// a wakeup that landed after the poll returned (a stop request, or an ack
+					// from another thread) aborts the commit; the offsets were already removed
+					// from the pending map, so retry once now that the wakeup is consumed
+					this.logger.debug("Woken up during commit; retrying");
+					try {
+						commitOffsets(commits);
+					}
+					catch (@SuppressWarnings(UNUSED) WakeupException ex) {
+						this.logger.debug("Woken up during commit retry");
+					}
 				}
 			}
 		}
@@ -3727,6 +3819,25 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void callbackForAsyncFailure(ConsumerRecord<K, V> cRecord, RuntimeException ex) {
 			this.failedRecords.addLast(new FailedRecordTuple<>(cRecord, ex, getCurrentObservation()));
+		}
+
+		@SuppressWarnings(UNCHECKED)
+		private @Nullable MessagingMessageListenerAdapter<K, V> findMessagingAdapter(
+				GenericMessageListener<?> listener) {
+
+			Object target = listener;
+			while (target instanceof DelegatingMessageListener<?> dml) {
+				target = dml.getDelegate();
+			}
+			return target instanceof MessagingMessageListenerAdapter<?, ?> adapter
+					? (MessagingMessageListenerAdapter<K, V>) adapter
+					: null;
+		}
+
+		private void trackAsyncResult(CompletableFuture<Void> result) {
+			Set<CompletableFuture<Void>> inFlight = Objects.requireNonNull(this.inFlightAsyncResults);
+			inFlight.add(result);
+			result.whenComplete((r, t) -> inFlight.remove(result));
 		}
 
 		@Override

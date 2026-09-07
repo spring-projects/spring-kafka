@@ -27,8 +27,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
@@ -99,6 +101,7 @@ import org.springframework.util.TypeUtils;
  * @author Soby Chacko
  * @author Sanghyeok An
  * @author Abhishek Moondra
+ * @author Nikita Kibitkin
  */
 public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware, AsyncRepliesAware {
 
@@ -163,6 +166,9 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 	private ObservationRegistry observationRegistry = ObservationRegistry.NOOP;
 
 	private @Nullable BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback;
+
+	private final Map<Consumer<?, ?>, java.util.function.Consumer<CompletableFuture<Void>>> asyncResultCallbacks =
+			new ConcurrentHashMap<>();
 
 	/**
 	 * Create an instance with the provided bean and method.
@@ -338,6 +344,37 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			@Nullable BiConsumer<ConsumerRecord<K, V>, RuntimeException> asyncRetryCallback) {
 
 		this.asyncRetryCallback = asyncRetryCallback;
+	}
+
+	/**
+	 * Add a callback to be notified of each in-flight asynchronous result
+	 * ({@link CompletableFuture}, {@link Mono} or Kotlin suspend function) returned by
+	 * listener invocations for the provided consumer. The callback receives a future that
+	 * completes once the result has been handled (the reply sent and the record
+	 * acknowledged, or the failure handled). Cancelling that future cancels the in-flight
+	 * work (disposing the {@link Mono} subscription, which also cancels a coroutine, or
+	 * cancelling the {@link CompletableFuture}); a result cancelled this way is neither
+	 * acknowledged nor passed to the error handler. The callback is keyed by the consumer
+	 * because a concurrent container's child containers share this adapter instance.
+	 * @param consumer the consumer whose listener invocations to track.
+	 * @param callback the callback.
+	 * @since 4.0.8
+	 * @see #removeCallbackForAsyncResult(Consumer)
+	 */
+	public void addCallbackForAsyncResult(Consumer<?, ?> consumer,
+			java.util.function.Consumer<CompletableFuture<Void>> callback) {
+
+		this.asyncResultCallbacks.put(consumer, callback);
+	}
+
+	/**
+	 * Remove the callback added by
+	 * {@link #addCallbackForAsyncResult(Consumer, java.util.function.Consumer)}.
+	 * @param consumer the consumer.
+	 * @since 4.0.8
+	 */
+	public void removeCallbackForAsyncResult(Consumer<?, ?> consumer) {
+		this.asyncResultCallbacks.remove(consumer);
 	}
 
 	protected boolean isMessageList() {
@@ -563,6 +600,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 				this.messageReturnType;
 
 		CompletableFuture<?> completableFutureResult;
+		boolean asyncResult = true;
 
 		if (monoPresent && result instanceof Mono<?> mono) {
 			if (acknowledgment == null || !acknowledgment.isOutOfOrderCommit()) {
@@ -573,6 +611,7 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		}
 		else if (!(result instanceof CompletableFuture<?>)) {
 			completableFutureResult = CompletableFuture.completedFuture(result);
+			asyncResult = false;
 		}
 		else {
 			completableFutureResult = (CompletableFuture<?>) result;
@@ -582,9 +621,14 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			}
 		}
 
+		CompletableFuture<Void> inFlight = asyncResult ? trackAsyncResult(consumer, completableFutureResult) : null;
 		completableFutureResult.whenComplete((r, t) -> {
 			try (var ignored = observation.openScope()) {
-				if (t == null) {
+				if (t instanceof CancellationException && inFlight != null && inFlight.isCancelled()) {
+					observation.error(t);
+					this.logger.debug(() -> "Async result cancelled by the container; not acknowledged: " + source);
+				}
+				else if (t == null) {
 					asyncSuccess(r, replyTopic, source, messageReturnType);
 					if (isAsyncReplies()) {
 						acknowledge(acknowledgment);
@@ -599,8 +643,38 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 			}
 			finally {
 				observation.stop();
+				if (inFlight != null) {
+					inFlight.complete(null);
+				}
 			}
 		});
+	}
+
+	/**
+	 * Hand a future for the in-flight result to the callback registered for the consumer,
+	 * if any. The future completes after the result has been handled; cancelling it
+	 * cancels the result itself.
+	 * @param consumer the consumer.
+	 * @param result the in-flight result.
+	 * @return the future handed to the callback, or null if there is no callback.
+	 */
+	@Nullable
+	private CompletableFuture<Void> trackAsyncResult(@Nullable Consumer<?, ?> consumer,
+			CompletableFuture<?> result) {
+
+		java.util.function.Consumer<CompletableFuture<Void>> callback =
+				consumer == null ? null : this.asyncResultCallbacks.get(consumer);
+		if (callback == null) {
+			return null;
+		}
+		CompletableFuture<Void> inFlight = new CompletableFuture<>();
+		inFlight.whenComplete((r, t) -> {
+			if (inFlight.isCancelled()) {
+				result.cancel(true);
+			}
+		});
+		callback.accept(inFlight);
+		return inFlight;
 	}
 
 	@Nullable

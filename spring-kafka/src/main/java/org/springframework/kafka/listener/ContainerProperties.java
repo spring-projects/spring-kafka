@@ -57,6 +57,7 @@ import org.springframework.util.CollectionUtils;
  * @author Wang Zhiyang
  * @author Choi Wang Gyu
  * @author Maxwell Balla
+ * @author Nikita Kibitkin
  */
 public class ContainerProperties extends ConsumerProperties {
 
@@ -339,6 +340,8 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private boolean asyncAcks;
 
+	private boolean awaitAsyncResultsOnStop;
+
 	private boolean pauseImmediate;
 
 	private @Nullable KafkaListenerObservationConvention observationConvention;
@@ -465,7 +468,10 @@ public class ContainerProperties extends ConsumerProperties {
 	/**
 	 * Set the timeout for shutting down the container. This is the maximum amount of
 	 * time that the invocation to {@code #stop(Runnable)} will block for, before
-	 * returning; default {@value #DEFAULT_SHUTDOWN_TIMEOUT}.
+	 * returning; default {@value #DEFAULT_SHUTDOWN_TIMEOUT}. When
+	 * {@link #setAwaitAsyncResultsOnStop(boolean) awaitAsyncResultsOnStop} is true, this
+	 * timeout also bounds how long the consumer thread waits for in-flight asynchronous
+	 * listener results before cancelling them.
 	 * @param shutdownTimeout the shutdown timeout.
 	 */
 	public void setShutdownTimeout(long shutdownTimeout) {
@@ -1047,6 +1053,37 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	/**
+	 * When true, the container waits for in-flight asynchronous listener results
+	 * ({@code CompletableFuture}, {@code Mono} or Kotlin suspend functions) to complete
+	 * when it is stopped, bounded by the {@link #setShutdownTimeout(long) shutdownTimeout}.
+	 * @return true to await async results on stop.
+	 * @since 4.0.8
+	 * @see #setAwaitAsyncResultsOnStop(boolean)
+	 */
+	public boolean isAwaitAsyncResultsOnStop() {
+		return this.awaitAsyncResultsOnStop;
+	}
+
+	/**
+	 * Set to true to wait for in-flight asynchronous listener results
+	 * ({@code CompletableFuture}, {@code Mono} or Kotlin suspend functions) to complete
+	 * when the container is stopped. The consumer thread waits, within the
+	 * {@link #setShutdownTimeout(long) shutdownTimeout}, before closing the consumer;
+	 * results that complete in time are acknowledged and their offsets committed as they
+	 * complete. Results still outstanding when the timeout expires are
+	 * cancelled (the {@code Mono} subscription is disposed, the coroutine is cancelled, or
+	 * {@code CompletableFuture.cancel(true)} is called, which does not interrupt code that
+	 * is already running); a cancelled result is neither acknowledged nor passed to the
+	 * error handler, so its record is redelivered after the partition is reassigned.
+	 * Default false.
+	 * @param awaitAsyncResultsOnStop true to await async results on stop.
+	 * @since 4.0.8
+	 */
+	public void setAwaitAsyncResultsOnStop(boolean awaitAsyncResultsOnStop) {
+		this.awaitAsyncResultsOnStop = awaitAsyncResultsOnStop;
+	}
+
+	/**
 	 * When pausing the container with a record listener, whether the pause takes effect
 	 * immediately, when the current record has been processed, or after all records from
 	 * the previous poll have been processed. Default false.
@@ -1306,6 +1343,7 @@ public class ContainerProperties extends ConsumerProperties {
 		appendProperty(sb, "stopImmediate", this.stopImmediate);
 		appendProperty(sb, "stopContainerWhenFenced", this.stopContainerWhenFenced);
 		appendProperty(sb, "asyncAcks", this.asyncAcks);
+		appendProperty(sb, "awaitAsyncResultsOnStop", this.awaitAsyncResultsOnStop);
 		appendProperty(sb, "syncShareCommits", this.syncShareCommits);
 
 		// Polling and partition configuration
