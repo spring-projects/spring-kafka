@@ -105,6 +105,7 @@ import org.springframework.util.StringUtils;
  * @author Soby Chacko
  * @author Maxwell Balla
  * @author Youngjoo Kim
+ * @author OhKyu Chan
  *
  * @since 4.0
  *
@@ -784,8 +785,11 @@ public class ShareKafkaMessageListenerContainer<K, V>
 						new PendingAcknowledgment<>(this.record, type));
 			}
 
-		void notifyAcknowledged(AcknowledgeType type) {
-				this.acknowledgmentType.set(type);
+			void notifyAcknowledged(AcknowledgeType type) {
+				// The authoritative transition already happened in acknowledgeInternal() when the ack was queued.
+				// A queued RENEW drained after a terminal ack must not move the state backwards.
+				this.acknowledgmentType.updateAndGet(current ->
+						current == null || current == AcknowledgeType.RENEW ? type : current);
 			}
 
 			boolean isAcknowledged() {
