@@ -32,6 +32,7 @@ import org.springframework.messaging.Message;
  * @param <R> the reply data type.
  *
  * @author Gary Russell
+ * @author Ngoc Nhan
  * @since 2.1.3
  *
  */
@@ -81,7 +82,7 @@ public interface ReplyingKafkaOperations<K, V, R> {
 	 * @since 2.7
 	 */
 	default <P> RequestReplyTypedMessageFuture<K, V, P> sendAndReceive(Message<?> message,
-			ParameterizedTypeReference<P> returnType) {
+		@Nullable ParameterizedTypeReference<P> returnType) {
 
 		throw new UnsupportedOperationException();
 	}
@@ -95,7 +96,7 @@ public interface ReplyingKafkaOperations<K, V, R> {
 	 * @return a RequestReplyMessageFuture.
 	 * @since 2.7
 	 */
-	default <P> RequestReplyTypedMessageFuture<K, V, P> sendAndReceive(Message<?> message, Duration replyTimeout,
+	default <P> RequestReplyTypedMessageFuture<K, V, P> sendAndReceive(Message<?> message, @Nullable Duration replyTimeout,
 			@Nullable ParameterizedTypeReference<P> returnType) {
 
 		throw new UnsupportedOperationException();
@@ -115,6 +116,6 @@ public interface ReplyingKafkaOperations<K, V, R> {
 	 * @return a RequestReplyFuture.
 	 * @since 2.3
 	 */
-	RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record, Duration replyTimeout);
+	RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record, @Nullable Duration replyTimeout);
 
 }
