@@ -796,7 +796,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			private void acknowledgeInternal(AcknowledgeType type) {
 				if (type == AcknowledgeType.RENEW) {
 					AcknowledgeType current = this.acknowledgmentType.get();
-					if (current == AcknowledgeType.ACCEPT || current == AcknowledgeType.RELEASE || current == AcknowledgeType.REJECT) {
+					if (isTerminal(current)) {
 						throw new IllegalStateException(
 								String.format("Record at offset %d has already been terminally acknowledged with type %s",
 										this.record.offset(), current));
@@ -827,8 +827,13 @@ public class ShareKafkaMessageListenerContainer<K, V>
 						new PendingAcknowledgment<>(this.record, type));
 			}
 
-		void notifyAcknowledged(AcknowledgeType type) {
-				this.acknowledgmentType.set(type);
+			void notifyAcknowledged(AcknowledgeType type) {
+				this.acknowledgmentType.accumulateAndGet(type,
+						(current, next) -> isTerminal(current) ? current : next);
+			}
+
+			private static boolean isTerminal(@Nullable AcknowledgeType type) {
+				return type == AcknowledgeType.ACCEPT || type == AcknowledgeType.RELEASE || type == AcknowledgeType.REJECT;
 			}
 
 			boolean isAcknowledged() {

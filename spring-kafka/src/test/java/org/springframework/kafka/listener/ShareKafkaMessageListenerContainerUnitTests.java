@@ -51,6 +51,7 @@ import org.springframework.kafka.event.ConsumerStoppedEvent;
 import org.springframework.kafka.event.ConsumerStoppedEvent.Reason;
 import org.springframework.kafka.event.ShareConsumerStoppingEvent;
 import org.springframework.kafka.listener.ContainerProperties.ShareAckMode;
+import org.springframework.kafka.support.ShareAcknowledgment;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -899,6 +900,61 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 			assertThatExceptionOfType(IllegalStateException.class)
 					.isThrownBy(() -> container.getClientInstanceIds(Duration.ZERO))
 					.withMessage("telemetry disabled");
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void shareConsumerAcknowledgmentStateShouldNotRegressFromTerminalToRenew() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock(ShareConsumerFactory.class);
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+		ShareConsumer<String, String> mockConsumer = mock(ShareConsumer.class);
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("test-topic", 0, 0L, "key", "value");
+		ConsumerRecords<String, String> records = new ConsumerRecords<>(Map.of(new TopicPartition("test-topic", 0), List.of(record)));
+
+		CountDownLatch pollLatch = new CountDownLatch(1);
+		lenient().when(mockConsumer.poll(any())).thenAnswer(invocation -> {
+			if (pollLatch.getCount() > 0) {
+				pollLatch.countDown();
+				return records;
+			}
+			Thread.sleep(10);
+			return ConsumerRecords.empty();
+		});
+
+		CountDownLatch ackLatch = new CountDownLatch(1);
+		AtomicReference<ShareAcknowledgment> ackRef = new AtomicReference<>();
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.MANUAL);
+		containerProperties.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>)
+				(rec, ack, consumer) -> {
+					ackRef.set(ack);
+					ack.renew();
+					ack.acknowledge();
+					ackLatch.countDown();
+				});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("shareAckRegressionTestContainer");
+		container.start();
+
+		try {
+			assertThat(ackLatch.await(5, TimeUnit.SECONDS)).isTrue();
+			Thread.sleep(100);
+
+			ShareAcknowledgment ack = ackRef.get();
+			assertThat(ack).isNotNull();
+
+			assertThatExceptionOfType(IllegalStateException.class)
+					.isThrownBy(ack::release)
+					.withMessageContaining("has already been acknowledged with type accept");
 		}
 		finally {
 			container.stop();
