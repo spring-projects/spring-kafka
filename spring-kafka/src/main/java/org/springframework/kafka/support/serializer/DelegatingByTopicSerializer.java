@@ -71,9 +71,13 @@ public class DelegatingByTopicSerializer extends DelegatingByTopicSerialization<
 		return instance instanceof Serializer;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public byte @Nullable [] serialize(String topic, @Nullable Object data) {
-		throw new UnsupportedOperationException();
+		if (data == null) {
+			return null;
+		}
+		return ((Serializer<Object>) findDelegate(topic)).serialize(topic, data);
 	}
 
 	@SuppressWarnings("unchecked")

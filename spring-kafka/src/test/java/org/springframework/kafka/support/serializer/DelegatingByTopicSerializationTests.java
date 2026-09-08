@@ -35,7 +35,6 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -76,7 +75,7 @@ public class DelegatingByTopicSerializationTests {
 		deserializer.configure(configs, false);
 		assertThatDeserializer(deserializer);
 		assertThat(deserializer.findDelegate("Foo")).isInstanceOf(BytesDeserializer.class);
-		byte[] serialized = serializer.serialize("baz", new RecordHeaders(), "qux");
+		byte[] serialized = serializer.serialize("baz", "qux");
 		assertThat(deserializer.deserialize("baz", null, serialized)).isEqualTo("qux");
 		assertThat(deserializer.deserialize("baz", null, ByteBuffer.wrap(serialized))).isEqualTo("qux");
 	}
@@ -119,7 +118,7 @@ public class DelegatingByTopicSerializationTests {
 		configs.put(DelegatingByTopicSerializer.KEY_SERIALIZATION_TOPIC_DEFAULT, ByteArrayDeserializer.class);
 		deserializer.configure(configs, true);
 		assertThatDeserializer(deserializer);
-		byte[] serialized = serializer.serialize("baz", new RecordHeaders(), "qux");
+		byte[] serialized = serializer.serialize("baz", "qux");
 		assertThat(deserializer.deserialize("baz", null, serialized)).isEqualTo("qux");
 		assertThat(deserializer.deserialize("baz", null, ByteBuffer.wrap(serialized))).isEqualTo("qux");
 	}
@@ -172,9 +171,8 @@ public class DelegatingByTopicSerializationTests {
 
 		try (DelegatingByTopicSerializer serializer = new DelegatingByTopicSerializer()) {
 
+			assertThat(serializer.serialize("topic", null)).isNull();
 			assertThat(serializer.serialize("topic", new RecordHeaders(), null)).isNull();
-			assertThatExceptionOfType(UnsupportedOperationException.class)
-					.isThrownBy(() -> serializer.serialize("topic", null));
 			assertThatIllegalArgumentException()
 					.isThrownBy(() -> serializer.serialize("topic", null, null))
 					.withMessage("'headers' cannot be null");
