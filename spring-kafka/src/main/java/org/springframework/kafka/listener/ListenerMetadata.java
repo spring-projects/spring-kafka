@@ -46,7 +46,6 @@ public interface ListenerMetadata {
 	 * Return the listener info.
 	 * @return the listener info.
 	 */
-	@Nullable
-	byte[] getListenerInfo();
+	byte @Nullable [] getListenerInfo();
 
 }

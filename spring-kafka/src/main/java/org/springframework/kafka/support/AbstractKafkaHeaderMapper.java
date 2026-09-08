@@ -330,9 +330,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 		}
 	}
 
-	@SuppressWarnings("NullAway") // Dataflow analysis limitation
-	@Nullable
-	private byte[] mapRawOut(String header, Object value) {
+	private byte @Nullable [] mapRawOut(String header, Object value) {
 		if (this.mapAllStringsOut || this.rawMappedHeaders.containsKey(header)) {
 			if (value instanceof byte[]) {
 				return (byte[]) value;

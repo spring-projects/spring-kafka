@@ -121,8 +121,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	private boolean interceptBeforeTx = true;
 
-	@SuppressWarnings("NullAway.Init")
-	private byte[] listenerInfo;
+	private byte @Nullable [] listenerInfo;
 
 	private @Nullable ApplicationContext applicationContext;
 
@@ -157,7 +156,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 		Assert.notNull(containerProperties, "'containerProperties' cannot be null");
 		Assert.notNull(consumerFactory, "'consumerFactory' cannot be null");
 		this.consumerFactory = (ConsumerFactory<K, V>) consumerFactory;
-		String @Nullable [] topics = containerProperties.getTopics();
+		String[] topics = containerProperties.getTopics();
 		if (topics != null) {
 			this.containerProperties = new ContainerProperties(topics);
 		}
@@ -167,7 +166,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 				this.containerProperties = new ContainerProperties(topicPattern);
 			}
 			else {
-				TopicPartitionOffset @Nullable [] topicPartitions = containerProperties.getTopicPartitions();
+				TopicPartitionOffset[] topicPartitions = containerProperties.getTopicPartitions();
 				if (topicPartitions != null) {
 					this.containerProperties = new ContainerProperties(topicPartitions);
 				}
@@ -372,8 +371,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	}
 
 	@Override
-	@SuppressWarnings("NullAway") // Dataflow analysis limitation
-	public byte[] getListenerInfo() {
+	public byte @Nullable [] getListenerInfo() {
 		return this.listenerInfo != null ? Arrays.copyOf(this.listenerInfo, this.listenerInfo.length) : null;
 	}
 
@@ -383,8 +381,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 	 * @param listenerInfo the info.
 	 * @since 2.8.4
 	 */
-	@SuppressWarnings("NullAway") // Dataflow analysis limitation
-	public void setListenerInfo(@Nullable byte[] listenerInfo) {
+	public void setListenerInfo(byte @Nullable [] listenerInfo) {
 		this.listenerInfo = listenerInfo != null ? Arrays.copyOf(listenerInfo, listenerInfo.length) : null;
 	}
 
@@ -553,12 +550,14 @@ public abstract class AbstractMessageListenerContainer<K, V>
 			List<String> missing = null;
 			try (AdminClient client = AdminClient.create(configs)) { // NOSONAR - false positive null check
 				if (client != null) {
-					@Nullable String[] topics = this.containerProperties.getTopics();
-					if (topics == null) {
-						topics = Arrays.stream(this.containerProperties.getTopicPartitions())
+					String[] topics = this.containerProperties.getTopics();
+					TopicPartitionOffset[] topicPartitions = this.containerProperties.getTopicPartitions();
+					if (topics == null && topicPartitions != null) {
+						topics = Arrays.stream(topicPartitions)
 								.map(TopicPartitionOffset::getTopic)
 								.toArray(String[]::new);
 					}
+					Assert.notNull(topics, "topics cannot be null");
 					DescribeTopicsResult result = client.describeTopics(Arrays.asList(topics));
 					missing = result.topicNameValues()
 							.entrySet()

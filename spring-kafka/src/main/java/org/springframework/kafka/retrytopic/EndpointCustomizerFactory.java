@@ -21,8 +21,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.stream.Stream;
 
-import org.jspecify.annotations.Nullable;
-
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.kafka.config.MethodKafkaListenerEndpoint;
 import org.springframework.kafka.config.MultiMethodKafkaListenerEndpoint;
@@ -182,7 +180,7 @@ public class EndpointCustomizerFactory {
 	private Collection<String> getTopics(MethodKafkaListenerEndpoint<?, ?> endpoint) {
 		Collection<String> topics = endpoint.getTopics();
 		if (topics.isEmpty()) {
-			TopicPartitionOffset @Nullable [] topicPartitionsToAssign = endpoint.getTopicPartitionsToAssign();
+			TopicPartitionOffset[] topicPartitionsToAssign = endpoint.getTopicPartitionsToAssign();
 			if (topicPartitionsToAssign != null && topicPartitionsToAssign.length > 0) {
 				topics = Arrays.stream(topicPartitionsToAssign)
 						.map(TopicPartitionOffset::getTopic)

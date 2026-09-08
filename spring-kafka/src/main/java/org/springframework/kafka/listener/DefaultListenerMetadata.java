@@ -47,8 +47,7 @@ class DefaultListenerMetadata implements ListenerMetadata {
 	}
 
 	@Override
-	@Nullable
-	public byte[] getListenerInfo() {
+	public byte @Nullable [] getListenerInfo() {
 		return this.container.getListenerInfo();
 	}
 }
