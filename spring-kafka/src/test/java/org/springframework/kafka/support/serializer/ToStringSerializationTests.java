@@ -31,11 +31,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.kafka.support.serializer.testentities.DummyEntity;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
  *
  * @author Alexei Klenin
  * @author Gary Russell
+ * @author Ngoc Nhan
  *
  * @since 2.5
  */
@@ -319,6 +321,19 @@ public class ToStringSerializationTests {
 				.hasFieldOrPropertyWithValue("third", true);
 		assertThat(deserializedWithUtf8.first)
 				.isNotEqualTo("tôtô");
+	}
+
+	@Test
+	void serializeWithNullDataOrHeaders() {
+
+		try (ToStringSerializer<Object> serializer = new ToStringSerializer<>()) {
+
+			assertThat(serializer.serialize("topic", null)).isNull();
+			assertThat(serializer.serialize("topic", new RecordHeaders(), null)).isNull();
+			assertThatIllegalArgumentException()
+					.isThrownBy(() -> serializer.serialize("topic", null, null))
+					.withMessage("'headers' cannot be null");
+		}
 	}
 
 	public static Object parseWithHeaders(@Nullable String str, Headers headers) {

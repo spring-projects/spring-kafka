@@ -34,6 +34,8 @@ import org.springframework.util.Assert;
  *
  * @author Alexei Klenin
  * @author Gary Russell
+ * @author Ngoc Nhan
+ *
  * @since 2.5
  */
 public class ToStringSerializer<T> implements Serializer<T> {
@@ -81,22 +83,24 @@ public class ToStringSerializer<T> implements Serializer<T> {
 	}
 
 	@Override
-	public byte[] serialize(String topic, @Nullable T data) {
-		return serialize(topic, null, data);
-	}
+	public byte @Nullable [] serialize(String topic, @Nullable T data) {
 
-	@Override
-	@SuppressWarnings("NullAway") // Dataflow analysis limitation
-	public byte[] serialize(String topic, @Nullable Headers headers, @Nullable T data) {
 		if (data == null) {
 			return null;
 		}
 
-		if (this.addTypeInfo && headers != null) {
+		return data.toString().getBytes(this.charset);
+	}
+
+	@Override
+	public byte @Nullable [] serialize(String topic, Headers headers, @Nullable T data) {
+
+		Assert.notNull(headers, "'headers' cannot be null");
+		if (this.addTypeInfo && data != null) {
 			headers.add(this.typeInfoHeader, data.getClass().getName().getBytes());
 		}
 
-		return data.toString().getBytes(this.charset);
+		return serialize(topic, data);
 	}
 
 	@Override

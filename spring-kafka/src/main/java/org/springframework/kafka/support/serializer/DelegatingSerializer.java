@@ -39,6 +39,8 @@ import org.springframework.util.StringUtils;
  * we will delegate to that serializer type.
  *
  * @author Gary Russell
+ * @author Ngoc Nhan
+ *
  * @since 2.3
  *
  */
@@ -183,13 +185,13 @@ public class DelegatingSerializer implements Serializer<Object> {
 	}
 
 	@Override
-	public byte[] serialize(String topic, Object data) {
+	public byte @Nullable [] serialize(String topic, @Nullable Object data) {
 		throw new UnsupportedOperationException();
 	}
 
-	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	@Override
-	public byte[] serialize(String topic, Headers headers, Object data) {
+	public byte @Nullable [] serialize(String topic, Headers headers, @Nullable Object data) {
+		Assert.notNull(headers, "'headers' cannot be null");
 		if (data == null) {
 			return null;
 		}
@@ -230,8 +232,7 @@ public class DelegatingSerializer implements Serializer<Object> {
 	/*
 	 * Package for testing.
 	 */
-	@SuppressWarnings("NullAway") // Dataflow analysis limitation
-	byte[] trySerdes(Object data) {
+	byte @Nullable [] trySerdes(Object data) {
 		try {
 			Serde<? extends Object> serdeFrom = Serdes.serdeFrom(data.getClass());
 			Serializer<?> serializer = serdeFrom.serializer();

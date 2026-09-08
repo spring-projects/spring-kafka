@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.BytesDeserializer;
@@ -34,6 +35,8 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
@@ -41,6 +44,7 @@ import static org.mockito.Mockito.verify;
  * @author Gary Russell
  * @author Wang Zhiyang
  * @author Rene Choi
+ * @author Ngoc Nhan
  *
  * @since 2.8
  *
@@ -161,6 +165,20 @@ public class DelegatingByTopicSerializationTests {
 
 		verify(patternDelegate).close();
 		verify(defaultDelegate).close();
+	}
+
+	@Test
+	void serializeWithNullDataOrHeaders() {
+
+		try (DelegatingByTopicSerializer serializer = new DelegatingByTopicSerializer()) {
+
+			assertThat(serializer.serialize("topic", new RecordHeaders(), null)).isNull();
+			assertThatExceptionOfType(UnsupportedOperationException.class)
+					.isThrownBy(() -> serializer.serialize("topic", null));
+			assertThatIllegalArgumentException()
+					.isThrownBy(() -> serializer.serialize("topic", null, null))
+					.withMessage("'headers' cannot be null");
+		}
 	}
 
 	private void assertThatSerializer(DelegatingByTopicSerializer serializer) {

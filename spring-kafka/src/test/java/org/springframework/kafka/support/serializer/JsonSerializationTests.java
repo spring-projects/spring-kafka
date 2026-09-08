@@ -64,6 +64,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
  * @author Gary Russell
  * @author Ivan Ponomarev
  * @author Soby Chacko
+ * @author Ngoc Nhan
  */
 public class JsonSerializationTests {
 
@@ -456,6 +457,19 @@ public class JsonSerializationTests {
 
 			String typeHeader = new String(headers.lastHeader("__TypeId__").value(), StandardCharsets.UTF_8);
 			assertThat(typeHeader).isEqualTo("my-alias");
+		}
+	}
+
+	@Test
+	void serializeWithNullDataOrHeaders() {
+
+		try (JacksonJsonSerializer<Object> serializer = new JacksonJsonSerializer<>()) {
+
+			assertThat(serializer.serialize("topic", null)).isNull();
+			assertThat(serializer.serialize("topic", new RecordHeaders(), null)).isNull();
+			assertThatIllegalArgumentException()
+					.isThrownBy(() -> serializer.serialize("topic", null, null))
+					.withMessage("'headers' cannot be null");
 		}
 	}
 

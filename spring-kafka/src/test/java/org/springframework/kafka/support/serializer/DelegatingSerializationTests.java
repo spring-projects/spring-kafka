@@ -44,6 +44,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -55,6 +56,7 @@ import static org.mockito.Mockito.verify;
  * @author Soby Chacko
  * @author Jiwoo Lee
  * @author Seonghun Lee
+ * @author Ngoc Nhan
  *
  * @since 2.3
  *
@@ -339,6 +341,29 @@ public class DelegatingSerializationTests {
 
 		verify(stringSerializer).close();
 		verify(bytesSerializer).close();
+	}
+
+	@Test
+	void serializeWithNullDataOrHeaders() {
+
+		try (DelegatingSerializer serializer = new DelegatingSerializer()) {
+
+			assertThat(serializer.serialize("topic", new RecordHeaders(), null)).isNull();
+			assertThatExceptionOfType(UnsupportedOperationException.class)
+					.isThrownBy(() -> serializer.serialize("topic", null));
+			assertThatIllegalArgumentException()
+					.isThrownBy(() -> serializer.serialize("topic", null, null))
+					.withMessage("'headers' cannot be null");
+		}
+
+		try (DelegatingByTypeSerializer serializer = new DelegatingByTypeSerializer(Map.of())) {
+
+			assertThat(serializer.serialize("topic", null)).isNull();
+			assertThat(serializer.serialize("topic", new RecordHeaders(), null)).isNull();
+			assertThatIllegalArgumentException()
+					.isThrownBy(() -> serializer.serialize("topic", null, null))
+					.withMessage("'headers' cannot be null");
+		}
 	}
 
 	interface AwareIface {

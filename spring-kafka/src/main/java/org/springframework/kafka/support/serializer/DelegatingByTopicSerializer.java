@@ -21,11 +21,16 @@ import java.util.regex.Pattern;
 
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Serializer;
+import org.jspecify.annotations.Nullable;
+
+import org.springframework.util.Assert;
 
 /**
  * A {@link Serializer} that delegates to other serializers based on a topic pattern.
  *
  * @author Gary Russell
+ * @author Ngoc Nhan
+ *
  * @since 2.8
  *
  */
@@ -67,13 +72,14 @@ public class DelegatingByTopicSerializer extends DelegatingByTopicSerialization<
 	}
 
 	@Override
-	public byte[] serialize(String topic, Object data) {
+	public byte @Nullable [] serialize(String topic, @Nullable Object data) {
 		throw new UnsupportedOperationException();
 	}
 
-	@SuppressWarnings({"unchecked", "NullAway"}) // Dataflow analysis limitation
+	@SuppressWarnings("unchecked")
 	@Override
-	public byte[] serialize(String topic, Headers headers, Object data) {
+	public byte @Nullable [] serialize(String topic, Headers headers, @Nullable Object data) {
+		Assert.notNull(headers, "'headers' cannot be null");
 		if (data == null) {
 			return null;
 		}

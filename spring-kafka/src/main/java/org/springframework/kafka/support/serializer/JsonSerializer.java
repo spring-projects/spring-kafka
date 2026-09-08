@@ -55,6 +55,7 @@ import org.springframework.util.StringUtils;
  * @author Elliot Kennedy
  * @author Wang Zhiyang
  * @author Omer Celik
+ * @author Ngoc Nhan
  *
  * @deprecated since 4.0 in favor of {@link JacksonJsonSerializer} for Jackson 3.
  */
@@ -101,7 +102,7 @@ public class JsonSerializer<T> implements Serializer<T> {
 		this((JavaType) null, objectMapper);
 	}
 
-	public JsonSerializer(TypeReference<? super T> targetType, ObjectMapper objectMapper) {
+	public JsonSerializer(@Nullable TypeReference<? super T> targetType, ObjectMapper objectMapper) {
 		this(targetType == null ? null : objectMapper.constructType(targetType.getType()), objectMapper);
 	}
 
@@ -205,21 +206,20 @@ public class JsonSerializer<T> implements Serializer<T> {
 		return mappingsMap;
 	}
 
-	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	@Override
-	public byte[] serialize(String topic, Headers headers, @Nullable T data) {
+	public byte @Nullable [] serialize(String topic, Headers headers, @Nullable T data) {
+		Assert.notNull(headers, "'headers' cannot be null");
 		if (data == null) {
 			return null;
 		}
-		if (this.addTypeInfo && headers != null) {
+		if (this.addTypeInfo) {
 			this.typeMapper.fromJavaType(this.objectMapper.constructType(data.getClass()), headers);
 		}
 		return serialize(topic, data);
 	}
 
-	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	@Override
-	public byte[] serialize(String topic, @Nullable T data) {
+	public byte @Nullable [] serialize(String topic, @Nullable T data) {
 		if (data == null) {
 			return null;
 		}

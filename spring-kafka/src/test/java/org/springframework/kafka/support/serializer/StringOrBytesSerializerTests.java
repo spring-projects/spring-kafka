@@ -20,12 +20,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
 
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.utils.Bytes;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 /**
@@ -56,6 +58,19 @@ public class StringOrBytesSerializerTests {
 		assertThat(serializer.serialize("null", null)).isNull();
 		assertThatIllegalStateException().isThrownBy(() -> serializer.serialize("ex", 0))
 				.withMessage("This serializer can only handle byte[], Bytes or String values");
+	}
+
+	@Test
+	void serializeWithNullDataOrHeaders() {
+
+		try (StringOrBytesSerializer serializer = new StringOrBytesSerializer()) {
+
+			assertThat(serializer.serialize("topic", null)).isNull();
+			assertThat(serializer.serialize("topic", new RecordHeaders(), null)).isNull();
+			assertThatIllegalArgumentException()
+					.isThrownBy(() -> serializer.serialize("topic", null, null))
+					.withMessage("'headers' cannot be null");
+		}
 	}
 
 }
