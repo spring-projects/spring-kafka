@@ -27,7 +27,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 /**
@@ -62,14 +61,10 @@ public class StringOrBytesSerializerTests {
 
 	@Test
 	void serializeWithNullDataOrHeaders() {
-
 		try (StringOrBytesSerializer serializer = new StringOrBytesSerializer()) {
 
 			assertThat(serializer.serialize("topic", null)).isNull();
 			assertThat(serializer.serialize("topic", new RecordHeaders(), null)).isNull();
-			assertThatIllegalArgumentException()
-					.isThrownBy(() -> serializer.serialize("topic", null, null))
-					.withMessage("'headers' cannot be null");
 		}
 	}
 

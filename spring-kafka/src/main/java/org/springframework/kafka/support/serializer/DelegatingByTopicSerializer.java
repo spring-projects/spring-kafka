@@ -23,8 +23,6 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Serializer;
 import org.jspecify.annotations.Nullable;
 
-import org.springframework.util.Assert;
-
 /**
  * A {@link Serializer} that delegates to other serializers based on a topic pattern.
  *
@@ -83,7 +81,6 @@ public class DelegatingByTopicSerializer extends DelegatingByTopicSerialization<
 	@SuppressWarnings("unchecked")
 	@Override
 	public byte @Nullable [] serialize(String topic, Headers headers, @Nullable Object data) {
-		Assert.notNull(headers, "'headers' cannot be null");
 		if (data == null) {
 			return null;
 		}

@@ -206,11 +206,10 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 
 	@Override
 	public byte @Nullable [] serialize(String topic, Headers headers, @Nullable T data) {
-		Assert.notNull(headers, "'headers' cannot be null");
 		if (data == null) {
 			return null;
 		}
-		if (this.addTypeInfo) {
+		if (this.addTypeInfo && headers != null) {
 			this.typeMapper.fromJavaType(this.jsonMapper.constructType(data.getClass()), headers);
 		}
 		return serialize(topic, data);

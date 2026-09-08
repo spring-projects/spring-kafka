@@ -467,9 +467,6 @@ public class JsonSerializationTests {
 
 			assertThat(serializer.serialize("topic", null)).isNull();
 			assertThat(serializer.serialize("topic", new RecordHeaders(), null)).isNull();
-			assertThatIllegalArgumentException()
-					.isThrownBy(() -> serializer.serialize("topic", null, null))
-					.withMessage("'headers' cannot be null");
 		}
 	}
 

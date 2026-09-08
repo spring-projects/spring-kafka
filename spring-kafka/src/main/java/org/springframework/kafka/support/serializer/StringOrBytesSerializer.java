@@ -24,8 +24,6 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.utils.Bytes;
 import org.jspecify.annotations.Nullable;
 
-import org.springframework.util.Assert;
-
 /**
  * A serializer that can handle {@code byte[]}, {@link Bytes} and {@link String}.
  * Convenient when used with one of the Json message converters.
@@ -67,7 +65,6 @@ public class StringOrBytesSerializer implements Serializer<Object> {
 
 	@Override
 	public byte @Nullable [] serialize(String topic, Headers headers, @Nullable Object data) {
-		Assert.notNull(headers, "'headers' cannot be null");
 		return serialize(topic, data);
 	}
 

@@ -191,7 +191,6 @@ public class DelegatingSerializer implements Serializer<Object> {
 
 	@Override
 	public byte @Nullable [] serialize(String topic, Headers headers, @Nullable Object data) {
-		Assert.notNull(headers, "'headers' cannot be null");
 		if (data == null) {
 			return null;
 		}

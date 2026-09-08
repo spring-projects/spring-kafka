@@ -35,7 +35,6 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
@@ -173,9 +172,6 @@ public class DelegatingByTopicSerializationTests {
 
 			assertThat(serializer.serialize("topic", null)).isNull();
 			assertThat(serializer.serialize("topic", new RecordHeaders(), null)).isNull();
-			assertThatIllegalArgumentException()
-					.isThrownBy(() -> serializer.serialize("topic", null, null))
-					.withMessage("'headers' cannot be null");
 		}
 	}
 

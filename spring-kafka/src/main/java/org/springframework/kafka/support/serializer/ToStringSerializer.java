@@ -93,8 +93,10 @@ public class ToStringSerializer<T> implements Serializer<T> {
 
 	@Override
 	public byte @Nullable [] serialize(String topic, Headers headers, @Nullable T data) {
-		Assert.notNull(headers, "'headers' cannot be null");
-		if (this.addTypeInfo && data != null) {
+		if (data == null) {
+			return null;
+		}
+		if (this.addTypeInfo && headers != null) {
 			headers.add(this.typeInfoHeader, data.getClass().getName().getBytes());
 		}
 
