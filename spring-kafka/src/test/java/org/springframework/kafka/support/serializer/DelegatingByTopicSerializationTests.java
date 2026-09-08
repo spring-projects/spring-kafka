@@ -76,7 +76,7 @@ public class DelegatingByTopicSerializationTests {
 		deserializer.configure(configs, false);
 		assertThatDeserializer(deserializer);
 		assertThat(deserializer.findDelegate("Foo")).isInstanceOf(BytesDeserializer.class);
-		byte[] serialized = serializer.serialize("baz", null, "qux");
+		byte[] serialized = serializer.serialize("baz", new RecordHeaders(), "qux");
 		assertThat(deserializer.deserialize("baz", null, serialized)).isEqualTo("qux");
 		assertThat(deserializer.deserialize("baz", null, ByteBuffer.wrap(serialized))).isEqualTo("qux");
 	}
@@ -119,7 +119,7 @@ public class DelegatingByTopicSerializationTests {
 		configs.put(DelegatingByTopicSerializer.KEY_SERIALIZATION_TOPIC_DEFAULT, ByteArrayDeserializer.class);
 		deserializer.configure(configs, true);
 		assertThatDeserializer(deserializer);
-		byte[] serialized = serializer.serialize("baz", null, "qux");
+		byte[] serialized = serializer.serialize("baz", new RecordHeaders(), "qux");
 		assertThat(deserializer.deserialize("baz", null, serialized)).isEqualTo("qux");
 		assertThat(deserializer.deserialize("baz", null, ByteBuffer.wrap(serialized))).isEqualTo("qux");
 	}
