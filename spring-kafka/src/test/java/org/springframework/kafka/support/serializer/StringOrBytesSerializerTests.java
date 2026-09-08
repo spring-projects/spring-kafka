@@ -20,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Map;
 
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.utils.Bytes;
 import org.junit.jupiter.api.Test;
 
@@ -56,6 +57,15 @@ public class StringOrBytesSerializerTests {
 		assertThat(serializer.serialize("null", null)).isNull();
 		assertThatIllegalStateException().isThrownBy(() -> serializer.serialize("ex", 0))
 				.withMessage("This serializer can only handle byte[], Bytes or String values");
+	}
+
+	@Test
+	void serializeWithNullDataOrHeaders() {
+		try (StringOrBytesSerializer serializer = new StringOrBytesSerializer()) {
+
+			assertThat(serializer.serialize("topic", null)).isNull();
+			assertThat(serializer.serialize("topic", new RecordHeaders(), null)).isNull();
+		}
 	}
 
 }

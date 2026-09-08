@@ -55,6 +55,7 @@ import org.springframework.util.StringUtils;
  * @author Omer Celik
  * @author Soby Chacko
  * @author Trond Ziarkowski
+ * @author Ngoc Nhan
  *
  * @since 4.0
  */
@@ -99,7 +100,7 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 		this((JavaType) null, jsonMapper);
 	}
 
-	public JacksonJsonSerializer(TypeReference<? super T> targetType, JsonMapper jsonMapper) {
+	public JacksonJsonSerializer(@Nullable TypeReference<? super T> targetType, JsonMapper jsonMapper) {
 		this(targetType == null ? null : jsonMapper.constructType(targetType.getType()), jsonMapper);
 	}
 

@@ -23,6 +23,7 @@ import java.util.Map.Entry;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Serializer;
+import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
 
@@ -35,6 +36,7 @@ import org.springframework.util.Assert;
  * @author Mahesh Aravind V
  * @author Jiwoo Lee
  * @author Seonghun Lee
+ * @author Ngoc Nhan
  *
  * @since 2.7.9
  *
@@ -88,9 +90,8 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 		this.delegates.values().forEach(del -> del.configure(configs, isKey));
 	}
 
-	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	@Override
-	public byte[] serialize(String topic, Object data) {
+	public byte @Nullable [] serialize(String topic, @Nullable Object data) {
 		if (data == null) {
 			return null;
 		}
@@ -98,9 +99,8 @@ public class DelegatingByTypeSerializer implements Serializer<Object> {
 		return delegate.serialize(topic, data);
 	}
 
-	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	@Override
-	public byte[] serialize(String topic, Headers headers, Object data) {
+	public byte @Nullable [] serialize(String topic, Headers headers, @Nullable Object data) {
 		if (data == null) {
 			return null;
 		}

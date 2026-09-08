@@ -55,6 +55,7 @@ import static org.mockito.Mockito.verify;
  * @author Soby Chacko
  * @author Jiwoo Lee
  * @author Seonghun Lee
+ * @author Ngoc Nhan
  *
  * @since 2.3
  *
@@ -339,6 +340,22 @@ public class DelegatingSerializationTests {
 
 		verify(stringSerializer).close();
 		verify(bytesSerializer).close();
+	}
+
+	@Test
+	void serializeWithNullDataOrHeaders() {
+		try (DelegatingSerializer serializer = new DelegatingSerializer()) {
+
+			assertThat(serializer.serialize("topic", new RecordHeaders(), null)).isNull();
+			assertThatExceptionOfType(UnsupportedOperationException.class)
+					.isThrownBy(() -> serializer.serialize("topic", null));
+		}
+
+		try (DelegatingByTypeSerializer serializer = new DelegatingByTypeSerializer(Map.of())) {
+
+			assertThat(serializer.serialize("topic", null)).isNull();
+			assertThat(serializer.serialize("topic", new RecordHeaders(), null)).isNull();
+		}
 	}
 
 	interface AwareIface {

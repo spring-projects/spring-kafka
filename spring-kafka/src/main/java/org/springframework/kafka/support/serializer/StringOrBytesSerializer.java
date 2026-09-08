@@ -18,9 +18,11 @@ package org.springframework.kafka.support.serializer;
 
 import java.util.Map;
 
+import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.utils.Bytes;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A serializer that can handle {@code byte[]}, {@link Bytes} and {@link String}.
@@ -40,9 +42,8 @@ public class StringOrBytesSerializer implements Serializer<Object> {
 		this.stringSerializer.configure(configs, isKey);
 	}
 
-	@SuppressWarnings("NullAway") // Dataflow analysis limitation
 	@Override
-	public byte[] serialize(String topic, Object data) {
+	public byte @Nullable [] serialize(String topic, @Nullable Object data) {
 		if (data == null) {
 			return null;
 		}
@@ -60,6 +61,11 @@ public class StringOrBytesSerializer implements Serializer<Object> {
 		}
 
 		throw new IllegalStateException("This serializer can only handle byte[], Bytes or String values");
+	}
+
+	@Override
+	public byte @Nullable [] serialize(String topic, Headers headers, @Nullable Object data) {
+		return serialize(topic, data);
 	}
 
 	@Override

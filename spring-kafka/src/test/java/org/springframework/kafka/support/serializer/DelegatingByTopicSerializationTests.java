@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.BytesDeserializer;
@@ -41,6 +42,7 @@ import static org.mockito.Mockito.verify;
  * @author Gary Russell
  * @author Wang Zhiyang
  * @author Rene Choi
+ * @author Ngoc Nhan
  *
  * @since 2.8
  *
@@ -72,7 +74,7 @@ public class DelegatingByTopicSerializationTests {
 		deserializer.configure(configs, false);
 		assertThatDeserializer(deserializer);
 		assertThat(deserializer.findDelegate("Foo")).isInstanceOf(BytesDeserializer.class);
-		byte[] serialized = serializer.serialize("baz", null, "qux");
+		byte[] serialized = serializer.serialize("baz", "qux");
 		assertThat(deserializer.deserialize("baz", null, serialized)).isEqualTo("qux");
 		assertThat(deserializer.deserialize("baz", null, ByteBuffer.wrap(serialized))).isEqualTo("qux");
 	}
@@ -115,7 +117,7 @@ public class DelegatingByTopicSerializationTests {
 		configs.put(DelegatingByTopicSerializer.KEY_SERIALIZATION_TOPIC_DEFAULT, ByteArrayDeserializer.class);
 		deserializer.configure(configs, true);
 		assertThatDeserializer(deserializer);
-		byte[] serialized = serializer.serialize("baz", null, "qux");
+		byte[] serialized = serializer.serialize("baz", "qux");
 		assertThat(deserializer.deserialize("baz", null, serialized)).isEqualTo("qux");
 		assertThat(deserializer.deserialize("baz", null, ByteBuffer.wrap(serialized))).isEqualTo("qux");
 	}
@@ -161,6 +163,16 @@ public class DelegatingByTopicSerializationTests {
 
 		verify(patternDelegate).close();
 		verify(defaultDelegate).close();
+	}
+
+	@Test
+	void serializeWithNullDataOrHeaders() {
+
+		try (DelegatingByTopicSerializer serializer = new DelegatingByTopicSerializer()) {
+
+			assertThat(serializer.serialize("topic", null)).isNull();
+			assertThat(serializer.serialize("topic", new RecordHeaders(), null)).isNull();
+		}
 	}
 
 	private void assertThatSerializer(DelegatingByTopicSerializer serializer) {

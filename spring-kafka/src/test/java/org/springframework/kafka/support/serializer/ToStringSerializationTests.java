@@ -36,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * @author Alexei Klenin
  * @author Gary Russell
+ * @author Ngoc Nhan
  *
  * @since 2.5
  */
@@ -319,6 +320,16 @@ public class ToStringSerializationTests {
 				.hasFieldOrPropertyWithValue("third", true);
 		assertThat(deserializedWithUtf8.first)
 				.isNotEqualTo("tôtô");
+	}
+
+	@Test
+	void serializeWithNullDataOrHeaders() {
+
+		try (ToStringSerializer<Object> serializer = new ToStringSerializer<>()) {
+
+			assertThat(serializer.serialize("topic", null)).isNull();
+			assertThat(serializer.serialize("topic", new RecordHeaders(), null)).isNull();
+		}
 	}
 
 	public static Object parseWithHeaders(@Nullable String str, Headers headers) {
