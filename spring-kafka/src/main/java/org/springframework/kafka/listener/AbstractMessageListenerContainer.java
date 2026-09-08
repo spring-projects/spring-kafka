@@ -73,6 +73,7 @@ import org.springframework.util.StringUtils;
  * @author Sanghyeok An
  * @author Lokesh Alamuri
  * @author Christian Fredriksson
+ * @author Ngoc Nhan
  */
 public abstract class AbstractMessageListenerContainer<K, V>
 		implements GenericMessageListenerContainer<K, V>, BeanNameAware, ApplicationEventPublisherAware,

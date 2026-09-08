@@ -24,6 +24,7 @@ import org.jspecify.annotations.Nullable;
  * An event published when a concurrent container is stopped.
  *
  * @author Lokesh Alamuri
+ * @author Ngoc Nhan
  * @since 3.3
  *
  */

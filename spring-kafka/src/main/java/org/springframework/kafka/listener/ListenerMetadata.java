@@ -23,6 +23,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Francois Rosiere
  * @author Gary Russell
+ * @author Ngoc Nhan
  * @since 2.8.5
  * @see org.springframework.kafka.annotation.KafkaListener
  */

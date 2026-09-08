@@ -36,6 +36,7 @@ import org.springframework.kafka.support.TopicPartitionOffset;
  * @author Tomaz Fernandes
  * @author Gary Russell
  * @author Wang Zhiyang
+ * @author Ngoc Nhan
  *
  * @since 2.7.2
  *

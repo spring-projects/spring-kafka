@@ -61,6 +61,7 @@ import org.springframework.util.Assert;
  * @author Wang Zhiyang
  * @author Lokesh Alamuri
  * @author Su Ko
+ * @author Ngoc Nhan
  */
 public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
 

@@ -47,6 +47,7 @@ import org.springframework.util.Assert;
  * @param <V> the value type
  *
  * @author Soby Chacko
+ * @author Ngoc Nhan
  * @since 4.0
  */
 public abstract class AbstractShareKafkaMessageListenerContainer<K, V>
