@@ -478,9 +478,8 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			}
 
 			String[] topics = containerProperties.getTopics();
-			if (topics != null) {
-				this.consumer.subscribe(Arrays.asList(topics));
-			}
+			Assert.notNull(topics,  "topics cannot be null");
+			this.consumer.subscribe(Arrays.asList(topics));
 		}
 
 		/**
