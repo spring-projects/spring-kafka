@@ -47,6 +47,7 @@ import org.springframework.util.PatternMatchUtils;
  * @author Artem Bilan
  * @author Sanghyeok An
  * @author Soby Chacko
+ * @author Ngoc Nhan
  *
  * @since 2.1.3
  *
@@ -330,9 +331,7 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 		}
 	}
 
-	@SuppressWarnings("NullAway") // Dataflow analysis limitation
-	@Nullable
-	private byte[] mapRawOut(String header, Object value) {
+	private byte @Nullable [] mapRawOut(String header, Object value) {
 		if (this.mapAllStringsOut || this.rawMappedHeaders.containsKey(header)) {
 			if (value instanceof byte[]) {
 				return (byte[]) value;

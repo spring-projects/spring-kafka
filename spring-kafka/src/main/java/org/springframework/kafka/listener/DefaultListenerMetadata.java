@@ -23,6 +23,7 @@ import org.springframework.util.Assert;
 /**
  * Default implementation for {@link ListenerMetadata}.
  * @author Francois Rosiere
+ * @author Ngoc Nhan
  * @since 2.8.6
  */
 class DefaultListenerMetadata implements ListenerMetadata {
@@ -47,8 +48,7 @@ class DefaultListenerMetadata implements ListenerMetadata {
 	}
 
 	@Override
-	@Nullable
-	public byte[] getListenerInfo() {
+	public byte @Nullable [] getListenerInfo() {
 		return this.container.getListenerInfo();
 	}
 }

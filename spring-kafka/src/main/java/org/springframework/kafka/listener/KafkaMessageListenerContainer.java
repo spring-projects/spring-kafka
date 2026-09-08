@@ -179,6 +179,7 @@ import org.springframework.util.StringUtils;
  * @author Youngjoo Kim
  * @author Bill Kim
  * @author Hakaze Arimu
+ * @author Ngoc Nhan
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -801,7 +802,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Map<TopicPartition, Boolean> wasIdlePartition;
 
-		private final byte[] listenerInfo = getListenerInfo();
+		private final byte @Nullable [] listenerInfo = getListenerInfo();
 
 		private final Header infoHeader = new RecordHeader(KafkaHeaders.LISTENER_INFO, this.listenerInfo);
 

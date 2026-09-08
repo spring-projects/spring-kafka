@@ -23,6 +23,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Francois Rosiere
  * @author Gary Russell
+ * @author Ngoc Nhan
  * @since 2.8.5
  * @see org.springframework.kafka.annotation.KafkaListener
  */
@@ -46,7 +47,6 @@ public interface ListenerMetadata {
 	 * Return the listener info.
 	 * @return the listener info.
 	 */
-	@Nullable
-	byte[] getListenerInfo();
+	byte @Nullable [] getListenerInfo();
 
 }

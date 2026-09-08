@@ -40,6 +40,7 @@ import org.springframework.kafka.support.KafkaHeaders;
  * @author Francois Rosiere
  * @author Soby Chacko
  * @author Lokesh Alamuri
+ * @author Ngoc Nhan
  */
 public interface MessageListenerContainer extends SmartLifecycle, DisposableBean {
 
@@ -225,8 +226,7 @@ public interface MessageListenerContainer extends SmartLifecycle, DisposableBean
 	 * @return the info.
 	 * @since 2.8.6
 	 */
-	@Nullable
-	default byte[] getListenerInfo() {
+	default byte @Nullable [] getListenerInfo() {
 		throw new UnsupportedOperationException("This container does not support retrieving the listener info");
 	}
 

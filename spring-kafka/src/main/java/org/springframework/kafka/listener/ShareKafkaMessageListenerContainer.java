@@ -110,6 +110,7 @@ import org.springframework.util.StringUtils;
  * @author Youngjoo Kim
  * @author Omar Morales Ortega
  * @author OhKyu Chan
+ * @author Ngoc Nhan
  *
  * @since 4.0
  *
@@ -424,7 +425,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 
 		private final long ackTimeoutMs;
 
-		ShareListenerConsumer(GenericMessageListener<?> listener, String consumerClientId) {
+		ShareListenerConsumer(GenericMessageListener<?> listener, @Nullable String consumerClientId) {
 			this.genericListener = listener;
 			this.clientId = consumerClientId;
 			ContainerProperties containerProperties = getContainerProperties();
@@ -477,7 +478,9 @@ public class ShareKafkaMessageListenerContainer<K, V>
 				});
 			}
 
-			this.consumer.subscribe(Arrays.asList(containerProperties.getTopics()));
+			String[] topics = containerProperties.getTopics();
+			Assert.notNull(topics,  "topics cannot be null");
+			this.consumer.subscribe(Arrays.asList(topics));
 		}
 
 		/**
@@ -499,7 +502,6 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		}
 
 		@Override
-		@SuppressWarnings({"unchecked", "rawtypes"})
 		public void run() {
 			initialize();
 			Throwable exitThrowable = null;
@@ -767,7 +769,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 
 			private final ConsumerRecord<K, V> record;
 
-			private final AtomicReference<AcknowledgeType> acknowledgmentType = new AtomicReference<>();
+			private final AtomicReference<@Nullable AcknowledgeType> acknowledgmentType = new AtomicReference<>();
 
 			ShareConsumerAcknowledgment(ConsumerRecord<K, V> record) {
 				this.record = record;
