@@ -332,6 +332,17 @@ public class ToStringSerializationTests {
 		}
 	}
 
+	@Test
+	void deserializeWithNullDataOrHeaders() {
+
+		try (ParseStringDeserializer<Object> deserializer = new ParseStringDeserializer<>(ToStringSerializationTests::parseWithHeaders)) {
+
+			assertThat(deserializer.deserialize("topic", null)).isNull();
+			assertThat(deserializer.deserialize("topic", new RecordHeaders(), (byte[]) null)).isNull();
+			assertThat(deserializer.deserialize("topic", new RecordHeaders(), (ByteBuffer) null)).isNull();
+		}
+	}
+
 	public static Object parseWithHeaders(@Nullable String str, Headers headers) {
 		if (str == null) {
 			return null;

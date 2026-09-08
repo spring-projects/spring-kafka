@@ -178,6 +178,16 @@ public class ErrorHandlingDeserializerTests {
 				.isEqualTo("test validation");
 	}
 
+	@Test
+	void deserializeWithNullDataOrHeaders() {
+
+		try (ErrorHandlingDeserializer<String> deserializer = new ErrorHandlingDeserializer<>()) {
+
+			assertThat(deserializer.deserialize("topic", null)).isNull();
+			assertThat(deserializer.deserialize("topic", new RecordHeaders(), (byte[]) null)).isNull();
+		}
+	}
+
 	@Configuration
 	@EnableKafka
 	public static class Config {

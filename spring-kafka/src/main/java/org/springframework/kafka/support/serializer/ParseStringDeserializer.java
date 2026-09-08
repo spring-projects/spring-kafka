@@ -39,6 +39,7 @@ import org.springframework.util.Assert;
  * @author Alexei Klenin
  * @author Gary Russell
  * @author Wang Zhiyang
+ * @author Ngoc Nhan
  *
  * @since 2.5
  */
@@ -59,7 +60,7 @@ public class ParseStringDeserializer<T> implements Deserializer<T> {
 	};
 
 	@SuppressWarnings("unchecked")
-	private BiFunction<String, Headers, T> parser = (BiFunction<String, Headers, T>) NO_PARSER;
+	private BiFunction<@Nullable String, @Nullable Headers, T> parser = (BiFunction<@Nullable String, @Nullable Headers, T>) NO_PARSER;
 
 	private Charset charset = StandardCharsets.UTF_8;
 
@@ -76,7 +77,7 @@ public class ParseStringDeserializer<T> implements Deserializer<T> {
 	 * null as the input value, for example for a tombstone record in a compacted topic.
 	 * @param parser the function.
 	 */
-	public ParseStringDeserializer(Function<String, T> parser) {
+	public ParseStringDeserializer(Function<@Nullable String, T> parser) {
 		this.parser = (message, ignoredHeaders) -> parser.apply(message);
 	}
 
@@ -85,7 +86,7 @@ public class ParseStringDeserializer<T> implements Deserializer<T> {
 	 * null as the input value, for example for a tombstone record in a compacted topic.
 	 * @param parser the function.
 	 */
-	public ParseStringDeserializer(BiFunction<String, Headers, T> parser) {
+	public ParseStringDeserializer(BiFunction<@Nullable String, @Nullable Headers, T> parser) {
 		this.parser = parser;
 	}
 
@@ -101,17 +102,17 @@ public class ParseStringDeserializer<T> implements Deserializer<T> {
 	}
 
 	@Override
-	public T deserialize(String topic, byte[] data) {
-		return deserialize(topic, null, data);
+	public @Nullable T deserialize(String topic, byte @Nullable [] data) {
+		return this.parser.apply(data == null ? null : new String(data, this.charset), null);
 	}
 
 	@Override
-	public T deserialize(String topic, @Nullable Headers headers, byte[] data) {
+	public @Nullable T deserialize(String topic, Headers headers, byte @Nullable [] data) {
 		return this.parser.apply(data == null ? null : new String(data, this.charset), headers);
 	}
 
 	@Override
-	public T deserialize(String topic, Headers headers, ByteBuffer data) {
+	public @Nullable T deserialize(String topic, Headers headers, @Nullable ByteBuffer data) {
 		String value = deserialize(data);
 		return this.parser.apply(value, headers);
 	}
@@ -148,7 +149,7 @@ public class ParseStringDeserializer<T> implements Deserializer<T> {
 	 * Get the configured parser function.
 	 * @return the function.
 	 */
-	public BiFunction<String, Headers, T> getParser() {
+	public BiFunction<@Nullable String, @Nullable Headers, T> getParser() {
 		return this.parser;
 	}
 

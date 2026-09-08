@@ -358,6 +358,20 @@ public class DelegatingSerializationTests {
 		}
 	}
 
+	@Test
+	void deserializeWithNullDataOrHeaders() {
+
+		Headers headers = new RecordHeaders();
+		headers.add(new RecordHeader(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR, "string".getBytes()));
+		try (DelegatingDeserializer deserializer = new DelegatingDeserializer()) {
+
+			assertThatExceptionOfType(UnsupportedOperationException.class)
+					.isThrownBy(() -> deserializer.deserialize("topic", null));
+			assertThat(deserializer.deserialize("topic", headers, (byte[]) null)).isNull();
+			assertThat(deserializer.deserialize("topic", headers, (ByteBuffer) null)).isNull();
+		}
+	}
+
 	interface AwareIface {
 	}
 

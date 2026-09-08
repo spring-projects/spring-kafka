@@ -37,6 +37,7 @@ import org.springframework.validation.Validator;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Victor Perez Rey
+ * @author Ngoc Nhan
  *
  * @since 2.2
  *
@@ -196,7 +197,7 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 	}
 
 	@Override
-	public @Nullable T deserialize(String topic, byte[] data) {
+	public @Nullable T deserialize(String topic, byte @Nullable [] data) {
 		try {
 			return this.delegate == null ? null : validate(this.delegate.deserialize(topic, data));
 		}
@@ -206,7 +207,7 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 	}
 
 	@Override
-	public @Nullable T deserialize(String topic, Headers headers, byte[] data) {
+	public @Nullable T deserialize(String topic, Headers headers, byte @Nullable [] data) {
 		try {
 			if (this.isForKey) {
 				headers.remove(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER);
@@ -230,7 +231,7 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 		return deserialized;
 	}
 
-	private @Nullable T recoverFromSupplier(String topic, @Nullable Headers headers, byte[] data, Exception exception) {
+	private @Nullable T recoverFromSupplier(String topic, @Nullable Headers headers, byte @Nullable [] data, Exception exception) {
 		if (this.failedDeserializationFunction != null) {
 			FailedDeserializationInfo failedDeserializationInfo =
 					new FailedDeserializationInfo(topic, headers, data, this.isForKey, exception);

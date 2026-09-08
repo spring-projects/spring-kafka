@@ -62,6 +62,7 @@ import org.springframework.util.StringUtils;
  * @author Torsten Schleede
  * @author Ivan Ponomarev
  * @author Omer Celik
+ * @author Ngoc Nhan
  *
  * @deprecated since 4.0 in favor of {@link JacksonJsonDeserializer} for Jackson 3.
  */
@@ -385,7 +386,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @param typeFunction the function.
 	 * @since 2.5
 	 */
-	public void setTypeFunction(BiFunction<byte[], Headers, JavaType> typeFunction) {
+	public void setTypeFunction(BiFunction<byte[], @Nullable Headers, JavaType> typeFunction) {
 		this.typeResolver = (topic, data, headers) -> typeFunction.apply(data, headers);
 		this.setterCalled = true;
 	}
@@ -583,7 +584,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	}
 
 	@Override
-	public @Nullable T deserialize(String topic, Headers headers, byte[] data) {
+	public @Nullable T deserialize(String topic, Headers headers, byte @Nullable [] data) {
 		if (data == null) {
 			return null;
 		}
@@ -616,7 +617,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	}
 
 	@Override
-	public @Nullable T deserialize(String topic, byte[] data) {
+	public @Nullable T deserialize(String topic, byte @Nullable [] data) {
 		if (data == null) {
 			return null;
 		}
@@ -751,7 +752,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 	 * @return the deserializer.
 	 * @since 2.5
 	 */
-	public JsonDeserializer<T> typeFunction(BiFunction<byte[], Headers, JavaType> typeFunction) {
+	public JsonDeserializer<T> typeFunction(BiFunction<byte[], @Nullable Headers, JavaType> typeFunction) {
 		setTypeFunction(typeFunction);
 		return this;
 	}

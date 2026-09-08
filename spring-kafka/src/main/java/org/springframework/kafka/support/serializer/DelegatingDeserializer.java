@@ -164,18 +164,18 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 	}
 
 	@Override
-	public Object deserialize(String topic, byte[] data) {
+	public @Nullable Object deserialize(String topic, byte @Nullable [] data) {
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	public @Nullable Object deserialize(String topic, Headers headers, byte[] data) {
+	public @Nullable Object deserialize(String topic, Headers headers, byte @Nullable [] data) {
 		Deserializer<?> deserializer = getDeserializerByHeaders(headers);
 		return deserializer == null ? data : deserializer.deserialize(topic, headers, data);
 	}
 
 	@Override
-	public @Nullable Object deserialize(String topic, Headers headers, ByteBuffer data) {
+	public @Nullable Object deserialize(String topic, Headers headers, @Nullable ByteBuffer data) {
 		Deserializer<?> deserializer = getDeserializerByHeaders(headers);
 		return deserializer == null ? data : deserializer.deserialize(topic, headers, data);
 	}

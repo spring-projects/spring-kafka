@@ -26,6 +26,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Victor Perez Rey
  * @author Artem Bilan
+ * @author Ngoc Nhan
  *
  * @since 2.2.8
  */
@@ -35,7 +36,7 @@ public class FailedDeserializationInfo {
 
 	private final @Nullable Headers headers;
 
-	private final byte[] data;
+	private final byte @Nullable [] data;
 
 	private final boolean isForKey;
 
@@ -49,12 +50,14 @@ public class FailedDeserializationInfo {
 	 * @param isForKey true for a key deserializer, false otherwise.
 	 * @param exception exception causing the deserialization error.
 	 */
-	public FailedDeserializationInfo(String topic, @Nullable Headers headers, byte[] data, boolean isForKey,
+	public FailedDeserializationInfo(String topic, @Nullable Headers headers, byte @Nullable [] data, boolean isForKey,
 			Exception exception) {
 
 		this.topic = topic;
 		this.headers = headers;
-		this.data = Arrays.copyOf(data, data.length);
+		this.data = data == null
+				? null
+				: Arrays.copyOf(data, data.length);
 		this.isForKey = isForKey;
 		this.exception = exception;
 	}
@@ -67,8 +70,10 @@ public class FailedDeserializationInfo {
 		return this.headers;
 	}
 
-	public byte[] getData() {
-		return Arrays.copyOf(this.data, this.data.length);
+	public byte @Nullable [] getData() {
+		return this.data == null
+				? null
+				: Arrays.copyOf(this.data, this.data.length);
 	}
 
 	public boolean isForKey() {

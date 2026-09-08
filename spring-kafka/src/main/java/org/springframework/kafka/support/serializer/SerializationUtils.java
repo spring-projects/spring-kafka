@@ -41,6 +41,7 @@ import org.springframework.util.ClassUtils;
  * Utilities for serialization.
  *
  * @author Gary Russell
+ * @author Ngoc Nhan
  * @since 2.5
  *
  */
@@ -85,13 +86,13 @@ public final class SerializationUtils {
 	 * @return the function.
 	 */
 	@SuppressWarnings("unchecked")
-	public static <P, T> BiFunction<P, Headers, T> propertyToMethodInvokingFunction(String methodProperty,
+	public static <P, T> BiFunction<@Nullable P, @Nullable Headers, T> propertyToMethodInvokingFunction(String methodProperty,
 			Class<P> payloadType, ClassLoader classLoader) {
 
 		int lastDotPosn = methodProperty.lastIndexOf('.');
 		Assert.state(lastDotPosn > 1,
 				"the method property needs to be a class name followed by the method name, separated by '.'");
-		BiFunction<P, Headers, T> function;
+		BiFunction<@Nullable P, @Nullable Headers, T> function;
 		Class<?> clazz;
 		try {
 			clazz = ClassUtils.forName(methodProperty.substring(0, lastDotPosn), classLoader);
@@ -159,7 +160,7 @@ public final class SerializationUtils {
 	 * @param isForKeyArg true if this is a key deserialization problem, otherwise value.
 	 * @since 2.8
 	 */
-	public static void deserializationException(Headers headers, byte[] data, Exception ex, boolean isForKeyArg) {
+	public static void deserializationException(Headers headers, byte @Nullable [] data, Exception ex, boolean isForKeyArg) {
 		ByteArrayOutputStream stream = new ByteArrayOutputStream();
 		DeserializationException exception =
 				new DeserializationException("failed to deserialize", data, isForKeyArg, ex);
@@ -229,7 +230,7 @@ public final class SerializationUtils {
 	@Nullable
 	public static DeserializationException byteArrayToDeserializationException(LogAccessor logger, Header header) {
 
-		if (header != null && !(header instanceof DeserializationExceptionHeader)) {
+		if (!(header instanceof DeserializationExceptionHeader)) {
 			throw new IllegalStateException("Foreign deserialization exception header ignored; possible attack?");
 		}
 		try {
