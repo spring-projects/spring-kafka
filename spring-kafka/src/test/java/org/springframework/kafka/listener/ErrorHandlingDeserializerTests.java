@@ -188,6 +188,17 @@ public class ErrorHandlingDeserializerTests {
 		}
 	}
 
+	@Test
+	void validateNullValue() {
+		ErrorHandlingDeserializer<String> ehd = new ErrorHandlingDeserializer<>(new StringDeserializer());
+		ehd.configure(Map.of(ErrorHandlingDeserializer.VALIDATOR_CLASS, Val.class.getName()), false);
+
+		Headers headers = new RecordHeaders();
+		assertThat(ehd.deserialize("foo", headers, (byte[]) null)).isNull();
+		assertThat(headers.lastHeader(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER)).isNull();
+		assertThat(ehd.deserialize("foo", (byte[]) null)).isNull();
+	}
+
 	@Configuration
 	@EnableKafka
 	public static class Config {
