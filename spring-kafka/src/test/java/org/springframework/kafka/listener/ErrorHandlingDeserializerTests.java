@@ -63,6 +63,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Gary Russell
+ * @author Ngoc Nhan
  * @since 2.2
  *
  */
@@ -205,7 +206,7 @@ public class ErrorHandlingDeserializerTests {
 
 		@Bean
 		public EmbeddedKafkaBroker embeddedKafka() {
-			return new EmbeddedKafkaKraftBroker(1,  1, TOPIC);
+			return new EmbeddedKafkaKraftBroker(1, 1, TOPIC);
 		}
 
 		@Bean

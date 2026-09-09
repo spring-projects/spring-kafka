@@ -30,6 +30,7 @@ import org.springframework.messaging.Message;
  * {@code String<->byte[]} conversion is avoided.
  *
  * @author Soby Chacko
+ * @author Ngoc Nhan
  * @since 4.0
  */
 public class ByteArrayJacksonJsonMessageConverter extends JacksonJsonMessageConverter {
@@ -46,7 +47,7 @@ public class ByteArrayJacksonJsonMessageConverter extends JacksonJsonMessageConv
 		try {
 			return message.getPayload() instanceof KafkaNull
 					? null
-					:  getJsonMapper().writeValueAsBytes(message.getPayload());
+					: getJsonMapper().writeValueAsBytes(message.getPayload());
 		}
 		catch (Exception e) {
 			throw new ConversionException("Failed to convert to JSON", message, e);

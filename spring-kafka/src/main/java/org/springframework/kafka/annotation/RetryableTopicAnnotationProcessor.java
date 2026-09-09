@@ -115,7 +115,7 @@ public class RetryableTopicAnnotationProcessor {
 			Object bean) {
 
 		Class<?> clazz = method.getDeclaringClass();
-		return  processAnnotation(topics, clazz, annotation, bean);
+		return processAnnotation(topics, clazz, annotation, bean);
 	}
 
 	public RetryTopicConfiguration processAnnotation(String[] topics, Class<?> clazz, RetryableTopic annotation,

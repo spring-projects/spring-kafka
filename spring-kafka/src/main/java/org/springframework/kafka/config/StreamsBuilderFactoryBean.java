@@ -66,6 +66,7 @@ import org.springframework.util.Assert;
  * @author Cédric Schaller
  * @author Almog Gavra
  * @author Saurabh Jadhav
+ * @author Ngoc Nhan
  * @since 1.1.4
  */
 public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilder>
@@ -102,7 +103,7 @@ public class StreamsBuilderFactoryBean extends AbstractFactoryBean<StreamsBuilde
 	@SuppressWarnings("NullAway.Init")
 	private KafkaStreams.StateListener stateListener;
 
-	private @Nullable  StateRestoreListener stateRestoreListener;
+	private @Nullable StateRestoreListener stateRestoreListener;
 
 	private @Nullable StreamsUncaughtExceptionHandler streamsUncaughtExceptionHandler;
 

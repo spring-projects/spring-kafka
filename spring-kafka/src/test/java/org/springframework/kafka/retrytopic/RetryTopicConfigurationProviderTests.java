@@ -46,6 +46,7 @@ import static org.mockito.Mockito.times;
  * @author Gary Russell
  * @author Fabio da Silva Jr.
  * @author Wang Zhiyang
+ * @author Ngoc Nhan
  *
  * @since 2.7
  */
@@ -69,7 +70,7 @@ class RetryTopicConfigurationProviderTests {
 
 	private Method getAnnotatedMethod(String methodName) {
 		try {
-			return  this.getClass().getDeclaredMethod(methodName);
+			return this.getClass().getDeclaredMethod(methodName);
 		}
 		catch (Exception e) {
 			throw new RuntimeException(e);

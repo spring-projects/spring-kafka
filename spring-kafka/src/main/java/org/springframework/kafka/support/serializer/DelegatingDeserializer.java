@@ -40,6 +40,7 @@ import org.springframework.util.StringUtils;
  * @author Gary Russell
  * @author Wang Zhiyang
  * @author Soby Chacko
+ * @author Ngoc Nhan
  *
  * @since 2.3
  *
@@ -153,7 +154,7 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 		}
 	}
 
-	public void addDelegate(String selector, Deserializer<?>  deserializer) {
+	public void addDelegate(String selector, Deserializer<?> deserializer) {
 		this.delegates.put(selector, deserializer);
 	}
 

@@ -32,6 +32,7 @@ import org.springframework.messaging.Message;
  *
  * @author Gary Russell
  * @author Vladimir Loginov
+ * @author Ngoc Nhan
  * @since 2.3
  *
  * @deprecated since 4.0 in favor of {@link ByteArrayJacksonJsonMessageConverter} for Jackson 3.
@@ -52,7 +53,7 @@ public class ByteArrayJsonMessageConverter extends JsonMessageConverter {
 		try {
 			return message.getPayload() instanceof KafkaNull
 					? null
-					:  getObjectMapper().writeValueAsBytes(message.getPayload());
+					: getObjectMapper().writeValueAsBytes(message.getPayload());
 		}
 		catch (JsonProcessingException e) {
 			throw new ConversionException("Failed to convert to JSON", message, e);
