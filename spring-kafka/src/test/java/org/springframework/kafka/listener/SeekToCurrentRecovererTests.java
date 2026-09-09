@@ -70,6 +70,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 /**
  * @author Gary Russell
  * @author Soby Chacko
+ * @author Ngoc Nhan
  * @since 2.2
  *
  */
@@ -182,10 +183,10 @@ public class SeekToCurrentRecovererTests {
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(() ->
 				eh.handleRemaining(new RuntimeException(), records, consumer, null));
-		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
+		verify(consumer).seek(new TopicPartition("foo", 0), 0L);
 		verifyNoMoreInteractions(consumer);
 		eh.handleRemaining(new RuntimeException(), records, consumer, null);
-		verify(consumer).seek(new TopicPartition("foo", 0),  1L);
+		verify(consumer).seek(new TopicPartition("foo", 0), 1L);
 		verifyNoMoreInteractions(consumer);
 		verify(recoverer).accept(eq(records.get(0)), any());
 	}
@@ -229,17 +230,17 @@ public class SeekToCurrentRecovererTests {
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(
 				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
-		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
+		verify(consumer).seek(new TopicPartition("foo", 0), 0L);
 		verifyNoMoreInteractions(consumer);
 		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(
 				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
-		verify(consumer, times(2)).seek(new TopicPartition("foo", 0),  0L);
+		verify(consumer, times(2)).seek(new TopicPartition("foo", 0), 0L);
 		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(
 				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
-		verify(consumer, times(3)).seek(new TopicPartition("foo", 0),  0L);
+		verify(consumer, times(3)).seek(new TopicPartition("foo", 0), 0L);
 		eh.handleRemaining(new RuntimeException(), records, consumer, null);
-		verify(consumer, times(3)).seek(new TopicPartition("foo", 0),  0L);
-		verify(consumer).seek(new TopicPartition("foo", 0),  1L);
+		verify(consumer, times(3)).seek(new TopicPartition("foo", 0), 0L);
+		verify(consumer).seek(new TopicPartition("foo", 0), 1L);
 		verifyNoMoreInteractions(consumer);
 		verify(recoverer, times(2)).accept(eq(records.get(0)), any());
 		assertThat(failedDeliveryAttempt.get()).isEqualTo(2);
@@ -269,14 +270,14 @@ public class SeekToCurrentRecovererTests {
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(
 				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
-		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
+		verify(consumer).seek(new TopicPartition("foo", 0), 0L);
 		verifyNoMoreInteractions(consumer);
 		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(
 				() -> eh.handleRemaining(new RuntimeException(), records, consumer, null));
-		verify(consumer, times(2)).seek(new TopicPartition("foo", 0),  0L);
+		verify(consumer, times(2)).seek(new TopicPartition("foo", 0), 0L);
 		eh.handleRemaining(new RuntimeException(), records, consumer, null); // immediate re-attempt recovery
-		verify(consumer, times(2)).seek(new TopicPartition("foo", 0),  0L);
-		verify(consumer).seek(new TopicPartition("foo", 0),  1L);
+		verify(consumer, times(2)).seek(new TopicPartition("foo", 0), 0L);
+		verify(consumer).seek(new TopicPartition("foo", 0), 1L);
 		verifyNoMoreInteractions(consumer);
 		verify(recoverer, times(2)).accept(eq(records.get(0)), any());
 	}
@@ -310,11 +311,11 @@ public class SeekToCurrentRecovererTests {
 		given(container.getContainerProperties()).willReturn(properties);
 		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(() ->
 			eh.handleRemaining(new RuntimeException(), records, consumer, container));
-		verify(consumer).seek(new TopicPartition("foo", 0),  0L);
-		verify(consumer).seek(new TopicPartition("foo", 1),  0L);
+		verify(consumer).seek(new TopicPartition("foo", 0), 0L);
+		verify(consumer).seek(new TopicPartition("foo", 1), 0L);
 		verifyNoMoreInteractions(consumer);
 		eh.handleRemaining(new RuntimeException(), records, consumer, container);
-		verify(consumer, times(2)).seek(new TopicPartition("foo", 1),  0L);
+		verify(consumer, times(2)).seek(new TopicPartition("foo", 1), 0L);
 		if (syncCommits) {
 			verify(consumer)
 					.commitSync(Collections.singletonMap(new TopicPartition("foo", 0), new OffsetAndMetadata(1L)),
@@ -343,7 +344,7 @@ public class SeekToCurrentRecovererTests {
 			assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(() ->
 				eh.handleRemaining(new RuntimeException(), records, consumer, null));
 		}
-		verify(consumer, times(20)).seek(new TopicPartition("foo", 0),  0L);
+		verify(consumer, times(20)).seek(new TopicPartition("foo", 0), 0L);
 		verifyNoMoreInteractions(consumer);
 		verify(recoverer, never()).accept(any(), any());
 	}

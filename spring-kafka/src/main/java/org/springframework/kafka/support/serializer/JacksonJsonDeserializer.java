@@ -66,6 +66,7 @@ import org.springframework.util.StringUtils;
  * @author Omer Celik
  * @author Soby Chacko
  * @author Trond Ziarkowski
+ * @author Ngoc Nhan
  *
  * @since 4.0
  */
@@ -593,7 +594,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 			return deserReader.readValue(data);
 		}
 		catch (Exception ex) {
-			throw new SerializationException("Can't deserialize data  from topic [" + topic + "]", ex);
+			throw new SerializationException("Can't deserialize data from topic [" + topic + "]", ex);
 		}
 	}
 

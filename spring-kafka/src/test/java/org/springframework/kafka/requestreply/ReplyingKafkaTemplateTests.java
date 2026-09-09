@@ -1083,7 +1083,7 @@ public class ReplyingKafkaTemplateTests {
 
 		@KafkaListener(id = G_REQUEST, topics = G_REQUEST)
 		public void gListener(Message<String> in) {
-			String replyTopic = new String(in.getHeaders().get("custom.reply.to",  byte[].class));
+			String replyTopic = new String(in.getHeaders().get("custom.reply.to", byte[].class));
 			int replyPart = ByteBuffer.wrap(in.getHeaders().get("custom.reply.partition", byte[].class)).getInt();
 			ProducerRecord<Integer, String> record = new ProducerRecord<>(replyTopic, replyPart, null,
 					in.getPayload() + "WithCustomHeaders");

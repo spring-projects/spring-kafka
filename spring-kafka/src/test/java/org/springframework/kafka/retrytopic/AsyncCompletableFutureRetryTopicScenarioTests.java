@@ -66,6 +66,7 @@ import static org.assertj.core.api.Assertions.fail;
 /**
  * @author Sanghyeok An
  * @author Artem Bilan
+ * @author Ngoc Nhan
  *
  * @since 3.3.0
  */
@@ -1105,7 +1106,7 @@ public class AsyncCompletableFutureRetryTopicScenarioTests {
 
 		private static final String DLT_METHOD_NAME = "processDltMessage";
 
-		static  RetryTopicConfiguration createRetryTopicConfiguration(
+		static RetryTopicConfiguration createRetryTopicConfiguration(
 				KafkaTemplate<String, String> template,
 				String topicName,
 				String dltBeanName,

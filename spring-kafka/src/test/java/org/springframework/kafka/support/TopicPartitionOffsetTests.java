@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Gary Russell
+ * @author Ngoc Nhan
  * @since 2.3.13
  *
  */
@@ -35,7 +36,7 @@ public class TopicPartitionOffsetTests {
 	@Test
 	void hashCodeTest() {
 		assertThat(new TopicPartitionOffset("foo", 1, SeekPosition.BEGINNING).hashCode())
-				.isNotEqualTo(new TopicPartitionOffset("foo",  1, SeekPosition.END).hashCode());
+				.isNotEqualTo(new TopicPartitionOffset("foo", 1, SeekPosition.END).hashCode());
 	}
 
 	@Test

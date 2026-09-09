@@ -53,6 +53,7 @@ import org.springframework.util.backoff.BackOffExecution;
  * @author Wang Zhiyang
  * @author Sanghyeok An
  * @author Leos Bitto
+ * @author Ngoc Nhan
  *
  * @since 2.8
  *
@@ -274,7 +275,7 @@ public final class ErrorHandlingUtils {
 	 */
 	public static @Nullable Exception findRootCause(@Nullable Exception exception) {
 		Exception realException = exception;
-		while ((realException  instanceof ListenerExecutionFailedException
+		while ((realException instanceof ListenerExecutionFailedException
 				|| realException instanceof TimestampedException)
 						&& realException.getCause() instanceof Exception cause) {
 

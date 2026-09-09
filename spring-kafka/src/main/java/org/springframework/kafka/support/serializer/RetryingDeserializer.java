@@ -39,6 +39,7 @@ import org.springframework.util.Assert;
  * @author Wang Zhiyang
  * @author Soby Chacko
  * @author Stephane Nicoll
+ * @author Ngoc Nhan
  *
  * @since 2.3
  */
@@ -92,7 +93,7 @@ public class RetryingDeserializer<T> implements Deserializer<T> {
 		this.delegate.close();
 	}
 
-	private @Nullable T execute(Retryable<T>  retryable) {
+	private @Nullable T execute(Retryable<T> retryable) {
 		try {
 			return this.retryOperations.execute(retryable);
 		}
