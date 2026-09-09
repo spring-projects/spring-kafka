@@ -17,6 +17,7 @@
 package org.springframework.kafka.support.serializer;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -173,6 +174,36 @@ public class DelegatingByTopicSerializationTests {
 			assertThat(serializer.serialize("topic", null)).isNull();
 			assertThat(serializer.serialize("topic", new RecordHeaders(), null)).isNull();
 		}
+	}
+
+	@Test
+	void configureConfiguresDefaultSerializerDelegate() {
+		Serializer<?> patternDelegate = spy(new StringSerializer());
+		Serializer<?> defaultDelegate = spy(new StringSerializer());
+		DelegatingByTopicSerializer serializer = new DelegatingByTopicSerializer(
+				Map.of(Pattern.compile("foo"), patternDelegate), defaultDelegate);
+		Map<String, Object> configs = Map.of("value.serializer.encoding", "UTF-16");
+
+		serializer.configure(configs, false);
+
+		verify(patternDelegate).configure(configs, false);
+		verify(defaultDelegate).configure(configs, false);
+		assertThat(serializer.serialize("other", "abc")).isEqualTo("abc".getBytes(StandardCharsets.UTF_16));
+	}
+
+	@Test
+	void configureConfiguresDefaultDeserializerDelegate() {
+		Deserializer<?> patternDelegate = spy(new StringDeserializer());
+		Deserializer<?> defaultDelegate = spy(new StringDeserializer());
+		DelegatingByTopicDeserializer deserializer = new DelegatingByTopicDeserializer(
+				Map.of(Pattern.compile("foo"), patternDelegate), defaultDelegate);
+		Map<String, Object> configs = Map.of("value.deserializer.encoding", "UTF-16");
+
+		deserializer.configure(configs, false);
+
+		verify(patternDelegate).configure(configs, false);
+		verify(defaultDelegate).configure(configs, false);
+		assertThat(deserializer.deserialize("other", null, "abc".getBytes(StandardCharsets.UTF_16))).isEqualTo("abc");
 	}
 
 	private void assertThatSerializer(DelegatingByTopicSerializer serializer) {
