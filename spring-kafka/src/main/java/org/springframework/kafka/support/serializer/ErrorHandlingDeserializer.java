@@ -222,8 +222,8 @@ public class ErrorHandlingDeserializer<T> implements Deserializer<T> {
 		}
 	}
 
-	private T validate(T deserialized) {
-		if (this.validator == null || !this.validator.supports(deserialized.getClass())) {
+	private @Nullable T validate(@Nullable T deserialized) {
+		if (deserialized == null || this.validator == null || !this.validator.supports(deserialized.getClass())) {
 			return deserialized;
 		}
 		this.validator.validateObject(deserialized).failOnError(IllegalStateException::new);
