@@ -128,6 +128,9 @@ public abstract class DelegatingByTopicSerialization<T extends Closeable> implem
 		if (configs.containsKey(configKey)) {
 			buildDefault(configs, configKey, isKey, configs.get(configKey));
 		}
+		else if (this.defaultDelegate != null) {
+			configureDelegate(configs, isKey, this.defaultDelegate);
+		}
 		configKey = configKey();
 		Object value = configs.get(configKey);
 		if (value == null) {
