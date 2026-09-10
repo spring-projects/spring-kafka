@@ -52,6 +52,7 @@ import org.springframework.kafka.event.ConsumerStoppedEvent.Reason;
 import org.springframework.kafka.event.ShareConsumerStoppingEvent;
 import org.springframework.kafka.listener.ContainerProperties.ShareAckMode;
 import org.springframework.kafka.support.ShareAcknowledgment;
+import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -286,6 +287,36 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 				factory.createListenerContainer(endpoint);
 
 		assertThat(container.getShareConsumerRecordRecoverer()).isSameAs(customRecoverer);
+	}
+
+	@Test
+	void factoryShouldPropagateRecordMessageConverterToEndpoint() {
+		RecordMessageConverter messageConverter = mock(RecordMessageConverter.class);
+		ShareKafkaListenerContainerFactory<String, String> factory =
+				new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
+		factory.setRecordMessageConverter(messageConverter);
+
+		KafkaListenerEndpoint endpoint = mock(KafkaListenerEndpoint.class);
+		given(endpoint.getTopics()).willReturn(List.of("test-topic"));
+		given(endpoint.getConcurrency()).willReturn(null);
+
+		ShareKafkaMessageListenerContainer<String, String> container = factory.createListenerContainer(endpoint);
+
+		verify(endpoint).setupListenerContainer(container, messageConverter);
+	}
+
+	@Test
+	void factoryShouldPreserveDefaultMessageConverterBehavior() {
+		ShareKafkaListenerContainerFactory<String, String> factory =
+				new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
+
+		KafkaListenerEndpoint endpoint = mock(KafkaListenerEndpoint.class);
+		given(endpoint.getTopics()).willReturn(List.of("test-topic"));
+		given(endpoint.getConcurrency()).willReturn(null);
+
+		ShareKafkaMessageListenerContainer<String, String> container = factory.createListenerContainer(endpoint);
+
+		verify(endpoint).setupListenerContainer(container, null);
 	}
 
 	/**

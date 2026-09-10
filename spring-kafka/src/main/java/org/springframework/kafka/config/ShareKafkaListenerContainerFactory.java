@@ -33,6 +33,7 @@ import org.springframework.kafka.listener.ShareConsumerRecordRecoverer;
 import org.springframework.kafka.listener.ShareKafkaMessageListenerContainer;
 import org.springframework.kafka.support.JavaUtils;
 import org.springframework.kafka.support.TopicPartitionOffset;
+import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.util.Assert;
 
 /**
@@ -52,6 +53,7 @@ import org.springframework.util.Assert;
  *
  * @author Soby Chacko
  * @author Kumar Gaurav
+ * @author Sudhanshu Ratna Thakur
  *
  * @since 4.0
  */
@@ -70,6 +72,8 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	private int concurrency = 1;
 
 	private @Nullable ShareConsumerRecordRecoverer recordRecoverer;
+
+	private @Nullable RecordMessageConverter recordMessageConverter;
 
 	@SuppressWarnings("NullAway.Init")
 	private ApplicationEventPublisher applicationEventPublisher;
@@ -134,6 +138,16 @@ public class ShareKafkaListenerContainerFactory<K, V>
 	}
 
 	/**
+	 * Set the message converter to use if dynamic argument type matching is needed for
+	 * record listeners.
+	 * @param recordMessageConverter the converter.
+	 * @since 4.2
+	 */
+	public void setRecordMessageConverter(RecordMessageConverter recordMessageConverter) {
+		this.recordMessageConverter = recordMessageConverter;
+	}
+
+	/**
 	 * Obtain the factory-level container properties - set properties as needed
 	 * and they will be copied to each listener container instance created by this factory.
 	 * @return the properties.
@@ -156,8 +170,7 @@ public class ShareKafkaListenerContainerFactory<K, V>
 		if (endpoint instanceof AbstractKafkaListenerEndpoint abstractKafkaListenerEndpoint) {
 			configureEndpoint(abstractKafkaListenerEndpoint);
 		}
-		// TODO: No message converter for queue at the moment
-		endpoint.setupListenerContainer(instance, null);
+		endpoint.setupListenerContainer(instance, this.recordMessageConverter);
 		initializeContainer(instance, endpoint);
 		return instance;
 	}
