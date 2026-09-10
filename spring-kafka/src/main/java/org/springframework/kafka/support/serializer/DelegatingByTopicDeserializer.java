@@ -29,6 +29,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Gary Russell
  * @author Wang Zhiyang
+ * @author Ngoc Nhan
  *
  * @since 2.8
  *
@@ -75,12 +76,12 @@ public class DelegatingByTopicDeserializer extends DelegatingByTopicSerializatio
 	}
 
 	@Override
-	public @Nullable Object deserialize(String topic, Headers headers, byte[] data) {
+	public @Nullable Object deserialize(String topic, Headers headers, byte @Nullable [] data) {
 		return findDelegate(topic).deserialize(topic, headers, data);
 	}
 
 	@Override
-	public @Nullable Object deserialize(String topic, Headers headers, ByteBuffer data) {
+	public @Nullable Object deserialize(String topic, Headers headers, @Nullable ByteBuffer data) {
 		return findDelegate(topic).deserialize(topic, headers, data);
 	}
 

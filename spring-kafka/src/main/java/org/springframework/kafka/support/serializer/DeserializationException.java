@@ -27,6 +27,7 @@ import org.springframework.kafka.KafkaException;
  *
  * @author Gary Russell
  * @author Artem Bilan
+ * @author Ngoc Nhan
  *
  * @since 2.2
  *
@@ -37,7 +38,7 @@ public class DeserializationException extends KafkaException {
 	@Nullable
 	private transient Headers headers;
 
-	private final byte[] data;
+	private final byte @Nullable [] data;
 
 	private final boolean isKey;
 
@@ -48,7 +49,7 @@ public class DeserializationException extends KafkaException {
 	 * @param isKey true if the exception occurred while deserializing the key.
 	 * @param cause the cause.
 	 */
-	public DeserializationException(String message, byte[] data, boolean isKey, Throwable cause) { // NOSONAR array reference
+	public DeserializationException(String message, byte @Nullable [] data, boolean isKey, @Nullable Throwable cause) { // NOSONAR array reference
 		super(message, cause);
 		this.data = data; // NOSONAR array reference
 		this.isKey = isKey;
@@ -75,7 +76,7 @@ public class DeserializationException extends KafkaException {
 	 * Get the data that failed deserialization (value or key).
 	 * @return the data.
 	 */
-	public byte[] getData() {
+	public byte @Nullable [] getData() {
 		return this.data; // NOSONAR array reference
 	}
 
