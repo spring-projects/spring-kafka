@@ -52,3 +52,18 @@ public ContainerPostProcessor<String, String, AbstractMessageListenerContainer<S
 @KafkaListener(..., containerPostProcessor="customContainerPostProcessor", ...)
 ----
 
+Starting with version 4.2, you can set a `KafkaAdmin` on the factory; it is applied to every container the factory creates.
+The container uses it to resolve the cluster id for observation (see xref:kafka/micrometer.adoc[Monitoring]).
+
+[source, java]
+----
+@Bean
+public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory(KafkaAdmin kafkaAdmin) {
+    ConcurrentKafkaListenerContainerFactory<Integer, String> factory =
+            new ConcurrentKafkaListenerContainerFactory<>();
+    ...
+    factory.setKafkaAdmin(kafkaAdmin);
+    return factory;
+}
+----
+
