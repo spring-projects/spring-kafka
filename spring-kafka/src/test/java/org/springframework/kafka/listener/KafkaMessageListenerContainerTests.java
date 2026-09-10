@@ -3474,6 +3474,135 @@ public class KafkaMessageListenerContainerTests {
 
 	@Test
 	@SuppressWarnings({ "unchecked", "rawtypes" })
+	void consumerExceptionHandlerCalledForConsumerException() throws InterruptedException {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		Map<String, Object> cfProps = new HashMap<>();
+		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000);
+		given(cf.getConfigurationProperties()).willReturn(cfProps);
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), List.of(new ConsumerRecord<>("foo", 0, 0L, 1, "foo")));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
+		AtomicBoolean first = new AtomicBoolean(true);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> first.getAndSet(false) ? consumerRecords : emptyRecords);
+		RuntimeException commitException = new RuntimeException("Commit failed");
+		willThrow(commitException).given(consumer).commitSync(anyMap(), eq(Duration.ofSeconds(45)));
+		ContainerProperties containerProps = new ContainerProperties(new TopicPartitionOffset("foo", 0));
+		containerProps.setGroupId("grp");
+		containerProps.setClientId("clientId");
+		containerProps.setMessageListener((MessageListener) r -> {
+		});
+		containerProps.setMissingTopicsFatal(false);
+		CountDownLatch latch = new CountDownLatch(1);
+		ConsumerExceptionHandler handler = mock(ConsumerExceptionHandler.class);
+		willAnswer(i -> {
+			latch.countDown();
+			return null;
+		}).given(handler).handle(any(), any(), any());
+		containerProps.setConsumerExceptionHandler(handler);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		try {
+			container.start();
+			assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+			verify(handler).handle(commitException, consumer, container);
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	void commonErrorHandlerCalledForConsumerExceptionWhenConsumerExceptionHandlerNotConfigured()
+			throws InterruptedException {
+
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		Map<String, Object> cfProps = new HashMap<>();
+		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000);
+		given(cf.getConfigurationProperties()).willReturn(cfProps);
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), List.of(new ConsumerRecord<>("foo", 0, 0L, 1, "foo")));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
+		AtomicBoolean first = new AtomicBoolean(true);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> first.getAndSet(false) ? consumerRecords : emptyRecords);
+		RuntimeException commitException = new RuntimeException("Commit failed");
+		willThrow(commitException).given(consumer).commitSync(anyMap(), eq(Duration.ofSeconds(45)));
+		ContainerProperties containerProps = new ContainerProperties(new TopicPartitionOffset("foo", 0));
+		containerProps.setGroupId("grp");
+		containerProps.setClientId("clientId");
+		containerProps.setMessageListener((MessageListener) r -> {
+		});
+		containerProps.setMissingTopicsFatal(false);
+		CountDownLatch latch = new CountDownLatch(1);
+		CommonErrorHandler errorHandler = mock(CommonErrorHandler.class);
+		willAnswer(i -> {
+			latch.countDown();
+			return null;
+		}).given(errorHandler).handleOtherException(any(), any(), any(), eq(false));
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setCommonErrorHandler(errorHandler);
+		try {
+			container.start();
+			assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+			verify(errorHandler).handleOtherException(commitException, consumer, container, false);
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	void retriableCommitFailedExceptionDoesNotInvokeConsumerExceptionHandlers() throws InterruptedException {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		Map<String, Object> cfProps = new HashMap<>();
+		cfProps.put(ConsumerConfig.DEFAULT_API_TIMEOUT_MS_CONFIG, 45000);
+		given(cf.getConfigurationProperties()).willReturn(cfProps);
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		records.put(new TopicPartition("foo", 0), List.of(new ConsumerRecord<>("foo", 0, 0L, 1, "foo")));
+		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
+		AtomicBoolean first = new AtomicBoolean(true);
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> first.getAndSet(false) ? consumerRecords : emptyRecords);
+		CountDownLatch commitLatch = new CountDownLatch(4);
+		willAnswer(i -> {
+			commitLatch.countDown();
+			throw new RetriableCommitFailedException("");
+		}).given(consumer).commitSync(anyMap(), eq(Duration.ofSeconds(45)));
+		ContainerProperties containerProps = new ContainerProperties(new TopicPartitionOffset("foo", 0));
+		containerProps.setGroupId("grp");
+		containerProps.setClientId("clientId");
+		containerProps.setMessageListener((MessageListener) r -> {
+		});
+		containerProps.setMissingTopicsFatal(false);
+		ConsumerExceptionHandler handler = mock(ConsumerExceptionHandler.class);
+		containerProps.setConsumerExceptionHandler(handler);
+		CommonErrorHandler errorHandler = mock(CommonErrorHandler.class);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		container.setCommonErrorHandler(errorHandler);
+		try {
+			container.start();
+			assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			verify(handler, never()).handle(any(), any(), any());
+			verify(errorHandler, never()).handleOtherException(any(), any(), any(), eq(false));
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	void testFatalErrorOnAuthenticationException() throws InterruptedException {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		ContainerProperties containerProps = new ContainerProperties(topic1);

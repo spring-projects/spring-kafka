@@ -113,6 +113,23 @@ The container commits any pending offset commits before calling the error handle
 
 If you are using Spring Boot, you simply need to add the error handler as a `@Bean` and Boot will add it to the auto-configured factory.
 
+[[consumer-exception-handler]]
+=== Consumer Exception Handler
+
+Starting with version 4.2, `ContainerProperties` provides a `consumerExceptionHandler` callback for exceptions thrown by the Kafka `Consumer` outside listener invocation, such as commit exceptions.
+Configure the callback on the container properties:
+
+[source, java]
+----
+factory.getContainerProperties().setConsumerExceptionHandler((exception, consumer, container) -> {
+    ...
+});
+----
+
+When a `consumerExceptionHandler` is configured, it takes precedence over the container's `CommonErrorHandler` for these consumer exceptions.
+In that case, `CommonErrorHandler.handleOtherException()` is not invoked.
+If no `consumerExceptionHandler` is configured, the container falls back to `CommonErrorHandler.handleOtherException()`, when a `CommonErrorHandler` is present.
+
 [[backoff-handlers]]
 == Back Off Handlers
 

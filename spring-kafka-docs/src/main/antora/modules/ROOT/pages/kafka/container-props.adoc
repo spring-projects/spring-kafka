@@ -69,6 +69,11 @@ Useful when the consumer code cannot determine that an `ErrorHandlingDeserialize
 |`null`
 |A rebalance listener; see xref:kafka/receiving-messages/rebalance-listeners.adoc[Rebalancing Listeners].
 
+|[[consumerExceptionHandler]]<<consumerExceptionHandler,`consumerExceptionHandler`>>
+|`null`
+|A handler for consumer exceptions thrown outside listener invocation.
+When set, it is used instead of `CommonErrorHandler.handleOtherException()` for those exceptions; see xref:kafka/annotation-error-handling.adoc#consumer-exception-handler[Consumer Exception Handler].
+
 |[[commitRetries]]<<commitRetries,`commitRetries`>>
 |3
 |Set the number of retries `RetriableCommitFailedException` when using `syncCommits` set to true.
