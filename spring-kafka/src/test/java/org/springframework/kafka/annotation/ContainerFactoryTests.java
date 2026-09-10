@@ -95,15 +95,14 @@ public class ContainerFactoryTests {
 		assertThat(container.getContainerProperties().getGroupId()).isEqualTo("myGroup");
 	}
 
-	@SuppressWarnings("unchecked")
 	@Test
 	void kafkaAdminTransferred() {
 		ConcurrentKafkaListenerContainerFactory<String, String> factory =
 				new ConcurrentKafkaListenerContainerFactory<>();
-		factory.setConsumerFactory(mock(ConsumerFactory.class));
-		KafkaAdmin kafkaAdmin = mock(KafkaAdmin.class);
+		factory.setConsumerFactory(mock());
+		KafkaAdmin kafkaAdmin = mock();
 		factory.setKafkaAdmin(kafkaAdmin);
-		ConcurrentMessageListenerContainer<String, String> container = factory.createContainer("foo");
+		ConcurrentMessageListenerContainer<String, String> container = factory.createContainer("testTopic");
 		assertThat(container.getKafkaAdmin()).isSameAs(kafkaAdmin);
 	}
 
