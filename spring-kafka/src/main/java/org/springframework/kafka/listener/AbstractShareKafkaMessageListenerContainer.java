@@ -17,7 +17,6 @@
 package org.springframework.kafka.listener;
 
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.regex.Pattern;
 
 import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -32,7 +31,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.ShareConsumerFactory;
-import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.util.Assert;
 
 /**
@@ -48,6 +46,7 @@ import org.springframework.util.Assert;
  *
  * @author Soby Chacko
  * @author Ngoc Nhan
+ * @author Burak Kalayci
  * @since 4.0
  */
 public abstract class AbstractShareKafkaMessageListenerContainer<K, V>
@@ -98,26 +97,9 @@ public abstract class AbstractShareKafkaMessageListenerContainer<K, V>
 		Assert.notNull(shareConsumerFactory, "'shareConsumerFactory' cannot be null");
 		this.shareConsumerFactory = (ShareConsumerFactory<K, V>) shareConsumerFactory;
 		String[] topics = containerProperties.getTopics();
-		if (topics != null) {
-			this.containerProperties = new ContainerProperties(topics);
-		}
-		else {
-			Pattern topicPattern = containerProperties.getTopicPattern();
-			if (topicPattern != null) {
-				this.containerProperties = new ContainerProperties(topicPattern);
-			}
-			else {
-				TopicPartitionOffset[] topicPartitions = containerProperties.getTopicPartitions();
-				if (topicPartitions != null) {
-					this.containerProperties = new ContainerProperties(topicPartitions);
-				}
-				else {
-					throw new IllegalStateException("topics, topicPattern, or topicPartitions must be provided");
-				}
-			}
-		}
-		BeanUtils.copyProperties(containerProperties, this.containerProperties,
-				"topics", "topicPartitions", "topicPattern");
+		Assert.notNull(topics, "'topics' must be provided");
+		this.containerProperties = new ContainerProperties(topics);
+		BeanUtils.copyProperties(containerProperties, this.containerProperties, "topics");
 	}
 
 	@Override
