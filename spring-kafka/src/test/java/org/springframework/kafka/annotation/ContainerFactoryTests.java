@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.kafka.config.AbstractKafkaListenerEndpoint;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListenerContainer;
 import org.springframework.kafka.listener.adapter.MessagingMessageListenerAdapter;
@@ -35,6 +36,7 @@ import static org.mockito.Mockito.mock;
 
 /**
  * @author Gary Russell
+ * @author Soby Chacko
  * @since 2.2
  *
  */
@@ -91,6 +93,17 @@ public class ContainerFactoryTests {
 				endpoint);
 		assertThat(container.getContainerProperties().getClientId()).isEqualTo("myClientId");
 		assertThat(container.getContainerProperties().getGroupId()).isEqualTo("myGroup");
+	}
+
+	@Test
+	void kafkaAdminTransferred() {
+		ConcurrentKafkaListenerContainerFactory<String, String> factory =
+				new ConcurrentKafkaListenerContainerFactory<>();
+		factory.setConsumerFactory(mock());
+		KafkaAdmin kafkaAdmin = mock();
+		factory.setKafkaAdmin(kafkaAdmin);
+		ConcurrentMessageListenerContainer<String, String> container = factory.createContainer("testTopic");
+		assertThat(container.getKafkaAdmin()).isSameAs(kafkaAdmin);
 	}
 
 }

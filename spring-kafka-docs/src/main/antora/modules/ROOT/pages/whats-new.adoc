@@ -7,6 +7,13 @@
 This section covers the changes made from version 4.1 to version 4.2.
 For changes in earlier versions, see xref:appendix/change-history.adoc[Change History].
 
+[[x42-container-factory-kafka-admin]]
+=== `KafkaAdmin` on the Listener Container Factory
+
+`AbstractKafkaListenerContainerFactory` now exposes a `setKafkaAdmin(KafkaAdmin)`.
+The configured `KafkaAdmin` is applied to every container the factory creates, which the container uses to resolve the cluster id for observation.
+See xref:kafka/container-factory.adoc[Container Factory].
+
 [[x42-error-handler-partition-scoped-clear]]
 === Partition-Scoped Thread State Clearing in Error Handlers
 

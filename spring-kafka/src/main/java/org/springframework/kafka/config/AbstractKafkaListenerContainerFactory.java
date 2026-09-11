@@ -33,6 +33,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationEventPublisherAware;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.KafkaAdmin;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.AbstractMessageListenerContainer;
 import org.springframework.kafka.listener.AfterRollbackProcessor;
@@ -62,6 +63,7 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Christian Fredriksson
+ * @author Soby Chacko
  *
  * @see AbstractMessageListenerContainer
  */
@@ -115,6 +117,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 	private @Nullable Boolean changeConsumerThreadName;
 
 	private @Nullable Function<MessageListenerContainer, String> threadNameSupplier;
+
+	private @Nullable KafkaAdmin kafkaAdmin;
 
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
@@ -368,6 +372,17 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 		this.threadNameSupplier = threadNameSupplier;
 	}
 
+	/**
+	 * Set the {@link KafkaAdmin} to apply to each container created by this factory;
+	 * it is used to find the cluster id for observation.
+	 * @param kafkaAdmin the admin.
+	 * @since 4.2
+	 * @see AbstractMessageListenerContainer#setKafkaAdmin(KafkaAdmin)
+	 */
+	public void setKafkaAdmin(KafkaAdmin kafkaAdmin) {
+		this.kafkaAdmin = kafkaAdmin;
+	}
+
 	@SuppressWarnings({"unchecked", "NullAway"})
 	@Override
 	public C createListenerContainer(KafkaListenerEndpoint endpoint) {
@@ -438,7 +453,8 @@ public abstract class AbstractKafkaListenerContainerFactory<C extends AbstractMe
 				.acceptIfNotNull(this.commonErrorHandler, instance::setCommonErrorHandler)
 				.acceptIfNotNull(this.missingTopicsFatal, instance.getContainerProperties()::setMissingTopicsFatal)
 				.acceptIfNotNull(this.changeConsumerThreadName, instance::setChangeConsumerThreadName)
-				.acceptIfNotNull(this.threadNameSupplier, instance::setThreadNameSupplier);
+				.acceptIfNotNull(this.threadNameSupplier, instance::setThreadNameSupplier)
+				.acceptIfNotNull(this.kafkaAdmin, instance::setKafkaAdmin);
 		Boolean autoStart = endpoint.getAutoStartup();
 		if (autoStart != null) {
 			instance.setAutoStartup(autoStart);
