@@ -24,7 +24,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests for trusting packages in {@link DefaultKafkaHeaderMapper}.
  *
  * @author Soby Chacko
+ * @author Ngoc Nhan
  */
+@SuppressWarnings("removal")
 public class DefaultKafkaHeaderMapperTrustPackagesTests {
 
 	@Test
