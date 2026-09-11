@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.ShareConsumer;
@@ -33,6 +34,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.kafka.config.ShareKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ShareConsumerFactory;
 import org.springframework.kafka.event.ConsumerFailedToStartEvent;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,6 +54,7 @@ import static org.mockito.Mockito.verify;
  *
  * @author Soby Chacko
  * @author Kumar Gaurav
+ * @author Burak Kalayci
  * @since 4.0
  */
 @ExtendWith(MockitoExtension.class)
@@ -126,18 +129,24 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 	}
 
 	@Test
-	void shouldValidateListenerTypeOnStartup() {
-		// Given: A container with explicit acknowledgment mode and proper listener
-		ContainerProperties containerProperties = new ContainerProperties("test-topic");
-		containerProperties.setExplicitShareAcknowledgment(true);
-		// Using an acknowledging listener should not throw during construction
-		containerProperties.setMessageListener(ackListener);
+	void shouldRejectTopicPatternAtConstruction() {
+		ContainerProperties containerProperties = new ContainerProperties(Pattern.compile("test-.*"));
 
-		ShareKafkaMessageListenerContainer<String, String> container =
-				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+		assertThatExceptionOfType(IllegalArgumentException.class)
+				.isThrownBy(() -> new ShareKafkaMessageListenerContainer<>(this.shareConsumerFactory,
+						containerProperties))
+				.withMessage("'topics' must be provided");
+	}
 
-		// Validation occurs during startup, but we don't need to actually start for this test
-		assertThat(container.getContainerProperties().isExplicitShareAcknowledgment()).isTrue();
+	@Test
+	void shouldRejectTopicPartitionsAtConstruction() {
+		ContainerProperties containerProperties =
+				new ContainerProperties(new TopicPartitionOffset("test-topic", 0));
+
+		assertThatExceptionOfType(IllegalArgumentException.class)
+				.isThrownBy(() -> new ShareKafkaMessageListenerContainer<>(this.shareConsumerFactory,
+						containerProperties))
+				.withMessage("'topics' must be provided");
 	}
 
 	@Test
