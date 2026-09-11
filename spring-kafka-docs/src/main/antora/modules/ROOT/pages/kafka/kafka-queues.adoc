@@ -998,7 +998,7 @@ Share consumers differ from regular consumers in several key ways:
 [[share-current-limitations]]
 === Current Limitations
 
-* **No Message Converters**: Message converters are not yet supported for share consumers
+* **No Listener Result Forwarding**: A `RecordMessageConverter` can be configured on `ShareKafkaListenerContainerFactory` for record listeners, but listener return values are not forwarded for share consumers; `@SendTo` and reply handling are not yet supported
 * **No Batch Listeners**: Batch processing is not supported with share consumers
 * **Poll Constraints**: In `ShareAckMode.MANUAL`, unacknowledged records block subsequent polls within each consumer thread
 

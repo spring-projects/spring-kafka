@@ -315,12 +315,12 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 
 	@Test
 	void factoryShouldPropagateRecordMessageConverterToEndpoint() {
-		RecordMessageConverter messageConverter = mock(RecordMessageConverter.class);
+		RecordMessageConverter messageConverter = mock();
 		ShareKafkaListenerContainerFactory<String, String> factory =
 				new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
 		factory.setRecordMessageConverter(messageConverter);
 
-		KafkaListenerEndpoint endpoint = mock(KafkaListenerEndpoint.class);
+		KafkaListenerEndpoint endpoint = mock();
 		given(endpoint.getTopics()).willReturn(List.of("test-topic"));
 		given(endpoint.getConcurrency()).willReturn(null);
 
@@ -334,7 +334,7 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		ShareKafkaListenerContainerFactory<String, String> factory =
 				new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
 
-		KafkaListenerEndpoint endpoint = mock(KafkaListenerEndpoint.class);
+		KafkaListenerEndpoint endpoint = mock();
 		given(endpoint.getTopics()).willReturn(List.of("test-topic"));
 		given(endpoint.getConcurrency()).willReturn(null);
 

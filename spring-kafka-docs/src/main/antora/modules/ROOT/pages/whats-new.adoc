@@ -45,6 +45,14 @@ They ship in **4.2** only (they cannot be backported to 4.1).
 This lets client-reported metrics be correlated with broker-side telemetry.
 See xref:kafka/kafka-queues.adoc#share-container-client-instance-ids[Client Instance IDs (Telemetry)].
 
+[[x42-share-record-message-converter]]
+=== Record Message Converter for Share Consumer Listeners
+
+`ShareKafkaListenerContainerFactory` now supports a `RecordMessageConverter` via `setRecordMessageConverter(RecordMessageConverter)`, wired through to the listener adapter for record listeners the same way as the classic `AbstractKafkaListenerContainerFactory`.
+Previously the share consumer stack always created the adapter with no converter.
+Listener result forwarding (`@SendTo` and reply handling) for share consumers remains a follow-up.
+See xref:kafka/kafka-queues.adoc[Kafka Queues (Share Consumers)].
+
 [[x42-header-mapper-from-user-header]]
 === Converted-Value `fromUserHeader` Overload for Header Mappers
 
