@@ -430,6 +430,19 @@ public class JsonSerializationTests {
 	}
 
 	@Test
+	void testCopyWithTypeKeepsTypeResolver() {
+		JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>()
+				.trustedPackages("*")
+				.typeResolver(JsonSerializationTests::fooBarJavaTypeForTopic);
+		JacksonJsonDeserializer<Object> copy = deser.copyWithType(Object.class);
+		assertThat(copy.deserialize("", "{\"foo\":\"bar\"}".getBytes())).isInstanceOf(Foo.class);
+		assertThat(copy.deserialize("", new RecordHeaders(), "{\"bar\":\"baz\"}".getBytes()))
+				.isInstanceOf(Bar.class);
+		deser.close();
+		copy.close();
+	}
+
+	@Test
 	void configRejectedIgnoredAfterPropertiesSet() {
 		JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>();
 		deser.setUseTypeHeaders(false);

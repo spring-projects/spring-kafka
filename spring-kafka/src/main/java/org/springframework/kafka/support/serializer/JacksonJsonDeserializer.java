@@ -656,6 +656,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 		result.removeTypeHeaders = this.removeTypeHeaders;
 		result.typeMapper = this.typeMapper;
 		result.typeMapperExplicitlySet = this.typeMapperExplicitlySet;
+		result.typeResolver = this.typeResolver;
 		return result;
 	}
 
