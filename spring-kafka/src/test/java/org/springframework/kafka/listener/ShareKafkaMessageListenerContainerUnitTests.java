@@ -26,6 +26,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.consumer.AcknowledgeType;
 import org.apache.kafka.clients.consumer.AcknowledgementCommitCallback;
@@ -51,6 +52,7 @@ import org.springframework.kafka.event.ConsumerStoppedEvent.Reason;
 import org.springframework.kafka.event.ShareConsumerStoppingEvent;
 import org.springframework.kafka.listener.ContainerProperties.ShareAckMode;
 import org.springframework.kafka.support.ShareAcknowledgment;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -77,6 +79,7 @@ import static org.mockito.Mockito.verify;
  * @author Maxwell Balla
  * @author Kumar Gaurav
  * @author OhKyu Chan
+ * @author Burak Kalayci
  * @since 4.0
  */
 @ExtendWith(MockitoExtension.class)
@@ -181,6 +184,27 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		assertThatExceptionOfType(IllegalArgumentException.class)
 				.isThrownBy(() -> container.setConcurrency(-1))
 				.withMessageContaining("concurrency must be greater than 0");
+	}
+
+	@Test
+	void shouldRejectTopicPatternAtConstruction() {
+		ContainerProperties containerProperties = new ContainerProperties(Pattern.compile("test-.*"));
+
+		assertThatExceptionOfType(IllegalArgumentException.class)
+				.isThrownBy(() -> new ShareKafkaMessageListenerContainer<>(this.shareConsumerFactory,
+						containerProperties))
+				.withMessage("'topics' must be provided");
+	}
+
+	@Test
+	void shouldRejectTopicPartitionsAtConstruction() {
+		ContainerProperties containerProperties =
+				new ContainerProperties(new TopicPartitionOffset("test-topic", 0));
+
+		assertThatExceptionOfType(IllegalArgumentException.class)
+				.isThrownBy(() -> new ShareKafkaMessageListenerContainer<>(this.shareConsumerFactory,
+						containerProperties))
+				.withMessage("'topics' must be provided");
 	}
 
 	@Test
