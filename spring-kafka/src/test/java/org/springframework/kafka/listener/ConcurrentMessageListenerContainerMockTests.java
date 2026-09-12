@@ -181,8 +181,14 @@ public class ConcurrentMessageListenerContainerMockTests {
 		});
 		container.start();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(errorContainer.get()).isSameAs(container);
-		container.stop();
+		MessageListenerContainer childAwareContainer = errorContainer.get();
+		assertThat(childAwareContainer).isNotSameAs(container);
+		assertThat(childAwareContainer.getContainerProperties()).isSameAs(container.getContainerProperties());
+		assertThat(childAwareContainer.isRunning()).isEqualTo(container.isRunning());
+		CountDownLatch stopped = new CountDownLatch(1);
+		childAwareContainer.stop(stopped::countDown);
+		assertThat(stopped.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(container.isRunning()).isFalse();
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
