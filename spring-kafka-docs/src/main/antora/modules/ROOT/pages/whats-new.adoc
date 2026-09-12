@@ -22,6 +22,15 @@ In a non-concurrent container with multiple partitions, the container calls this
 This fixes a bug where a healthy batch from one partition would reset the backoff retry counter for an unrelated failing partition, preventing broken records from ever reaching the dead-letter topic.
 Implementations of `CommonErrorHandler` that maintain per-partition state (such as custom subclasses of `FailedRecordProcessor`) may override this method to apply the same scoping.
 
+[[x42-error-handler-max-recovery-failures]]
+=== Bounded Recovery Failures in Error Handlers
+
+`DefaultErrorHandler` and `DefaultAfterRollbackProcessor` (via `FailedRecordProcessor`) now have a `setMaxRecoveryFailures(int)` property.
+When the recoverer keeps throwing for the same record (for example, the dead-letter topic is unavailable), the record was previously seeked to and redelivered indefinitely.
+With the limit set, once recovery has failed that many times for a record, it is logged at `ERROR` level and skipped as if it had been recovered.
+By default, there is no limit.
+See xref:kafka/annotation-error-handling.adoc#default-eh[Default Error Handler].
+
 [[x42-listener-observation-tags]]
 === Listener Observation Meter Tags
 

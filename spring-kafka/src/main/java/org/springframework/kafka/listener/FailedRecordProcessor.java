@@ -36,6 +36,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * Common super class for classes that deal with failing to consume a consumer record.
  *
  * @author Gary Russell
+ * @author Bill Kim
  * @since 2.3.1
  *
  */
@@ -123,6 +124,20 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 	 */
 	public void setResetStateOnExceptionChange(boolean resetStateOnExceptionChange) {
 		this.failureTracker.setResetStateOnExceptionChange(resetStateOnExceptionChange);
+	}
+
+	/**
+	 * Set the maximum number of times recovery may fail for the same record before the
+	 * record is skipped as if it had been recovered: it is logged at ERROR level, it is
+	 * no longer included in the seeks, and its offset is committed according to the
+	 * container's ack mode. By default there is no limit; a record whose recovery keeps
+	 * failing is redelivered until the recoverer succeeds.
+	 * @param maxRecoveryFailures the maximum number of recovery failures; must be greater than 0.
+	 * @since 4.2
+	 * @see #setResetStateOnRecoveryFailure(boolean)
+	 */
+	public void setMaxRecoveryFailures(int maxRecoveryFailures) {
+		this.failureTracker.setMaxRecoveryFailures(maxRecoveryFailures);
 	}
 
 	/**
