@@ -22,7 +22,7 @@ kafkaVersion = "4.1.2"
 kotlinCoroutinesVersion = "1.10.2"
 log4jVersion = "2.25.5"
 mockitoVersion = "5.19.0"
-slf4jVersion = "2.0.18"
+slf4jVersion = "2.0.19"
 
 [libraries]
 com-fasterxml-jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version.ref = "jacksonVersion" }
