@@ -168,7 +168,8 @@ public void sendToKafka(String in) {
 
 The serializer and deserializer support a number of customizations using properties, see xref:kafka/serdes.adoc#json-serde[JSON] for more information.
 The `kafka-clients` code, not Spring, instantiates these objects, unless you inject them directly into the consumer and producer factories.
-If you wish to configure the (de)serializer using properties, but wish to use, say, a custom `JsonMapper`, simply create a subclass and pass the custom mapper into the `super` constructor. For example:
+Starting with version 4.2, you can configure a custom `JsonMapper` directly via configuration properties (`spring.json.mapper`, `spring.json.key.mapper`, `spring.json.value.mapper`, or `spring.json.mapper.method`) as described in xref:kafka/serdes.adoc#serdes-custom-mapper-properties[Customizing the JsonMapper via Properties].
+Alternatively, you can simply create a subclass and pass the custom mapper into the `super` constructor. For example:
 
 [source, java]
 ----

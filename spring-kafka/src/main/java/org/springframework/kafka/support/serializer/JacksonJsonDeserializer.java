@@ -117,6 +117,42 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 	 */
 	public static final String VALUE_TYPE_METHOD = "spring.json.value.type.method";
 
+	/**
+	 * Kafka config property for key {@link JsonMapper}.
+	 * @since 4.2
+	 */
+	public static final String KEY_MAPPER = "spring.json.key.mapper";
+
+	/**
+	 * Kafka config property for value {@link JsonMapper}.
+	 * @since 4.2
+	 */
+	public static final String VALUE_MAPPER = "spring.json.value.mapper";
+
+	/**
+	 * Kafka config property for {@link JsonMapper} (fallback for key and value).
+	 * @since 4.2
+	 */
+	public static final String MAPPER = "spring.json.mapper";
+
+	/**
+	 * Kafka config property for key {@link JsonMapper} method (e.g. 'com.Foo.createMapper').
+	 * @since 4.2
+	 */
+	public static final String KEY_MAPPER_METHOD = "spring.json.key.mapper.method";
+
+	/**
+	 * Kafka config property for value {@link JsonMapper} method (e.g. 'com.Foo.createMapper').
+	 * @since 4.2
+	 */
+	public static final String VALUE_MAPPER_METHOD = "spring.json.value.mapper.method";
+
+	/**
+	 * Kafka config property for {@link JsonMapper} method (fallback for key and value).
+	 * @since 4.2
+	 */
+	public static final String MAPPER_METHOD = "spring.json.mapper.method";
+
 	private static final Set<String> OUR_KEYS = new HashSet<>();
 
 	static {
@@ -128,9 +164,15 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 		OUR_KEYS.add(USE_TYPE_INFO_HEADERS);
 		OUR_KEYS.add(KEY_TYPE_METHOD);
 		OUR_KEYS.add(VALUE_TYPE_METHOD);
+		OUR_KEYS.add(KEY_MAPPER);
+		OUR_KEYS.add(VALUE_MAPPER);
+		OUR_KEYS.add(MAPPER);
+		OUR_KEYS.add(KEY_MAPPER_METHOD);
+		OUR_KEYS.add(VALUE_MAPPER_METHOD);
+		OUR_KEYS.add(MAPPER_METHOD);
 	}
 
-	protected final JsonMapper jsonMapper; // NOSONAR
+	protected JsonMapper jsonMapper; // NOSONAR
 
 	protected @Nullable JavaType targetType; // NOSONAR
 
@@ -312,6 +354,29 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 		initialize(targetType, useHeadersIfPresent);
 	}
 
+	/**
+	 * Return the configured {@link JsonMapper}.
+	 * @return the json mapper.
+	 * @since 4.2
+	 */
+	public JsonMapper getJsonMapper() {
+		return this.jsonMapper;
+	}
+
+	/**
+	 * Set a customized {@link JsonMapper}.
+	 * @param jsonMapper the json mapper.
+	 * @since 4.2
+	 */
+	public void setJsonMapper(JsonMapper jsonMapper) {
+		Assert.notNull(jsonMapper, "'jsonMapper' cannot be null");
+		this.jsonMapper = jsonMapper;
+		if (this.targetType != null) {
+			this.reader = this.jsonMapper.readerFor(this.targetType);
+		}
+		this.setterCalled = true;
+	}
+
 	public JacksonJavaTypeMapper getTypeMapper() {
 		return this.typeMapper;
 	}
@@ -403,6 +468,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 					"JsonDeserializer must be configured with property setters, or via configuration properties; not both");
 			doSetUseTypeMapperForKey(isKey);
 			setUpTypePrecedence(configs);
+			setUpJsonMapper(configs, isKey);
 			setupTarget(configs, isKey);
 			if (configs.containsKey(TRUSTED_PACKAGES)
 					&& configs.get(TRUSTED_PACKAGES) instanceof String) {
@@ -421,6 +487,19 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 		}
 		finally {
 			this.trustedPackagesLock.unlock();
+		}
+	}
+
+	private void setUpJsonMapper(Map<String, ?> configs, boolean isKey) {
+		JsonMapper configuredMapper = JacksonMapperUtils.resolveJsonMapper(configs, isKey,
+				KEY_MAPPER, VALUE_MAPPER, MAPPER,
+				KEY_MAPPER_METHOD, VALUE_MAPPER_METHOD, MAPPER_METHOD,
+				getClass().getClassLoader());
+		if (configuredMapper != null) {
+			this.jsonMapper = configuredMapper;
+			if (this.targetType != null) {
+				this.reader = this.jsonMapper.readerFor(this.targetType);
+			}
 		}
 	}
 
@@ -739,6 +818,18 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 	 */
 	public JacksonJsonDeserializer<T> typeResolver(JacksonJsonTypeResolver resolver) {
 		setTypeResolver(resolver);
+		return this;
+	}
+
+	/**
+	 * Fluent API to set a customized {@link JsonMapper}.
+	 * @param jsonMapper the json mapper.
+	 * @return this deserializer.
+	 * @since 4.2
+	 * @see #setJsonMapper(JsonMapper)
+	 */
+	public JacksonJsonDeserializer<T> jsonMapper(JsonMapper jsonMapper) {
+		setJsonMapper(jsonMapper);
 		return this;
 	}
 

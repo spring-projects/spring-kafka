@@ -115,11 +115,19 @@ They have no effect if you have provided `Serializer` and `Deserializer` instanc
 * `JacksonJsonDeserializer.TYPE_MAPPINGS` (default `empty`): See xref:kafka/serdes.adoc#serdes-mapping-types[Mapping Types].
 * `JacksonJsonDeserializer.KEY_TYPE_METHOD` (default `empty`): See xref:kafka/serdes.adoc#serdes-type-methods[Using Methods to Determine Types].
 * `JacksonJsonDeserializer.VALUE_TYPE_METHOD` (default `empty`): See xref:kafka/serdes.adoc#serdes-type-methods[Using Methods to Determine Types].
+* `JacksonJsonSerializer.MAPPER` / `JacksonJsonDeserializer.MAPPER` (`spring.json.mapper`): Custom `JsonMapper` instance, class (`Supplier<JsonMapper>`, `Consumer<JsonMapper.Builder>`, or `JsonMapper`), or static method reference.
+* `JacksonJsonSerializer.KEY_MAPPER` / `JacksonJsonDeserializer.KEY_MAPPER` (`spring.json.key.mapper`): Custom `JsonMapper` for keys.
+* `JacksonJsonSerializer.VALUE_MAPPER` / `JacksonJsonDeserializer.VALUE_MAPPER` (`spring.json.value.mapper`): Custom `JsonMapper` for values.
+* `JacksonJsonSerializer.MAPPER_METHOD` / `JacksonJsonDeserializer.MAPPER_METHOD` (`spring.json.mapper.method`): Static method reference (e.g. `com.example.Config.createMapper`) returning `JsonMapper` or `JsonMapper.Builder`.
+* `JacksonJsonSerializer.KEY_MAPPER_METHOD` / `JacksonJsonDeserializer.KEY_MAPPER_METHOD` (`spring.json.key.mapper.method`): Static method reference returning key `JsonMapper`.
+* `JacksonJsonSerializer.VALUE_MAPPER_METHOD` / `JacksonJsonDeserializer.VALUE_MAPPER_METHOD` (`spring.json.value.mapper.method`): Static method reference returning value `JsonMapper`.
 
 Starting with version 2.2, the type information headers (if added by the serializer) are removed by the deserializer.
 You can revert to the previous behavior by setting the `removeTypeHeaders` property to `false`, either directly on the deserializer or with the configuration property described earlier.
 
 See also xref:tips.adoc#tip-json[Customizing the JacksonJsonSerializer and JacksonJsonDeserializer].
+
+Starting with version 4.2, you can also configure the backing `JsonMapper` directly via properties as described in xref:kafka/serdes.adoc#serdes-custom-mapper-properties[Customizing the JsonMapper via Properties].
 
 IMPORTANT: Starting with version 2.8, if you construct the serializer or deserializer programmatically as shown in xref:kafka/serdes.adoc#prog-json[Programmatic Construction], the above properties will be applied by the factories, as long as you have not set any properties explicitly (using `set*()` methods or using the fluent API).
 Previously, when creating programmatically, the configuration properties were never applied; this is still the case if you explicitly set properties on the object directly.
@@ -243,6 +251,26 @@ JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>()
 public static JavaType thing1Thing2JavaTypeForTopic(String topic, byte[] data, Headers headers) {
     ...
 }
+----
+
+[[serdes-custom-mapper-properties]]
+=== Customizing the JsonMapper via Properties
+
+Starting with version 4.2, you can configure a custom `JsonMapper` directly through configuration properties, without creating custom subclasses of `JacksonJsonSerializer` or `JacksonJsonDeserializer`.
+This is especially useful when using frameworks such as Spring Cloud Stream Kafka Binder, where (de)serializers are instantiated by the Kafka client using no-arg constructors and configured via property maps.
+
+The following configuration options are supported:
+
+* **Direct instance**: In Java-based configuration, supply a pre-built `JsonMapper` instance via `JacksonJsonSerializer.MAPPER` (or `KEY_MAPPER` / `VALUE_MAPPER`).
+* **Supplier**: Specify a class or instance that implements `Supplier<JsonMapper>`. If a class name (or `Class<?>`) is provided, it is instantiated using its default constructor.
+* **Builder Customizer**: Specify a class or instance that implements `Consumer<JsonMapper.Builder>`. The customizer receives `JacksonMapperUtils.enhancedJsonMapper().rebuild()` to apply specific features or modules.
+* **Static method reference**: Set `spring.json.mapper.method` (or `spring.json.key.mapper.method` / `spring.json.value.mapper.method`), or specify a method reference in `spring.json.mapper`. The method must be declared as `public static` and can take `(Map<String, ?> configs, boolean isKey)`, `(Map<String, ?> configs)`, or `()`, returning `JsonMapper` or `JsonMapper.Builder`.
+
+The following example configures a custom `JsonMapper` via a static method in `application.properties`:
+
+[source, properties]
+----
+spring.kafka.consumer.properties.spring.json.value.mapper.method=com.example.KafkaJsonConfig.customValueMapper
 ----
 
 [[prog-json]]

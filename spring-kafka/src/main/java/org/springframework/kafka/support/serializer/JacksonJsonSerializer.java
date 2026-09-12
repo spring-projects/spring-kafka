@@ -17,7 +17,9 @@
 package org.springframework.kafka.support.serializer;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -72,7 +74,58 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 	 */
 	public static final String TYPE_MAPPINGS = "spring.json.type.mapping";
 
-	protected final JsonMapper jsonMapper; // NOSONAR
+	/**
+	 * Kafka config property for key {@link JsonMapper}.
+	 * @since 4.2
+	 */
+	public static final String KEY_MAPPER = "spring.json.key.mapper";
+
+	/**
+	 * Kafka config property for value {@link JsonMapper}.
+	 * @since 4.2
+	 */
+	public static final String VALUE_MAPPER = "spring.json.value.mapper";
+
+	/**
+	 * Kafka config property for {@link JsonMapper} (fallback for key and value).
+	 * @since 4.2
+	 */
+	public static final String MAPPER = "spring.json.mapper";
+
+	/**
+	 * Kafka config property for key {@link JsonMapper} method (e.g. 'com.Foo.createMapper').
+	 * @since 4.2
+	 */
+	public static final String KEY_MAPPER_METHOD = "spring.json.key.mapper.method";
+
+	/**
+	 * Kafka config property for value {@link JsonMapper} method (e.g. 'com.Foo.createMapper').
+	 * @since 4.2
+	 */
+	public static final String VALUE_MAPPER_METHOD = "spring.json.value.mapper.method";
+
+	/**
+	 * Kafka config property for {@link JsonMapper} method (fallback for key and value).
+	 * @since 4.2
+	 */
+	public static final String MAPPER_METHOD = "spring.json.mapper.method";
+
+	private static final Set<String> OUR_KEYS = new HashSet<>();
+
+	static {
+		OUR_KEYS.add(ADD_TYPE_INFO_HEADERS);
+		OUR_KEYS.add(TYPE_MAPPINGS);
+		OUR_KEYS.add(KEY_MAPPER);
+		OUR_KEYS.add(VALUE_MAPPER);
+		OUR_KEYS.add(MAPPER);
+		OUR_KEYS.add(KEY_MAPPER_METHOD);
+		OUR_KEYS.add(VALUE_MAPPER_METHOD);
+		OUR_KEYS.add(MAPPER_METHOD);
+	}
+
+	protected JsonMapper jsonMapper; // NOSONAR
+
+	protected @Nullable JavaType targetType; // NOSONAR
 
 	protected boolean addTypeInfo = true; // NOSONAR
 
@@ -106,8 +159,30 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 
 	public JacksonJsonSerializer(@Nullable JavaType targetType, JsonMapper jsonMapper) {
 		Assert.notNull(jsonMapper, "'jsonMapper' must not be null.");
+		this.targetType = targetType;
 		this.jsonMapper = jsonMapper;
 		this.writer = jsonMapper.writerFor(targetType);
+	}
+
+	/**
+	 * Return the configured {@link JsonMapper}.
+	 * @return the json mapper.
+	 * @since 4.2
+	 */
+	public JsonMapper getJsonMapper() {
+		return this.jsonMapper;
+	}
+
+	/**
+	 * Set a customized {@link JsonMapper}.
+	 * @param jsonMapper the json mapper.
+	 * @since 4.2
+	 */
+	public void setJsonMapper(JsonMapper jsonMapper) {
+		Assert.notNull(jsonMapper, "'jsonMapper' cannot be null");
+		this.jsonMapper = jsonMapper;
+		this.writer = this.jsonMapper.writerFor(this.targetType);
+		this.setterCalled = true;
 	}
 
 	public boolean isAddTypeInfo() {
@@ -160,10 +235,17 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 			if (this.configured) {
 				return;
 			}
-			Assert.state(!this.setterCalled
-							|| (!configs.containsKey(ADD_TYPE_INFO_HEADERS) && !configs.containsKey(TYPE_MAPPINGS)),
+			Assert.state(!this.setterCalled || !configsHasOurKeys(configs),
 					"JsonSerializer must be configured with property setters, or via configuration properties; not both");
 			setUseTypeMapperForKey(isKey);
+			JsonMapper configuredMapper = JacksonMapperUtils.resolveJsonMapper(configs, isKey,
+					KEY_MAPPER, VALUE_MAPPER, MAPPER,
+					KEY_MAPPER_METHOD, VALUE_MAPPER_METHOD, MAPPER_METHOD,
+					getClass().getClassLoader());
+			if (configuredMapper != null) {
+				this.jsonMapper = configuredMapper;
+				this.writer = this.jsonMapper.writerFor(this.targetType);
+			}
 			if (configs.containsKey(ADD_TYPE_INFO_HEADERS)) {
 				Object config = configs.get(ADD_TYPE_INFO_HEADERS);
 				if (config instanceof Boolean configBoolean) {
@@ -185,6 +267,15 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 		finally {
 			this.globalLock.unlock();
 		}
+	}
+
+	private boolean configsHasOurKeys(Map<String, ?> configs) {
+		for (String key : configs.keySet()) {
+			if (OUR_KEYS.contains(key)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	protected static Map<String, Class<?>> createMappings(String mappings) {
@@ -304,6 +395,18 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 	 */
 	public JacksonJsonSerializer<T> typeMapper(JacksonJavaTypeMapper mapper) {
 		setTypeMapper(mapper);
+		return this;
+	}
+
+	/**
+	 * Fluent API to set a customized {@link JsonMapper}.
+	 * @param jsonMapper the json mapper.
+	 * @return this serializer.
+	 * @since 4.2
+	 * @see #setJsonMapper(JsonMapper)
+	 */
+	public JacksonJsonSerializer<T> jsonMapper(JsonMapper jsonMapper) {
+		setJsonMapper(jsonMapper);
 		return this;
 	}
 
