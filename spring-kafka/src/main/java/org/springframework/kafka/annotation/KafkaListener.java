@@ -228,8 +228,15 @@ public @interface KafkaListener {
 	 * a {@link String}, in which case the {@link Boolean#parseBoolean(String)} is used to
 	 * obtain the value.
 	 * <p>SpEL {@code #{...}} and property place holders {@code ${...}} are supported.
+	 * <p><b>Note:</b> After the application context is refreshed,
+	 * {@link org.springframework.kafka.config.KafkaListenerEndpointRegistry#setAlwaysStartAfterRefresh(boolean)}
+	 * (which defaults to {@code true}) may cause containers to start regardless of this setting.
+	 * To honor this property in post-refresh scenarios (e.g. tests), set
+	 * {@code KafkaListenerEndpointRegistry.alwaysStartAfterRefresh} to {@code false}, or configure
+	 * {@code spring.kafka.listener.always-start-after-refresh=false} in your application properties.
 	 * @return true to auto start, false to not auto start.
 	 * @since 2.2
+	 * @see org.springframework.kafka.config.KafkaListenerEndpointRegistry#setAlwaysStartAfterRefresh(boolean)
 	 */
 	String autoStartup() default "";
 
