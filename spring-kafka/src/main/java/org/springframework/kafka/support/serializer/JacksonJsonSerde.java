@@ -206,4 +206,16 @@ public class JacksonJsonSerde<T> implements Serde<T> {
 		return this;
 	}
 
+	/**
+	 * Use the supplied {@link JsonMapper}.
+	 * @param mapper the mapper.
+	 * @return the serde.
+	 * @since 4.2
+	 */
+	public JacksonJsonSerde<T> jsonMapper(JsonMapper mapper) {
+		this.jsonSerializer.setJsonMapper(mapper);
+		this.jsonDeserializer.setJsonMapper(mapper);
+		return this;
+	}
+
 }
