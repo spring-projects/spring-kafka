@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -46,6 +47,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -54,6 +56,7 @@ import static org.mockito.Mockito.verify;
  * @author Gary Russell
  * @author Francois Rosiere
  * @author Wang Zhiyang
+ * @author Soby Chacko
  *
  * @since 2.3.1
  *
@@ -99,6 +102,38 @@ public class DefaultAfterRollbackProcessorTests {
 		inOrder.verify(consumer).seek(new TopicPartition("foo", 0), 0L); // not recovered so seek
 		inOrder.verify(consumer, times(2)).seek(new TopicPartition("foo", 1), 1L);
 		inOrder.verify(consumer).seek(new TopicPartition("foo", 0), 0L); // recovery failed
+		inOrder.verify(consumer, times(2)).seek(new TopicPartition("foo", 1), 1L);
+		inOrder.verify(consumer).groupMetadata();
+		inOrder.verifyNoMoreInteractions();
+	}
+
+	@Test
+	void skipAfterMaxRecoveryFailures() {
+		KafkaOperations<String, String> template = mock();
+		given(template.isTransactional()).willReturn(true);
+		AtomicInteger recoveryAttempts = new AtomicInteger();
+		DefaultAfterRollbackProcessor<String, String> processor = new DefaultAfterRollbackProcessor<>((r, t) -> {
+			recoveryAttempts.incrementAndGet();
+			throw new RuntimeException("test recoverer failure");
+		}, new FixedBackOff(0L, 0L), template, true);
+		processor.setMaxRecoveryFailures(2);
+		ConsumerRecord<String, String> record1 = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
+		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("foo", 1, 1L, "foo", "bar");
+		List<ConsumerRecord<String, String>> records = Arrays.asList(record1, record2);
+		Consumer<String, String> consumer = mock();
+		given(consumer.groupMetadata()).willReturn(mock());
+		MessageListenerContainer container = mock();
+		given(container.getContainerProperties()).willReturn(new ContainerProperties("foo"));
+		IllegalStateException illegalState = new IllegalStateException();
+		processor.process(records, consumer, container, illegalState, true, EOSMode.V2);
+		// the first recovery failure is below the limit, so the record is not yet skipped
+		verify(template, never()).sendOffsetsToTransaction(anyMap(), any(ConsumerGroupMetadata.class));
+		processor.process(records, consumer, container, illegalState, true, EOSMode.V2);
+		// the second failure hits the limit, so the record is treated as recovered
+		verify(template).sendOffsetsToTransaction(anyMap(), any(ConsumerGroupMetadata.class));
+		assertThat(recoveryAttempts.get()).isEqualTo(2);
+		InOrder inOrder = inOrder(consumer);
+		inOrder.verify(consumer).seek(new TopicPartition("foo", 0), 0L); // recovery failed, still seeked
 		inOrder.verify(consumer, times(2)).seek(new TopicPartition("foo", 1), 1L);
 		inOrder.verify(consumer).groupMetadata();
 		inOrder.verifyNoMoreInteractions();

@@ -36,6 +36,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * Common super class for classes that deal with failing to consume a consumer record.
  *
  * @author Gary Russell
+ * @author Bill Kim
  * @since 2.3.1
  *
  */
@@ -123,6 +124,31 @@ public abstract class FailedRecordProcessor extends ExceptionClassifier implemen
 	 */
 	public void setResetStateOnExceptionChange(boolean resetStateOnExceptionChange) {
 		this.failureTracker.setResetStateOnExceptionChange(resetStateOnExceptionChange);
+	}
+
+	/**
+	 * Set the number of times the recoverer is allowed to throw for the same record.
+	 * When the recoverer throws for the nth time, that failure is the last one: the
+	 * record is logged at ERROR level and treated as recovered, so it is no longer
+	 * included in the seeks and its offset is committed according to the container's
+	 * ack mode. A value of 1 means the record is skipped as soon as the first recovery
+	 * attempt fails.
+	 * {@link RetryListener#recoveryFailed(ConsumerRecord, Exception, Exception)} is
+	 * called for every failure, including the last one, but
+	 * {@link RetryListener#recovered(ConsumerRecord, Exception)} is not, because
+	 * recovery never succeeded. The count is kept per thread, partition and offset; it
+	 * is reset once the record is skipped, when recovery succeeds, when a different
+	 * offset fails on the partition, and by {@link #clearThreadState()} /
+	 * {@link #clearThreadStateFor(Collection)}. Only applies to record listeners; batch
+	 * listeners do not recover through this mechanism. By default there is no limit and
+	 * a record whose recovery keeps failing is redelivered until the recoverer succeeds.
+	 * @param maxRecoveryFailures the number of recovery failures to allow; must be
+	 * greater than 0.
+	 * @since 4.2
+	 * @see #setResetStateOnRecoveryFailure(boolean)
+	 */
+	public void setMaxRecoveryFailures(int maxRecoveryFailures) {
+		this.failureTracker.setMaxRecoveryFailures(maxRecoveryFailures);
 	}
 
 	/**

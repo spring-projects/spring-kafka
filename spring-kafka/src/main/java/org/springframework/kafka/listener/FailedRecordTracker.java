@@ -44,6 +44,7 @@ import org.springframework.util.backoff.BackOffExecution;
  * Track record processing failure counts.
  *
  * @author Gary Russell
+ * @author Bill Kim
  * @since 2.2
  *
  */
@@ -51,7 +52,11 @@ class FailedRecordTracker implements RecoveryStrategy {
 
 	private final Map<Thread, Map<TopicPartition, FailedRecord>> failures = new ConcurrentHashMap<>();
 
+	private final Map<Thread, Map<TopicPartition, RecoveryFailures>> recoveryFailures = new ConcurrentHashMap<>();
+
 	private final ConsumerAwareRecordRecoverer recoverer;
+
+	private final LogAccessor logger;
 
 	private final boolean noRetries;
 
@@ -67,6 +72,8 @@ class FailedRecordTracker implements RecoveryStrategy {
 
 	private boolean resetStateOnExceptionChange = true;
 
+	private int maxRecoveryFailures = Integer.MAX_VALUE;
+
 	FailedRecordTracker(@Nullable BiConsumer<ConsumerRecord<?, ?>, Exception> recoverer, BackOff backOff,
 			LogAccessor logger) {
 
@@ -78,6 +85,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 			@Nullable BackOffHandler backOffHandler, LogAccessor logger) {
 
 		Assert.notNull(backOff, "'backOff' cannot be null");
+		this.logger = logger;
 		if (recoverer == null) {
 			this.recoverer = (rec, consumer, thr) -> {
 				Map<TopicPartition, FailedRecord> map = this.failures.get(Thread.currentThread());
@@ -143,6 +151,30 @@ class FailedRecordTracker implements RecoveryStrategy {
 	}
 
 	/**
+	 * Set the number of times the recoverer is allowed to throw for the same record.
+	 * When the recoverer throws for the nth time, that failure is the last one: the
+	 * record is logged at ERROR level and reported as recovered, so it is not included
+	 * in the seeks and the consumer can move past its offset. A value of 1 means the
+	 * record is skipped as soon as the first recovery attempt fails.
+	 * {@link RetryListener#recoveryFailed(ConsumerRecord, Exception, Exception)} is
+	 * called for every failure, including the last one, but
+	 * {@link RetryListener#recovered(ConsumerRecord, Exception)} is not, because
+	 * recovery never succeeded. The count is kept per thread, partition and offset; it
+	 * is reset once the record is skipped, when recovery succeeds, when a different
+	 * offset fails on the partition, and by {@link #clearThreadState()} /
+	 * {@link #clearThreadStateFor(Collection)}. Only applies to record listeners; batch
+	 * listeners do not recover through this tracker. Default {@link Integer#MAX_VALUE},
+	 * i.e. no limit.
+	 * @param maxRecoveryFailures the number of recovery failures to allow; must be
+	 * greater than 0.
+	 * @since 4.2
+	 */
+	public void setMaxRecoveryFailures(int maxRecoveryFailures) {
+		Assert.isTrue(maxRecoveryFailures > 0, "'maxRecoveryFailures' must be greater than 0");
+		this.maxRecoveryFailures = maxRecoveryFailures;
+	}
+
+	/**
 	 * Set one or more {@link RetryListener} to receive notifications of retries and
 	 * recovery.
 	 * @param listeners the listeners.
@@ -172,13 +204,13 @@ class FailedRecordTracker implements RecoveryStrategy {
 			@Nullable MessageListenerContainer container,
 			@Nullable Consumer<?, ?> consumer) throws InterruptedException {
 
+		TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
 		if (this.noRetries) {
-			attemptRecovery(record, exception, null, consumer);
+			attemptRecovery(record, exception, topicPartition, consumer);
 			return true;
 		}
 		Thread currentThread = Thread.currentThread();
 		Map<TopicPartition, FailedRecord> map = this.failures.computeIfAbsent(currentThread, t -> new HashMap<>());
-		TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
 		FailedRecord failedRecord = getFailedRecordInstance(record, exception, map, topicPartition);
 		this.retryListeners.forEach(rl ->
 				rl.failedDelivery(record, exception, failedRecord.getDeliveryAttempts().get()));
@@ -224,16 +256,26 @@ class FailedRecordTracker implements RecoveryStrategy {
 		return backOffToUse != null ? backOffToUse : this.backOff;
 	}
 
-	private void attemptRecovery(ConsumerRecord<?, ?> record, @Nullable Exception exception, @Nullable TopicPartition tp,
+	/*
+	 * 'tp' is always non-null, including on the no-retries path, so that the recovery
+	 * failure count can be tracked per partition there too. On the no-retries path there
+	 * is never any retry state, so the 'resetStateOnRecoveryFailure' block below remains
+	 * a no-op for it.
+	 */
+	private void attemptRecovery(ConsumerRecord<?, ?> record, @Nullable Exception exception, TopicPartition tp,
 			@Nullable Consumer<?, ?> consumer) {
 
 		try {
 			this.recoverer.accept(record, consumer, exception);
 			this.retryListeners.forEach(rl -> rl.recovered(record, exception));
+			clearRecoveryFailures(tp);
 		}
 		catch (RuntimeException e) {
 			this.retryListeners.forEach(rl -> rl.recoveryFailed(record, exception, e));
-			if (tp != null && this.resetStateOnRecoveryFailure) {
+			if (recoveryFailuresExhausted(record, tp, e)) {
+				return;
+			}
+			if (this.resetStateOnRecoveryFailure) {
 				Map<TopicPartition, FailedRecord> topicPartitionFailedRecordMap = this.failures.get(Thread.currentThread());
 				if (topicPartitionFailedRecordMap != null) {
 					topicPartitionFailedRecordMap.remove(tp);
@@ -243,8 +285,46 @@ class FailedRecordTracker implements RecoveryStrategy {
 		}
 	}
 
+	private boolean recoveryFailuresExhausted(ConsumerRecord<?, ?> record, TopicPartition tp, RuntimeException failure) {
+		if (this.maxRecoveryFailures == Integer.MAX_VALUE) {
+			return false;
+		}
+		Map<TopicPartition, RecoveryFailures> map = this.recoveryFailures.computeIfAbsent(Thread.currentThread(),
+				t -> new HashMap<>());
+		RecoveryFailures recoveryFailure = map.get(tp);
+		if (recoveryFailure == null || recoveryFailure.getOffset() != record.offset()) {
+			recoveryFailure = new RecoveryFailures(record.offset());
+			map.put(tp, recoveryFailure);
+		}
+		int count = recoveryFailure.increment();
+		if (count < this.maxRecoveryFailures) {
+			return false;
+		}
+		clearRecoveryFailures(tp);
+		this.logger.error(failure, () -> "Recovery failed " + count + " times (maxRecoveryFailures="
+				+ this.maxRecoveryFailures + ") for " + KafkaUtils.format(record)
+				+ "; skipping the record, its offset will be committed according to the ack mode");
+		return true;
+	}
+
+	private void clearRecoveryFailures(TopicPartition tp) {
+		clearRecoveryFailures(List.of(tp));
+	}
+
+	private void clearRecoveryFailures(Collection<TopicPartition> partitions) {
+		Thread currentThread = Thread.currentThread();
+		Map<TopicPartition, RecoveryFailures> map = this.recoveryFailures.get(currentThread);
+		if (map != null) {
+			partitions.forEach(map::remove);
+			if (map.isEmpty()) {
+				this.recoveryFailures.remove(currentThread);
+			}
+		}
+	}
+
 	void clearThreadState() {
 		this.failures.remove(Thread.currentThread());
+		this.recoveryFailures.remove(Thread.currentThread());
 	}
 
 	void clearThreadStateFor(Collection<TopicPartition> partitions) {
@@ -252,6 +332,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 		if (map != null) {
 			partitions.forEach(map::remove);
 		}
+		clearRecoveryFailures(partitions);
 	}
 
 	ConsumerAwareRecordRecoverer getRecoverer() {
@@ -314,6 +395,34 @@ class FailedRecordTracker implements RecoveryStrategy {
 
 		void setLastException(@Nullable Exception lastException) {
 			this.lastException = lastException;
+		}
+
+	}
+
+	/**
+	 * The number of consecutive recovery failures for one offset on one partition. This
+	 * is tracked separately from {@link FailedRecord} because the retry state is
+	 * discarded whenever recovery fails and 'resetStateOnRecoveryFailure' is true (the
+	 * default), and because the no-retries path keeps no retry state at all; in both
+	 * cases a counter held in the retry state would be lost between recovery attempts
+	 * and the limit would never be reached.
+	 */
+	static final class RecoveryFailures {
+
+		private final long offset;
+
+		private int count;
+
+		RecoveryFailures(long offset) {
+			this.offset = offset;
+		}
+
+		long getOffset() {
+			return this.offset;
+		}
+
+		int increment() {
+			return ++this.count;
 		}
 
 	}
