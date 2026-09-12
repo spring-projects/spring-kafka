@@ -283,6 +283,8 @@ See the JavaDocs for more information.
 IMPORTANT: If the recoverer fails (throws an exception), the failed record will be included in the seeks.
 If the recoverer fails, the `BackOff` will be reset by default and redeliveries will again go through the back offs before recovery is attempted again.
 To skip retries after a recovery failure, set the error handler's `resetStateOnRecoveryFailure` to `false`.
+Starting with version 4.2, you can also bound the number of times recovery may fail for the same record by setting the error handler's `maxRecoveryFailures`; once the limit is reached, the record is logged at `ERROR` level and skipped as if it had been recovered, instead of being redelivered indefinitely.
+By default, there is no limit.
 
 You can provide the error handler with a `BiFunction<ConsumerRecord<?, ?>, Exception, BackOff>` to determine the `BackOff` to use, based on the failed record and/or the exception:
 
@@ -705,6 +707,8 @@ IMPORTANT: If the recoverer fails (throws an exception), the failed record will 
 Starting with version 2.5.5, if the recoverer fails, the `BackOff` will be reset by default and redeliveries will again go through the back offs before recovery is attempted again.
 With earlier versions, the `BackOff` was not reset and recovery was re-attempted on the next failure.
 To revert to the previous behavior, set the processor's `resetStateOnRecoveryFailure` property to `false`.
+Starting with version 4.2, you can also bound the number of times recovery may fail for the same record by setting the processor's `maxRecoveryFailures`; once the limit is reached, the record is logged at `ERROR` level and skipped as if it had been recovered, instead of being redelivered indefinitely.
+By default, there is no limit.
 
 Starting with version 2.6, you can now provide the processor with a `BiFunction<ConsumerRecord<?, ?>, Exception, BackOff>` to determine the `BackOff` to use, based on the failed record and/or the exception:
 
@@ -950,6 +954,8 @@ IMPORTANT: If the recoverer fails (throws an exception), the failed record will 
 Starting with version 2.5.5, if the recoverer fails, the `BackOff` will be reset by default and redeliveries will again go through the back offs before recovery is attempted again.
 With earlier versions, the `BackOff` was not reset and recovery was re-attempted on the next failure.
 To revert to the previous behavior, set the error handler's `resetStateOnRecoveryFailure` property to `false`.
+Starting with version 4.2, you can also bound the number of times recovery may fail for the same record by setting the error handler's `maxRecoveryFailures`; once the limit is reached, the record is logged at `ERROR` level and skipped as if it had been recovered, instead of being redelivered indefinitely.
+By default, there is no limit.
 
 Starting with version 2.6.3, set `resetStateOnExceptionChange` to `true` and the retry sequence will be restarted (including the selection of a new `BackOff`, if so configured) if the exception type changes between failures.
 By default, the exception type is not considered.
