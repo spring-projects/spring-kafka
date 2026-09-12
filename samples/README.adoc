@@ -8,3 +8,4 @@
 * sample-06 - Kafka Streams tests with TopologyTestDriver
 * sample-07 - The New consumer rebalance protocol in spring-kafka
 * sample-08 - The Micrometer observation propagation from `KafkaTemplate` to `@KafkaListener`
+* sample-09 - Kafka Queues (KIP-932) share consumer with manual `ACCEPT` / `RELEASE` / `REJECT` acknowledgment
