@@ -2186,7 +2186,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (!Thread.currentThread().equals(this.consumerThread)) {
 				try {
 					this.acks.put(cRecord);
-					if (this.isManualImmediateAck || this.pausedForAsyncAcks) {  // NOSONAR (sync)
+					// no poll to wake once the container is stopping; a pending wakeup would
+					// abort the commit of this ack while the in-flight async results are awaited
+					if ((this.isManualImmediateAck || this.pausedForAsyncAcks) && isRunning()) {  // NOSONAR (sync)
 						this.consumer.wakeup();
 					}
 				}
@@ -2216,7 +2218,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					for (ConsumerRecord<K, V> cRecord : records) {
 						this.acks.put(cRecord);
 					}
-					if (this.isManualImmediateAck) {
+					if (this.isManualImmediateAck && isRunning()) {
 						this.consumer.wakeup();
 					}
 				}
@@ -3579,8 +3581,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					commitOffsets(commits);
 				}
 				catch (@SuppressWarnings(UNUSED) WakeupException e) {
-					// ignore - not polling
-					this.logger.debug("Woken up during commit");
+					// a wakeup that landed after the poll returned (a stop request, or an ack
+					// from another thread) aborts the commit; the offsets were already removed
+					// from the pending map, so retry once now that the wakeup is consumed
+					this.logger.debug("Woken up during commit; retrying");
+					try {
+						commitOffsets(commits);
+					}
+					catch (@SuppressWarnings(UNUSED) WakeupException ex) {
+						this.logger.debug("Woken up during commit retry");
+					}
 				}
 			}
 		}
