@@ -106,6 +106,7 @@ import org.springframework.util.StringUtils;
  * @author Maxwell Balla
  * @author Youngjoo Kim
  * @author OhKyu Chan
+ * @author Jiyeon Kim
  *
  * @since 4.0
  *
@@ -707,6 +708,13 @@ public class ShareKafkaMessageListenerContainer<K, V>
 
 		private void wrapUp(@Nullable Throwable throwable) {
 			publishConsumerStoppingEvent(this.consumer);
+			if (!this.acknowledgmentQueue.isEmpty()) {
+				// Acknowledgments queued after the last drain - the listener acknowledged during the
+				// final batch, or from another thread - would otherwise be discarded with the consumer
+				// and their records redelivered.
+				processQueuedAcknowledgments();
+				commitAcknowledgments();
+			}
 			this.consumer.close();
 			this.logger.info(() -> this.consumerGroupId + ": Consumer stopped");
 			publishConsumerStoppedEvent(throwable);
