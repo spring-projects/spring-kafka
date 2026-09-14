@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
@@ -43,6 +45,8 @@ import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JavaType;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.SerializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.type.TypeFactory;
 
 import org.springframework.beans.DirectFieldAccessor;
@@ -67,6 +71,10 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
  * @author Ngoc Nhan
  */
 public class JsonSerializationTests {
+
+	private static final JsonMapper CUSTOM_STATIC_MAPPER = JsonMapper.builder().build();
+
+	private static final JsonMapper CUSTOM_STATIC_MAPPER_WITH_CONFIGS = JsonMapper.builder().build();
 
 	private StringSerializer stringWriter;
 
@@ -456,6 +464,152 @@ public class JsonSerializationTests {
 	}
 
 	@Test
+	void configureCustomJsonMapperInstance() {
+		JsonMapper customMapper = JsonMapper.builder().build();
+		try (JacksonJsonSerializer<Object> ser = new JacksonJsonSerializer<>();
+				JacksonJsonDeserializer<Foo> deser = new JacksonJsonDeserializer<>(Foo.class)) {
+
+			Map<String, Object> configs = Map.of(JacksonJsonSerializer.MAPPER, customMapper);
+			ser.configure(configs, false);
+			deser.configure(configs, false);
+
+			assertThat(ser.getJsonMapper()).isSameAs(customMapper);
+			assertThat(deser.getJsonMapper()).isSameAs(customMapper);
+
+			byte[] bytes = ser.serialize("topic", new Foo());
+			Foo foo = deser.deserialize("topic", bytes);
+			assertThat(foo).isNotNull();
+			assertThat(foo.foo).isEqualTo("foo");
+		}
+	}
+
+	@Test
+	void configureKeyAndValueSpecificMapper() {
+		JsonMapper keyMapper = JsonMapper.builder().build();
+		JsonMapper valueMapper = JsonMapper.builder().build();
+
+		try (JacksonJsonSerializer<Object> keySer = new JacksonJsonSerializer<>();
+				JacksonJsonSerializer<Object> valueSer = new JacksonJsonSerializer<>();
+				JacksonJsonDeserializer<Object> keyDeser = new JacksonJsonDeserializer<>();
+				JacksonJsonDeserializer<Object> valueDeser = new JacksonJsonDeserializer<>()) {
+
+			Map<String, Object> configs = Map.of(
+					JacksonJsonSerializer.KEY_MAPPER, keyMapper,
+					JacksonJsonSerializer.VALUE_MAPPER, valueMapper);
+
+			keySer.configure(configs, true);
+			valueSer.configure(configs, false);
+			keyDeser.configure(configs, true);
+			valueDeser.configure(configs, false);
+
+			assertThat(keySer.getJsonMapper()).isSameAs(keyMapper);
+			assertThat(valueSer.getJsonMapper()).isSameAs(valueMapper);
+			assertThat(keyDeser.getJsonMapper()).isSameAs(keyMapper);
+			assertThat(valueDeser.getJsonMapper()).isSameAs(valueMapper);
+		}
+	}
+
+	@Test
+	void configureJsonMapperSupplierClassAndInstance() {
+		try (JacksonJsonSerializer<Object> ser1 = new JacksonJsonSerializer<>();
+				JacksonJsonDeserializer<Object> deser1 = new JacksonJsonDeserializer<>();
+				JacksonJsonSerializer<Object> ser2 = new JacksonJsonSerializer<>();
+				JacksonJsonDeserializer<Object> deser2 = new JacksonJsonDeserializer<>()) {
+
+			ser1.configure(Map.of(JacksonJsonSerializer.MAPPER, new CustomMapperSupplier()), false);
+			deser1.configure(Map.of(JacksonJsonDeserializer.MAPPER, new CustomMapperSupplier()), false);
+			assertThat(ser1.getJsonMapper()).isNotNull();
+			assertThat(deser1.getJsonMapper()).isNotNull();
+
+			ser2.configure(Map.of(JacksonJsonSerializer.MAPPER, CustomMapperSupplier.class.getName()), false);
+			deser2.configure(Map.of(JacksonJsonDeserializer.MAPPER, CustomMapperSupplier.class), false);
+			assertThat(ser2.getJsonMapper()).isNotNull();
+			assertThat(deser2.getJsonMapper()).isNotNull();
+		}
+	}
+
+	@Test
+	void configureJsonMapperCustomizerClass() {
+		try (JacksonJsonSerializer<Object> ser = new JacksonJsonSerializer<>()) {
+			ser.configure(Map.of(JacksonJsonSerializer.MAPPER, CustomMapperBuilderCustomizer.class.getName()), false);
+			assertThat(ser.getJsonMapper().isEnabled(SerializationFeature.INDENT_OUTPUT)).isTrue();
+		}
+	}
+
+	@Test
+	void configureJsonMapperMethod() {
+		try (JacksonJsonSerializer<Object> ser = new JacksonJsonSerializer<>();
+				JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>()) {
+
+			String methodName = getClass().getName() + ".customMapperForMethod";
+			ser.configure(Map.of(JacksonJsonSerializer.MAPPER_METHOD, methodName), false);
+			deser.configure(Map.of(JacksonJsonDeserializer.MAPPER_METHOD, methodName), false);
+
+			assertThat(ser.getJsonMapper()).isSameAs(CUSTOM_STATIC_MAPPER);
+			assertThat(deser.getJsonMapper()).isSameAs(CUSTOM_STATIC_MAPPER);
+		}
+	}
+
+	@Test
+	void configureJsonMapperMethodWithConfigs() {
+		try (JacksonJsonSerializer<Object> ser = new JacksonJsonSerializer<>();
+				JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>()) {
+
+			String methodName = getClass().getName() + ".customMapperForMethodWithConfigs";
+			ser.configure(Map.of(JacksonJsonSerializer.MAPPER, methodName), true);
+			deser.configure(Map.of(JacksonJsonDeserializer.MAPPER, methodName), true);
+
+			assertThat(ser.getJsonMapper()).isSameAs(CUSTOM_STATIC_MAPPER_WITH_CONFIGS);
+			assertThat(deser.getJsonMapper()).isSameAs(CUSTOM_STATIC_MAPPER_WITH_CONFIGS);
+		}
+	}
+
+	@Test
+	void setJsonMapperAndFluentApi() {
+		JsonMapper customMapper = JsonMapper.builder().build();
+		try (JacksonJsonSerializer<Object> ser = new JacksonJsonSerializer<>().jsonMapper(customMapper);
+				JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>().jsonMapper(customMapper);
+				JacksonJsonSerde<Object> serde = new JacksonJsonSerde<>().jsonMapper(customMapper)) {
+
+			assertThat(ser.getJsonMapper()).isSameAs(customMapper);
+			assertThat(deser.getJsonMapper()).isSameAs(customMapper);
+			assertThat(serde.serializer().getJsonMapper()).isSameAs(customMapper);
+			assertThat(serde.deserializer().getJsonMapper()).isSameAs(customMapper);
+		}
+	}
+
+	@Test
+	void configRejectedWhenSetterCalledWithMapper() {
+		try (JacksonJsonSerializer<Object> ser = new JacksonJsonSerializer<>();
+				JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>()) {
+
+			ser.setJsonMapper(JsonMapper.builder().build());
+			deser.setJsonMapper(JsonMapper.builder().build());
+
+			Map<String, Object> configs = Map.of(JacksonJsonSerializer.MAPPER, JsonMapper.builder().build());
+			assertThatIllegalStateException().isThrownBy(() -> ser.configure(configs, false));
+			assertThatIllegalStateException().isThrownBy(() -> deser.configure(configs, false));
+		}
+	}
+
+	@Test
+	void copyWithTypeKeepsConfiguredJsonMapper() {
+		JsonMapper customMapper = JsonMapper.builder().build();
+		try (JacksonJsonSerializer<Object> ser = new JacksonJsonSerializer<>().jsonMapper(customMapper);
+				JacksonJsonDeserializer<Object> deser = new JacksonJsonDeserializer<>().jsonMapper(customMapper)) {
+
+			JacksonJsonSerializer<Parent> serCopy = ser.copyWithType(Parent.class);
+			JacksonJsonDeserializer<Parent> deserCopy = deser.copyWithType(Parent.class);
+
+			assertThat(serCopy.getJsonMapper()).isSameAs(customMapper);
+			assertThat(deserCopy.getJsonMapper()).isSameAs(customMapper);
+
+			serCopy.close();
+			deserCopy.close();
+		}
+	}
+
+	@Test
 	void typeMappingHonoredWhenClassLoadedByDifferentClassLoader() throws Exception {
 		DefaultJacksonJavaTypeMapper mapper = new DefaultJacksonJavaTypeMapper();
 		mapper.setIdClassMapping(Map.of("my-alias", Foo.class));
@@ -507,6 +661,14 @@ public class JsonSerializationTests {
 
 	public static JavaType stringTypeForTopic(String topic, byte[] data, Headers headers) {
 		return TypeFactory.createDefaultInstance().constructType(String.class);
+	}
+
+	public static JsonMapper customMapperForMethod() {
+		return CUSTOM_STATIC_MAPPER;
+	}
+
+	public static JsonMapper customMapperForMethodWithConfigs(Map<String, ?> configs, boolean isKey) {
+		return CUSTOM_STATIC_MAPPER_WITH_CONFIGS;
 	}
 
 	static class DummyEntityJsonDeserializer extends JacksonJsonDeserializer<DummyEntity> {
@@ -564,6 +726,24 @@ public class JsonSerializationTests {
 
 		Child(int number) {
 			super(number);
+		}
+
+	}
+
+	public static class CustomMapperSupplier implements Supplier<JsonMapper> {
+
+		@Override
+		public JsonMapper get() {
+			return JsonMapper.builder().build();
+		}
+
+	}
+
+	public static class CustomMapperBuilderCustomizer implements Consumer<JsonMapper.Builder> {
+
+		@Override
+		public void accept(JsonMapper.Builder builder) {
+			builder.enable(SerializationFeature.INDENT_OUTPUT);
 		}
 
 	}

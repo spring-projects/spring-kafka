@@ -14,6 +14,14 @@ For changes in earlier versions, see xref:appendix/change-history.adoc[Change Hi
 The configured `KafkaAdmin` is applied to every container the factory creates, which the container uses to resolve the cluster id for observation.
 See xref:kafka/container-factory.adoc[Container Factory].
 
+[[x42-configure-json-mapper]]
+=== Configuring `JsonMapper` via Properties for `JacksonJsonSerializer` and `JacksonJsonDeserializer`
+
+`JacksonJsonSerializer` and `JacksonJsonDeserializer` now support configuring the backing `JsonMapper` using Kafka configuration properties (`spring.json.mapper`, `spring.json.key.mapper`, `spring.json.value.mapper`, and method variants `*.mapper.method`).
+This allows supplying a `JsonMapper` instance, a `Supplier<JsonMapper>` class or instance, a `Consumer<JsonMapper.Builder>` customizer, or a static factory method reference without needing to create custom subclasses.
+Additionally, fluent `.jsonMapper(JsonMapper)` and `setJsonMapper(JsonMapper)` APIs are now available on `JacksonJsonSerializer`, `JacksonJsonDeserializer`, and `JacksonJsonSerde`.
+See xref:kafka/serdes.adoc#serdes-custom-mapper-properties[Customizing the JsonMapper via Properties] and xref:tips.adoc#tip-json[Customizing the JacksonJsonSerializer and JacksonJsonDeserializer].
+
 [[x42-error-handler-partition-scoped-clear]]
 === Partition-Scoped Thread State Clearing in Error Handlers
 
