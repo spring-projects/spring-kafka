@@ -25,13 +25,14 @@ import org.springframework.beans.factory.BeanFactory;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.times;
 
 /**
  * @author Tomaz Fernandes
+ * @author Ngoc Nhan
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
@@ -158,8 +159,8 @@ class ListenerContainerFactoryResolverTests {
 				new ListenerContainerFactoryResolver.Configuration(null, null);
 
 		// then
-		assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> listenerContainerFactoryResolver
-				.resolveFactoryForMainEndpoint(null, null, configuration));
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> listenerContainerFactoryResolver.resolveFactoryForMainEndpoint(null, null, configuration));
 	}
 
 	@Test
@@ -260,7 +261,7 @@ class ListenerContainerFactoryResolverTests {
 				new ListenerContainerFactoryResolver.Configuration(null, null);
 
 		// then
-		assertThatExceptionOfType(IllegalArgumentException.class)
+		assertThatIllegalArgumentException()
 				.isThrownBy(() -> listenerContainerFactoryResolver.resolveFactoryForRetryEndpoint(null, defaultFactoryBeanName, configuration));
 	}
 

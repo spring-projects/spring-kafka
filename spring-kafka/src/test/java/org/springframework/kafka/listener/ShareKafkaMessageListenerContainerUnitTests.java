@@ -62,6 +62,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -85,6 +86,7 @@ import static org.mockito.Mockito.verify;
  * @author OhKyu Chan
  * @author Burak Kalayci
  * @author Jiyeon Kim
+ * @author Ngoc Nhan
  * @since 4.0
  */
 @ExtendWith(MockitoExtension.class)
@@ -182,11 +184,11 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		ShareKafkaMessageListenerContainer<String, String> container =
 				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
 
-		assertThatExceptionOfType(IllegalArgumentException.class)
+		assertThatIllegalArgumentException()
 				.isThrownBy(() -> container.setConcurrency(0))
 				.withMessageContaining("concurrency must be greater than 0");
 
-		assertThatExceptionOfType(IllegalArgumentException.class)
+		assertThatIllegalArgumentException()
 				.isThrownBy(() -> container.setConcurrency(-1))
 				.withMessageContaining("concurrency must be greater than 0");
 	}
@@ -195,7 +197,7 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 	void shouldRejectTopicPatternAtConstruction() {
 		ContainerProperties containerProperties = new ContainerProperties(Pattern.compile("test-.*"));
 
-		assertThatExceptionOfType(IllegalArgumentException.class)
+		assertThatIllegalArgumentException()
 				.isThrownBy(() -> new ShareKafkaMessageListenerContainer<>(this.shareConsumerFactory,
 						containerProperties))
 				.withMessage("'topics' must be provided");
@@ -206,7 +208,7 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		ContainerProperties containerProperties =
 				new ContainerProperties(new TopicPartitionOffset("test-topic", 0));
 
-		assertThatExceptionOfType(IllegalArgumentException.class)
+		assertThatIllegalArgumentException()
 				.isThrownBy(() -> new ShareKafkaMessageListenerContainer<>(this.shareConsumerFactory,
 						containerProperties))
 				.withMessage("'topics' must be provided");

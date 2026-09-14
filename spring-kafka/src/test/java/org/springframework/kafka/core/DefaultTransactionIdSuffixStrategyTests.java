@@ -25,10 +25,12 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
 /**
  * @author Ilya Starchenko
+ * @author Ngoc Nhan
  *
  * @since 3.2
  */
@@ -86,7 +88,7 @@ class DefaultTransactionIdSuffixStrategyTests {
 
 	@Test
 	void setMaxCacheIsNegative() {
-		assertThatExceptionOfType(IllegalArgumentException.class).isThrownBy(() -> new DefaultTransactionIdSuffixStrategy(-1));
+		assertThatIllegalArgumentException().isThrownBy(() -> new DefaultTransactionIdSuffixStrategy(-1));
 	}
 
 	@Test
