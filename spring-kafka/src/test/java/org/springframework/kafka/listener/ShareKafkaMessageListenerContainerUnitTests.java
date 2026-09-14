@@ -38,6 +38,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.Uuid;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -66,6 +67,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -82,6 +84,7 @@ import static org.mockito.Mockito.verify;
  * @author Kumar Gaurav
  * @author OhKyu Chan
  * @author Burak Kalayci
+ * @author Jiyeon Kim
  * @since 4.0
  */
 @ExtendWith(MockitoExtension.class)
@@ -988,6 +991,66 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		ReflectionTestUtils.invokeMethod(ack, "notifyAcknowledged", AcknowledgeType.RENEW);
 
 		assertThatIllegalStateException().isThrownBy(ack::reject);
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void queuedAcknowledgmentIsDeliveredBeforeTheConsumerIsClosed() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock(ShareConsumerFactory.class);
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+		ShareConsumer<String, String> mockConsumer = mock(ShareConsumer.class);
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("test-topic", 0, 0L, "key", "value");
+		ConsumerRecords<String, String> records = new ConsumerRecords<>(
+				Map.of(new TopicPartition("test-topic", 0), List.of(record)), Map.of());
+		AtomicBoolean firstPoll = new AtomicBoolean(true);
+		given(mockConsumer.poll(any())).willAnswer(invocation -> {
+			if (firstPoll.compareAndSet(true, false)) {
+				return records;
+			}
+			Thread.sleep(50);
+			return ConsumerRecords.empty();
+		});
+
+		CountDownLatch listenerEntered = new CountDownLatch(1);
+		CountDownLatch releaseListener = new CountDownLatch(1);
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.MANUAL);
+		containerProperties.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>)
+				(rec, acknowledgment, consumer) -> {
+					listenerEntered.countDown();
+					try {
+						releaseListener.await(10, TimeUnit.SECONDS);
+					}
+					catch (InterruptedException ex) {
+						Thread.currentThread().interrupt();
+						return;
+					}
+					acknowledgment.acknowledge();
+				});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("stopWithQueuedAckContainer");
+		container.start();
+		assertThat(listenerEntered.await(10, TimeUnit.SECONDS)).isTrue();
+
+		// Stop while the consumer thread is still inside the listener, so the acknowledgment is
+		// queued after the last drain: the loop exits straight to wrapUp() when the listener returns.
+		Thread stopper = new Thread(container::stop);
+		stopper.start();
+		int waits = 0;
+		while (container.isRunning() && waits++ < 1000) {
+			Thread.sleep(10);
+		}
+		assertThat(container.isRunning()).isFalse();
+		releaseListener.countDown();
+		stopper.join(10_000);
+
+		InOrder inOrder = inOrder(mockConsumer);
+		inOrder.verify(mockConsumer).acknowledge(record, AcknowledgeType.ACCEPT);
+		inOrder.verify(mockConsumer).close();
 	}
 
 	@SuppressWarnings("unchecked")
