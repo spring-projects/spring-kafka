@@ -166,11 +166,11 @@ public class MessagingMessageListenerAdapterTests {
 	@Test
 	void asyncResultCallbackCompletesAfterAck() throws NoSuchMethodException {
 		Method method = getClass().getDeclaredMethod("pendingFuture", String.class, Acknowledgment.class);
-		Consumer<?, ?> consumer = mock(Consumer.class);
+		Consumer<?, ?> consumer = mock();
 		AtomicReference<CompletableFuture<Void>> inFlight = new AtomicReference<>();
 		RecordMessagingMessageListenerAdapter<String, String> adapter = asyncAdapter(method);
 		adapter.addCallbackForAsyncResult(consumer, inFlight::set);
-		Acknowledgment ack = mock(Acknowledgment.class);
+		Acknowledgment ack = mock();
 		adapter.onMessage(new ConsumerRecord<>("foo", 0, 0L, null, "foo"), ack, consumer);
 		assertThat(inFlight.get()).isNotNull().isNotDone();
 		verify(ack, never()).acknowledge();
@@ -193,13 +193,13 @@ public class MessagingMessageListenerAdapterTests {
 	@Test
 	void cancelledFutureIsNeitherAckedNorPassedToErrorHandler() throws NoSuchMethodException {
 		Method method = getClass().getDeclaredMethod("pendingFuture", String.class, Acknowledgment.class);
-		Consumer<?, ?> consumer = mock(Consumer.class);
+		Consumer<?, ?> consumer = mock();
 		AtomicReference<CompletableFuture<Void>> inFlight = new AtomicReference<>();
 		RecordMessagingMessageListenerAdapter<String, String> adapter = asyncAdapter(method);
 		adapter.addCallbackForAsyncResult(consumer, inFlight::set);
 		AtomicBoolean retried = new AtomicBoolean();
 		adapter.setCallbackForAsyncFailure((record, ex) -> retried.set(true));
-		Acknowledgment ack = mock(Acknowledgment.class);
+		Acknowledgment ack = mock();
 		adapter.onMessage(new ConsumerRecord<>("foo", 0, 0L, null, "foo"), ack, consumer);
 		inFlight.get().cancel(true);
 		assertThat(this.pendingFuture).isCancelled();
@@ -211,11 +211,11 @@ public class MessagingMessageListenerAdapterTests {
 	@Test
 	void cancelledMonoIsDisposed() throws NoSuchMethodException {
 		Method method = getClass().getDeclaredMethod("pendingMono", String.class, Acknowledgment.class);
-		Consumer<?, ?> consumer = mock(Consumer.class);
+		Consumer<?, ?> consumer = mock();
 		AtomicReference<CompletableFuture<Void>> inFlight = new AtomicReference<>();
 		RecordMessagingMessageListenerAdapter<String, String> adapter = asyncAdapter(method);
 		adapter.addCallbackForAsyncResult(consumer, inFlight::set);
-		Acknowledgment ack = mock(Acknowledgment.class);
+		Acknowledgment ack = mock();
 		adapter.onMessage(new ConsumerRecord<>("foo", 0, 0L, null, "foo"), ack, consumer);
 		assertThat(this.monoCancelled).isFalse();
 		inFlight.get().cancel(true);
@@ -227,7 +227,7 @@ public class MessagingMessageListenerAdapterTests {
 	@Test
 	void asyncResultCallbackNotInvokedForSyncResult() throws NoSuchMethodException {
 		Method method = getClass().getDeclaredMethod("sync", String.class, Acknowledgment.class);
-		Consumer<?, ?> consumer = mock(Consumer.class);
+		Consumer<?, ?> consumer = mock();
 		AtomicReference<CompletableFuture<Void>> inFlight = new AtomicReference<>();
 		RecordMessagingMessageListenerAdapter<String, String> adapter = asyncAdapter(method);
 		adapter.addCallbackForAsyncResult(consumer, inFlight::set);
@@ -241,7 +241,7 @@ public class MessagingMessageListenerAdapterTests {
 				spy(new RecordMessagingMessageListenerAdapter<>(this, method));
 		adapter.setHandlerMethod(
 				new HandlerAdapter(bpp.getMessageHandlerMethodFactory().createInvocableHandlerMethod(this, method)));
-		RecordMessageConverter converter = mock(RecordMessageConverter.class);
+		RecordMessageConverter converter = mock();
 		willReturn(new GenericMessage<>("foo")).given(converter).toMessage(any(), any(), any(), any());
 		adapter.setMessageConverter(converter);
 		return adapter;
