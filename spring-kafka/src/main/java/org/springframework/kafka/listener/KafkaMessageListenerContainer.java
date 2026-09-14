@@ -2133,6 +2133,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (!(throwable instanceof Error)) {
 					this.logger.error("Fatal consumer exception; stopping container");
 				}
+				cancelAsyncResults("fatal consumer error");
 				KafkaMessageListenerContainer.this.emergencyStop.run();
 			}
 			this.monitorTask.cancel(true);
@@ -2224,13 +2225,24 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					commitPendingAcks();
 				}
 			}
-			if (!inFlight.isEmpty()) {
-				List<CompletableFuture<Void>> outstanding = new ArrayList<>(inFlight);
-				this.logger.info(() -> "Cancelling " + outstanding.size()
-						+ " in-flight async result(s) not completed within shutdownTimeout; "
-						+ "their records are not acknowledged");
-				outstanding.forEach(result -> result.cancel(true));
+			cancelAsyncResults("not completed within shutdownTimeout");
+		}
+
+		/**
+		 * Cancel the in-flight async results that are still outstanding, so that none keeps
+		 * running against the consumer that is about to be closed; cancelled results are not
+		 * acknowledged and their records are redelivered.
+		 * @param reason the reason, for the log.
+		 */
+		private void cancelAsyncResults(String reason) {
+			Set<CompletableFuture<Void>> inFlight = this.inFlightAsyncResults;
+			if (inFlight == null || inFlight.isEmpty()) {
+				return;
 			}
+			List<CompletableFuture<Void>> outstanding = new ArrayList<>(inFlight);
+			this.logger.info(() -> "Cancelling " + outstanding.size() + " in-flight async result(s), " + reason
+					+ "; their records are not acknowledged");
+			outstanding.forEach(result -> result.cancel(true));
 		}
 
 		private void commitPendingAcks() {
