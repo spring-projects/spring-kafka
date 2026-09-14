@@ -99,6 +99,7 @@ import org.springframework.util.TypeUtils;
  * @author Soby Chacko
  * @author Sanghyeok An
  * @author Abhishek Moondra
+ * @author Kumar Gaurav
  */
 public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware, AsyncRepliesAware {
 
@@ -585,9 +586,15 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 		completableFutureResult.whenComplete((r, t) -> {
 			try (var ignored = observation.openScope()) {
 				if (t == null) {
-					asyncSuccess(r, replyTopic, source, messageReturnType);
-					if (isAsyncReplies()) {
-						acknowledge(acknowledgment);
+					try {
+						asyncSuccess(r, replyTopic, source, messageReturnType);
+						if (isAsyncReplies()) {
+							acknowledge(acknowledgment);
+						}
+					}
+					catch (RuntimeException ex) {
+						observation.error(ex);
+						throw ex;
 					}
 				}
 				else {

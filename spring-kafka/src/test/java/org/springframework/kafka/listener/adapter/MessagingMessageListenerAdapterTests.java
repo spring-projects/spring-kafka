@@ -18,7 +18,11 @@ package org.springframework.kafka.listener.adapter;
 
 import java.lang.reflect.Method;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationHandler;
+import io.micrometer.observation.ObservationRegistry;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -32,11 +36,13 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.messaging.support.GenericMessage;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.BDDMockito.willReturn;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -45,6 +51,7 @@ import static org.mockito.Mockito.verify;
 /**
  * @author Gary Russell
  * @author Abhishek Moondra
+ * @author Kumar Gaurav
  * @since 1.1.2
  *
  */
@@ -106,6 +113,46 @@ public class MessagingMessageListenerAdapterTests {
 		adapter.onMessage(cr, ack, null);
 		verify(adapter, times(1)).asyncSuccess(any(), any(), any(), anyBoolean());
 		verify(adapter, times(1)).acknowledge(any());
+	}
+
+	@Test
+	@SuppressWarnings("try")
+	void asyncSuccessFailureIsReportedToObservation() throws NoSuchMethodException {
+
+		KafkaListenerAnnotationBeanPostProcessor<String, String> bpp = new KafkaListenerAnnotationBeanPostProcessor<>();
+		Method method = getClass().getDeclaredMethod("future", String.class, Acknowledgment.class);
+		RecordMessagingMessageListenerAdapter<String, String> adapter =
+				spy(new RecordMessagingMessageListenerAdapter<>(this, method));
+		adapter.setHandlerMethod(
+				new HandlerAdapter(bpp.getMessageHandlerMethodFactory().createInvocableHandlerMethod(this, method)));
+		RuntimeException replyFailure = new RuntimeException("reply send failed");
+		willThrow(replyFailure).given(adapter).asyncSuccess(any(), any(), any(), anyBoolean());
+		AtomicReference<Throwable> observationError = new AtomicReference<>();
+		ObservationRegistry observationRegistry = ObservationRegistry.create();
+		observationRegistry.observationConfig().observationHandler(new ObservationHandler<Observation.Context>() {
+
+			@Override
+			public boolean supportsContext(Observation.Context context) {
+				return true;
+			}
+
+			@Override
+			public void onError(Observation.Context context) {
+				observationError.set(context.getError());
+			}
+
+		});
+		adapter.setObservationRegistry(observationRegistry);
+		ConsumerRecord<String, String> cr = new ConsumerRecord<>("foo", 0, 0L, null, "foo");
+		Acknowledgment ack = mock(Acknowledgment.class);
+		RecordMessageConverter converter = mock(RecordMessageConverter.class);
+		willReturn(new GenericMessage<>("foo")).given(converter).toMessage(cr, ack, null, String.class);
+		adapter.setMessageConverter(converter);
+		Observation observation = Observation.start("obs", observationRegistry);
+		try (Observation.Scope ignored = observation.openScope()) {
+			adapter.onMessage(cr, ack, null);
+		}
+		assertThat(observationError.get()).isSameAs(replyFailure);
 	}
 
 	@Test
