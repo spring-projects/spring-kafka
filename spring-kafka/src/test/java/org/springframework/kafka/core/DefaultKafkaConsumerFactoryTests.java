@@ -70,6 +70,7 @@ import static org.mockito.Mockito.verify;
  * @author Adrian Gygax
  * @author Soby Chacko
  * @author Yaniv Nahoum
+ * @author Ngoc Nhan
  *
  * @since 1.0.6
  */
@@ -115,7 +116,7 @@ public class DefaultKafkaConsumerFactoryTests {
 					@Override
 					protected KafkaConsumer<String, String> createKafkaConsumer(Map<String, Object> configProps) {
 						capturedConfig.set(new ConsumerConfig(configProps));
-						return mock(KafkaConsumer.class);
+						return mock();
 					}
 				};
 
@@ -143,7 +144,7 @@ public class DefaultKafkaConsumerFactoryTests {
 					@Override
 					protected Consumer<String, String> createRawConsumer(Map<String, Object> configProps) {
 						capturedConfig.set(new ConsumerConfig(configProps));
-						return mock(Consumer.class);
+						return mock();
 					}
 				};
 
