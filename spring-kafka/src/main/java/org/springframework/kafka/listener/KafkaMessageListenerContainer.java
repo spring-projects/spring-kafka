@@ -2086,8 +2086,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				return;
 			}
 			try {
-				ConsumerExceptionHandler handler =
-						this.containerProperties.getConsumerExceptionHandler();
+				ConsumerThreadExceptionHandler handler =
+						this.containerProperties.getConsumerThreadExceptionHandler();
 
 				if (handler != null) {
 					handler.handle(

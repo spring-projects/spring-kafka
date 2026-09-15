@@ -25,7 +25,7 @@ import org.apache.kafka.clients.consumer.Consumer;
  * @since 4.2
  */
 @FunctionalInterface
-public interface ConsumerExceptionHandler {
+public interface ConsumerThreadExceptionHandler {
 
 	/**
 	 * Handle an exception thrown by the Kafka {@link Consumer} outside of listener

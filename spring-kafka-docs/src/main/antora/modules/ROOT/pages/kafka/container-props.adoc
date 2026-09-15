@@ -69,10 +69,10 @@ Useful when the consumer code cannot determine that an `ErrorHandlingDeserialize
 |`null`
 |A rebalance listener; see xref:kafka/receiving-messages/rebalance-listeners.adoc[Rebalancing Listeners].
 
-|[[consumerExceptionHandler]]<<consumerExceptionHandler,`consumerExceptionHandler`>>
+|[[consumerThreadExceptionHandler]]<<consumerThreadExceptionHandler,`consumerThreadExceptionHandler`>>
 |`null`
 |A handler for consumer exceptions thrown outside listener invocation.
-When set, it is used instead of `CommonErrorHandler.handleOtherException()` for those exceptions; see xref:kafka/annotation-error-handling.adoc#consumer-exception-handler[Consumer Exception Handler].
+When set, it is used instead of `CommonErrorHandler.handleOtherException()` for those exceptions; see xref:kafka/annotation-error-handling.adoc#consumer-thread-exception-handler[Consumer Thread Exception Handler].
 
 |[[commitRetries]]<<commitRetries,`commitRetries`>>
 |3

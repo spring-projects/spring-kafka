@@ -3474,7 +3474,7 @@ public class KafkaMessageListenerContainerTests {
 
 	@Test
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	void consumerExceptionHandlerCalledForConsumerException() throws InterruptedException {
+	void consumerThreadExceptionHandlerCalledForConsumerException() throws InterruptedException {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
@@ -3496,12 +3496,12 @@ public class KafkaMessageListenerContainerTests {
 		});
 		containerProps.setMissingTopicsFatal(false);
 		CountDownLatch latch = new CountDownLatch(1);
-		ConsumerExceptionHandler handler = mock(ConsumerExceptionHandler.class);
+		ConsumerThreadExceptionHandler handler = mock(ConsumerThreadExceptionHandler.class);
 		willAnswer(i -> {
 			latch.countDown();
 			return null;
 		}).given(handler).handle(any(), any(), any());
-		containerProps.setConsumerExceptionHandler(handler);
+		containerProps.setConsumerThreadExceptionHandler(handler);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);
 		try {
@@ -3516,7 +3516,7 @@ public class KafkaMessageListenerContainerTests {
 
 	@Test
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	void commonErrorHandlerCalledForConsumerExceptionWhenConsumerExceptionHandlerNotConfigured()
+	void commonErrorHandlerCalledForConsumerExceptionWhenConsumerThreadExceptionHandlerNotConfigured()
 			throws InterruptedException {
 
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
@@ -3584,8 +3584,8 @@ public class KafkaMessageListenerContainerTests {
 		containerProps.setMessageListener((MessageListener) r -> {
 		});
 		containerProps.setMissingTopicsFatal(false);
-		ConsumerExceptionHandler handler = mock(ConsumerExceptionHandler.class);
-		containerProps.setConsumerExceptionHandler(handler);
+		ConsumerThreadExceptionHandler handler = mock(ConsumerThreadExceptionHandler.class);
+		containerProps.setConsumerThreadExceptionHandler(handler);
 		CommonErrorHandler errorHandler = mock(CommonErrorHandler.class);
 		KafkaMessageListenerContainer<Integer, String> container =
 				new KafkaMessageListenerContainer<>(cf, containerProps);

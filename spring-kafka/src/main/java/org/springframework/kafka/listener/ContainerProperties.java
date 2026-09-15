@@ -225,15 +225,15 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private final List<Advice> adviceChain = new ArrayList<>();
 
-	private @Nullable ConsumerExceptionHandler consumerExceptionHandler;
+	private @Nullable ConsumerThreadExceptionHandler consumerThreadExceptionHandler;
 
 	/**
 	 * Return the handler for consumer exceptions thrown outside listener invocation.
 	 * @return the handler, or null when no handler has been configured.
 	 * @since 4.2
 	 */
-	public @Nullable ConsumerExceptionHandler getConsumerExceptionHandler() {
-		return this.consumerExceptionHandler;
+	public @Nullable ConsumerThreadExceptionHandler getConsumerThreadExceptionHandler() {
+		return this.consumerThreadExceptionHandler;
 	}
 
 	/**
@@ -246,13 +246,13 @@ public class ContainerProperties extends ConsumerProperties {
 	 * {@link CommonErrorHandler} is configured. A
 	 * {@link org.apache.kafka.clients.consumer.RetriableCommitFailedException}
 	 * continues to bypass both handlers.
-	 * @param consumerExceptionHandler the handler, or null to clear it.
+	 * @param consumerThreadExceptionHandler the handler, or null to clear it.
 	 * @since 4.2
 	 */
-	public void setConsumerExceptionHandler(
-			@Nullable ConsumerExceptionHandler consumerExceptionHandler) {
+	public void setConsumerThreadExceptionHandler(
+			@Nullable ConsumerThreadExceptionHandler consumerThreadExceptionHandler) {
 
-		this.consumerExceptionHandler = consumerExceptionHandler;
+		this.consumerThreadExceptionHandler = consumerThreadExceptionHandler;
 	}
 
 	@Nullable
