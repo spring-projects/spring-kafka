@@ -53,6 +53,7 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -122,6 +123,7 @@ import org.springframework.kafka.support.KafkaUtils;
 import org.springframework.kafka.support.LogIfLevelEnabled;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.TopicPartitionOffset.SeekPosition;
+import org.springframework.kafka.support.micrometer.ContainerLifecycleMicrometerHolder;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservation;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservation.DefaultKafkaListenerObservationConvention;
 import org.springframework.kafka.support.micrometer.KafkaRecordReceiverContext;
@@ -184,6 +186,7 @@ import org.springframework.util.StringUtils;
  * @author Hakaze Arimu
  * @author Ngoc Nhan
  * @author Nikita Kibitkin
+ * @author Vineeth Yelagandula
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -201,6 +204,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 	private final @Nullable TopicPartitionOffset @Nullable [] topicPartitions;
 
 	private @Nullable String clientIdSuffix;
+
+	private @Nullable ContainerLifecycleMicrometerHolder lifecycleMicrometerHolder;
 
 	private Runnable emergencyStop = () -> stopAbnormally(() -> {
 	});
@@ -370,6 +375,43 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			return Collections.singletonMap(listenerConsumerForMetrics.getClientId(), metrics);
 		}
 		return Collections.emptyMap();
+	}
+
+	@Override
+	protected void recordContainerStarted() {
+		if (this.lifecycleMicrometerHolder == null) {
+			this.lifecycleMicrometerHolder = obtainLifecycleMicrometerHolder();
+		}
+		if (this.lifecycleMicrometerHolder != null) {
+			this.lifecycleMicrometerHolder.recordStart();
+		}
+	}
+
+	@Override
+	protected void recordContainerStopped() {
+		if (this.lifecycleMicrometerHolder != null) {
+			this.lifecycleMicrometerHolder.recordStop();
+		}
+	}
+
+	@Nullable
+	private ContainerLifecycleMicrometerHolder obtainLifecycleMicrometerHolder() {
+		try {
+			if (KafkaUtils.MICROMETER_PRESENT && getContainerProperties().isMicrometerEnabled()) {
+				ApplicationContext ctx = getApplicationContext();
+				if (ctx != null) {
+					MeterRegistry registry =
+							ctx.getBeanProvider(MeterRegistry.class).getIfUnique();
+					if (registry != null) {
+						return new ContainerLifecycleMicrometerHolder(registry, getBeanName());
+					}
+				}
+			}
+		}
+		catch (IllegalStateException ex) {
+			this.logger.debug(ex, "Could not obtain MeterRegistry for lifecycle metrics");
+		}
+		return null;
 	}
 
 	@Override
