@@ -28,6 +28,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -53,6 +55,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import org.springframework.kafka.annotation.KafkaListenerAnnotationBeanPostProcessor;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaResourceHolder;
 import org.springframework.kafka.core.ProducerFactory;
@@ -62,6 +65,8 @@ import org.springframework.kafka.event.ConsumerStartingEvent;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
+import org.springframework.kafka.listener.adapter.HandlerAdapter;
+import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
@@ -93,6 +98,8 @@ import static org.mockito.Mockito.verify;
  *
  */
 public class ConcurrentMessageListenerContainerMockTests {
+
+	private final CompletableFuture<Void> pendingResult = new CompletableFuture<>();
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
@@ -911,6 +918,64 @@ public class ConcurrentMessageListenerContainerMockTests {
 		verify(consumer, times(2)).commitSync(commits.capture(), any(Duration.class));
 		assertThat(commits.getAllValues().get(0)).containsEntry(tp0, new OffsetAndMetadata(1));
 		assertThat(commits.getAllValues().get(1)).isEqualTo(commits.getAllValues().get(0));
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void inFlightAsyncResultsCancelledOnFatalError() throws Exception {
+		TopicPartition tp0 = new TopicPartition("foo", 0);
+		ConsumerRecords records = new ConsumerRecords<>(
+				Map.of(tp0, List.of(new ConsumerRecord("foo", 0, 0, null, "bar"))), Map.of());
+		AtomicInteger pollPhase = new AtomicInteger();
+		Consumer consumer = mock();
+		AtomicReference<ConsumerRebalanceListener> rebal = new AtomicReference<>();
+		willAnswer(invocation -> {
+			rebal.set(invocation.getArgument(1));
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any());
+		willAnswer(inv -> {
+			if (pollPhase.getAndIncrement() == 0) {
+				rebal.get().onPartitionsAssigned(List.of(tp0));
+				return records;
+			}
+			Thread.sleep(50);
+			// fatal without an authExceptionRetryInterval
+			throw new GroupAuthorizationException("grp");
+		}).given(consumer).poll(any());
+		List<String> events = Collections.synchronizedList(new ArrayList<>());
+		CountDownLatch closed = new CountDownLatch(1);
+		willAnswer(inv -> {
+			events.add("closed");
+			closed.countDown();
+			return null;
+		}).given(consumer).close();
+		ConsumerFactory cf = mock();
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		given(cf.getConfigurationProperties())
+				.willReturn(Collections.singletonMap(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"));
+		this.pendingResult.whenComplete((r, t) ->
+				events.add(t instanceof CancellationException ? "cancelled" : "completed"));
+		Method method = getClass().getDeclaredMethod("pendingResult", String.class);
+		RecordMessagingMessageListenerAdapter<String, String> adapter =
+				new RecordMessagingMessageListenerAdapter<>(this, method);
+		adapter.setHandlerMethod(new HandlerAdapter(new KafkaListenerAnnotationBeanPostProcessor<>()
+				.getMessageHandlerMethodFactory().createInvocableHandlerMethod(this, method)));
+		ContainerProperties containerProperties = new ContainerProperties("foo");
+		containerProperties.setGroupId("grp");
+		containerProperties.setMessageListener(adapter);
+		containerProperties.setAwaitAsyncResultsOnStop(true);
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(cf,
+				containerProperties);
+		container.start();
+		assertThat(closed.await(10, TimeUnit.SECONDS)).isTrue();
+		// the in-flight result is cancelled before the consumer is closed
+		assertThat(this.pendingResult).isCancelled();
+		assertThat(events).containsExactly("cancelled", "closed");
+		container.stop();
+	}
+
+	public CompletableFuture<Void> pendingResult(String data) {
+		return this.pendingResult;
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })

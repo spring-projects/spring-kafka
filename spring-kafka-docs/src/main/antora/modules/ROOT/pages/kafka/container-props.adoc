@@ -33,6 +33,11 @@ See the JavaDocs for `ContainerProperties.AssignmentCommitOption` for more infor
 |`false`
 |Enable out-of-order commits (see xref:kafka/receiving-messages/ooo-commits.adoc[Manually Committing Offsets]); the consumer is paused and commits are deferred until gaps are filled.
 
+|[[awaitAsyncResultsOnStop]]<<awaitAsyncResultsOnStop,`awaitAsyncResultsOnStop`>>
+|`false`
+|When `true`, the container waits for in-flight asynchronous listener results (`CompletableFuture`, `Mono`, Kotlin `suspend`) to complete when it is stopped, bounded by the `shutdownTimeout`; results still outstanding when the timeout expires are cancelled and not acknowledged.
+See xref:kafka/receiving-messages/async-returns.adoc#async-returns-stop[Async Results and Container Stop].
+
 |[[authExceptionRetryInterval]]<<authExceptionRetryInterval,`authExceptionRetryInterval`>>
 |`null`
 |When not null, a `Duration` to sleep between polls when an `AuthenticationException` or `AuthorizationException` is thrown by the Kafka client.
@@ -205,6 +210,7 @@ See `monitorInterval`.
 |[[shutdownTimeout]]<<shutdownTimeout,`shutdownTimeout`>>
 |10000
 |The maximum time in ms to block the `stop()` method until all consumers stop and before publishing the container stopped event.
+Also bounds the wait for in-flight asynchronous listener results when `awaitAsyncResultsOnStop` is `true`.
 
 |[[stopContainerWhenFenced]]<<stopContainerWhenFenced,`stopContainerWhenFenced`>>
 |`false`
