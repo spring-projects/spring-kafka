@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -50,6 +51,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Basic tests for {@link DefaultShareConsumerFactory}.
  *
  * @author Soby Chacko
+ * @author Rene Choi
  * @since 4.0
  */
 @EmbeddedKafka(
@@ -125,6 +127,37 @@ class DefaultShareConsumerFactoryTests {
 		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(configs);
 		ShareConsumer<String, String> shareConsumer = factory.createShareConsumer("group", "myapp-client-id");
 		assertThat(shareConsumer).isNotNull();
+	}
+
+	@Test
+	void shouldApplyBootstrapServersSupplierToConfigurationProperties() {
+		Map<String, Object> configs = new HashMap<>();
+		configs.put("bootstrap.servers", "stale-broker:9092");
+		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(configs);
+		factory.setBootstrapServersSupplier(() -> "current-broker:9092");
+		assertThat(factory.getConfigurationProperties().get("bootstrap.servers"))
+				.as("The supplier should override the bootstrap servers from the factory configuration")
+				.isEqualTo("current-broker:9092");
+	}
+
+	@Test
+	void shouldApplyBootstrapServersSupplierWhenCreatingShareConsumer() {
+		Map<String, Object> configs = new HashMap<>();
+		configs.put("bootstrap.servers", "localhost:9092");
+		configs.put("key.deserializer", StringDeserializer.class);
+		configs.put("value.deserializer", StringDeserializer.class);
+		AtomicInteger supplierCalls = new AtomicInteger();
+		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(configs);
+		factory.setBootstrapServersSupplier(() -> {
+			supplierCalls.incrementAndGet();
+			return "localhost:9092";
+		});
+		// Both addresses resolve, so the supplier call count is what distinguishes a
+		// factory that consults the supplier from one that ignores it.
+		factory.createShareConsumer("group", "myapp-client-id").close();
+		assertThat(supplierCalls.get())
+				.as("The share consumer should be created from the supplied bootstrap servers")
+				.isEqualTo(1);
 	}
 
 	@Test
