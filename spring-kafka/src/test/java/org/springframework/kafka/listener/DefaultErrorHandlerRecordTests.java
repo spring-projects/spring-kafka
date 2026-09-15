@@ -39,6 +39,7 @@ import org.springframework.util.backoff.FixedBackOff;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -49,12 +50,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /**
  * {@link DefaultErrorHandler} tests for record listeners.
  *
  * @author Gary Russell
  * @author Soby Chacko
+ * @author Bill Kim
  * @since 2.8
  *
  */
@@ -184,6 +187,62 @@ public class DefaultErrorHandlerRecordTests {
 				.extracting(Throwable::getMessage)
 				.isEqualTo("test recoverer failure");
 		assertThat(isRecovered.get()).isTrue();
+	}
+
+	@Test
+	void skipAfterMaxRecoveryFailures() {
+		AtomicInteger recoveryAttempts = new AtomicInteger();
+		DefaultErrorHandler handler = new DefaultErrorHandler((r, t) -> {
+			recoveryAttempts.incrementAndGet();
+			throw new RuntimeException("test recoverer failure");
+		}, new FixedBackOff(0L, 0L));
+		handler.setMaxRecoveryFailures(2);
+		AtomicInteger recoveryFailures = new AtomicInteger();
+		AtomicBoolean isRecovered = new AtomicBoolean();
+		handler.setRetryListeners(new RetryListener() {
+
+			@Override
+			public void failedDelivery(ConsumerRecord<?, ?> record, Exception ex, int deliveryAttempt) {
+			}
+
+			@Override
+			public void recovered(ConsumerRecord<?, ?> record, Exception ex) {
+				isRecovered.set(true);
+			}
+
+			@Override
+			public void recoveryFailed(ConsumerRecord<?, ?> record, Exception original, Exception failure) {
+				recoveryFailures.incrementAndGet();
+			}
+
+		});
+		ConsumerRecord<String, String> record1 = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
+		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("foo", 1, 1L, "foo", "bar");
+		List<ConsumerRecord<?, ?>> records = Arrays.asList(record1, record2);
+		IllegalStateException illegalState = new IllegalStateException();
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(() ->
+				handler.handleRemaining(illegalState, records, consumer, container));
+		handler.handleRemaining(illegalState, records, consumer, container);
+		InOrder inOrder = inOrder(consumer);
+		inOrder.verify(consumer).seek(new TopicPartition("foo", 0), 0L); // recovery failed once, not skipped yet
+		inOrder.verify(consumer, times(2)).seek(new TopicPartition("foo", 1), 1L); // record1 skipped the second time
+		inOrder.verifyNoMoreInteractions();
+		assertThat(recoveryAttempts.get()).isEqualTo(2);
+		assertThat(recoveryFailures.get()).isEqualTo(2);
+		assertThat(isRecovered.get()).isFalse();
+		handler.setSeekAfterError(false);
+		assertThat(handler.handleOne(illegalState, record1, consumer, container)).isFalse();
+		assertThat(handler.handleOne(illegalState, record1, consumer, container)).isTrue();
+		assertThat(recoveryAttempts.get()).isEqualTo(4);
+		verifyNoMoreInteractions(consumer);
+	}
+
+	@Test
+	void maxRecoveryFailuresMustBePositive() {
+		DefaultErrorHandler handler = new DefaultErrorHandler();
+		assertThatIllegalArgumentException().isThrownBy(() -> handler.setMaxRecoveryFailures(0));
 	}
 
 	@Test

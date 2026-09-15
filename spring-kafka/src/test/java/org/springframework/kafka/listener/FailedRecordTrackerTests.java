@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -35,11 +36,14 @@ import org.springframework.util.backoff.BackOffExecution;
 import org.springframework.util.backoff.FixedBackOff;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
 /**
  * @author Gary Russell
+ * @author Bill Kim
  * @since 2.2.5
  *
  */
@@ -232,6 +236,122 @@ public class FailedRecordTrackerTests {
 				new ListenerExecutionFailedException("", iae)));
 		assertThat(tracker.recovered(record, ex, mock(MessageListenerContainer.class), consumer)).isTrue();
 		assertThat(captured.get()).isSameAs(iae);
+	}
+
+	@Test
+	void recoveryFailuresUnboundedByDefault() {
+		AtomicInteger recoveryAttempts = new AtomicInteger();
+		FailedRecordTracker tracker = new FailedRecordTracker((r, e) -> {
+			recoveryAttempts.incrementAndGet();
+			throw new IllegalStateException("recoverer");
+		}, new FixedBackOff(0L, 0L), mock(LogAccessor.class));
+		ConsumerRecord<?, ?> record = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
+		for (int i = 0; i < 5; i++) {
+			assertThatIllegalStateException().isThrownBy(() -> tracker.skip(record, new RuntimeException()));
+		}
+		assertThat(recoveryAttempts.get()).isEqualTo(5);
+	}
+
+	@Test
+	void skipAfterMaxRecoveryFailuresWithNoRetries() {
+		AtomicInteger recoveryAttempts = new AtomicInteger();
+		FailedRecordTracker tracker = new FailedRecordTracker((r, e) -> {
+			recoveryAttempts.incrementAndGet();
+			throw new IllegalStateException("recoverer");
+		}, new FixedBackOff(0L, 0L), mock(LogAccessor.class));
+		tracker.setMaxRecoveryFailures(2);
+		List<Exception> recoveryFailures = new ArrayList<>();
+		AtomicBoolean recovered = new AtomicBoolean();
+		tracker.setRetryListeners(new RetryListener() {
+
+			@Override
+			public void failedDelivery(ConsumerRecord<?, ?> record, Exception ex, int deliveryAttempt) {
+			}
+
+			@Override
+			public void recovered(ConsumerRecord<?, ?> record, Exception ex) {
+				recovered.set(true);
+			}
+
+			@Override
+			public void recoveryFailed(ConsumerRecord<?, ?> record, Exception original, Exception failure) {
+				recoveryFailures.add(failure);
+			}
+
+		});
+		ConsumerRecord<?, ?> record = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
+		assertThatIllegalStateException().isThrownBy(() -> tracker.skip(record, new RuntimeException()));
+		assertThat(tracker.skip(record, new RuntimeException())).isTrue();
+		assertThat(recoveryAttempts.get()).isEqualTo(2);
+		assertThat(recoveryFailures).hasSize(2);
+		assertThat(recovered.get()).isFalse();
+		// the count starts over once the record has been skipped
+		assertThatIllegalStateException().isThrownBy(() -> tracker.skip(record, new RuntimeException()));
+		assertThat(tracker.skip(record, new RuntimeException())).isTrue();
+	}
+
+	@Test
+	void skipAfterMaxRecoveryFailuresSurvivesBackOffReset() {
+		FailedRecordTracker tracker = new FailedRecordTracker((r, e) -> {
+			throw new IllegalStateException("recoverer");
+		}, new FixedBackOff(0L, 1L), mock(LogAccessor.class));
+		tracker.setMaxRecoveryFailures(2);
+		ConsumerRecord<?, ?> record = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
+		assertThat(tracker.skip(record, new RuntimeException())).isFalse();
+		assertThatIllegalStateException().isThrownBy(() -> tracker.skip(record, new RuntimeException()));
+		// the back off was reset, so the record is retried once more before the second recovery attempt
+		assertThat(tracker.skip(record, new RuntimeException())).isFalse();
+		assertThat(tracker.skip(record, new RuntimeException())).isTrue();
+	}
+
+	@Test
+	void skipAfterMaxRecoveryFailuresWithoutBackOffReset() {
+		FailedRecordTracker tracker = new FailedRecordTracker((r, e) -> {
+			throw new IllegalStateException("recoverer");
+		}, new FixedBackOff(0L, 1L), mock(LogAccessor.class));
+		tracker.setMaxRecoveryFailures(2);
+		tracker.setResetStateOnRecoveryFailure(false);
+		ConsumerRecord<?, ?> record = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
+		assertThat(tracker.skip(record, new RuntimeException())).isFalse();
+		assertThatIllegalStateException().isThrownBy(() -> tracker.skip(record, new RuntimeException()));
+		assertThat(tracker.skip(record, new RuntimeException())).isTrue();
+	}
+
+	@Test
+	void recoveryFailuresCountedPerRecord() {
+		AtomicBoolean recovererShouldFail = new AtomicBoolean(true);
+		FailedRecordTracker tracker = new FailedRecordTracker((r, e) -> {
+			if (recovererShouldFail.get()) {
+				throw new IllegalStateException("recoverer");
+			}
+		}, new FixedBackOff(0L, 0L), mock(LogAccessor.class));
+		tracker.setMaxRecoveryFailures(2);
+		ConsumerRecord<?, ?> record0 = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
+		ConsumerRecord<?, ?> record1 = new ConsumerRecord<>("foo", 0, 1L, "bar", "baz");
+		ConsumerRecord<?, ?> otherPartition = new ConsumerRecord<>("foo", 1, 0L, "bar", "baz");
+		assertThatIllegalStateException().isThrownBy(() -> tracker.skip(record0, new RuntimeException()));
+		// a different offset on the same partition starts its own count
+		assertThatIllegalStateException().isThrownBy(() -> tracker.skip(record1, new RuntimeException()));
+		assertThat(tracker.skip(record1, new RuntimeException())).isTrue();
+		// so does a different partition
+		assertThatIllegalStateException().isThrownBy(() -> tracker.skip(otherPartition, new RuntimeException()));
+		// a successful recovery clears the count
+		recovererShouldFail.set(false);
+		assertThat(tracker.skip(otherPartition, new RuntimeException())).isTrue();
+		recovererShouldFail.set(true);
+		assertThatIllegalStateException().isThrownBy(() -> tracker.skip(otherPartition, new RuntimeException()));
+		// as does clearing the thread state
+		tracker.clearThreadStateFor(List.of(new TopicPartition("foo", 1)));
+		assertThatIllegalStateException().isThrownBy(() -> tracker.skip(otherPartition, new RuntimeException()));
+		tracker.clearThreadState();
+		assertThatIllegalStateException().isThrownBy(() -> tracker.skip(otherPartition, new RuntimeException()));
+		assertThat(tracker.skip(otherPartition, new RuntimeException())).isTrue();
+	}
+
+	@Test
+	void maxRecoveryFailuresMustBePositive() {
+		FailedRecordTracker tracker = new FailedRecordTracker(null, new FixedBackOff(0L, 0L), mock(LogAccessor.class));
+		assertThatIllegalArgumentException().isThrownBy(() -> tracker.setMaxRecoveryFailures(0));
 	}
 
 }
