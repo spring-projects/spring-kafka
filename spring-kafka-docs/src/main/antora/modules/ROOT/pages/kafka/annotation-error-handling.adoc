@@ -552,6 +552,38 @@ When `DeadLetterPublishingRecoverer` publishes a deserialization failure to the 
 * Exception information (class name, message, stacktrace) is added to standard DLT exception headers
 * The original `ErrorHandlingDeserializer` exception header is removed by default (set `setRetainExceptionHeader(true)` on the recoverer to keep it)
 
+[[batch-to-record-fallback]]
+== Falling Back to Individual Records
+
+Starting with version 4.2, `BatchToRecordFallbackAdvice` can invoke a failed batch listener again with one record at a time.
+This is useful when a listener processes a batch efficiently but cannot identify which record caused a failure.
+The listener still receives a list; no separate record listener is required.
+
+[source, java]
+----
+factory.getContainerProperties().setAdviceChain(new BatchToRecordFallbackAdvice());
+factory.setCommonErrorHandler(new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 2L)));
+----
+
+A successful batch is invoked once.
+After a batch failure, the advice invokes the same listener with singleton lists in batch order, stopping at the first failure.
+It throws a `BatchListenerFailedException` containing that record, so `DefaultErrorHandler` can commit preceding offsets, retry or recover the failed record, and redeliver the remaining records.
+An existing `BatchListenerFailedException` is propagated unchanged.
+A failed one-record batch is identified immediately without another invocation.
+
+Place this advice before other advice that should also run for each singleton invocation.
+The advice does not poll, sleep, commit offsets, or perform recovery itself.
+
+IMPORTANT: Processing must be synchronous and idempotent. Records processed before the original batch failure may be processed again.
+A successful singleton invocation must finish all processing before returning; the error handler may commit its offset when a later record fails.
+Allow for the extra processing time in `max.poll.interval.ms`, or reduce `max.poll.records` to avoid a rebalance.
+
+Fallback is not applied when a manual `Acknowledgment` is supplied, when a Spring transaction is already active or Spring resources are bound to the thread, or when the listener adapter has asynchronous replies.
+The resource check is conservative: transaction managers can bind resources without enabling transaction synchronization, so even a nontransactional thread-bound resource disables fallback.
+Those invocations retain their normal behavior, as do record listeners and listeners accepting `ConsumerRecords`.
+In particular, the advice does not retry inside a failed container transaction or reuse a whole-batch acknowledgment for singleton processing.
+Errors and interruptions, including those wrapped by a listener adapter, are propagated without fallback.
+
 [[retrying-batch-eh]]
 == Retrying Complete Batches
 
