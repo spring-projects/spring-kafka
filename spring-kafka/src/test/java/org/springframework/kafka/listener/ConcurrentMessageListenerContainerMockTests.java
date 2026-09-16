@@ -93,6 +93,7 @@ import static org.mockito.Mockito.verify;
  * @author Soby Chacko
  * @author Minchul Son
  * @author Nikita Kibitkin
+ * @author Hyun Lee
  *
  * @since 2.2.4
  *
@@ -1254,6 +1255,75 @@ public class ConcurrentMessageListenerContainerMockTests {
 		assertThat(recordsDelivered.get(0)).isEqualTo(record0);
 		assertThat(recordsDelivered.get(1)).isEqualTo(record1);
 		assertThat(recordsDelivered.get(2)).isEqualTo(record1);
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void ignoreAsyncAcksFromBeforeRebalanceAfterRedelivery() throws InterruptedException {
+		TopicPartition partition = new TopicPartition("foo", 0);
+		Consumer<String, String> consumer = mock();
+		ConsumerFactory<String, String> factory = mock();
+		given(factory.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		given(factory.getConfigurationProperties()).willReturn(Map.of());
+		given(consumer.assignment()).willReturn(Set.of(partition));
+		AtomicReference<ConsumerRebalanceListener> rebalance = new AtomicReference<>();
+		willAnswer(invocation -> {
+			rebalance.set(invocation.getArgument(1));
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any());
+		Map<String, Acknowledgment> acknowledgments = new ConcurrentHashMap<>();
+		CountDownLatch redelivered = new CountDownLatch(3);
+		CountDownLatch finish = new CountDownLatch(1);
+		ContainerProperties properties = new ContainerProperties("foo");
+		properties.setGroupId("async-rebalance");
+		properties.setAckMode(AckMode.MANUAL);
+		properties.setAsyncAcks(true);
+		properties.setAssignmentCommitOption(AssignmentCommitOption.NEVER);
+		properties.setMessageListener((AcknowledgingMessageListener<String, String>) (record, ack) -> {
+			acknowledgments.put(record.value() + record.offset(), ack);
+			if (record.value().equals("new")) {
+				redelivered.countDown();
+			}
+		});
+		AtomicInteger polls = new AtomicInteger();
+		willAnswer(invocation -> {
+			int poll = polls.getAndIncrement();
+			if (poll == 0) {
+				rebalance.get().onPartitionsAssigned(List.of(partition));
+			}
+			else if (poll == 1) {
+				rebalance.get().onPartitionsRevoked(List.of(partition));
+				rebalance.get().onPartitionsAssigned(List.of(partition));
+			}
+			else {
+				finish.await(10, TimeUnit.SECONDS);
+				return ConsumerRecords.empty();
+			}
+			String value = poll == 0 ? "old" : "new";
+			return new ConsumerRecords<>(Map.of(partition, List.of(
+					new ConsumerRecord<>("foo", 0, 0, "key", value),
+					new ConsumerRecord<>("foo", 0, 1, "key", value),
+					new ConsumerRecord<>("foo", 0, 2, "key", value))), Map.of());
+		}).given(consumer).poll(any());
+		KafkaMessageListenerContainer<String, String> container = new KafkaMessageListenerContainer<>(factory, properties);
+		container.start();
+		try {
+			assertThat(redelivered.await(10, TimeUnit.SECONDS)).isTrue();
+			acknowledgments.get("old2").acknowledge();
+			acknowledgments.get("new2").acknowledge();
+			acknowledgments.get("old1").acknowledge();
+			acknowledgments.get("new1").acknowledge();
+			acknowledgments.get("old0").acknowledge();
+			Map<?, ?> offsets = KafkaTestUtils.getPropertyValue(container, "listenerConsumer.offsetsInThisBatch", Map.class);
+			assertThat(offsets.get(partition)).isEqualTo(List.of(0L, 1L, 2L));
+			acknowledgments.get("new0").acknowledge();
+			assertThat(offsets).isEmpty();
+			assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.deferredOffsets", Map.class)).isEmpty();
+		}
+		finally {
+			finish.countDown();
+			container.stop();
+		}
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
