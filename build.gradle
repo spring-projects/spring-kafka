@@ -270,7 +270,7 @@ configure(javaProjects) { subproject ->
 		manifest {
 			attributes(
 					'Implementation-Version': archiveVersion,
-					'Created-By': "JDK ${System.properties['java.version']} (${System.properties['java.specification.vendor']})",
+					'Build-Jdk-Spec': "${System.getProperty("java.specification.version")}",
 					'Implementation-Title': subproject.name,
 					'Implementation-Vendor-Id': subproject.group,
 					'Implementation-Vendor': 'Broadcom Inc.',
