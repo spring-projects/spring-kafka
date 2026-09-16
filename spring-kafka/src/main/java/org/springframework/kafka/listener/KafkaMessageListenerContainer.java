@@ -176,6 +176,7 @@ import org.springframework.util.StringUtils;
  * @author Minchul Son
  * @author Youngjoo Kim
  * @author Bill Kim
+ * @author Hyun Lee
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -3665,17 +3666,32 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			private final ConsumerRecord<K, V> cRecord;
 
+			// A reassignment can deliver the same offsets again; retain the identity of this poll.
+			private final @Nullable List<Long> offsets;
+
 			private volatile boolean acked;
 
 			ConsumerAcknowledgment(ConsumerRecord<K, V> cRecord) {
 				this.cRecord = cRecord;
+				this.offsets = ListenerConsumer.this.offsetsInThisBatch == null ? null
+						: ListenerConsumer.this.offsetsInThisBatch.get(new TopicPartition(cRecord.topic(), cRecord.partition()));
 			}
 
 			@Override
 			public void acknowledge() {
-				if (!this.acked) {
-					doAck(this.cRecord);
-					this.acked = true;
+				synchronized (ListenerConsumer.this) {
+					if (!this.acked) {
+						Map<TopicPartition, List<Long>> currentOffsets = ListenerConsumer.this.offsetsInThisBatch;
+						TopicPartition partition = new TopicPartition(this.cRecord.topic(), this.cRecord.partition());
+						if (currentOffsets == null || (this.offsets != null && currentOffsets.get(partition) == this.offsets)) {
+							doAck(this.cRecord);
+						}
+						else {
+							ListenerConsumer.this.logger.debug(() -> "Ignoring acknowledgment for an obsolete batch: "
+									+ KafkaUtils.format(this.cRecord));
+						}
+						this.acked = true;
+					}
 				}
 			}
 
