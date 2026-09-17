@@ -70,8 +70,8 @@ public class DelegatingByTopicDeserializer extends DelegatingByTopicSerializatio
 	}
 
 	@Override
-	public Object deserialize(String topic, byte[] data) {
-		throw new UnsupportedOperationException();
+	public @Nullable Object deserialize(String topic, byte[] data) {
+		return findDelegate(topic).deserialize(topic, data);
 	}
 
 	@Override
