@@ -57,6 +57,8 @@ import static org.awaitility.Awaitility.await;
  * must register {@code spring.kafka.listener} meters with a consistent tag key set.
  *
  * @author Hakaze Arimu
+ * @author Artem Bilan
+ *
  * @since 4.2
  */
 @SpringJUnitConfig
@@ -182,7 +184,7 @@ public class MixedBatchRecordObservationMetersTests {
 		ObservationRegistry observationRegistry(MeterRegistry meterRegistry) {
 			ObservationRegistry observationRegistry = ObservationRegistry.create();
 			observationRegistry.observationConfig()
-					.observationHandler(new DefaultMeterObservationHandler(meterRegistry));
+					.observationHandler(DefaultMeterObservationHandler.builder(meterRegistry).build());
 			return observationRegistry;
 		}
 

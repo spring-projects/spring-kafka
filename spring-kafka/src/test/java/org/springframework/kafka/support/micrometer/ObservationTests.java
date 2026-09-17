@@ -745,7 +745,7 @@ public class ObservationTests {
 									// This is responsible for creating a default span
 									new DefaultTracingObservationHandler(tracer)))
 					.observationHandler(new TracingAwareMeterObservationHandler<>(
-							new DefaultMeterObservationHandler(meterRegistry), tracer));
+							DefaultMeterObservationHandler.builder(meterRegistry).build(), tracer));
 			return observationRegistry;
 		}
 

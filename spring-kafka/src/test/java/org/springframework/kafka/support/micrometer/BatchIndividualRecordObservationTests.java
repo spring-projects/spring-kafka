@@ -315,7 +315,7 @@ public class BatchIndividualRecordObservationTests {
 									new PropagatingReceiverTracingObservationHandler<>(tracer, propagator),
 									// This is responsible for creating a default span
 									new DefaultTracingObservationHandler(tracer)))
-					.observationHandler(new DefaultMeterObservationHandler(meterRegistry))
+					.observationHandler(DefaultMeterObservationHandler.builder(meterRegistry).build())
 					.observationHandler(testObservationHandler);
 			return observationRegistry;
 		}

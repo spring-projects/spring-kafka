@@ -56,11 +56,13 @@ import static org.awaitility.Awaitility.await;
  * @author Soby Chacko
  * @author Hyoungjune Kim
  * @author Jinhui Kim
+ * @author Artem Bilan
+ *
  * @since 3.2.7
  */
 @SpringJUnitConfig
-@EmbeddedKafka(topics = { MicrometerMetricsTests.METRICS_TEST_TOPIC, MicrometerMetricsTests.FILTERED_METRICS_TEST_TOPIC,
-		MicrometerMetricsTests.FILTERED_RETRY_METRICS_TEST_TOPIC },
+@EmbeddedKafka(topics = {MicrometerMetricsTests.METRICS_TEST_TOPIC, MicrometerMetricsTests.FILTERED_METRICS_TEST_TOPIC,
+		MicrometerMetricsTests.FILTERED_RETRY_METRICS_TEST_TOPIC},
 		partitions = 1)
 @DirtiesContext
 public class MicrometerMetricsTests {
@@ -275,7 +277,7 @@ public class MicrometerMetricsTests {
 		ObservationRegistry observationRegistry(MeterRegistry meterRegistry, TestObservationHandler testObservationHandler) {
 			ObservationRegistry observationRegistry = ObservationRegistry.create();
 			observationRegistry.observationConfig()
-					.observationHandler(new DefaultMeterObservationHandler(meterRegistry))
+					.observationHandler(DefaultMeterObservationHandler.builder(meterRegistry).build())
 					.observationHandler(testObservationHandler);
 			return observationRegistry;
 		}

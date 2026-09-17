@@ -5,18 +5,18 @@ updates:
     schedule:
       interval: weekly
       day: saturday
-    ignore:
-      - dependency-name: '*'
-        update-types:
-          - version-update:semver-major
-          - version-update:semver-minor
+#    ignore:
+#      - dependency-name: '*'
+#        update-types:
+#          - version-update:semver-major
+#          - version-update:semver-minor
     open-pull-requests-limit: 10
     labels:
       - 'type: dependency-upgrade'
     groups:
       development-dependencies:
-        update-types:
-          - patch
+#        update-types:
+#          - patch
         patterns:
           - org.gradle.*
           - io.spring.*
