@@ -21,7 +21,7 @@ log4jVersion = "2.25.5"
 micrometerDocsVersion = "1.0.4"
 mockitoVersion = "5.23.0"
 slf4jVersion = "2.0.19"
-springBootVersion = "4.0.8"
+springBootVersion = "4.1.1"
 spotbugsVersion = "4.9.8"
 
 [libraries]
@@ -55,7 +55,7 @@ tools-jackson-bom = { module = "tools.jackson:jackson-bom", version.ref = "jacks
 com-github-spotbugs-annotations = { module = "com.github.spotbugs:spotbugs-annotations", version.ref = "spotbugsVersion" }
 
 [plugins]
-aggregate-javadoc = { id = "io.freefair.aggregate-javadoc", version = "9.2.0" }
+aggregate-javadoc = { id = "io.freefair.aggregate-javadoc", version = "9.5.0" }
 nullability = { id = "io.spring.nullability", version = "0.0.16" }
 antora = { id = "org.antora", version = "1.0.0" }
 io-spring-antora-generate-yml = { id = "io.spring.antora.generate-antora-yml", version = "0.0.1" }
