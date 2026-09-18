@@ -228,8 +228,15 @@ public @interface KafkaListener {
 	 * a {@link String}, in which case the {@link Boolean#parseBoolean(String)} is used to
 	 * obtain the value.
 	 * <p>SpEL {@code #{...}} and property place holders {@code ${...}} are supported.
+	 * <p><b>Note:</b> this property is only considered during context initialization.
+	 * Endpoints registered after the context is refreshed, such as a prototype scoped
+	 * bean with a {@code @KafkaListener} method, are started immediately regardless of
+	 * this setting, unless the registry's
+	 * {@link org.springframework.kafka.config.KafkaListenerEndpointRegistry#setAlwaysStartAfterRefresh(boolean)
+	 * alwaysStartAfterRefresh} property is set to {@code false}.
 	 * @return true to auto start, false to not auto start.
 	 * @since 2.2
+	 * @see org.springframework.kafka.config.KafkaListenerEndpointRegistry#setAlwaysStartAfterRefresh(boolean)
 	 */
 	String autoStartup() default "";
 
