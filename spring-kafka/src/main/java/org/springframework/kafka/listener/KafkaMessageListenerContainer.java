@@ -202,6 +202,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 	private final AbstractMessageListenerContainer<K, V> thisOrParentContainer;
 
+	private MessageListenerContainer errorHandlerContainer;
+
 	private final @Nullable TopicPartitionOffset @Nullable [] topicPartitions;
 
 	private @Nullable String clientIdSuffix;
@@ -258,12 +260,17 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		super(consumerFactory, containerProperties);
 		Assert.notNull(consumerFactory, "A ConsumerFactory must be provided");
 		this.thisOrParentContainer = container == null ? this : container;
+		this.errorHandlerContainer = this.thisOrParentContainer;
 		if (topicPartitions != null) {
 			this.topicPartitions = Arrays.copyOf(topicPartitions, topicPartitions.length);
 		}
 		else {
 			this.topicPartitions = containerProperties.getTopicPartitions();
 		}
+	}
+
+	void setErrorHandlerContainer(MessageListenerContainer errorHandlerContainer) {
+		this.errorHandlerContainer = errorHandlerContainer;
 	}
 
 	/**
@@ -2212,7 +2219,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			try {
 				if (this.commonErrorHandler != null) {
 					this.commonErrorHandler.handleOtherException(e, this.consumer,
-							KafkaMessageListenerContainer.this.thisOrParentContainer, this.isBatchListener);
+							KafkaMessageListenerContainer.this.errorHandlerContainer, this.isBatchListener);
 				}
 				else {
 					this.logger.error(e, "Consumer exception");
@@ -2856,12 +2863,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						|| this.transactionManager != null || rte instanceof CommitFailedException) {
 
 					this.commonErrorHandler.handleBatch(rte, records, this.consumer,
-							KafkaMessageListenerContainer.this.thisOrParentContainer,
+							KafkaMessageListenerContainer.this.errorHandlerContainer,
 							() -> invokeBatchOnMessageWithRecordsOrList(records, list));
 				}
 				else {
 					ConsumerRecords<K, V> afterHandling = this.commonErrorHandler.handleBatchAndReturnRemaining(rte,
-							records, this.consumer, KafkaMessageListenerContainer.this.thisOrParentContainer,
+							records, this.consumer, KafkaMessageListenerContainer.this.errorHandlerContainer,
 							() -> invokeBatchOnMessageWithRecordsOrList(records, list));
 
 					if (afterHandling != null && !afterHandling.isEmpty()) {
@@ -3321,7 +3328,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				List<ConsumerRecord<?, ?>> retryRecords = List.of(cRecord);
 				try {
 					this.commonErrorHandler.handleRemaining(rte, retryRecords, this.consumer,
-							KafkaMessageListenerContainer.this.thisOrParentContainer);
+							KafkaMessageListenerContainer.this.errorHandlerContainer);
 				}
 				catch (RecordInRetryException e) {
 					removeOffsetsInBatch(retryRecords);
@@ -3332,7 +3339,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				boolean handled = false;
 				try {
 					handled = this.commonErrorHandler.handleOne(rte, cRecord, this.consumer,
-							KafkaMessageListenerContainer.this.thisOrParentContainer);
+							KafkaMessageListenerContainer.this.errorHandlerContainer);
 				}
 				catch (Exception ex) {
 					this.logger.error(ex, "ErrorHandler threw unexpected exception");
@@ -3370,13 +3377,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						retryRecords.add(iterator.next());
 					}
 					this.commonErrorHandler.handleRemaining(rte, retryRecords, this.consumer,
-							KafkaMessageListenerContainer.this.thisOrParentContainer);
+							KafkaMessageListenerContainer.this.errorHandlerContainer);
 				}
 				else {
 					boolean handled = false;
 					try {
 						handled = this.commonErrorHandler.handleOne(rte, cRecord, this.consumer,
-								KafkaMessageListenerContainer.this.thisOrParentContainer);
+								KafkaMessageListenerContainer.this.errorHandlerContainer);
 					}
 					catch (Exception ex) {
 						this.logger.error(ex, "ErrorHandler threw unexpected exception");
