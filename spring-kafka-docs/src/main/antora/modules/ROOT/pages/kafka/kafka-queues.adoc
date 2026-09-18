@@ -31,6 +31,10 @@ public ShareConsumerFactory<String, String> shareConsumerFactory() {
 }
 ----
 
+The `DefaultShareConsumerFactory` extends `KafkaResourceFactory`, so, instead of fixing the bootstrap servers in the configuration map, you can supply them at runtime by calling `setBootstrapServersSupplier()`.
+The supplier is consulted for each new share consumer and takes precedence over the configured `bootstrap.servers`.
+See xref:kafka/connecting.adoc[Connecting to Kafka] for details, including the `ABSwitchCluster` helper.
+
 [[share-consumer-factory-constructors]]
 === Constructor Options
 
