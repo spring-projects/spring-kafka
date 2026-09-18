@@ -20,6 +20,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.time.LocalDate;
 
 import org.junit.jupiter.api.Test;
 
@@ -27,6 +28,7 @@ import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.kafka.config.AbstractKafkaListenerEndpoint;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpoint;
@@ -42,6 +44,7 @@ import static org.mockito.Mockito.mock;
 /**
  * @author Sanghyeok An
  * @author Maxim Ceban
+ * @author Burak Kalaycı
  *
  * @since 4.0.0
  */
@@ -84,6 +87,30 @@ class KafkaListenerAnnotationBeanPostProcessorTests {
 		assertThat(registry.getAllListenerContainers().iterator().next()
 				.getContainerProperties().getTopics())
 				.containsExactly("programmatically-resolved-topic");
+
+		ctx.close();
+	}
+
+	@Test
+	void shouldStartWhenConverterBeanIsLambda() {
+		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+		ctx.register(LambdaConverterConfig.class);
+		ctx.refresh();
+
+		KafkaListenerEndpointRegistry registry = ctx.getBean(KafkaListenerEndpointRegistry.class);
+		assertThat(registry.getAllListenerContainers()).hasSize(1);
+
+		ctx.close();
+	}
+
+	@Test
+	void shouldStartWhenConverterBeanIsMethodReference() {
+		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+		ctx.register(MethodReferenceConverterConfig.class);
+		ctx.refresh();
+
+		KafkaListenerEndpointRegistry registry = ctx.getBean(KafkaListenerEndpointRegistry.class);
+		assertThat(registry.getAllListenerContainers()).hasSize(1);
 
 		ctx.close();
 	}
@@ -169,6 +196,66 @@ class KafkaListenerAnnotationBeanPostProcessorTests {
 				akle.setTopics("programmatically-resolved-topic");
 			}
 			return super.createListenerContainer(endpoint);
+		}
+
+	}
+
+	@EnableKafka
+	@Configuration
+	static class LambdaConverterConfig {
+
+		@SuppressWarnings("unchecked")
+		@Bean
+		ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory() {
+			ConcurrentKafkaListenerContainerFactory<String, Object> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
+			factory.setConsumerFactory(mock(ConsumerFactory.class));
+			factory.setAutoStartup(false);
+			return factory;
+		}
+
+		@Bean
+		Converter<String, LocalDate> localDateConverter() {
+			return source -> LocalDate.parse(source);
+		}
+
+		@Component
+		static class Listener {
+
+			@KafkaListener(topics = "topic1")
+			public void listen(String message) {
+			}
+
+		}
+
+	}
+
+	@EnableKafka
+	@Configuration
+	static class MethodReferenceConverterConfig {
+
+		@SuppressWarnings("unchecked")
+		@Bean
+		ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory() {
+			ConcurrentKafkaListenerContainerFactory<String, Object> factory =
+					new ConcurrentKafkaListenerContainerFactory<>();
+			factory.setConsumerFactory(mock(ConsumerFactory.class));
+			factory.setAutoStartup(false);
+			return factory;
+		}
+
+		@Bean
+		Converter<String, LocalDate> localDateConverter() {
+			return LocalDate::parse;
+		}
+
+		@Component
+		static class Listener {
+
+			@KafkaListener(topics = "topic1")
+			public void listen(String message) {
+			}
+
 		}
 
 	}
