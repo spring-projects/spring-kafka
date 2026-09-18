@@ -208,8 +208,14 @@ public @interface RetryableTopic {
 	/**
 	 * Override the container factory's {@code autoStartup} property for just the DLT container.
 	 * Usually used to not start the DLT container when {@code autoStartup} is true.
+	 * <p><b>Note:</b> this property is only considered during context initialization.
+	 * If the DLT endpoint is registered after the context is refreshed, its container is
+	 * started immediately regardless of this setting, unless the registry's
+	 * {@link org.springframework.kafka.config.KafkaListenerEndpointRegistry#setAlwaysStartAfterRefresh(boolean)
+	 * alwaysStartAfterRefresh} property is set to {@code false}.
 	 * @return whether or not to override the factory.
 	 * @since 2.8
+	 * @see org.springframework.kafka.config.KafkaListenerEndpointRegistry#setAlwaysStartAfterRefresh(boolean)
 	 */
 	String autoStartDltHandler() default "";
 
