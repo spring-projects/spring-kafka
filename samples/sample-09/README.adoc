@@ -1,0 +1,92 @@
+== Sample 9
+
+This sample demonstrates the record acknowledgment types of a share consumer, the Spring for Apache Kafka support for link:https://cwiki.apache.org/confluence/display/KAFKA/KIP-932%3A+Queues+for+Kafka[KIP-932 (Queues for Kafka)].
+
+A share group is a queue-like alternative to a consumer group.
+Instead of assigning a partition exclusively to one consumer, the broker hands out individual records to the members of the share group and waits to be told the outcome of each one.
+That outcome is the acknowledgment type: `ACCEPT` completes the record, `RELEASE` returns it to the group for another delivery attempt, and `REJECT` archives it so it is never delivered again.
+
+`Spring Boot` starts the `Kafka Broker` container defined in the `compose.yaml` file upon startup.
+The broker needs the share coordinator internal topic to be usable on a single node:
+
+```yaml
+services:
+  broker:
+    image: apache/kafka:4.2.1
+    environment:
+      # KIP-932: the share coordinator keeps its state in an internal topic
+      KAFKA_SHARE_COORDINATOR_STATE_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_SHARE_COORDINATOR_STATE_TOPIC_MIN_ISR: 1
+```
+
+Spring Boot does not auto-configure share consumers, so `ShareConsumerConfiguration` declares the two beans the sample needs.
+A `DefaultShareConsumerFactory` creates the share consumers, and a `ShareKafkaListenerContainerFactory` is what `@KafkaListener` refers to by name.
+The acknowledgment mode is a property of that factory rather than an attribute of `@KafkaListener`, so a factory is declared per mode.
+This sample uses `ShareAckMode.MANUAL`, where the listener decides the outcome of every record:
+
+```java
+@Bean
+ShareKafkaListenerContainerFactory<String, String> manualShareKafkaListenerContainerFactory(
+		ShareConsumerFactory<String, String> shareConsumerFactory) {
+
+	ShareKafkaListenerContainerFactory<String, String> factory =
+			new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
+	factory.getContainerProperties().setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
+	return factory;
+}
+```
+
+In `MANUAL` mode every record is delivered with a non-null `ShareAcknowledgment` that the listener must terminate exactly once, so the listener method declares it as a parameter.
+`Sample09ShareListener` picks the acknowledgment type from the record key.
+The `release` branch reads `ConsumerRecord.deliveryCount()` to tell the first delivery from the redelivery that the `RELEASE` caused, and accepts the record the second time around:
+
+```java
+@KafkaListener(topics = "${sample09.topic}", groupId = "${sample09.group}",
+		containerFactory = "manualShareKafkaListenerContainerFactory")
+public void process(ConsumerRecord<String, String> record, ShareAcknowledgment acknowledgment) {
+	String key = record.key();
+	short deliveryCount = record.deliveryCount().orElse((short) 1);
+
+	if ("accept".equals(key)) {
+		acknowledgment.acknowledge();
+	}
+	else if ("release".equals(key)) {
+		if (deliveryCount == 1) {
+			acknowledgment.release();
+		}
+		else {
+			acknowledgment.acknowledge();
+		}
+	}
+	else if ("reject".equals(key)) {
+		acknowledgment.reject();
+	}
+}
+```
+
+Every branch acknowledges, because in `MANUAL` mode the container blocks the next poll until all records from the previous poll have been acknowledged.
+
+Share groups do not honour the consumer `auto.offset.reset` property.
+The equivalent is a `share.auto.offset.reset` group configuration applied with an `Admin` client, which is what `ShareGroupInitializer` does.
+Singletons are instantiated before listener containers are started, so declaring it as a bean is enough to have the group configured before the share consumer first subscribes.
+
+The `ApplicationRunner` in `Sample09Application` emits one record per acknowledgment type when the application is ready.
+Running the application produces four log lines, because `order-2` is delivered twice:
+
+[source,text]
+----
+ACCEPT - order-1 processed successfully [deliveryCount=1]
+RELEASE - order-2 hit a transient failure [deliveryCount=1] - returning it to the share group
+REJECT - order-3 is malformed [deliveryCount=1] - archiving it
+ACCEPT (redelivered) - order-2 hit a transient failure [deliveryCount=2]
+----
+
+The share consumer keeps polling after those lines, so stop the application with `Ctrl-C` once they appear; Spring Boot then stops the broker container.
+
+`MANUAL` is one of three modes available through `ContainerProperties.ShareAckMode`.
+In `EXPLICIT`, the default, the container sends `ACCEPT` when the listener returns and lets a `ShareConsumerRecordRecoverer` decide the outcome when it throws.
+In `IMPLICIT` the broker accepts every acquired record and no acknowledgment is passed to the listener.
+See the link:https://docs.spring.io/spring-kafka/reference/kafka/kafka-queues.html[Kafka Queues] chapter of the reference documentation for the full comparison.
+
+The `Sample09ApplicationTests` starts an embedded Kafka broker configured for the share coordinator and asserts that all three acknowledgment types are exercised, including the redelivery that follows the `RELEASE`.
+It needs no Docker, so `./gradlew build` verifies the sample on its own.
