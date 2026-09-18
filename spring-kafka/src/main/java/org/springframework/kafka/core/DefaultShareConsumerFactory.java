@@ -55,6 +55,7 @@ import org.springframework.util.Assert;
  * @param <V> the value type.
  *
  * @author Soby Chacko
+ * @author Rene Choi
  * @since 4.0
  */
 public class DefaultShareConsumerFactory<K, V> extends KafkaResourceFactory
@@ -155,6 +156,7 @@ public class DefaultShareConsumerFactory<K, V> extends KafkaResourceFactory
 		if (clientId != null) {
 			consumerProperties.put("client.id", clientId);
 		}
+		checkBootstrap(consumerProperties);
 		return new ExtendedShareConsumer(consumerProperties);
 	}
 
@@ -309,7 +311,9 @@ public class DefaultShareConsumerFactory<K, V> extends KafkaResourceFactory
 
 	@Override
 	public Map<String, Object> getConfigurationProperties() {
-		return Collections.unmodifiableMap(this.configs);
+		Map<String, Object> configs2 = new HashMap<>(this.configs);
+		checkBootstrap(configs2);
+		return Collections.unmodifiableMap(configs2);
 	}
 
 	protected class ExtendedShareConsumer extends KafkaShareConsumer<K, V> {
