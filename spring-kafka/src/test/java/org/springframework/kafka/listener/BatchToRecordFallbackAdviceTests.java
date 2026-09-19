@@ -100,6 +100,30 @@ class BatchToRecordFallbackAdviceTests {
 	}
 
 	@Test
+	void exposesFallbackStateAndClearsItAfterSuccess() {
+		List<Boolean> fallbackStates = new ArrayList<>();
+		advised(batch -> {
+			fallbackStates.add(BatchToRecordFallbackAdvice.isFallback());
+			if (batch.size() > 1) {
+				throw new IllegalStateException("Batch failed");
+			}
+		}).onMessage(List.of(record(0), record(1)));
+		assertThat(fallbackStates).containsExactly(false, true, true);
+		assertThat(BatchToRecordFallbackAdvice.isFallback()).isFalse();
+	}
+
+	@Test
+	void clearsFallbackStateAfterFailure() {
+		List<Boolean> fallbackStates = new ArrayList<>();
+		assertThatExceptionOfType(BatchListenerFailedException.class).isThrownBy(() -> advised(batch -> {
+			fallbackStates.add(BatchToRecordFallbackAdvice.isFallback());
+			throw new IllegalStateException("Processing failed");
+		}).onMessage(List.of(record(0), record(1))));
+		assertThat(fallbackStates).containsExactly(false, true);
+		assertThat(BatchToRecordFallbackAdvice.isFallback()).isFalse();
+	}
+
+	@Test
 	void singleRecordFailureDoesNotInvokeListenerAgain() {
 		ConsumerRecord<String, String> record = record(0);
 		AtomicInteger calls = new AtomicInteger();
@@ -322,7 +346,7 @@ class BatchToRecordFallbackAdviceTests {
 		verify(consumer).seek(failedPartition, 6);
 	}
 
-	private void assertNoFallback(Throwable failure) {
+	private static void assertNoFallback(Throwable failure) {
 		AtomicInteger calls = new AtomicInteger();
 		assertThatThrownBy(() -> advised(batch -> {
 			calls.incrementAndGet();
@@ -335,13 +359,13 @@ class BatchToRecordFallbackAdviceTests {
 	}
 
 	@SuppressWarnings("unchecked")
-	private BatchMessageListener<String, String> advised(BatchMessageListener<String, String> listener) {
+	private static BatchMessageListener<String, String> advised(BatchMessageListener<String, String> listener) {
 		ProxyFactory factory = new ProxyFactory(listener);
 		factory.addAdvice(new BatchToRecordFallbackAdvice());
 		return (BatchMessageListener<String, String>) factory.getProxy();
 	}
 
-	private ConsumerRecord<String, String> record(long offset) {
+	private static ConsumerRecord<String, String> record(long offset) {
 		return new ConsumerRecord<>("orders", 0, offset, "order", "value");
 	}
 

@@ -568,6 +568,8 @@ factory.setCommonErrorHandler(new DefaultErrorHandler(recoverer, new FixedBackOf
 A successful batch is invoked once.
 After a batch failure, the advice invokes the same listener with singleton lists in batch order, stopping at the first failure.
 It throws a `BatchListenerFailedException` containing that record, so `DefaultErrorHandler` can commit preceding offsets, retry or recover the failed record, and redeliver the remaining records.
+During each singleton invocation, `BatchToRecordFallbackAdvice.isFallback()` returns `true` on the listener thread, allowing listener code to distinguish fallback processing from a new batch delivered by the consumer.
+The advice logs the transition to per-record processing at `INFO` level.
 An existing `BatchListenerFailedException` is propagated unchanged.
 A failed one-record batch is identified immediately without another invocation.
 

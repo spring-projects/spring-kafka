@@ -19,14 +19,18 @@ package org.springframework.kafka.listener;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
+import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.aop.ProxyMethodInvocation;
+import org.springframework.core.NamedThreadLocal;
+import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.listener.adapter.AsyncRepliesAware;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -59,6 +63,23 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  */
 public class BatchToRecordFallbackAdvice implements MethodInterceptor {
 
+	private static final LogAccessor LOGGER = new LogAccessor(LogFactory.getLog(BatchToRecordFallbackAdvice.class));
+
+	private static final ThreadLocal<Boolean> FALLBACK_ACTIVE =
+			new NamedThreadLocal<>("Batch-to-record fallback active");
+
+	/**
+	 * Return whether the current listener invocation is an individual-record fallback
+	 * after a batch failure.
+	 * @return {@code true} for a fallback invocation; {@code false} for a batch received
+	 * from the consumer.
+	 *
+	 * @since 4.2
+	 */
+	public static boolean isFallback() {
+		return FALLBACK_ACTIVE.get() != null;
+	}
+
 	@Override
 	public @Nullable Object invoke(MethodInvocation invocation) throws Throwable {
 		@Nullable Object[] arguments = invocation.getArguments();
@@ -88,9 +109,17 @@ public class BatchToRecordFallbackAdvice implements MethodInterceptor {
 				throw new BatchListenerFailedException("Failed to process record", ex,
 						(ConsumerRecord<?, ?>) records.get(0));
 			}
-			for (Object record : records) {
+			LOGGER.info(() -> "Batch listener failed; invoking the listener for each of the "
+					+ records.size() + " records individually");
+			for (@Nullable Object recordElement : records) {
+				ConsumerRecord<?, ?> record = (ConsumerRecord<?, ?>) Objects.requireNonNull(recordElement);
 				@Nullable Object[] singletonArguments = arguments.clone();
-				singletonArguments[0] = new ArrayList<>(List.of(record));
+				// A RecordFilterStrategy can remove records from this list in place.
+				List<ConsumerRecord<?, ?>> singletonRecords = new ArrayList<>(1);
+				singletonRecords.add(record);
+				singletonArguments[0] = singletonRecords;
+				boolean fallbackAlreadyActive = isFallback();
+				FALLBACK_ACTIVE.set(Boolean.TRUE);
 				try {
 					proxyInvocation.invocableClone(singletonArguments).proceed();
 				}
@@ -98,26 +127,30 @@ public class BatchToRecordFallbackAdvice implements MethodInterceptor {
 					if (isInterruptedOrError(singletonException)) {
 						throw singletonException;
 					}
-					throw new BatchListenerFailedException("Failed to process record", singletonException,
-							(ConsumerRecord<?, ?>) record);
+					throw new BatchListenerFailedException("Failed to process record", singletonException, record);
+				}
+				finally {
+					if (!fallbackAlreadyActive) {
+						FALLBACK_ACTIVE.remove();
+					}
 				}
 			}
 			return null;
 		}
 	}
 
-	private boolean isTransactionActive() {
+	private static boolean isTransactionActive() {
 		// A transaction manager can disable synchronization while still binding resources.
 		return TransactionSynchronizationManager.isActualTransactionActive()
 				|| !TransactionSynchronizationManager.getResourceMap().isEmpty();
 	}
 
-	private boolean isInterruptedOrError(Exception ex) {
+	private static boolean isInterruptedOrError(Exception ex) {
 		return Thread.currentThread().isInterrupted() || hasCause(ex, InterruptedException.class)
 				|| hasCause(ex, Error.class);
 	}
 
-	private boolean hasCause(Throwable throwable, Class<? extends Throwable> type) {
+	private static boolean hasCause(Throwable throwable, Class<? extends Throwable> type) {
 		Set<Throwable> checked = new HashSet<>();
 		Throwable current = throwable;
 		while (checked.add(current)) {
