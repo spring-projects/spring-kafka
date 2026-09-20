@@ -658,10 +658,10 @@ If you wish to use a different error handling strategy for record and batch list
 
 Refer to the JavaDocs in `CommonErrorHandler`.
 
-To replace an `ErrorHandler` or `ConsumerAwareErrorHandler` implementation, you should implement `handleOne()` and leave `seeksAfterHandle()` to return `false` (default).
+To replace an `ErrorHandler` or `ConsumerAwareErrorHandler` implementation, you should implement `handleOne()` and leave `seeksAfterHandling()` to return `false` (default).
 You should also implement `handleOtherException()` to handle exceptions that occur outside the scope of record processing (e.g. consumer errors).
 
-To replace a `RemainingRecordsErrorHandler` implementation, you should implement `handleRemaining()`  and override `seeksAfterHandle()` to return `true` (the error handler must perform the necessary seeks).
+To replace a `RemainingRecordsErrorHandler` implementation, you should implement `handleRemaining()`  and override `seeksAfterHandling()` to return `true` (the error handler must perform the necessary seeks).
 You should also implement `handleOtherException()` - to handle exceptions that occur outside the scope of record processing (e.g. consumer errors).
 
 To replace any `BatchErrorHandler` implementation, you should implement `handleBatch()`
