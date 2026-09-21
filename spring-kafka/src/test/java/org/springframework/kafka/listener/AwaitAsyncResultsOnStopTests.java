@@ -21,6 +21,8 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -29,6 +31,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -85,6 +88,21 @@ public class AwaitAsyncResultsOnStopTests {
 
 	static final String BLOCKING_TOPIC = "aaros.blocking";
 
+	/**
+	 * The async work parks until the test releases it, and cancelling a
+	 * {@link CompletableFuture} cannot interrupt the task that is already running, so some
+	 * of it stays parked for the rest of the class. Run it on a dedicated pool to keep
+	 * those threads off {@link java.util.concurrent.ForkJoinPool#commonPool()}, the default
+	 * executor of {@link CompletableFuture#runAsync(Runnable)}: a common pool thread that
+	 * blocks is not compensated for, so parking them here would starve every later test in
+	 * the same JVM that schedules work there.
+	 */
+	private static final ExecutorService ASYNC_WORK = Executors.newCachedThreadPool(runnable -> {
+		Thread thread = new Thread(runnable, "aaros-async-work");
+		thread.setDaemon(true);
+		return thread;
+	});
+
 	@Autowired
 	private KafkaTemplate<Integer, String> template;
 
@@ -99,6 +117,11 @@ public class AwaitAsyncResultsOnStopTests {
 
 	@Autowired
 	private EmbeddedKafkaBroker broker;
+
+	@AfterAll
+	static void releaseAsyncWork() {
+		ASYNC_WORK.shutdownNow();
+	}
 
 	@Test
 	void futureCompletedWithinShutdownTimeoutIsAcknowledged() throws Exception {
@@ -175,10 +198,14 @@ public class AwaitAsyncResultsOnStopTests {
 		assertThat(stopReturned - stopRequested).isGreaterThanOrEqualTo(1900);
 		Long p0Committed = CommitTimes.COMMITS.get(new TopicPartition(BLOCKING_TOPIC, 0));
 		assertThat(p0Committed).isNotNull();
-		assertThat(p0Committed - stopRequested).isLessThan(1500);
 		assertThat(p0Committed).isLessThanOrEqualTo(stopReturned);
 		assertThat(CommitTimes.COMMITS).doesNotContainKey(new TopicPartition(BLOCKING_TOPIC, 1));
 		assertThat(p1.cancelled.await(10, TimeUnit.SECONDS)).isTrue();
+		// p0 was committed as it completed, while the stop was still waiting, rather than
+		// at the deadline where p1 is cancelled. Comparing the two timestamps instead of
+		// budgeting from 'stopRequested' keeps this independent of how loaded the machine
+		// is: both move together.
+		assertThat(p0Committed).isLessThan(p1.cancelledAt);
 		assertThat(committedOffset("blocking", BLOCKING_TOPIC, 0)).isEqualTo(1L);
 		assertThat(committedOffset("blocking", BLOCKING_TOPIC, 1)).isNull();
 	}
@@ -186,12 +213,14 @@ public class AwaitAsyncResultsOnStopTests {
 	@Test
 	void stopDoesNotWaitWhenDisabled() throws Exception {
 		AsyncWork work = this.listener.disabled;
+		MessageListenerContainer container = this.registry.getListenerContainer("disabled");
+		ContainerTestUtils.waitForAssignment(container, 2);
 		this.template.send(DISABLED_TOPIC, 0, null, "foo").get(10, TimeUnit.SECONDS);
 		await().until(() -> work.started.get() == 1);
 		CountDownLatch stopped = new CountDownLatch(1);
 		AtomicInteger doneAtStop = new AtomicInteger(-1);
 		try {
-			this.registry.getListenerContainer("disabled").stop(() -> {
+			container.stop(() -> {
 				doneAtStop.set(work.done.get());
 				stopped.countDown();
 			});
@@ -204,11 +233,13 @@ public class AwaitAsyncResultsOnStopTests {
 	}
 
 	private void assertCompletedWithinTimeout(String id, String topic, AsyncWork work) throws Exception {
+		MessageListenerContainer container = this.registry.getListenerContainer(id);
+		ContainerTestUtils.waitForAssignment(container, 2);
 		this.template.send(topic, 0, null, "foo").get(10, TimeUnit.SECONDS);
 		await().until(() -> work.started.get() == 1);
 		CountDownLatch stopped = new CountDownLatch(1);
 		AtomicInteger doneAtStop = new AtomicInteger(-1);
-		this.registry.getListenerContainer(id).stop(() -> {
+		container.stop(() -> {
 			doneAtStop.set(work.done.get());
 			stopped.countDown();
 		});
@@ -221,9 +252,10 @@ public class AwaitAsyncResultsOnStopTests {
 	}
 
 	private void assertCancelledAndRedelivered(String id, String topic, AsyncWork work) throws Exception {
+		MessageListenerContainer container = this.registry.getListenerContainer(id);
+		ContainerTestUtils.waitForAssignment(container, 2);
 		this.template.send(topic, 0, null, "foo").get(10, TimeUnit.SECONDS);
 		await().until(() -> work.started.get() == 1);
-		MessageListenerContainer container = this.registry.getListenerContainer(id);
 		CountDownLatch stopped = new CountDownLatch(1);
 		container.stop(stopped::countDown);
 		assertThat(stopped.await(10, TimeUnit.SECONDS)).isTrue();
@@ -233,6 +265,7 @@ public class AwaitAsyncResultsOnStopTests {
 		assertThat(committedOffset(id, topic, 0)).isNull();
 		// the cancelled record is redelivered on restart
 		container.start();
+		ContainerTestUtils.waitForAssignment(container, 2);
 		await().until(() -> work.started.get() == 2);
 		work.proceed.countDown();
 		await().untilAsserted(() -> assertThat(committedOffset(id, topic, 0)).isEqualTo(1L));
@@ -260,11 +293,13 @@ public class AwaitAsyncResultsOnStopTests {
 
 		final CountDownLatch cancelled = new CountDownLatch(1);
 
+		volatile long cancelledAt;
+
 		CompletableFuture<Void> future() {
-			CompletableFuture<Void> future = CompletableFuture.runAsync(this::run);
+			CompletableFuture<Void> future = CompletableFuture.runAsync(this::run, ASYNC_WORK);
 			future.whenComplete((r, t) -> {
 				if (t instanceof CancellationException) {
-					this.cancelled.countDown();
+					markCancelled();
 				}
 			});
 			return future;
@@ -273,7 +308,12 @@ public class AwaitAsyncResultsOnStopTests {
 		Mono<Void> mono() {
 			return Mono.<Void>fromRunnable(this::run)
 					.subscribeOn(Schedulers.boundedElastic())
-					.doOnCancel(this.cancelled::countDown);
+					.doOnCancel(this::markCancelled);
+		}
+
+		private void markCancelled() {
+			this.cancelledAt = System.currentTimeMillis();
+			this.cancelled.countDown();
 		}
 
 		private void run() {

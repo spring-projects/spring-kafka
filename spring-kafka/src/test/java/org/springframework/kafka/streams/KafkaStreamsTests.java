@@ -16,6 +16,10 @@
 
 package org.springframework.kafka.streams;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,6 +44,7 @@ import org.apache.kafka.streams.kstream.Repartitioned;
 import org.apache.kafka.streams.kstream.TimeWindows;
 import org.apache.kafka.streams.kstream.ValueMapper;
 import org.apache.kafka.streams.processor.WallclockTimestampExtractor;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -72,6 +77,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.util.FileSystemUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -103,6 +109,29 @@ public class KafkaStreamsTests {
 	static final String STREAMING_TOPIC1 = "streamingTopic1";
 
 	static final String FOOS = "foos";
+
+	/**
+	 * Kafka Streams defaults the state directory to
+	 * '${java.io.tmpdir}/kafka-streams/${application.id}', which survives the JVM. The
+	 * window below is keyed by wall clock time, so two runs within the same 60 second
+	 * window would reopen the previous run's segment and the reduce would concatenate
+	 * both runs' records. Keep the state private to this run.
+	 */
+	private static final Path STATE_DIR = createStateDir();
+
+	private static Path createStateDir() {
+		try {
+			return Files.createTempDirectory("KafkaStreamsTests");
+		}
+		catch (IOException ex) {
+			throw new UncheckedIOException(ex);
+		}
+	}
+
+	@AfterAll
+	static void removeStateDir() throws IOException {
+		FileSystemUtils.deleteRecursively(STATE_DIR);
+	}
 
 	@Autowired
 	private KafkaTemplate<Integer, String> kafkaTemplate;
@@ -201,6 +230,7 @@ public class KafkaStreamsTests {
 			props.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG,
 					WallclockTimestampExtractor.class.getName());
 			props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, "100");
+			props.put(StreamsConfig.STATE_DIR_CONFIG, STATE_DIR.toString());
 			return new KafkaStreamsConfiguration(props);
 		}
 

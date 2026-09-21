@@ -493,11 +493,15 @@ public class ObservationTests {
 		await().untilAsserted(() -> assertThat(spans).hasSize(2));
 		SimpleSpan span = spans.poll();
 		assertThat(span.getTags().get("spring.kafka.template.name")).isEqualTo("throwableTemplate");
-		span = spans.poll();
-		assertThat(span.getTags().get("spring.kafka.listener.id")).isEqualTo("obs6-0");
-		assertThat(span.getError())
-				.isInstanceOf(Error.class)
-				.hasMessage("Should report metric.");
+		// the span is queued when it is created, but this listener completes on another
+		// thread, so its tags and error are only populated once the observation is stopped
+		SimpleSpan listenerSpan = spans.poll();
+		await().untilAsserted(() -> {
+			assertThat(listenerSpan.getTags().get("spring.kafka.listener.id")).isEqualTo("obs6-0");
+			assertThat(listenerSpan.getError())
+					.isInstanceOf(Error.class)
+					.hasMessage("Should report metric.");
+		});
 	}
 
 	@Test
@@ -511,11 +515,15 @@ public class ObservationTests {
 		await().untilAsserted(() -> assertThat(spans).hasSize(2));
 		SimpleSpan span = spans.poll();
 		assertThat(span.getTags().get("spring.kafka.template.name")).isEqualTo("throwableTemplate");
-		span = spans.poll();
-		assertThat(span.getTags().get("spring.kafka.listener.id")).isEqualTo("obs7-0");
-		assertThat(span.getError())
-				.isInstanceOf(Error.class)
-				.hasMessage("Should report metric.");
+		// the span is queued when it is created, but this listener completes on another
+		// thread, so its tags and error are only populated once the observation is stopped
+		SimpleSpan listenerSpan = spans.poll();
+		await().untilAsserted(() -> {
+			assertThat(listenerSpan.getTags().get("spring.kafka.listener.id")).isEqualTo("obs7-0");
+			assertThat(listenerSpan.getError())
+					.isInstanceOf(Error.class)
+					.hasMessage("Should report metric.");
+		});
 	}
 
 	@Test

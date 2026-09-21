@@ -20,7 +20,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.logging.LogFactory;
 import org.junit.jupiter.api.Test;
@@ -63,11 +65,16 @@ public class ContainerGroupSequencerTests {
 	@LogLevels(classes = { ContainerGroupSequencerTests.class, ContainerGroupSequencer.class }, level = "DEBUG")
 	void sequenceCompletes(@Autowired Config config, @Autowired KafkaTemplate<Integer, String> template,
 			@Autowired ContainerGroupSequencer sequencer)
-			throws InterruptedException {
+			throws InterruptedException, ExecutionException, TimeoutException {
 
+		// Publish before the first group starts. The sequencer stops a group once it is
+		// idle, and 'checkIdle()' runs from container start rather than from assignment,
+		// so a slow group join would let g1 be stopped before it ever polled the record;
+		// g2 would then be the only group to see it and the order assertions below would
+		// be comparing the wrong receipts.
+		template.send("ContainerGroupSequencerTests", "test").get(30, TimeUnit.SECONDS);
 		sequencer.start();
-		template.send("ContainerGroupSequencerTests", "test");
-		assertThat(config.stopped.await(10, TimeUnit.SECONDS))
+		assertThat(config.stopped.await(60, TimeUnit.SECONDS))
 				.as("stopped latch still has a count of %d", config.stopped.getCount())
 				.isTrue();
 		List<String> order = config.order;
@@ -136,7 +143,10 @@ public class ContainerGroupSequencerTests {
 
 		@Bean
 		ContainerGroupSequencer sequencer(KafkaListenerEndpointRegistry registry) {
-			ContainerGroupSequencer sequencer = new ContainerGroupSequencer(registry, 600, "g1", "g2");
+			// Before any data arrives the interval is multiplied by
+			// 'idleBeforeDataMultiplier' (5.0), so each group has 7.5s to join and poll
+			// the record before the sequencer considers it idle and moves on.
+			ContainerGroupSequencer sequencer = new ContainerGroupSequencer(registry, 1500, "g1", "g2");
 			sequencer.setStopLastGroupWhenIdle(true);
 			sequencer.setAutoStartup(false);
 			return sequencer;
