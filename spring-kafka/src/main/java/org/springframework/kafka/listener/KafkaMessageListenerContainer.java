@@ -188,6 +188,7 @@ import org.springframework.util.StringUtils;
  * @author Nikita Kibitkin
  * @author Vineeth Yelagandula
  * @author Hyun Lee
+ * @author Jiyeon Kim
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -4189,7 +4190,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 							pendingOffsets.remove(tp);
 							Objects.requireNonNull(ListenerConsumer.this.deferredOffsets).remove(tp);
 						});
-						if (pendingOffsets.isEmpty()) {
+						// Only the partitions that moved are gone; a cooperative assignor can leave
+						// this member holding others, and the consumer keeps them paused. Clearing
+						// the flag while they are still assigned would strand them, because the
+						// resume path runs off this flag (GH-4708).
+						if (pendingOffsets.isEmpty()
+								&& ObjectUtils.isEmpty(ListenerConsumer.this.assignedPartitions)) {
 							ListenerConsumer.this.consumerPaused = false;
 						}
 					}
