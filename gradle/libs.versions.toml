@@ -10,7 +10,7 @@ springVersion = "7.1.0-M2"
 assertjVersion = "3.27.7"
 awaitilityVersion = "4.3.0"
 hamcrestVersion = "3.0"
-hibernateValidationVersion = "9.1.3.Final"
+hibernateValidationVersion = "9.1.4.Final"
 jacksonVersion = "2.22.2"
 jackson3Version = "3.2.2"
 jaywayJsonPathVersion = "3.0.0"
@@ -55,7 +55,7 @@ tools-jackson-bom = { module = "tools.jackson:jackson-bom", version.ref = "jacks
 com-github-spotbugs-annotations = { module = "com.github.spotbugs:spotbugs-annotations", version.ref = "spotbugsVersion" }
 
 [plugins]
-aggregate-javadoc = { id = "io.freefair.aggregate-javadoc", version = "9.5.0" }
+aggregate-javadoc = { id = "io.freefair.aggregate-javadoc", version = "9.7.0" }
 nullability = { id = "io.spring.nullability", version = "0.0.16" }
 antora = { id = "org.antora", version = "1.0.0" }
 io-spring-antora-generate-yml = { id = "io.spring.antora.generate-antora-yml", version = "0.0.1" }
