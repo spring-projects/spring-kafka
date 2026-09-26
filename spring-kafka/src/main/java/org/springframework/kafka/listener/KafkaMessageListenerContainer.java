@@ -2339,12 +2339,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			else {
 				if (this.isManualImmediateAck) {
-					try {
-						ackImmediate(cRecord);
-					}
-					catch (@SuppressWarnings(UNUSED) WakeupException e) {
-						// ignore - not polling
-					}
+					ackImmediate(cRecord);
 				}
 				else {
 					addOffset(cRecord);
@@ -2369,12 +2364,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			else {
 				if (this.isManualImmediateAck) {
-					try {
-						ackImmediate(records);
-					}
-					catch (@SuppressWarnings(UNUSED) WakeupException e) {
-						// ignore - not polling
-					}
+					ackImmediate(records);
 				}
 				else {
 					for (ConsumerRecord<K, V> cRecord : records) {
@@ -2445,7 +2435,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private void ackImmediate(ConsumerRecord<K, V> cRecord) {
 			Map<TopicPartition, OffsetAndMetadata> commits = buildSingleCommits(cRecord);
-			commitOffsetsInTransactions(commits);
+			commitImmediate(commits);
 		}
 
 		private void ackImmediate(ConsumerRecords<K, V> records) {
@@ -2454,7 +2444,25 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				commits.put(part, createOffsetAndMetadata(records.records(part)
 						.get(records.records(part).size() - 1).offset() + 1));
 			}
-			commitOffsetsInTransactions(commits);
+			commitImmediate(commits);
+		}
+
+		private void commitImmediate(Map<TopicPartition, OffsetAndMetadata> commits) {
+			try {
+				commitOffsetsInTransactions(commits);
+			}
+			catch (@SuppressWarnings(UNUSED) WakeupException e) {
+				// a pending wakeup (a stop request, or an ack from another thread) aborts the
+				// commit; the ack is not recorded anywhere else, so retry once now that the
+				// wakeup is consumed
+				this.logger.debug("Woken up during immediate commit; retrying");
+				try {
+					commitOffsets(commits);
+				}
+				catch (@SuppressWarnings(UNUSED) WakeupException ex) {
+					this.logger.debug("Woken up during immediate commit retry");
+				}
+			}
 		}
 
 		private void invokeListener(final ConsumerRecords<K, V> records) {
