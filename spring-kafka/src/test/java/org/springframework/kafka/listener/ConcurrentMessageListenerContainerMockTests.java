@@ -94,6 +94,7 @@ import static org.mockito.Mockito.verify;
  * @author Minchul Son
  * @author Nikita Kibitkin
  * @author Hyun Lee
+ * @author Jiyeon Kim
  *
  * @since 2.2.4
  *
@@ -1480,6 +1481,92 @@ public class ConcurrentMessageListenerContainerMockTests {
 		continueLatch.countDown();
 		verify(consumer, times(2)).pause(any());
 		verify(consumer, never()).resume(any());
+		container.stop();
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void resumeRetainedPartitionsWhenCoopRevokeClearsPendingOffsets() throws InterruptedException {
+		TopicPartition tp0 = new TopicPartition("foo", 0);
+		TopicPartition tp1 = new TopicPartition("foo", 1);
+		List<TopicPartition> allAssignments = List.of(tp0, tp1);
+		Map<TopicPartition, List<ConsumerRecord<String, String>>> allRecordMap = new HashMap<>();
+		allRecordMap.put(tp0,
+				List.of(new ConsumerRecord("foo", 0, 0, null, "bar"), new ConsumerRecord("foo", 0, 1, null, "bar")));
+		ConsumerRecords allRecords = new ConsumerRecords<>(allRecordMap, Map.of());
+		AtomicInteger pollPhase = new AtomicInteger();
+
+		Consumer consumer = mock(Consumer.class);
+		AtomicReference<ConsumerRebalanceListener> rebal = new AtomicReference<>();
+		CountDownLatch subscribeLatch = new CountDownLatch(1);
+		willAnswer(invocation -> {
+			rebal.set(invocation.getArgument(1));
+			subscribeLatch.countDown();
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any());
+		CountDownLatch pauseLatch = new CountDownLatch(1);
+		willAnswer(inv -> {
+			pauseLatch.countDown();
+			return null;
+		}).given(consumer).pause(any());
+		// a cooperative assignor leaves the retained partition paused across the rebalance
+		given(consumer.paused()).willReturn(Set.of(tp1));
+		CountDownLatch resumeLatch = new CountDownLatch(1);
+		List<Collection<TopicPartition>> resumed = new ArrayList<>();
+		willAnswer(inv -> {
+			resumed.add(inv.getArgument(0));
+			resumeLatch.countDown();
+			return null;
+		}).given(consumer).resume(any());
+		ConsumerFactory cf = mock(ConsumerFactory.class);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		given(cf.getConfigurationProperties())
+				.willReturn(Collections.singletonMap(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"));
+		ContainerProperties containerProperties = new ContainerProperties("foo");
+		containerProperties.setGroupId("grp");
+		containerProperties.setAckMode(AckMode.MANUAL);
+		containerProperties.setMessageListener(ackOffset1());
+		containerProperties.setAsyncAcks(true);
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(cf,
+				containerProperties);
+		CountDownLatch rebalLatch = new CountDownLatch(1);
+		CountDownLatch afterResumeLatch = new CountDownLatch(1);
+		willAnswer(inv -> {
+			Thread.sleep(50);
+			switch (pollPhase.getAndIncrement()) {
+				case 0 -> {
+					rebal.get().onPartitionsAssigned(allAssignments);
+					return allRecords;
+				}
+				case 1 -> {
+					// only tp0 moves; the pending offset on it is dropped, tp1 stays with this member
+					rebal.get().onPartitionsRevoked(List.of(tp0));
+					rebal.get().onPartitionsAssigned(List.of());
+					rebalLatch.countDown();
+					return ConsumerRecords.empty();
+				}
+				default -> {
+					if (!resumed.isEmpty()) {
+						// the resume happens after the poll returns, so the state it updates is
+						// only settled once the consumer thread comes back round to the next poll
+						afterResumeLatch.countDown();
+					}
+					return ConsumerRecords.empty();
+				}
+			}
+		}).given(consumer).poll(any());
+		container.start();
+		assertThat(subscribeLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		KafkaMessageListenerContainer child = (KafkaMessageListenerContainer) KafkaTestUtils
+				.getPropertyValue(container, "containers", List.class).get(0);
+		assertThat(pauseLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(rebalLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(resumeLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(afterResumeLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(resumed.get(0)).contains(tp1);
+		Map offsets = KafkaTestUtils.getPropertyValue(child, "listenerConsumer.offsetsInThisBatch", Map.class);
+		assertThat(offsets).isEmpty();
+		assertThat(KafkaTestUtils.getPropertyValue(child, "listenerConsumer.consumerPaused", Boolean.class)).isFalse();
 		container.stop();
 	}
 
