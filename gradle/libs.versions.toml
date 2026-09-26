@@ -20,7 +20,7 @@ kotlinCoroutinesVersion = "1.11.0"
 log4jVersion = "2.26.1"
 micrometerDocsVersion = "1.0.4"
 mockitoVersion = "5.23.0"
-slf4jVersion = "2.0.19"
+slf4jVersion = "2.0.20"
 springBootVersion = "4.1.1"
 spotbugsVersion = "4.10.4"
 
