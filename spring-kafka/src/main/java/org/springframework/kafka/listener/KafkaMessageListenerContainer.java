@@ -188,6 +188,7 @@ import org.springframework.util.StringUtils;
  * @author Nikita Kibitkin
  * @author Vineeth Yelagandula
  * @author Hyun Lee
+ * @author Gangeun Lee
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -4050,8 +4051,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 			@Override
 			public void acknowledge() {
-				if (this.partial >= 0) {
-					acknowledge(this.partial + 1);
+				List<ConsumerRecord<K, V>> list = this.recordList;
+				if (this.partial >= 0 && list != null) {
+					int last = list.size() - 1;
+					if (this.partial < last) {
+						acknowledge(last);
+					}
 					return;
 				}
 				if (!this.acked) {
