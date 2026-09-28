@@ -61,6 +61,7 @@ import org.springframework.util.Assert;
  * @author Wang Zhiyang
  * @author Lokesh Alamuri
  * @author Su Ko
+ * @author Jian Kim
  */
 public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageListenerContainer<K, V> {
 
@@ -500,6 +501,19 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 					.stream()
 					.filter(container -> container.isPartitionPauseRequested(topicPartition))
 					.forEach(container -> container.resumePartition(topicPartition));
+		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
+	}
+
+	@Override
+	public boolean isPartitionPauseRequested(TopicPartition topicPartition) {
+		this.lifecycleLock.lock();
+		try {
+			return this.containers
+					.stream()
+					.anyMatch(container -> container.isPartitionPauseRequested(topicPartition));
 		}
 		finally {
 			this.lifecycleLock.unlock();
