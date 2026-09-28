@@ -507,6 +507,19 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	}
 
 	@Override
+	public boolean isPartitionPauseRequested(TopicPartition topicPartition) {
+		this.lifecycleLock.lock();
+		try {
+			return this.containers
+					.stream()
+					.anyMatch(container -> container.isPartitionPauseRequested(topicPartition));
+		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
+	}
+
+	@Override
 	public boolean isPartitionPaused(TopicPartition topicPartition) {
 		this.lifecycleLock.lock();
 		try {

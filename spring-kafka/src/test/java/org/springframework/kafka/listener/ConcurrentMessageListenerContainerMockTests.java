@@ -68,6 +68,7 @@ import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOp
 import org.springframework.kafka.listener.adapter.HandlerAdapter;
 import org.springframework.kafka.listener.adapter.RecordMessagingMessageListenerAdapter;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.kafka.transaction.KafkaAwareTransactionManager;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -979,6 +980,57 @@ public class ConcurrentMessageListenerContainerMockTests {
 		return this.pendingResult;
 	}
 
+	@SuppressWarnings("unchecked")
+	@Test
+	void partitionPauseRequestedReflectsChildren() throws InterruptedException {
+		Consumer<String, String> consumer0 = mock(Consumer.class);
+		Consumer<String, String> consumer1 = mock(Consumer.class);
+		CountDownLatch pollLatch = new CountDownLatch(2);
+		for (Consumer<String, String> consumer : List.of(consumer0, consumer1)) {
+			willAnswer(inv -> {
+				pollLatch.countDown();
+				Thread.sleep(50);
+				return ConsumerRecords.empty();
+			}).given(consumer).poll(any());
+		}
+		ConsumerFactory<String, String> cf = mock(ConsumerFactory.class);
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer0, consumer1);
+		ContainerProperties containerProperties = new ContainerProperties(
+				new TopicPartitionOffset("foo", 0), new TopicPartitionOffset("foo", 1));
+		containerProperties.setGroupId("grp");
+		containerProperties.setMessageListener((MessageListener<String, String>) rec -> { });
+		ConcurrentMessageListenerContainer<String, String> container =
+				new ConcurrentMessageListenerContainer<>(cf, containerProperties);
+		container.setConcurrency(2);
+		TopicPartition tp0 = new TopicPartition("foo", 0);
+		TopicPartition tp1 = new TopicPartition("foo", 1);
+		TopicPartition unassigned = new TopicPartition("foo", 2);
+		assertThat(container.isPartitionPauseRequested(tp0)).isFalse();
+		container.start();
+		try {
+			assertThat(pollLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			assertThat(container.isPartitionPauseRequested(tp0)).isFalse();
+			assertThat(container.isPartitionPauseRequested(tp1)).isFalse();
+			container.pausePartition(tp1);
+			assertThat(container.getContainers().get(1).isPartitionPauseRequested(tp1)).isTrue();
+			assertThat(container.isPartitionPauseRequested(tp1)).isTrue();
+			assertThat(container.isPartitionPauseRequested(tp0)).isFalse();
+			container.pausePartition(unassigned);
+			assertThat(container.isPartitionPauseRequested(unassigned)).isFalse();
+			container.pausePartition(tp0);
+			assertThat(container.isPartitionPauseRequested(tp0)).isTrue();
+			container.resumePartition(tp1);
+			assertThat(container.getContainers().get(1).isPartitionPauseRequested(tp1)).isFalse();
+			assertThat(container.isPartitionPauseRequested(tp1)).isFalse();
+			assertThat(container.isPartitionPauseRequested(tp0)).isTrue();
+			container.resumePartition(tp0);
+			assertThat(container.isPartitionPauseRequested(tp0)).isFalse();
+		}
+		finally {
+			container.stop();
+		}
+	}
+
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Test
 	void removeFromPartitionPauseRequestedWhenNotAssigned() throws InterruptedException {
@@ -1019,9 +1071,11 @@ public class ConcurrentMessageListenerContainerMockTests {
 		KafkaMessageListenerContainer child = (KafkaMessageListenerContainer) KafkaTestUtils
 				.getPropertyValue(container, "containers", List.class).get(0);
 		assertThat(child.isPartitionPauseRequested(tp0)).isTrue();
+		assertThat(container.isPartitionPauseRequested(tp0)).isTrue();
 		assertThat(pauseLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		rebal.get().onPartitionsRevoked(assignments);
 		assertThat(child.isPartitionPauseRequested(tp0)).isTrue();
+		assertThat(container.isPartitionPauseRequested(tp0)).isTrue();
 		// immediate pause when re-assigned
 		rebal.get().onPartitionsAssigned(assignments);
 		verify(consumer, times(2)).pause(any());
@@ -1029,6 +1083,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 		// resume partition while unassigned
 		container.resumePartition(tp0);
 		assertThat(child.isPartitionPauseRequested(tp0)).isFalse();
+		assertThat(container.isPartitionPauseRequested(tp0)).isFalse();
 		rebal.get().onPartitionsAssigned(assignments);
 		verify(consumer, times(2)).pause(any()); // no immediate pause this time
 		container.stop();
