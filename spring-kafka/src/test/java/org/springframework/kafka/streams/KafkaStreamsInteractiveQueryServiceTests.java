@@ -16,7 +16,11 @@
 
 package org.springframework.kafka.streams;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -39,6 +43,7 @@ import org.apache.kafka.streams.processor.WallclockTimestampExtractor;
 import org.apache.kafka.streams.state.HostInfo;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,6 +71,7 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
+import org.springframework.util.FileSystemUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -92,6 +98,29 @@ class KafkaStreamsInteractiveQueryServiceTests {
 	public static final String STATE_STORE = "my-state-store";
 
 	public static final String NON_EXISTENT_STORE = "my-non-existent-store";
+
+	/**
+	 * Kafka Streams defaults the state directory to
+	 * '${java.io.tmpdir}/kafka-streams/${application.id}', which survives the JVM. Each
+	 * run uses a new embedded broker, so a previous run's local store and task
+	 * directories no longer match the broker's changelog and can keep the stream thread
+	 * from processing. Keep the state private to this run.
+	 */
+	private static final Path STATE_DIR = createStateDir();
+
+	private static Path createStateDir() {
+		try {
+			return Files.createTempDirectory("KafkaStreamsInteractiveQueryServiceTests");
+		}
+		catch (IOException ex) {
+			throw new UncheckedIOException(ex);
+		}
+	}
+
+	@AfterAll
+	static void removeStateDir() throws IOException {
+		FileSystemUtils.deleteRecursively(STATE_DIR);
+	}
 
 	@Autowired
 	private EmbeddedKafkaBroker embeddedKafka;
@@ -263,6 +292,7 @@ class KafkaStreamsInteractiveQueryServiceTests {
 					WallclockTimestampExtractor.class.getName());
 			props.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, "100");
 			props.put(StreamsConfig.APPLICATION_SERVER_CONFIG, "localhost:8080");
+			props.put(StreamsConfig.STATE_DIR_CONFIG, STATE_DIR.toString());
 			return new KafkaStreamsConfiguration(props);
 		}
 
