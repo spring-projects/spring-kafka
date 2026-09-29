@@ -341,8 +341,8 @@ public class JsonKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 			JsonMapper headerJsonMapper, Headers target) {
 
 		Object valueToAdd = headerValueToAddOut(key, rawValue);
-		if (valueToAdd instanceof byte[]) {
-			target.add(new RecordHeader(key, (byte[]) valueToAdd));
+		if (valueToAdd instanceof byte[] bytes) {
+			target.add(new RecordHeader(key, bytes));
 		}
 		else {
 			try {

@@ -403,7 +403,7 @@ public class DeadLetterPublishingRecovererFactory {
 	}
 
 	private long getFailureTimestamp(Exception e) {
-		return e instanceof NestedRuntimeException && ((NestedRuntimeException) e).contains(TimestampedException.class)
+		return e instanceof NestedRuntimeException nestedRuntimeException && nestedRuntimeException.contains(TimestampedException.class)
 				? getTimestampedException(e).getTimestamp()
 				: Instant.now().toEpochMilli();
 	}
