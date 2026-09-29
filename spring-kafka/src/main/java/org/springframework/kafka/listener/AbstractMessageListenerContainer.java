@@ -546,8 +546,8 @@ public abstract class AbstractMessageListenerContainer<K, V>
 					.collect(Collectors.toMap(Entry::getKey, Entry::getValue));
 			Properties overrides = propertiesFromConsumerPropertyOverrides();
 			overrides.forEach((key, value) -> {
-				if (key instanceof String) {
-					configs.put((String) key, value);
+				if (key instanceof String str) {
+					configs.put(str, value);
 				}
 			});
 			List<String> missing = null;
@@ -600,8 +600,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 			if (this.consumerFactory != null) { // we always have one for standard containers
 				Object groupIdConfig = this.consumerFactory.getConfigurationProperties()
 						.get(ConsumerConfig.GROUP_ID_CONFIG);
-				hasGroupIdConsumerConfig =
-						groupIdConfig instanceof String && StringUtils.hasText((String) groupIdConfig);
+				hasGroupIdConsumerConfig = groupIdConfig instanceof String str && StringUtils.hasText(str);
 			}
 			Assert.state(hasGroupIdConsumerConfig || StringUtils.hasText(this.containerProperties.getGroupId()),
 					"No group.id found in consumer config, container properties, or @KafkaListener annotation; "

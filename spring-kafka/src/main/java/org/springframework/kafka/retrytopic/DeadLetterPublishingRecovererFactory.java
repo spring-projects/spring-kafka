@@ -56,6 +56,7 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  * @author Soby Chacko
  * @author Artem Bilan
+ * @author Ngoc Nhan
  *
  * @since 2.7
  *
@@ -403,7 +404,7 @@ public class DeadLetterPublishingRecovererFactory {
 	}
 
 	private long getFailureTimestamp(Exception e) {
-		return e instanceof NestedRuntimeException && ((NestedRuntimeException) e).contains(TimestampedException.class)
+		return e instanceof NestedRuntimeException nre && nre.contains(TimestampedException.class)
 				? getTimestampedException(e).getTimestamp()
 				: Instant.now().toEpochMilli();
 	}

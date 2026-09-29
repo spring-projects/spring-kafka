@@ -333,11 +333,11 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 
 	private byte @Nullable [] mapRawOut(String header, Object value) {
 		if (this.mapAllStringsOut || this.rawMappedHeaders.containsKey(header)) {
-			if (value instanceof byte[]) {
-				return (byte[]) value;
+			if (value instanceof byte[] bytes) {
+				return bytes;
 			}
-			else if (value instanceof String) {
-				return ((String) value).getBytes(this.charset);
+			else if (value instanceof String str) {
+				return str.getBytes(this.charset);
 			}
 		}
 		return null;
