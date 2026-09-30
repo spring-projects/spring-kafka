@@ -394,7 +394,9 @@ public class RetryTopicConfigurationBuilder {
 	}
 
 	/**
-	 * Configure a custom {@link BackOff}.
+	 * Configure a custom {@link BackOff}. If the {@link BackOff} has its own limit and
+	 * is exhausted before {@link #maxAttempts(int)} is reached, no further retry topics
+	 * are created.
 	 * @param backOff the backOff
 	 * @return the builder.
 	 */

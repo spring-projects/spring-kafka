@@ -60,6 +60,10 @@ If your back off policy requires delays with values bigger than that, adjust the
 
 IMPORTANT: The first attempt counts against `maxAttempts`, so if you provide a `maxAttempts` value of 4 there'll be the original attempt plus 3 retries.
 
+NOTE: If a custom `BackOff` has its own limit (for example, `new FixedBackOff(1000, 1)`), retry topics are only created until the `BackOff` is exhausted, even if `maxAttempts` is higher.
+Previously, the remaining attempts used `BackOffExecution.STOP` (`-1`) as their delay, creating retry topics such as `-retry--1`.
+When upgrading, such configurations get fewer retry topics, and their names can change (for example, `-retry-1000` becomes `-retry`), so drain the old retry topics first.
+
 [[global-timeout]]
 == Global Timeout
 
