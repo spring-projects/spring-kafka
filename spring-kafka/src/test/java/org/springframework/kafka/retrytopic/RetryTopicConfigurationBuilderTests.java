@@ -31,6 +31,7 @@ import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.util.backoff.FixedBackOff;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -213,4 +214,31 @@ class RetryTopicConfigurationBuilderTests {
 		assertThat(desExcDltProps.suffix()).isEqualTo("-deserialization-dlt");
 		assertThat(desExcDltProps.usedForExceptions()).containsExactly(DeserializationException.class);
 	}
+
+	@Test
+	void shouldHonorCustomBackOffLimit() {
+		RetryTopicConfigurationBuilder builder = new RetryTopicConfigurationBuilder();
+		builder.customBackoff(new FixedBackOff(1000, 1))
+				.maxAttempts(3);
+		RetryTopicConfiguration configuration = builder.create(kafkaOperations);
+
+		List<DestinationTopic.Properties> destinationTopicProperties = configuration.getDestinationTopicProperties();
+		assertThat(destinationTopicProperties).extracting(DestinationTopic.Properties::suffix)
+				.containsExactly("", "-retry", "-dlt");
+		assertThat(destinationTopicProperties).extracting(DestinationTopic.Properties::delay)
+				.containsExactly(0L, 1000L, 0L);
+	}
+
+	@Test
+	void shouldGoStraightToDltWhenCustomBackOffAllowsNoRetries() {
+		RetryTopicConfigurationBuilder builder = new RetryTopicConfigurationBuilder();
+		builder.customBackoff(new FixedBackOff(1000, 0))
+				.maxAttempts(3);
+		RetryTopicConfiguration configuration = builder.create(kafkaOperations);
+
+		assertThat(configuration.getDestinationTopicProperties())
+				.extracting(DestinationTopic.Properties::suffix)
+				.containsExactly("", "-dlt");
+	}
+
 }
