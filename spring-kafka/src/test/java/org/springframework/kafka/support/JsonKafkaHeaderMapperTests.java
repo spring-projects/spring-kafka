@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
 
 import org.apache.kafka.common.header.Header;
@@ -56,6 +57,8 @@ import static org.mockito.Mockito.verify;
  *
  */
 public class JsonKafkaHeaderMapperTests {
+
+	private static final AtomicBoolean STATIC_INIT_TARGET_INITIALIZED = new AtomicBoolean();
 
 	@Test
 	void testTrustedAndNot() {
@@ -236,6 +239,61 @@ public class JsonKafkaHeaderMapperTests {
 		mapper.toHeaders(recordHeaders, headers);
 		assertThat(headers.get("uris")).isInstanceOf(URI[][].class);
 		assertThat(((URI[][]) headers.get("uris"))[0][0]).isEqualTo(URI.create("https://example.com"));
+	}
+
+	@Test
+	void classTypeIsNeverTrusted() {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		Map<String, Object> headers = new HashMap<>();
+		mapper.toHeaders(classHeaders("java.lang.Class", "\"" + StaticInitTarget.class.getName() + "\""), headers);
+		assertThat(headers.get("clazz")).isInstanceOf(NonTrustedHeaderType.class);
+		assertThat(((NonTrustedHeaderType) headers.get("clazz")).getUntrustedType()).isEqualTo("java.lang.Class");
+		assertThat(STATIC_INIT_TARGET_INITIALIZED).isFalse();
+	}
+
+	@Test
+	void classTypeNotTrustedEvenWithWildcard() {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		mapper.addTrustedPackages("*");
+		Map<String, Object> headers = new HashMap<>();
+		mapper.toHeaders(classHeaders("java.lang.Class", "\"" + StaticInitTarget.class.getName() + "\""), headers);
+		assertThat(headers.get("clazz")).isInstanceOf(NonTrustedHeaderType.class);
+		assertThat(STATIC_INIT_TARGET_INITIALIZED).isFalse();
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "[Ljava.lang.Class;", "[[Ljava.lang.Class;" })
+	void classArrayTypesAreNeverTrusted(String type) {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		String value = "\"" + StaticInitTarget.class.getName() + "\"";
+		value = type.startsWith("[[") ? "[[" + value + "]]" : "[" + value + "]";
+		Map<String, Object> headers = new HashMap<>();
+		mapper.toHeaders(classHeaders(type, value), headers);
+		assertThat(headers.get("clazz")).isInstanceOf(NonTrustedHeaderType.class);
+		assertThat(STATIC_INIT_TARGET_INITIALIZED).isFalse();
+	}
+
+	@Test
+	void classTypeViaNonTrustedHeaderTypeIsNeverTrusted() {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		mapper.addTrustedPackages("*");
+		NonTrustedHeaderType upstream = new NonTrustedHeaderType(
+				("\"" + StaticInitTarget.class.getName() + "\"").getBytes(StandardCharsets.UTF_8), "java.lang.Class");
+		Headers recordHeaders = new RecordHeaders();
+		mapper.fromHeaders(new MessageHeaders(Collections.singletonMap("clazz", upstream)), recordHeaders);
+		Map<String, Object> headers = new HashMap<>();
+		mapper.toHeaders(recordHeaders, headers);
+		assertThat(headers.get("clazz")).isInstanceOf(NonTrustedHeaderType.class);
+		assertThat(((NonTrustedHeaderType) headers.get("clazz")).getUntrustedType()).isEqualTo("java.lang.Class");
+		assertThat(STATIC_INIT_TARGET_INITIALIZED).isFalse();
+	}
+
+	private static RecordHeaders classHeaders(String type, String value) {
+		RecordHeaders recordHeaders = new RecordHeaders();
+		recordHeaders.add(new RecordHeader(JsonKafkaHeaderMapper.JSON_TYPES,
+				("{\"clazz\":\"" + type + "\"}").getBytes(StandardCharsets.UTF_8)));
+		recordHeaders.add(new RecordHeader("clazz", value.getBytes(StandardCharsets.UTF_8)));
+		return recordHeaders;
 	}
 
 	private static RecordHeaders inboundHeaders(String type) {
@@ -869,6 +927,14 @@ public class JsonKafkaHeaderMapperTests {
 
 		AnnotatedHeader(String key, byte[] value) {
 			super(key, value);
+		}
+
+	}
+
+	static class StaticInitTarget {
+
+		static {
+			STATIC_INIT_TARGET_INITIALIZED.set(true);
 		}
 
 	}
