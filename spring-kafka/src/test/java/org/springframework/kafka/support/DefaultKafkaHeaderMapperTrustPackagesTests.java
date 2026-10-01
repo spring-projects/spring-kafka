@@ -41,4 +41,15 @@ public class DefaultKafkaHeaderMapperTrustPackagesTests {
 		assertThat(mapper.trusted("com.acme.events.OrderEvent")).isTrue();
 	}
 
+	@Test
+	void classTypeIsNeverTrusted() {
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		assertThat(mapper.trusted("java.lang.Class")).isFalse();
+		assertThat(mapper.trusted("[Ljava.lang.Class;")).isFalse();
+		assertThat(mapper.trusted("[[Ljava.lang.Class;")).isFalse();
+		mapper.addTrustedPackages("*");
+		assertThat(mapper.trusted("java.lang.Class")).isFalse();
+		assertThat(mapper.trusted("[Ljava.lang.Class;")).isFalse();
+	}
+
 }

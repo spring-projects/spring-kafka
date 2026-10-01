@@ -67,12 +67,16 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 
 	/**
 	 * Types that are never trusted for header deserialization, even when their package is
-	 * trusted, because constructing them from an untrusted header value has a network side
+	 * trusted, because deserializing them from an untrusted header value has a side
 	 * effect. For example, deserializing a {@code java.net.InetAddress} calls
-	 * {@code InetAddress.getByName()}, which performs a DNS lookup during deserialization.
+	 * {@code InetAddress.getByName()}, which performs a DNS lookup, and deserializing a
+	 * {@code java.lang.Class} loads (and, depending on the Jackson version, initializes)
+	 * the class named by the header value, which is not itself subject to the trusted
+	 * packages check.
 	 * Such headers are returned to the application as a {@link NonTrustedHeaderType}.
 	 */
 	private static final Set<String> UNTRUSTED_TYPES = new HashSet<>(Arrays.asList(
+					"java.lang.Class",
 					"java.net.InetAddress",
 					"java.net.Inet4Address",
 					"java.net.Inet6Address",
@@ -253,6 +257,10 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * deserializing them performs a DNS lookup) is never trusted, even if {@code java.net}
 	 * or {@code "*"} is trusted; such headers, and arrays of them, are always returned as a
 	 * {@link NonTrustedHeaderType}.
+	 * <p>
+	 * Similarly, {@code java.lang.Class} is never trusted, even if {@code java.lang} or
+	 * {@code "*"} is trusted, because its header value names another class, which would
+	 * otherwise be loaded without being subject to the trusted packages check.
 	 * @param packagesToTrust the packages to trust.
 	 */
 	public void addTrustedPackages(String... packagesToTrust) {

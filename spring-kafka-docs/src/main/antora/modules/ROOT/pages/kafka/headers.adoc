@@ -95,6 +95,14 @@ mapper.addTrustedPackages("com.example");
 mapper.addTrustedPackages("com.example", "com.example.events");
 ----
 
+A small set of types is never trusted, even when its package is trusted or `addTrustedPackages("+++*+++")` is used:
+
+* `java.net.InetAddress`, `java.net.Inet4Address`, `java.net.Inet6Address`, and `java.net.InetSocketAddress`, because deserializing them performs a DNS lookup.
+* `java.lang.Class`, because its header value names another class, which would otherwise be loaded without being subject to the trusted packages check.
+
+Headers of these types, and arrays of them, are always returned to the application as a `NonTrustedHeaderType`.
+If you need to convey a class in a header, send its name as a `String` (for example, `OrderEvent.class.getName()`) and resolve it in the consuming application against the classes you expect.
+
 NOTE: Mapping `String` header values in a raw form is useful when communicating with systems that are not aware of the mapper's JSON format.
 
 Starting with version 2.2.5, you can specify that certain string-valued headers should not be mapped using JSON, but to/from a raw `byte[]`.
