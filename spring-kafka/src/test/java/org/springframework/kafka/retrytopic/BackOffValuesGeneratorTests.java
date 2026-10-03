@@ -29,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Tomaz Fernandes
+ * @author Yingzi Zhang
  * @since 2.7
  */
 class BackOffValuesGeneratorTests {
@@ -78,4 +79,34 @@ class BackOffValuesGeneratorTests {
 		List<Long> expectedBackoffs = Arrays.asList(0L, 0L, 0L);
 		assertThat(backOffValues).isEqualTo(expectedBackoffs);
 	}
+
+	@Test
+	void shouldStopWhenFixedBackOffIsExhausted() {
+
+		// setup
+		BackOff backOff = new FixedBackOff(1000, 1);
+		BackOffValuesGenerator backOffValuesGenerator = new BackOffValuesGenerator(4, backOff);
+
+		// when
+		List<Long> backOffValues = backOffValuesGenerator.generateValues();
+
+		// then
+		assertThat(backOffValues).containsExactly(1000L);
+	}
+
+	@Test
+	void shouldStopWhenExponentialBackOffIsExhausted() {
+
+		// setup
+		ExponentialBackOff backOff = new ExponentialBackOff(1000, 2);
+		backOff.setMaxElapsedTime(3000);
+		BackOffValuesGenerator backOffValuesGenerator = new BackOffValuesGenerator(6, backOff);
+
+		// when
+		List<Long> backOffValues = backOffValuesGenerator.generateValues();
+
+		// then
+		assertThat(backOffValues).containsExactly(1000L, 2000L);
+	}
+
 }
