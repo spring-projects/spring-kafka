@@ -19,6 +19,7 @@ package org.springframework.kafka.listener;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
@@ -117,6 +118,50 @@ public class ConsumerSeekAwareTests {
 		exec2.submit(checkTL).get();
 		exec1.shutdown();
 		exec2.shutdown();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void unregisterSeekCallbackRemovesOnlyThisCallbackMappings() throws Exception {
+		class CSA extends AbstractConsumerSeekAware {
+		}
+
+		AbstractConsumerSeekAware csa = new CSA();
+		var exec1 = Executors.newSingleThreadExecutor();
+		var exec2 = Executors.newSingleThreadExecutor();
+		var cb1 = mock(ConsumerSeekCallback.class);
+		var cb2 = mock(ConsumerSeekCallback.class);
+		var tp = new TopicPartition("foo", 0);
+		var map = new LinkedHashMap<>(Map.of(tp, 0L));
+
+		try {
+			exec1.submit(() -> {
+				csa.registerSeekCallback(cb1);
+				csa.onPartitionsAssigned(map, cb1);
+			}).get();
+			exec2.submit(() -> {
+				csa.registerSeekCallback(cb2);
+				csa.onPartitionsAssigned(map, cb2);
+			}).get();
+			exec1.submit(() -> {
+				csa.onPartitionsRevoked(Collections.emptyList());
+				csa.unregisterSeekCallback();
+			}).get();
+
+			Map<TopicPartition, List<ConsumerSeekCallback>> topicToCallbacks =
+					KafkaTestUtils.getPropertyValue(csa, "topicToCallbacks", Map.class);
+			Map<ConsumerSeekCallback, List<TopicPartition>> callbackToTopics =
+					KafkaTestUtils.getPropertyValue(csa, "callbackToTopics", Map.class);
+
+			assertThat(topicToCallbacks).containsOnlyKeys(tp);
+			assertThat(topicToCallbacks.get(tp)).containsExactly(cb2);
+			assertThat(callbackToTopics).containsOnlyKeys(cb2);
+			assertThat(callbackToTopics.get(cb2)).containsExactly(tp);
+		}
+		finally {
+			exec1.shutdown();
+			exec2.shutdown();
+		}
 	}
 
 }
