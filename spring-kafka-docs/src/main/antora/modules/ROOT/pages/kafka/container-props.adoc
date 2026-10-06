@@ -183,10 +183,6 @@ See `monitorInterval`.
 |`null`
 |A provider for `OffsetAndMetadata`; by default, the provider creates an offset and metadata with empty metadata. The provider gives a way to customize the metadata.
 
-|[[onlyLogRecordMetadata]]<<onlyLogRecordMetadata,`onlyLogRecordMetadata`>>
-|`false`
-|Set to `false` to log the complete consumer record (in error, debug logs etc.) instead of just `topic-partition@offset`.
-
 |[[pauseImmediate]]<<pauseImmediate,`pauseImmediate`>>
 |`false`
 |When the container is paused, stop processing after the current record instead of after processing all the records from the previous poll; the remaining records are retained in memory and will be passed to the listener when the container is resumed.
@@ -260,10 +256,6 @@ Mutually exclusive; at least one must be provided; enforced by `ContainerPropert
 |[[applicationEventPublisher]]<<applicationEventPublisher,`applicationEventPublisher`>>
 |application context
 |The event publisher.
-
-|[[batchErrorHandler]]<<batchErrorHandler,`batchErrorHandler`>>
-|See desc.
-|Deprecated - see `commonErrorHandler`.
 
 |[[batchInterceptor]]<<batchInterceptor,`batchInterceptor`>>
 |`null`
