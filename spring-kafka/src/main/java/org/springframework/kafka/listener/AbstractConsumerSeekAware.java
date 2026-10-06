@@ -34,6 +34,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @author Gary Russell
  * @author Borahm Lee
+ * @author Yash Kadam
  * @since 2.3
  *
  */
@@ -83,7 +84,21 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
 	@Override
 	public void unregisterSeekCallback() {
-		this.callbackForThread.remove(Thread.currentThread());
+		ConsumerSeekCallback callback = this.callbackForThread.remove(Thread.currentThread());
+		if (callback != null) {
+			List<TopicPartition> topics = this.callbackToTopics.remove(callback);
+			if (topics != null) {
+				topics.forEach(topic -> {
+					List<ConsumerSeekCallback> callbacks = this.topicToCallbacks.get(topic);
+					if (callbacks != null) {
+						callbacks.remove(callback);
+						if (callbacks.isEmpty()) {
+							this.topicToCallbacks.remove(topic);
+						}
+					}
+				});
+			}
+		}
 	}
 
 	/**
