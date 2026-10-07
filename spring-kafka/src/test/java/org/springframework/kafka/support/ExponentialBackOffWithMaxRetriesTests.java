@@ -29,10 +29,40 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 /**
  * @author Gary Russell
+ * @author Jialin Chen
  * @since 2.7.3
  *
  */
 public class ExponentialBackOffWithMaxRetriesTests {
+
+	@Test
+	void zeroRetriesStopsImmediately() {
+		ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(0);
+
+		assertThat(backOff.start().nextBackOff()).isEqualTo(BackOffExecution.STOP);
+	}
+
+	@Test
+	void zeroRetriesStopsAfterIntervalConfiguration() {
+		ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(0);
+		backOff.setInitialInterval(100L);
+		assertThat(backOff.start().nextBackOff()).isEqualTo(BackOffExecution.STOP);
+
+		backOff.setMultiplier(2.0);
+		assertThat(backOff.start().nextBackOff()).isEqualTo(BackOffExecution.STOP);
+
+		backOff.setMaxInterval(1_000L);
+		assertThat(backOff.start().nextBackOff()).isEqualTo(BackOffExecution.STOP);
+	}
+
+	@Test
+	void oneRetryIsPreserved() {
+		ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(1);
+		BackOffExecution execution = backOff.start();
+
+		assertThat(execution.nextBackOff()).isEqualTo(2_000L);
+		assertThat(execution.nextBackOff()).isEqualTo(BackOffExecution.STOP);
+	}
 
 	@Test
 	void calcAll() {

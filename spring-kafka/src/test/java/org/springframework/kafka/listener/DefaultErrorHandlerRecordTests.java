@@ -32,6 +32,7 @@ import org.apache.kafka.common.errors.SerializationException;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
+import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
 import org.springframework.kafka.support.converter.ConversionException;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
@@ -50,6 +51,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /**
@@ -58,10 +60,27 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
  * @author Gary Russell
  * @author Soby Chacko
  * @author Bill Kim
+ * @author Jialin Chen
  * @since 2.8
  *
  */
 public class DefaultErrorHandlerRecordTests {
+
+	@Test
+	void zeroExponentialRetriesRecoversOnFirstFailure() {
+		ConsumerRecordRecoverer recoverer = mock(ConsumerRecordRecoverer.class);
+		BackOffHandler backOffHandler = mock(BackOffHandler.class);
+		DefaultErrorHandler handler = new DefaultErrorHandler(recoverer,
+				new ExponentialBackOffWithMaxRetries(0), backOffHandler);
+		handler.setSeekAfterError(false);
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
+		IllegalStateException exception = new IllegalStateException("test failure");
+
+		assertThat(handler.handleOne(exception, record, mock(Consumer.class),
+				mock(MessageListenerContainer.class))).isTrue();
+		verify(recoverer).accept(record, exception);
+		verifyNoInteractions(backOffHandler);
+	}
 
 	@Test
 	void noSeeks() {

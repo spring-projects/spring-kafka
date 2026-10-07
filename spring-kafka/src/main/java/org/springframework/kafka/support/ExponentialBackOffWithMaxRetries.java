@@ -23,6 +23,7 @@ import org.springframework.util.backoff.ExponentialBackOff;
  * number of retries rather than the maximum elapsed time.
  *
  * @author Gary Russell
+ * @author Jialin Chen
  * @since 2.7.3
  *
  */
@@ -33,7 +34,7 @@ public class ExponentialBackOffWithMaxRetries extends ExponentialBackOff {
 	/**
 	 * Construct an instance that will calculate the {@link #setMaxElapsedTime(long)} from
 	 * the maxRetries.
-	 * @param maxRetries the max retries.
+	 * @param maxRetries the max retries; 0 for no retries.
 	 */
 	@SuppressWarnings("this-escape")
 	public ExponentialBackOffWithMaxRetries(int maxRetries) {
@@ -74,6 +75,10 @@ public class ExponentialBackOffWithMaxRetries extends ExponentialBackOff {
 
 	@SuppressWarnings("this-escape")
 	private void calculateMaxElapsed() {
+		if (this.maxRetries == 0) {
+			super.setMaxElapsedTime(0);
+			return;
+		}
 		long maxInterval = getMaxInterval();
 		long maxElapsed = Math.min(getInitialInterval(), maxInterval);
 		long current = maxElapsed;
