@@ -42,6 +42,7 @@ import org.springframework.util.Assert;
  * @author Antonin Arquey
  * @author Dan Blackney
  * @author Burak Kalayci
+ * @author Cobi Eun
  * @since 2.8
  *
  */
@@ -181,6 +182,21 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 		}
 		else {
 			this.defaultErrorHandler.handleBatch(thrownException, data, consumer, container, invokeListener);
+		}
+	}
+
+	@Override
+	public <K, V> ConsumerRecords<K, V> handleBatchAndReturnRemaining(Exception thrownException,
+			ConsumerRecords<?, ?> data, Consumer<?, ?> consumer, MessageListenerContainer container,
+			Runnable invokeListener) {
+
+		CommonErrorHandler handler = findDelegate(thrownException);
+		if (handler != null) {
+			return handler.handleBatchAndReturnRemaining(thrownException, data, consumer, container, invokeListener);
+		}
+		else {
+			return this.defaultErrorHandler.handleBatchAndReturnRemaining(thrownException, data, consumer, container,
+					invokeListener);
 		}
 	}
 
