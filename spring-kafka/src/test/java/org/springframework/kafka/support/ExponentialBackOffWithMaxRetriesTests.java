@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import org.springframework.util.backoff.BackOffExecution;
 
@@ -35,16 +37,18 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
  */
 public class ExponentialBackOffWithMaxRetriesTests {
 
-	@Test
-	void zeroRetriesStopsImmediately() {
-		ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(0);
+	@ParameterizedTest
+	@ValueSource(ints = {0, -1})
+	void nonPositiveRetriesStopImmediately(int maxRetries) {
+		ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(maxRetries);
 
 		assertThat(backOff.start().nextBackOff()).isEqualTo(BackOffExecution.STOP);
 	}
 
-	@Test
-	void zeroRetriesStopsAfterIntervalConfiguration() {
-		ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(0);
+	@ParameterizedTest
+	@ValueSource(ints = {0, -1})
+	void nonPositiveRetriesStopAfterIntervalConfiguration(int maxRetries) {
+		ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(maxRetries);
 		backOff.setInitialInterval(100L);
 		assertThat(backOff.start().nextBackOff()).isEqualTo(BackOffExecution.STOP);
 

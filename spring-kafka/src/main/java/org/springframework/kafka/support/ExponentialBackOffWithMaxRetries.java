@@ -34,7 +34,7 @@ public class ExponentialBackOffWithMaxRetries extends ExponentialBackOff {
 	/**
 	 * Construct an instance that will calculate the {@link #setMaxElapsedTime(long)} from
 	 * the maxRetries.
-	 * @param maxRetries the max retries; 0 for no retries.
+	 * @param maxRetries the max retries; 0 or less for no retries.
 	 */
 	@SuppressWarnings("this-escape")
 	public ExponentialBackOffWithMaxRetries(int maxRetries) {
@@ -75,7 +75,7 @@ public class ExponentialBackOffWithMaxRetries extends ExponentialBackOff {
 
 	@SuppressWarnings("this-escape")
 	private void calculateMaxElapsed() {
-		if (this.maxRetries == 0) {
+		if (this.maxRetries <= 0) {
 			super.setMaxElapsedTime(0);
 			return;
 		}

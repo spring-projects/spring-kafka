@@ -30,6 +30,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.SerializationException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InOrder;
 
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
@@ -66,12 +68,13 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
  */
 public class DefaultErrorHandlerRecordTests {
 
-	@Test
-	void zeroExponentialRetriesRecoversOnFirstFailure() {
+	@ParameterizedTest
+	@ValueSource(ints = {0, -1})
+	void nonPositiveExponentialRetriesRecoverOnFirstFailure(int maxRetries) {
 		ConsumerRecordRecoverer recoverer = mock(ConsumerRecordRecoverer.class);
 		BackOffHandler backOffHandler = mock(BackOffHandler.class);
 		DefaultErrorHandler handler = new DefaultErrorHandler(recoverer,
-				new ExponentialBackOffWithMaxRetries(0), backOffHandler);
+				new ExponentialBackOffWithMaxRetries(maxRetries), backOffHandler);
 		handler.setSeekAfterError(false);
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
 		IllegalStateException exception = new IllegalStateException("test failure");
