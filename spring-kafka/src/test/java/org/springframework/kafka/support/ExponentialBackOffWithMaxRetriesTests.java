@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import org.springframework.util.backoff.BackOffExecution;
 
@@ -29,10 +31,42 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 
 /**
  * @author Gary Russell
+ * @author Jialin Chen
  * @since 2.7.3
  *
  */
 public class ExponentialBackOffWithMaxRetriesTests {
+
+	@ParameterizedTest
+	@ValueSource(ints = {0, -1})
+	void nonPositiveRetriesStopImmediately(int maxRetries) {
+		ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(maxRetries);
+
+		assertThat(backOff.start().nextBackOff()).isEqualTo(BackOffExecution.STOP);
+	}
+
+	@ParameterizedTest
+	@ValueSource(ints = {0, -1})
+	void nonPositiveRetriesStopAfterIntervalConfiguration(int maxRetries) {
+		ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(maxRetries);
+		backOff.setInitialInterval(100L);
+		assertThat(backOff.start().nextBackOff()).isEqualTo(BackOffExecution.STOP);
+
+		backOff.setMultiplier(2.0);
+		assertThat(backOff.start().nextBackOff()).isEqualTo(BackOffExecution.STOP);
+
+		backOff.setMaxInterval(1_000L);
+		assertThat(backOff.start().nextBackOff()).isEqualTo(BackOffExecution.STOP);
+	}
+
+	@Test
+	void oneRetryIsPreserved() {
+		ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(1);
+		BackOffExecution execution = backOff.start();
+
+		assertThat(execution.nextBackOff()).isEqualTo(2_000L);
+		assertThat(execution.nextBackOff()).isEqualTo(BackOffExecution.STOP);
+	}
 
 	@Test
 	void calcAll() {
