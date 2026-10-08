@@ -33,6 +33,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * @author Tomaz Fernandes
  * @author Artem Bilan
  * @author Borahm Lee
+ * @author Yingzi Zhang
  *
  * @since 2.7
  *
@@ -56,10 +57,17 @@ public class BackOffValuesGenerator {
 				: RetryTopicConstants.DEFAULT_MAX_ATTEMPTS;
 	}
 
+	/**
+	 * Generate the back off values, stopping early if the {@link BackOff} is exhausted
+	 * before {@code maxAttempts} is reached.
+	 * @return the back off values.
+	 */
 	public List<Long> generateValues() {
 		BackOffExecution backOffExecution = this.backOff.start();
-		return Stream.generate(backOffExecution::nextBackOff).
-				limit(this.numberOfValuesToCreate).toList();
+		return Stream.generate(backOffExecution::nextBackOff)
+				.takeWhile(value -> value != BackOffExecution.STOP)
+				.limit(this.numberOfValuesToCreate)
+				.toList();
 	}
 
 }
