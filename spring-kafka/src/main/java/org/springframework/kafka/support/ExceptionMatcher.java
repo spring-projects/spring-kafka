@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.jspecify.annotations.Nullable;
 
@@ -46,6 +47,7 @@ import org.springframework.util.Assert;
  * @author Stephane Nicoll
  * @author Dave Syer
  * @author Gary Russell
+ * @author Soby Chacko
  *
  * @since 4.0
  */
@@ -71,7 +73,7 @@ public class ExceptionMatcher {
 	protected ExceptionMatcher(Map<Class<? extends Throwable>, Boolean> entries,
 			boolean matchIfNotFound, boolean traverseCauses) {
 
-		this.entries = new HashMap<>(entries);
+		this.entries = new ConcurrentHashMap<>(entries);
 		this.defaultMatch = matchIfNotFound;
 		this.traverseCauses = traverseCauses;
 	}
@@ -159,12 +161,12 @@ public class ExceptionMatcher {
 		}
 
 		Class<? extends Throwable> exceptionClass = classifiable.getClass();
-		if (this.entries.containsKey(exceptionClass)) {
-			return this.entries.get(exceptionClass);
+		Boolean value = this.entries.get(exceptionClass);
+		if (value != null) {
+			return value;
 		}
 
 		// check for subclasses
-		Boolean value = null;
 		for (Class<?> cls = exceptionClass.getSuperclass(); !cls.equals(Object.class)
 				&& value == null; cls = cls.getSuperclass()) {
 			value = this.entries.get(cls);

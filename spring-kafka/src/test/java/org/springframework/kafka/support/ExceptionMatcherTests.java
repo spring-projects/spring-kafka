@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeoutException;
 
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -34,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests for {@link ExceptionMatcher}.
  *
  * @author Stephane Nicoll
+ * @author Soby Chacko
  */
 class ExceptionMatcherTests {
 
@@ -159,6 +161,12 @@ class ExceptionMatcherTests {
 		assertThat(exceptionMatcher).extracting("entries")
 				.asInstanceOf(InstanceOfAssertFactories.map(Class.class, Boolean.class))
 				.containsEntry(FooException.class, true);
+	}
+
+	@Test
+	void cacheIsThreadSafe() {
+		ExceptionMatcher exceptionMatcher = ExceptionMatcher.forAllowList().add(IllegalStateException.class).build();
+		assertThat(exceptionMatcher).extracting("entries").isInstanceOf(ConcurrentMap.class);
 	}
 
 	@SuppressWarnings("serial")
