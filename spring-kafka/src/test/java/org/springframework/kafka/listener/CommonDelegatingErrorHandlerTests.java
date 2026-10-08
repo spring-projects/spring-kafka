@@ -17,6 +17,7 @@
 package org.springframework.kafka.listener;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -26,22 +27,27 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaProducerException;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.util.backoff.FixedBackOff;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -52,10 +58,118 @@ import static org.mockito.Mockito.verify;
  * @author Antonin Arquey
  * @author Dan Blackney
  * @author Burak Kalayci
+ * @author Cobi Eun
  * @since 2.8
  *
  */
 public class CommonDelegatingErrorHandlerTests {
+
+	private static final TopicPartition TP = new TopicPartition("topic", 0);
+
+	@Test
+	void handleBatchAndReturnRemainingShouldReturnRemainingFromDefaultHandlerWhenNoDelegateMatches() {
+		DefaultErrorHandler fallback = spy(noSeekErrorHandler());
+		DefaultErrorHandler other = spy(noSeekErrorHandler());
+		CommonDelegatingErrorHandler delegating = new CommonDelegatingErrorHandler(fallback);
+		delegating.addDelegate(IllegalStateException.class, other);
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		ContainerProperties properties = new ContainerProperties("topic");
+		properties.setSyncCommitTimeout(Duration.ofSeconds(1));
+		given(container.getContainerProperties()).willReturn(properties);
+		given(container.isRunning()).willReturn(true);
+		BatchListenerFailedException exception = new BatchListenerFailedException("failure", 1);
+		ConsumerRecords<String, String> data = threeRecords();
+		Runnable invokeListener = () -> { };
+
+		try {
+			ConsumerRecords<String, String> remaining = delegating.handleBatchAndReturnRemaining(
+					exception, data, consumer, container, invokeListener);
+			assertThat(remaining.count()).isEqualTo(2);
+			assertThat(remaining.records(TP)).extracting(ConsumerRecord::offset).containsExactly(1L, 2L);
+			verify(fallback).handleBatchAndReturnRemaining(exception, data, consumer, container, invokeListener);
+			verify(other, never()).handleBatchAndReturnRemaining(any(), any(), any(), any(), any());
+			verify(consumer, never()).seek(any(), anyLong());
+			verify(consumer, never()).seek(any(), any(OffsetAndMetadata.class));
+			ArgumentCaptor<Map<TopicPartition, OffsetAndMetadata>> offsets = ArgumentCaptor.captor();
+			verify(consumer).commitSync(offsets.capture(), eq(Duration.ofSeconds(1)));
+			assertThat(offsets.getValue().get(TP).offset()).isEqualTo(1L);
+		}
+		finally {
+			delegating.clearThreadState();
+		}
+	}
+
+	@Test
+	void handleBatchAndReturnRemainingShouldReturnRemainingFromMatchedDelegate() {
+		DefaultErrorHandler fallback = spy(noSeekErrorHandler());
+		DefaultErrorHandler selected = spy(noSeekErrorHandler());
+		CommonDelegatingErrorHandler delegating = new CommonDelegatingErrorHandler(fallback);
+		delegating.addDelegate(BatchListenerFailedException.class, selected);
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		ContainerProperties properties = new ContainerProperties("topic");
+		properties.setSyncCommitTimeout(Duration.ofSeconds(1));
+		given(container.getContainerProperties()).willReturn(properties);
+		given(container.isRunning()).willReturn(true);
+		BatchListenerFailedException exception = new BatchListenerFailedException("failure", 1);
+		ConsumerRecords<String, String> data = threeRecords();
+		Runnable invokeListener = () -> { };
+
+		try {
+			ConsumerRecords<String, String> remaining = delegating.handleBatchAndReturnRemaining(
+					exception, data, consumer, container, invokeListener);
+			assertThat(remaining.count()).isEqualTo(2);
+			assertThat(remaining.records(TP)).extracting(ConsumerRecord::offset).containsExactly(1L, 2L);
+			verify(selected).handleBatchAndReturnRemaining(exception, data, consumer, container, invokeListener);
+			verify(fallback, never()).handleBatchAndReturnRemaining(any(), any(), any(), any(), any());
+			verify(consumer, never()).seek(any(), anyLong());
+			verify(consumer, never()).seek(any(), any(OffsetAndMetadata.class));
+			ArgumentCaptor<Map<TopicPartition, OffsetAndMetadata>> offsets = ArgumentCaptor.captor();
+			verify(consumer).commitSync(offsets.capture(), eq(Duration.ofSeconds(1)));
+			assertThat(offsets.getValue().get(TP).offset()).isEqualTo(1L);
+		}
+		finally {
+			delegating.clearThreadState();
+		}
+	}
+
+	@Test
+	void handleBatchAndReturnRemainingShouldRouteLikeHandleBatchAndReturnResultAsIs() {
+		CommonErrorHandler def = mock(CommonErrorHandler.class);
+		CommonErrorHandler one = mock(CommonErrorHandler.class);
+		CommonErrorHandler two = mock(CommonErrorHandler.class);
+		CommonErrorHandler three = mock(CommonErrorHandler.class);
+		CommonDelegatingErrorHandler delegating = new CommonDelegatingErrorHandler(def);
+		delegating.setErrorHandlers(Map.of(IllegalStateException.class, one, IllegalArgumentException.class, two));
+		delegating.addDelegate(RuntimeException.class, three);
+		ConsumerRecords<String, String> data = threeRecords();
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		Runnable invokeListener = mock(Runnable.class);
+		List<Exception> exceptions = List.of(wrap(new IOException()), wrap(new KafkaException("test")),
+				wrap(new IllegalArgumentException()), wrap(new IllegalStateException()));
+		List<CommonErrorHandler> handlers = List.of(def, three, two, one);
+		List<ConsumerRecords<String, String>> results = List.of(threeRecords(), threeRecords(),
+				threeRecords(), threeRecords());
+
+		for (int i = 0; i < exceptions.size(); i++) {
+			Exception exception = exceptions.get(i);
+			CommonErrorHandler selected = handlers.get(i);
+			given(selected.<String, String>handleBatchAndReturnRemaining(
+					exception, data, consumer, container, invokeListener)).willReturn(results.get(i));
+
+			assertThat(delegating.handleBatchAndReturnRemaining(exception, data, consumer, container, invokeListener))
+					.isSameAs(results.get(i));
+			verify(selected).handleBatchAndReturnRemaining(same(exception), same(data), same(consumer), same(container),
+					same(invokeListener));
+			for (CommonErrorHandler handler : handlers) {
+				if (handler != selected) {
+					verify(handler, never()).handleBatchAndReturnRemaining(same(exception), any(), any(), any(), any());
+				}
+			}
+		}
+	}
 
 	@Test
 	void testHandleRemainingDelegates() {
@@ -295,6 +409,21 @@ public class CommonDelegatingErrorHandlerTests {
 		verify(one).onPartitionsAssigned(same(consumer), eq(partitions), same(publishPause));
 		verify(two).onPartitionsAssigned(same(consumer), eq(partitions), same(publishPause));
 		assertThat(publishPauseInvocations).hasValue(0);
+	}
+
+	private static DefaultErrorHandler noSeekErrorHandler() {
+		DefaultErrorHandler handler = new DefaultErrorHandler((record, exception) -> {
+			throw new AssertionError("Unexpected recovery");
+		}, new FixedBackOff(0, 9));
+		handler.setSeekAfterError(false);
+		return handler;
+	}
+
+	private static ConsumerRecords<String, String> threeRecords() {
+		return new ConsumerRecords<>(Map.of(TP, List.of(
+				new ConsumerRecord<>("topic", 0, 0L, "k0", "v0"),
+				new ConsumerRecord<>("topic", 0, 1L, "k1", "v1"),
+				new ConsumerRecord<>("topic", 0, 2L, "k2", "v2"))), Map.of());
 	}
 
 	private Exception wrap(Exception ex) {

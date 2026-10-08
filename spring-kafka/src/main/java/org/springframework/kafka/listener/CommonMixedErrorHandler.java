@@ -33,6 +33,7 @@ import org.springframework.util.Assert;
  *
  * @author Gary Russell
  * @author JaeYeon Kim
+ * @author Cobi Eun
  * @since 2.8
  *
  */
@@ -94,6 +95,15 @@ public class CommonMixedErrorHandler implements CommonErrorHandler {
 			MessageListenerContainer container, Runnable invokeListener) {
 
 		this.batchErrorHandler.handleBatch(thrownException, data, consumer, container, invokeListener);
+	}
+
+	@Override
+	public <K, V> ConsumerRecords<K, V> handleBatchAndReturnRemaining(Exception thrownException,
+			ConsumerRecords<?, ?> data, Consumer<?, ?> consumer, MessageListenerContainer container,
+			Runnable invokeListener) {
+
+		return this.batchErrorHandler.handleBatchAndReturnRemaining(thrownException, data, consumer, container,
+				invokeListener);
 	}
 
 	@Override
