@@ -45,6 +45,7 @@ import org.springframework.util.backoff.BackOffExecution;
  *
  * @author Gary Russell
  * @author Bill Kim
+ * @author Jan Mohr
  * @since 2.2
  *
  */
@@ -286,7 +287,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 	}
 
 	private boolean recoveryFailuresExhausted(ConsumerRecord<?, ?> record, TopicPartition tp, RuntimeException failure) {
-		if (this.maxRecoveryFailures == Integer.MAX_VALUE) {
+		if (this.maxRecoveryFailures == Integer.MAX_VALUE || SeekUtils.isBackoffException(failure)) {
 			return false;
 		}
 		Map<TopicPartition, RecoveryFailures> map = this.recoveryFailures.computeIfAbsent(Thread.currentThread(),
