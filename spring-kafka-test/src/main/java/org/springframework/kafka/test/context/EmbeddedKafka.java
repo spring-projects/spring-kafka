@@ -120,7 +120,7 @@ public @interface EmbeddedKafka {
 	 * counts call the {@code addTopics(NewTopic... topics)} method on the autowired
 	 * broker.
 	 * Place holders will only be resolved when there is a Spring test application
-	 * context present (such as when using {@code @SpringJunitConfig or @SpringRunner}.
+	 * context present (such as when using {@code @SpringJunitConfig or @SpringRunner}).
 	 * @return the topics to create
 	 */
 	String[] topics() default { };
@@ -130,7 +130,7 @@ public @interface EmbeddedKafka {
 	 * before runs. When used in a Spring test context, properties may contain property
 	 * place holders, e.g. {@code delete.topic.enable=${topic.delete:true}}.
 	 * Place holders will only be resolved when there is a Spring test application
-	 * context present (such as when using {@code @SpringJunitConfig or @SpringRunner}.
+	 * context present (such as when using {@code @SpringJunitConfig or @SpringRunner}).
 	 * @return the properties to add
 	 * @see #brokerPropertiesLocation()
 	 * @see org.springframework.kafka.test.EmbeddedKafkaBroker#brokerProperties(java.util.Map)
@@ -145,7 +145,7 @@ public @interface EmbeddedKafka {
 	 * {@link #brokerProperties()} will override properties found in
 	 * {@code brokerPropertiesLocation}.
 	 * Place holders will only be resolved when there is a Spring test application
-	 * context present (such as when using {@code @SpringJunitConfig or @SpringRunner}.
+	 * context present (such as when using {@code @SpringJunitConfig or @SpringRunner}).
 	 * @return a {@code Resource} url specifying the location of properties to add
 	 * @see #brokerProperties()
 	 * @see org.springframework.kafka.test.EmbeddedKafkaBroker#brokerProperties(java.util.Map)

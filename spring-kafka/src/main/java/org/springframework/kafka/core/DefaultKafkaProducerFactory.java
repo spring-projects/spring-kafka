@@ -203,7 +203,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 	 * {@link ProducerConfig#TRANSACTIONAL_ID_CONFIG} if provided. This config is going to
 	 * be overridden with a suffix for target {@link Producer} instance. The serializers'
 	 * {@code configure()} methods will be called with the configuration map unless
-	 * {@code configureSerializers} is false..
+	 * {@code configureSerializers} is false.
 	 * @param configs the configuration.
 	 * @param keySerializer the key {@link Serializer}.
 	 * @param valueSerializer the value {@link Serializer}.

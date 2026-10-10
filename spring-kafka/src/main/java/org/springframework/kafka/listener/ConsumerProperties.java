@@ -253,7 +253,7 @@ public class ConsumerProperties {
 	}
 
 	/**
-	 * Set the timeout for commitSync operations (if {@link #isSyncCommits()}. Overrides
+	 * Set the timeout for commitSync operations if {@link #isSyncCommits()} returns true. Overrides
 	 * the default api timeout property.
 	 * @param syncCommitTimeout the timeout.
 	 * @see #setSyncCommits(boolean)

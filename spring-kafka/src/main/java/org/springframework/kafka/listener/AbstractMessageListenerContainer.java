@@ -82,7 +82,7 @@ public abstract class AbstractMessageListenerContainer<K, V>
 
 	/**
 	 * The default {@link org.springframework.context.SmartLifecycle} phase for listener
-	 * containers {@value #DEFAULT_PHASE}.
+	 * containers {@value}.
 	 */
 	public static final int DEFAULT_PHASE = Integer.MAX_VALUE - 100; // late phase
 

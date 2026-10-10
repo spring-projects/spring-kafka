@@ -124,7 +124,7 @@ public class BatchListenerWithRecordAdapterTests {
 			ConcurrentKafkaListenerContainerFactory factory = new ConcurrentKafkaListenerContainerFactory();
 			factory.setConsumerFactory(consumerFactory());
 			factory.setBatchListener(true);
-			factory.setBatchToRecordAdapter(new DefaultBatchToRecordAdapter<>((record, ex) ->  {
+			factory.setBatchToRecordAdapter(new DefaultBatchToRecordAdapter<>((record, ex) -> {
 				this.failed = record;
 			}));
 			return factory;

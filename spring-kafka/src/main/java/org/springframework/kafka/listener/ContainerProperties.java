@@ -237,7 +237,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * <li>BATCH: Commit the offsets for each batch of records received from the consumer
 	 * when they all have been processed by the listener</li>
 	 * <li>TIME: Commit pending offsets after {@link #setAckTime(long) ackTime} number of
-	 * milliseconds; (should be greater than
+	 * milliseconds; should be greater than
 	 * {@code ConsumerProperties#setPollTimeout(long) pollTimeout}.</li>
 	 * <li>COUNT: Commit pending offsets after at least {@link #setAckCount(int) ackCount}
 	 * number of records have been processed</li>
@@ -408,7 +408,7 @@ public class ContainerProperties extends ConsumerProperties {
 	 * <li>BATCH: Commit the offsets for each batch of records received from the consumer
 	 * when they all have been processed by the listener</li>
 	 * <li>TIME: Commit pending offsets after {@link #setAckTime(long) ackTime} number of
-	 * milliseconds; (should be greater than
+	 * milliseconds; should be greater than
 	 * {@code ConsumerProperties#setPollTimeout(long) pollTimeout}.</li>
 	 * <li>COUNT: Commit pending offsets after at least {@link #setAckCount(int) ackCount}
 	 * number of records have been processed</li>
@@ -479,7 +479,7 @@ public class ContainerProperties extends ConsumerProperties {
 	}
 
 	/**
-	 * Set the timeout for commitSync operations (if {@link #isSyncCommits()}. Overrides
+	 * Set the timeout for commitSync operations if {@link #isSyncCommits()} returns true. Overrides
 	 * the default api timeout property. In order of precedence:
 	 * <ul>
 	 * <li>this property</li>
