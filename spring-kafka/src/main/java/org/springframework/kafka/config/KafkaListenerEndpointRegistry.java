@@ -239,7 +239,7 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 
 	/**
 	 * Create a message listener container for the given {@link KafkaListenerEndpoint}.
-	 * <p>This create the necessary infrastructure to honor that endpoint
+	 * <p>This creates the necessary infrastructure to honor that endpoint
 	 * with regards to its configuration.
 	 * @param endpoint the endpoint to add
 	 * @param factory the listener factory to use
@@ -251,7 +251,7 @@ public class KafkaListenerEndpointRegistry implements ListenerContainerRegistry,
 
 	/**
 	 * Create a message listener container for the given {@link KafkaListenerEndpoint}.
-	 * <p>This create the necessary infrastructure to honor that endpoint
+	 * <p>This creates the necessary infrastructure to honor that endpoint
 	 * with regards to its configuration.
 	 * <p>The {@code startImmediately} flag determines if the container should be
 	 * started immediately.

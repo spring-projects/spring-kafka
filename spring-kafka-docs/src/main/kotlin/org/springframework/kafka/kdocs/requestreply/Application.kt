@@ -35,7 +35,6 @@ import org.springframework.kafka.support.converter.ByteArrayJacksonJsonMessageCo
 import org.springframework.messaging.handler.annotation.SendTo
 import org.springframework.messaging.support.MessageBuilder
 import java.util.concurrent.TimeUnit
-import java.util.function.Consumer
 
 /**
  * Code snippets for request/reply messaging.
@@ -64,7 +63,7 @@ class Application {
 
     @Bean
     fun <K : Any, V : Any> kafkaTemplate(pf: ProducerFactory<K, V>?): KafkaTemplate<K, V> {
-        return KafkaTemplate<K, V>(pf!!)
+        return KafkaTemplate(pf!!)
     }
 
 // tag::beans[]
@@ -75,7 +74,7 @@ class Application {
     ): ReplyingKafkaTemplate<String, String, String> {
         val replyContainer = factory.createContainer("replies")
         replyContainer.containerProperties.setGroupId("request.replies")
-        val template = ReplyingKafkaTemplate<String, String, String>(pf, replyContainer)
+        val template = ReplyingKafkaTemplate(pf, replyContainer)
         template.messageConverter = ByteArrayJacksonJsonMessageConverter()
         template.setDefaultTopic("requests")
         return template

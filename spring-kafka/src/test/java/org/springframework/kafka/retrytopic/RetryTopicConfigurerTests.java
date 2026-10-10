@@ -157,7 +157,7 @@ class RetryTopicConfigurerTests {
 	@Mock
 	private KafkaListenerEndpointRegistrar registrar;
 
-	private Method getMethod(String methodName)  {
+	private Method getMethod(String methodName) {
 		try {
 			return this.getClass().getMethod(methodName);
 		}
