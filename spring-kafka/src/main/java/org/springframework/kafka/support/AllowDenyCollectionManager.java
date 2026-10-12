@@ -30,7 +30,7 @@ import org.springframework.util.Assert;
  * @author Tomaz Fernandes
  * @since 28/12/20
  */
-public final class AllowDenyCollectionManager<T>  {
+public final class AllowDenyCollectionManager<T> {
 
 	private final Collection<T> allowList;
 
