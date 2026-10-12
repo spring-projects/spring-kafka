@@ -55,7 +55,7 @@ tools-jackson-bom = { module = "tools.jackson:jackson-bom", version.ref = "jacks
 com-github-spotbugs-annotations = { module = "com.github.spotbugs:spotbugs-annotations", version.ref = "spotbugsVersion" }
 
 [plugins]
-aggregate-javadoc = { id = "io.freefair.aggregate-javadoc", version = "9.7.0" }
-nullability = { id = "io.spring.nullability", version = "0.0.16" }
+aggregate-javadoc = { id = "io.freefair.aggregate-javadoc", version = "9.8.0" }
+nullability = { id = "io.spring.nullability", version = "0.0.17" }
 antora = { id = "org.antora", version = "1.0.0" }
 io-spring-antora-generate-yml = { id = "io.spring.antora.generate-antora-yml", version = "0.0.1" }
