@@ -220,7 +220,7 @@ class RetryTopicConfigurationBuilderTests {
 
 		List<DestinationTopic.Properties> destinationTopicProperties = configuration.getDestinationTopicProperties();
 		assertThat(destinationTopicProperties).extracting(DestinationTopic.Properties::suffix)
-				.containsExactly("", "-retry", "-dlt");
+				.containsExactly("", "-retry-1000", "-dlt");
 		assertThat(destinationTopicProperties).extracting(DestinationTopic.Properties::delay)
 				.containsExactly(0L, 1000L, 0L);
 	}
