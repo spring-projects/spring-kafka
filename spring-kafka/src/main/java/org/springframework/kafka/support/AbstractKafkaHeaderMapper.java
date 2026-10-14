@@ -220,6 +220,12 @@ public abstract class AbstractKafkaHeaderMapper implements KafkaHeaderMapper {
 						+ "]; it must be a String");
 				return false;
 			}
+			if ((header.equals(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER)
+					|| header.equals(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER))
+					&& value instanceof Header) {
+				this.logger.debug(() -> "Not mapping inbound deserialization exception header " + header);
+				return false;
+			}
 			return true;
 		}
 		return false;
