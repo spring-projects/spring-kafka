@@ -28,6 +28,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 
+import org.springframework.core.NestedRuntimeException;
 import org.springframework.core.log.LogAccessor;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -36,6 +37,7 @@ import org.springframework.util.backoff.BackOffExecution;
 import org.springframework.util.backoff.FixedBackOff;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.BDDMockito.given;
@@ -44,6 +46,7 @@ import static org.mockito.Mockito.mock;
 /**
  * @author Gary Russell
  * @author Bill Kim
+ * @author Jan Mohr
  * @since 2.2.5
  *
  */
@@ -346,6 +349,22 @@ public class FailedRecordTrackerTests {
 		tracker.clearThreadState();
 		assertThatIllegalStateException().isThrownBy(() -> tracker.skip(otherPartition, new RuntimeException()));
 		assertThat(tracker.skip(otherPartition, new RuntimeException())).isTrue();
+	}
+
+	@Test
+	void backOffIsNotCountedAsRecoveryFailure() {
+		FailedRecordTracker tracker = new FailedRecordTracker((r, e) -> {
+			if (SeekUtils.isBackoffException(e)) {
+				throw (NestedRuntimeException) e;
+			}
+			throw new IllegalStateException("recoverer");
+		}, new FixedBackOff(0L, 0L), mock());
+		tracker.setMaxRecoveryFailures(1);
+		ConsumerRecord<?, ?> record = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
+		KafkaBackoffException backOff = new KafkaBackoffException("test", new TopicPartition("foo", 0), "id", 0L);
+		assertThatExceptionOfType(KafkaBackoffException.class).isThrownBy(() -> tracker.skip(record, backOff));
+		assertThatExceptionOfType(KafkaBackoffException.class).isThrownBy(() -> tracker.skip(record, backOff));
+		assertThat(tracker.skip(record, new RuntimeException())).isTrue();
 	}
 
 	@Test
