@@ -24,14 +24,17 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.assertj.core.api.InstanceOfAssertFactories;
+import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import org.springframework.core.log.LogAccessor;
@@ -696,10 +699,9 @@ public class JsonKafkaHeaderMapperTests {
 				.containsExactly(1, 2);
 	}
 
-	@Test
-	void deserializationExceptionHeadersAreMappedAsNonByteArray() {
-		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
-
+	@ParameterizedTest
+	@MethodSource("jsonHeaderMappers")
+	void deserializationExceptionHeadersAreMappedAsNonByteArray(KafkaHeaderMapper mapper) {
 		byte[] keyDeserExceptionBytes = SerializationTestUtils.header(true);
 		Header keyHeader = SerializationTestUtils.deserializationHeader(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER,
 				keyDeserExceptionBytes);
@@ -726,6 +728,44 @@ public class JsonKafkaHeaderMapperTests {
 		mapper.fromHeaders(new MessageHeaders(springHeaders), headers);
 		assertThat(headers.lastHeader(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER)).isNull();
 		assertThat(headers.lastHeader(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER)).isNull();
+	}
+
+	@ParameterizedTest
+	@MethodSource("jsonHeaderMappers")
+	void deserializationExceptionByteArrayHeadersAreMappedOutbound(KafkaHeaderMapper mapper) {
+		byte[] keyException = SerializationTestUtils.header(true);
+		byte[] valueException = SerializationTestUtils.header(false);
+		MessageHeaders source = new MessageHeaders(Map.of(
+				KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER, keyException,
+				KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER, valueException));
+		Headers target = new RecordHeaders();
+
+		mapper.fromHeaders(source, target);
+
+		assertThat(target).containsExactlyInAnyOrder(
+				new RecordHeader(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER, keyException),
+				new RecordHeader(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER, valueException));
+	}
+
+	@ParameterizedTest
+	@MethodSource("jsonHeaderMappers")
+	void annotatedDeserializationExceptionHeadersAreNotMappedOutbound(KafkaHeaderMapper mapper) {
+		// An annotated Header type is serialized by Jackson as an empty object instead of failing
+		MessageHeaders source = new MessageHeaders(Map.of(
+				KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER,
+				new AnnotatedHeader(KafkaUtils.KEY_DESERIALIZER_EXCEPTION_HEADER, SerializationTestUtils.header(true)),
+				KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER,
+				new AnnotatedHeader(KafkaUtils.VALUE_DESERIALIZER_EXCEPTION_HEADER, SerializationTestUtils.header(false))));
+		Headers target = new RecordHeaders();
+
+		mapper.fromHeaders(source, target);
+
+		assertThat(target).isEmpty();
+	}
+
+	@SuppressWarnings("removal")
+	static Stream<KafkaHeaderMapper> jsonHeaderMappers() {
+		return Stream.of(new JsonKafkaHeaderMapper(), new DefaultKafkaHeaderMapper());
 	}
 
 	@Test
@@ -832,6 +872,15 @@ public class JsonKafkaHeaderMapperTests {
 		@Override
 		public String toString() {
 			return "Bar [field=" + this.field + "]";
+		}
+
+	}
+
+	@NullMarked
+	static class AnnotatedHeader extends RecordHeader {
+
+		AnnotatedHeader(String key, byte[] value) {
+			super(key, value);
 		}
 
 	}
