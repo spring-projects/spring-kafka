@@ -7,6 +7,14 @@
 This section covers the changes made from version 4.1 to version 4.2.
 For changes in earlier versions, see xref:appendix/change-history.adoc[Change History].
 
+[[x42-kafka-client-version]]
+=== Kafka Client Version
+
+This version requires 4.4.0 `kafka-clients`.
+The embedded Kafka broker in Apache Kafka 4.4.0 relies on the `kafka-clients` test fixtures and on BouncyCastle (`bcpkix-jdk18on`), so `spring-kafka-test` now brings in both transitively.
+The embedded broker also registers BouncyCastle as a JCA security provider when it starts.
+If your test classpath also has legacy `bcprov-jdk15on` / `bcpkix-jdk15on` artifacts or `bc-fips`, exclude or align them to avoid duplicate BouncyCastle classes.
+
 [[x42-container-lifecycle-metrics]]
 === Container Lifecycle Metrics
 

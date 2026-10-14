@@ -27,8 +27,8 @@ import org.apache.kafka.common.protocol.Message;
 import org.apache.kafka.common.security.oauthbearer.DefaultJwtRetriever;
 import org.apache.kafka.common.security.oauthbearer.DefaultJwtValidator;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.common.utils.AppInfoParser.AppInfo;
-import org.apache.kafka.common.utils.ImplicitLinkedHashCollection;
+import org.apache.kafka.common.utils.internals.AppInfoParser.AppInfo;
+import org.apache.kafka.common.utils.internals.ImplicitLinkedHashCollection;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.aop.framework.AopProxyUtils;
