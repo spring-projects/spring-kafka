@@ -19,6 +19,8 @@ package org.springframework.kafka.listener;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -36,6 +38,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -45,6 +48,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 /**
  * @author Gary Russell
  * @author Cobi Eun
+ * @author WooSeung Kim
  * @since 2.8
  *
  */
@@ -118,6 +122,42 @@ public class CommonMixedErrorHandlerTests {
 		verify(batch).handleOtherException(null, null, null, true);
 		verifyNoMoreInteractions(record);
 		verifyNoMoreInteractions(batch);
+	}
+
+	@Test
+	void onPartitionsAssignedShouldBeForwardedToBothHandlers() {
+		CommonErrorHandler record = mock();
+		CommonErrorHandler batch = mock();
+		CommonMixedErrorHandler mixed = new CommonMixedErrorHandler(record, batch);
+		Consumer<?, ?> consumer = mock();
+		List<TopicPartition> partitions = List.of(TP);
+		Runnable publishPause = () -> { };
+		mixed.onPartitionsAssigned(consumer, partitions, publishPause);
+		verify(batch).onPartitionsAssigned(same(consumer), same(partitions), same(publishPause));
+		verify(record).onPartitionsAssigned(same(consumer), same(partitions), same(publishPause));
+	}
+
+	@Test
+	void partitionsAssignedDuringBatchRetryShouldBePaused() {
+		TopicPartition assignedDuringRetry = new TopicPartition("topic", 1);
+		CommonMixedErrorHandler mixed = new CommonMixedErrorHandler(new DefaultErrorHandler(),
+				new DefaultErrorHandler(new FixedBackOff(0, 1)));
+		Consumer<?, ?> consumer = mock();
+		given(consumer.assignment()).willReturn(Set.of(TP));
+		AtomicBoolean pausedEventPublished = new AtomicBoolean();
+		willAnswer(invocation -> {
+			// a rebalance completes during the retry poll and assigns another partition
+			given(consumer.assignment()).willReturn(Set.of(TP, assignedDuringRetry));
+			mixed.onPartitionsAssigned(consumer, List.of(assignedDuringRetry), () -> pausedEventPublished.set(true));
+			return ConsumerRecords.empty();
+		}).willReturn(ConsumerRecords.empty()).given(consumer).poll(any());
+		MessageListenerContainer container = mock();
+		given(container.isRunning()).willReturn(true);
+
+		mixed.handleBatch(new RuntimeException("failure"), threeRecords(), consumer, container, () -> { });
+
+		verify(consumer).pause(Set.of(TP, assignedDuringRetry));
+		assertThat(pausedEventPublished).isTrue();
 	}
 
 	private static DefaultErrorHandler noSeekErrorHandler() {
