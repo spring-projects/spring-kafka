@@ -64,6 +64,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -87,6 +88,7 @@ import static org.mockito.Mockito.verify;
  * @author Burak Kalayci
  * @author Jiyeon Kim
  * @author Ngoc Nhan
+ * @author Minju Kim
  * @since 4.0
  */
 @ExtendWith(MockitoExtension.class)
@@ -1053,6 +1055,65 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		InOrder inOrder = inOrder(mockConsumer);
 		inOrder.verify(mockConsumer).acknowledge(record, AcknowledgeType.ACCEPT);
 		inOrder.verify(mockConsumer).close();
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void renewRestartsTheAcknowledgmentTimeout() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock(ShareConsumerFactory.class);
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+		ShareConsumer<String, String> mockConsumer = mock(ShareConsumer.class);
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("test-topic", 0, 0L, "key", "value");
+		ConsumerRecords<String, String> records = new ConsumerRecords<>(
+				Map.of(new TopicPartition("test-topic", 0), List.of(record)), Map.of());
+		AtomicBoolean firstPoll = new AtomicBoolean(true);
+		given(mockConsumer.poll(any())).willAnswer(invocation -> {
+			if (firstPoll.compareAndSet(true, false)) {
+				return records;
+			}
+			Thread.sleep(50);
+			return ConsumerRecords.empty();
+		});
+
+		AtomicReference<ShareAcknowledgment> captured = new AtomicReference<>();
+		CountDownLatch latch = new CountDownLatch(1);
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.MANUAL);
+		containerProperties.setShareAcknowledgmentTimeout(Duration.ofHours(1));
+		containerProperties.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>)
+				(rec, acknowledgment, consumer) -> {
+					captured.set(acknowledgment);
+					latch.countDown();
+				});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("renewTimeoutContainer");
+		container.start();
+		try {
+			assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+			Object listenerConsumer = KafkaTestUtils.getPropertyValue(container, "consumers", List.class).get(0);
+			Map<ConsumerRecord<?, ?>, Long> timestamps =
+					KafkaTestUtils.getPropertyValue(listenerConsumer, "acknowledgmentTimestamps", Map.class);
+			// Pretend the record was dispatched a while ago, still well within the timeout
+			long dispatched = timestamps.get(record) - 1000;
+			timestamps.put(record, dispatched);
+
+			captured.get().renew();
+
+			await().atMost(Duration.ofSeconds(10))
+					.untilAsserted(() -> assertThat(timestamps.get(record)).isGreaterThan(dispatched));
+			verify(mockConsumer).acknowledge(record, AcknowledgeType.RENEW);
+
+			captured.get().acknowledge();
+
+			await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(timestamps).isEmpty());
+		}
+		finally {
+			container.stop();
+		}
 	}
 
 	@SuppressWarnings("unchecked")
