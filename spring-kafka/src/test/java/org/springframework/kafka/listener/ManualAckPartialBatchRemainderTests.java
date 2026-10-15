@@ -48,9 +48,11 @@ import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.mock;
 
 /**
- * Tests for {@link Acknowledgment#acknowledge()} after a partial batch acknowledgment.
+ * Tests for {@link Acknowledgment#acknowledge()} and {@link Acknowledgment#nack(int, Duration)}
+ * after a batch acknowledgment.
  *
  * @author Gangeun Lee
+ * @author Minju Kim
  *
  * @since 4.2
  *
@@ -96,6 +98,52 @@ public class ManualAckPartialBatchRemainderTests {
 		assertThat(commits).containsExactly(
 				Map.of(TP0, new OffsetAndMetadata(2L)),
 				Map.of(TP1, new OffsetAndMetadata(2L), TP2, new OffsetAndMetadata(2L)));
+	}
+
+	@Test
+	void nackAfterPartialCommitsOnlyRecordsNotYetAcknowledged() throws Exception {
+		List<Map<TopicPartition, OffsetAndMetadata>> commits = runBatch(ack -> {
+			ack.acknowledge(1);
+			ack.nack(3, Duration.ZERO);
+		});
+		assertThat(commits).containsExactly(
+				Map.of(TP0, new OffsetAndMetadata(2L)),
+				Map.of(TP1, new OffsetAndMetadata(1L)));
+	}
+
+	@Test
+	void nackAtOrBeforePartialIsRejected() throws Exception {
+		AtomicReference<Exception> nackFailure = new AtomicReference<>();
+		List<Map<TopicPartition, OffsetAndMetadata>> commits = runBatch(ack -> {
+			ack.acknowledge(3);
+			try {
+				ack.nack(1, Duration.ZERO);
+			}
+			catch (IllegalArgumentException ex) {
+				nackFailure.set(ex);
+			}
+		});
+		assertThat(nackFailure.get()).hasMessageContaining("previous partial commit");
+		assertThat(commits).containsExactly(
+				Map.of(TP0, new OffsetAndMetadata(2L), TP1, new OffsetAndMetadata(2L)));
+	}
+
+	@Test
+	void nackAfterAcknowledgeIsRejected() throws Exception {
+		AtomicReference<Exception> nackFailure = new AtomicReference<>();
+		List<Map<TopicPartition, OffsetAndMetadata>> commits = runBatch(ack -> {
+			ack.acknowledge();
+			try {
+				ack.nack(1, Duration.ZERO);
+			}
+			catch (IllegalStateException ex) {
+				nackFailure.set(ex);
+			}
+		});
+		assertThat(nackFailure.get()).hasMessageContaining("already been acknowledged");
+		assertThat(commits).containsExactly(
+				Map.of(TP0, new OffsetAndMetadata(2L), TP1, new OffsetAndMetadata(2L),
+						TP2, new OffsetAndMetadata(2L)));
 	}
 
 	private List<Map<TopicPartition, OffsetAndMetadata>> runBatch(java.util.function.Consumer<Acknowledgment> acks)
