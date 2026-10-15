@@ -25,6 +25,7 @@ updates:
           - io.micrometer:micrometer-docs-generator
           - org.hibernate.validator:hibernate-validator
           - org.awaitility:awaitility
+          - org.bouncycastle*
           - org.springframework.boot*
 
   - package-ecosystem: gradle
