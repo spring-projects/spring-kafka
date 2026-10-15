@@ -63,6 +63,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
  * @author Soby Chacko
  * @author Bill Kim
  * @author Jialin Chen
+ * @author Minju Kim
  * @since 2.8
  *
  */
@@ -83,6 +84,25 @@ public class DefaultErrorHandlerRecordTests {
 				mock(MessageListenerContainer.class))).isTrue();
 		verify(recoverer).accept(record, exception);
 		verifyNoInteractions(backOffHandler);
+	}
+
+	@Test
+	void backOffFunctionRetriesWhenDefaultBackOffHasNoRetries() {
+		AtomicReference<ConsumerRecord<?, ?>> recovered = new AtomicReference<>();
+		DefaultErrorHandler handler = new DefaultErrorHandler((r, t) -> recovered.set(r), new FixedBackOff(0L, 0L));
+		handler.setBackOffFunction((r, ex) -> ex instanceof IllegalStateException ? new FixedBackOff(0L, 1L) : null);
+		handler.setSeekAfterError(false);
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
+		Consumer<?, ?> consumer = mock(Consumer.class);
+		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		assertThat(handler.handleOne(new IllegalStateException(), record, consumer, container)).isFalse();
+		assertThat(recovered.get()).isNull();
+		assertThat(handler.handleOne(new IllegalStateException(), record, consumer, container)).isTrue();
+		assertThat(recovered.get()).isSameAs(record);
+		recovered.set(null);
+		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("foo", 0, 1L, "foo", "bar");
+		assertThat(handler.handleOne(new IllegalArgumentException(), record2, consumer, container)).isTrue();
+		assertThat(recovered.get()).isSameAs(record2);
 	}
 
 	@Test
