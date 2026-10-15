@@ -34,6 +34,7 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  * @author JaeYeon Kim
  * @author Cobi Eun
+ * @author WooSeung Kim
  * @since 2.8
  *
  */
@@ -132,6 +133,14 @@ public class CommonMixedErrorHandler implements CommonErrorHandler {
 	public void setAckAfterHandle(boolean ack) {
 		this.batchErrorHandler.setAckAfterHandle(ack);
 		this.recordErrorHandler.setAckAfterHandle(ack);
+	}
+
+	@Override
+	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions,
+			Runnable publishPause) {
+
+		this.batchErrorHandler.onPartitionsAssigned(consumer, partitions, publishPause);
+		this.recordErrorHandler.onPartitionsAssigned(consumer, partitions, publishPause);
 	}
 
 }
