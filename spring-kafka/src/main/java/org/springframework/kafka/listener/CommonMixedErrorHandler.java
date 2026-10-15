@@ -16,11 +16,13 @@
 
 package org.springframework.kafka.listener;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
 
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.util.Assert;
@@ -32,6 +34,7 @@ import org.springframework.util.Assert;
  * @author Gary Russell
  * @author JaeYeon Kim
  * @author Cobi Eun
+ * @author WooSeung Kim
  * @since 2.8
  *
  */
@@ -124,6 +127,14 @@ public class CommonMixedErrorHandler implements CommonErrorHandler {
 	public void setAckAfterHandle(boolean ack) {
 		this.batchErrorHandler.setAckAfterHandle(ack);
 		this.recordErrorHandler.setAckAfterHandle(ack);
+	}
+
+	@Override
+	public void onPartitionsAssigned(Consumer<?, ?> consumer, Collection<TopicPartition> partitions,
+			Runnable publishPause) {
+
+		this.batchErrorHandler.onPartitionsAssigned(consumer, partitions, publishPause);
+		this.recordErrorHandler.onPartitionsAssigned(consumer, partitions, publishPause);
 	}
 
 }
