@@ -742,6 +742,7 @@ Always ensure records are acknowledged in all code paths, including exception ha
 
 To help identify missing acknowledgments, Spring Kafka provides configurable timeout detection in `MANUAL` mode.
 When a record is not acknowledged within the specified timeout, a warning is logged with details about the unacknowledged record.
+Calling `renew()` restarts the timeout for that record, so records whose lock is renewed during long processing are not reported.
 
 [source,java]
 ----

@@ -112,6 +112,7 @@ import org.springframework.util.StringUtils;
  * @author OhKyu Chan
  * @author Jiyeon Kim
  * @author Ngoc Nhan
+ * @author Minju Kim
  *
  * @since 4.0
  *
@@ -714,6 +715,11 @@ public class ShareKafkaMessageListenerContainer<K, V>
 						// Remove from pending/timestamp tracking only on terminal ack (RENEW extends lock but record still in flight)
 						if (ack.type() != AcknowledgeType.RENEW) {
 							onRecordAcknowledged(ack.record());
+						}
+						else {
+							// The lock was extended, so restart the acknowledgment timeout for this record
+							this.acknowledgmentTimestamps.computeIfPresent(ack.record(),
+									(record, timestamp) -> System.currentTimeMillis());
 						}
 					}
 				}
