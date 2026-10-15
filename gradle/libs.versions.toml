@@ -9,13 +9,14 @@ springVersion = "7.1.0-SNAPSHOT"
 # Third-party dependencies
 assertjVersion = "3.27.7"
 awaitilityVersion = "4.3.0"
+bouncycastleVersion = "1.85" # align with the bcpkix version used by kafkaVersion
 hamcrestVersion = "3.0"
 hibernateValidationVersion = "9.1.4.Final"
 jacksonVersion = "2.22.3"
 jackson3Version = "3.2.3"
 jaywayJsonPathVersion = "3.0.0"
 junitJupiterVersion = "6.1.3"
-kafkaVersion = "4.3.1"
+kafkaVersion = "4.4.0"
 kotlinCoroutinesVersion = "1.11.0"
 log4jVersion = "2.26.1"
 micrometerDocsVersion = "1.0.4"
@@ -41,6 +42,7 @@ apache-kafka-streams-test-utils = { module = "org.apache.kafka:kafka-streams-tes
 apache-logging-log4j-bom = { module = "org.apache.logging.log4j:log4j-bom", version.ref = "log4jVersion" }
 org-assertj-core = { module = "org.assertj:assertj-core", version.ref = "assertjVersion" }
 org-awaitility = { module = "org.awaitility:awaitility", version.ref = "awaitilityVersion" }
+org-bouncycastle-bcpkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastleVersion" }
 org-hamcrest-core = { module = "org.hamcrest:hamcrest-core", version.ref = "hamcrestVersion" }
 org-hibernate-validator = { module = "org.hibernate.validator:hibernate-validator", version.ref = "hibernateValidationVersion" }
 org-jetbrains-kotlinx-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor", version.ref = "kotlinCoroutinesVersion" }

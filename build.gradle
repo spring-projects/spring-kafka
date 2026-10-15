@@ -367,14 +367,26 @@ project ('spring-kafka-test') {
 		api 'org.springframework:spring-context'
 		api 'org.springframework:spring-test'
 		api(libs.apache.kafka.clients) { artifact { classifier = 'test' } }
+		// Workaround for Kafka 4.4.0 publishing (no upstream issue filed; revisit on each Kafka upgrade):
+		// kafka-test-common-runtime's Gradle metadata requests a 'kafka-clients-test-fixtures' capability
+		// that kafka-clients does not publish, and neither its POM nor kafka-clients declares the fixtures
+		// jar or its BouncyCastle dependency. Once Kafka publishes these, remove the exclude below and the
+		// bcpkix runtimeOnly dependency. Keep the test-fixtures jar as api either way: MockTime, TestUtils
+		// and TestSslUtils moved there from the clients test jar.
+		api(libs.apache.kafka.clients) { artifact { classifier = 'test-fixtures' } }
 		api libs.apache.kafka.server
-		api libs.apache.kafka.test.common.runtime
+		api(libs.apache.kafka.test.common.runtime) {
+			exclude group: 'org.apache.kafka', module: 'kafka-clients'
+		}
 		api libs.apache.kafka.metadata
 		api libs.apache.kafka.server.common
 		api(libs.apache.kafka.server.common) { artifact { classifier = 'test' } }
 		api libs.apache.kafka.streams.test.utils
 		api 'org.junit.jupiter:junit-jupiter-api'
 		api 'org.junit.platform:junit-platform-launcher'
+
+		// Needed by the embedded broker's SSL setup; see the Kafka 4.4.0 workaround above.
+		runtimeOnly libs.org.bouncycastle.bcpkix
 
 		optionalApi libs.org.hamcrest.core
 		optionalApi libs.org.mockito.core

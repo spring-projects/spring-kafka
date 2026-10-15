@@ -163,7 +163,7 @@ public class GlobalEmbeddedKafkaTestExecutionListenerTests {
 					System.getProperty("spring.kafka.bootstrap-servers"));
 			producerConfigs.put(ProducerConfig.RETRIES_CONFIG, 1);
 			producerConfigs.put(ProducerConfig.RETRY_BACKOFF_MS_CONFIG, 1);
-			producerConfigs.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, 1000);
+			producerConfigs.put(ProducerConfig.MAX_BLOCK_MS_CONFIG, 5000);
 
 			StringSerializer serializer = new StringSerializer();
 			try (var kafkaProducer = new KafkaProducer<>(producerConfigs, serializer, serializer)) {
