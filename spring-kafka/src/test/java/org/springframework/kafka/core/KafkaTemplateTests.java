@@ -648,7 +648,7 @@ public class KafkaTemplateTests {
 		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(embeddedKafka, "outOfRange", false);
 		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
 		template.setConsumerFactory(new DefaultKafkaConsumerFactory<>(consumerProps));
-		long offset = template.send(RECEIVE_TOPIC, 0, 1, "foo").get(10, TimeUnit.SECONDS)
+		long offset = template.send(RECEIVE_TOPIC, 0, 1, "data").get(10, TimeUnit.SECONDS)
 				.getRecordMetadata().offset();
 
 		assertThat(template.receive(RECEIVE_TOPIC, 0, offset + 1000, Duration.ofSeconds(2))).isNull();
