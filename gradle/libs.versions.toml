@@ -9,7 +9,7 @@ springVersion = "7.1.0-SNAPSHOT"
 # Third-party dependencies
 assertjVersion = "3.27.7"
 awaitilityVersion = "4.3.0"
-bouncycastleVersion = "1.85" # align with the bcpkix version used by kafkaVersion
+bouncycastleVersion = "1.86" # align with the bcpkix version used by kafkaVersion
 hamcrestVersion = "3.0"
 hibernateValidationVersion = "9.1.5.Final"
 jacksonVersion = "2.22.3"
