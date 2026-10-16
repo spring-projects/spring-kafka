@@ -23,7 +23,7 @@ micrometerDocsVersion = "1.0.4"
 mockitoVersion = "5.24.0"
 slf4jVersion = "2.0.20"
 springBootVersion = "4.1.1"
-spotbugsVersion = "4.10.4"
+spotbugsVersion = "4.10.5"
 
 [libraries]
 com-fasterxml-jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version.ref = "jacksonVersion" }
