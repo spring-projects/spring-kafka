@@ -105,6 +105,7 @@ import org.springframework.util.StringUtils;
  * @author Valentina Armenise
  * @author Christian Fredriksson
  * @author Francois Rosiere
+ * @author Minju Kim
  */
 public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationContextAware, BeanNameAware,
 		ApplicationListener<ContextStoppedEvent>, DisposableBean, SmartInitializingSingleton {
@@ -643,7 +644,7 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 
 	@Override
 	public List<PartitionInfo> partitionsFor(String topic) {
-		Producer<K, V> producer = getTheProducer();
+		Producer<K, V> producer = getTheProducer(topic);
 		try {
 			return producer.partitionsFor(topic);
 		}
