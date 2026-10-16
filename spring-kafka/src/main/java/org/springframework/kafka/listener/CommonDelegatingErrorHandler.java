@@ -18,6 +18,7 @@ package org.springframework.kafka.listener;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,7 +39,7 @@ import org.springframework.util.Assert;
  * type. The delegates must have compatible properties ({@link #isAckAfterHandle()} etc.
  * {@link #deliveryAttemptHeader()} is supported when the default error handler or any
  * delegate supports it; the delivery attempt is reported by the handler that handled the
- * failures for the record.
+ * latest failure.
  *
  * @author Gary Russell
  * @author Adrian Chlebosz
@@ -56,6 +57,9 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 	private final CommonErrorHandler defaultErrorHandler;
 
 	private final Map<Class<? extends Throwable>, CommonErrorHandler> delegates = new LinkedHashMap<>();
+
+	private final ThreadLocal<Map<TopicPartition, CommonErrorHandler>> latestHandlers =
+			ThreadLocal.withInitial(HashMap::new);
 
 	private boolean causeChainTraversing = false;
 
@@ -108,16 +112,18 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 
 	@Override
 	public int deliveryAttempt(TopicPartitionOffset topicPartitionOffset) {
-		// Only the handler that handled the failures for this record has state for it
-		int deliveryAttempt = this.defaultErrorHandler.deliveryAttempt(topicPartitionOffset);
-		for (CommonErrorHandler handler : this.delegates.values()) {
-			deliveryAttempt = Math.max(deliveryAttempt, handler.deliveryAttempt(topicPartitionOffset));
+		// Other handlers may still hold state for the partition from earlier failures
+		CommonErrorHandler handler = this.latestHandlers.get().get(topicPartitionOffset.getTopicPartition());
+		if (handler == null) {
+			return 1;
 		}
-		return deliveryAttempt;
+		// A handler that does not support the feature reports 0, but the header starts at 1
+		return Math.max(1, handler.deliveryAttempt(topicPartitionOffset));
 	}
 
 	@Override
 	public void clearThreadState() {
+		this.latestHandlers.remove();
 		this.defaultErrorHandler.clearThreadState();
 		this.delegates.values().forEach(CommonErrorHandler::clearThreadState);
 	}
@@ -184,13 +190,10 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 	public void handleRemaining(Exception thrownException, List<ConsumerRecord<?, ?>> records,
 			Consumer<?, ?> consumer, MessageListenerContainer container) {
 
-		CommonErrorHandler handler = findDelegate(thrownException);
-		if (handler != null) {
-			handler.handleRemaining(thrownException, records, consumer, container);
-		}
-		else {
-			this.defaultErrorHandler.handleRemaining(thrownException, records, consumer, container);
-		}
+		CommonErrorHandler handler = records.isEmpty()
+				? selectHandler(thrownException)
+				: selectHandler(thrownException, records.get(0));
+		handler.handleRemaining(thrownException, records, consumer, container);
 	}
 
 	@Override
@@ -238,13 +241,19 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 	public boolean handleOne(Exception thrownException, ConsumerRecord<?, ?> record, Consumer<?, ?> consumer,
 			MessageListenerContainer container) {
 
+		CommonErrorHandler handler = selectHandler(thrownException, record);
+		return handler.handleOne(thrownException, record, consumer, container);
+	}
+
+	private CommonErrorHandler selectHandler(Throwable thrownException) {
 		CommonErrorHandler handler = findDelegate(thrownException);
-		if (handler != null) {
-			return handler.handleOne(thrownException, record, consumer, container);
-		}
-		else {
-			return this.defaultErrorHandler.handleOne(thrownException, record, consumer, container);
-		}
+		return handler != null ? handler : this.defaultErrorHandler;
+	}
+
+	private CommonErrorHandler selectHandler(Throwable thrownException, ConsumerRecord<?, ?> record) {
+		CommonErrorHandler handler = selectHandler(thrownException);
+		this.latestHandlers.get().put(new TopicPartition(record.topic(), record.partition()), handler);
+		return handler;
 	}
 
 	@Nullable

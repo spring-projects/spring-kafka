@@ -809,6 +809,8 @@ It is disabled by default to avoid the (small) overhead of looking up the state 
 
 The `DefaultErrorHandler` and `DefaultAfterRollbackProcessor` support this feature.
 Starting with version 4.2, the `CommonDelegatingErrorHandler` also supports it when its default error handler or any of its delegates does.
+The header reports the count of the handler that handled the latest failure.
+Each handler tracks only the failures that it handled, so if the same record fails with exceptions that are routed to different handlers, the value can be lower than the total number of delivery attempts.
 
 [[delivery-attempts-header-for-batch-listener]]
 == Delivery Attempts Header for batch listener

@@ -440,10 +440,70 @@ public class CommonDelegatingErrorHandlerTests {
 	}
 
 	@Test
+	void deliveryAttemptIsReportedByTheHandlerThatHandledTheLatestFailure() {
+		DefaultErrorHandler defaultHandler = noSeekErrorHandler();
+		DefaultErrorHandler delegate = noSeekErrorHandler();
+		var eh = new CommonDelegatingErrorHandler(defaultHandler);
+		eh.addDelegate(IllegalStateException.class, delegate);
+
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("topic", 0, 0L, "k0", "v0");
+		TopicPartitionOffset tpo = new TopicPartitionOffset("topic", 0, 0L);
+		for (int i = 0; i < 3; i++) {
+			eh.handleOne(wrap(new IllegalStateException()), record, mock(Consumer.class),
+					mock(MessageListenerContainer.class));
+		}
+		assertThat(eh.deliveryAttempt(tpo)).isEqualTo(4);
+
+		eh.handleOne(wrap(new IllegalArgumentException()), record, mock(Consumer.class),
+				mock(MessageListenerContainer.class));
+		assertThat(eh.deliveryAttempt(tpo)).isEqualTo(2);
+
+		eh.clearThreadState();
+		assertThat(eh.deliveryAttempt(tpo)).isEqualTo(1);
+	}
+
+	@Test
 	void deliveryAttemptHeaderIsNotSupportedWhenNoHandlerSupportsIt() {
 		var eh = new CommonDelegatingErrorHandler(mock(CommonErrorHandler.class));
 		eh.addDelegate(IllegalStateException.class, mock(CommonErrorHandler.class));
 		assertThat(eh.deliveryAttemptHeader()).isFalse();
+	}
+
+	@Test
+	void deliveryAttemptHeaderIsSupportedWhenOnlyADelegateSupportsIt() {
+		CommonErrorHandler defaultHandler = mock();
+		given(defaultHandler.isAckAfterHandle()).willReturn(true);
+		var eh = new CommonDelegatingErrorHandler(defaultHandler);
+		eh.addDelegate(IllegalStateException.class, noSeekErrorHandler());
+		assertThat(eh.deliveryAttemptHeader()).isTrue();
+
+		TopicPartitionOffset tpo = new TopicPartitionOffset("topic", 0, 0L);
+		assertThat(eh.deliveryAttempt(tpo)).isEqualTo(1);
+
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("topic", 0, 0L, "k0", "v0");
+		eh.handleOne(wrap(new IllegalArgumentException()), record, mock(Consumer.class),
+				mock(MessageListenerContainer.class));
+		assertThat(eh.deliveryAttempt(tpo)).isEqualTo(1);
+	}
+
+	@Test
+	void deliveryAttemptIsTrackedPerPartition() {
+		DefaultErrorHandler defaultHandler = noSeekErrorHandler();
+		DefaultErrorHandler delegate = noSeekErrorHandler();
+		var eh = new CommonDelegatingErrorHandler(defaultHandler);
+		eh.addDelegate(IllegalStateException.class, delegate);
+
+		ConsumerRecord<String, String> first = new ConsumerRecord<>("topic", 0, 0L, "k0", "v0");
+		ConsumerRecord<String, String> second = new ConsumerRecord<>("topic", 1, 0L, "k1", "v1");
+		for (int i = 0; i < 3; i++) {
+			eh.handleOne(wrap(new IllegalStateException()), first, mock(Consumer.class),
+					mock(MessageListenerContainer.class));
+		}
+		eh.handleOne(wrap(new IllegalArgumentException()), second, mock(Consumer.class),
+				mock(MessageListenerContainer.class));
+
+		assertThat(eh.deliveryAttempt(new TopicPartitionOffset("topic", 0, 0L))).isEqualTo(4);
+		assertThat(eh.deliveryAttempt(new TopicPartitionOffset("topic", 1, 0L))).isEqualTo(2);
 	}
 
 	private static DefaultErrorHandler noSeekErrorHandler() {
