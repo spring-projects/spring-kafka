@@ -93,15 +93,15 @@ public class DefaultErrorHandlerRecordTests {
 		DefaultErrorHandler handler = new DefaultErrorHandler((r, t) -> recovered.set(r), new FixedBackOff(0L, 0L));
 		handler.setBackOffFunction((r, ex) -> ex instanceof IllegalStateException ? new FixedBackOff(0L, 1L) : null);
 		handler.setSeekAfterError(false);
-		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
-		Consumer<?, ?> consumer = mock(Consumer.class);
-		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("orders", 0, 0L, "key", "value");
+		Consumer<?, ?> consumer = mock();
+		MessageListenerContainer container = mock();
 		assertThat(handler.handleOne(new IllegalStateException(), record, consumer, container)).isFalse();
 		assertThat(recovered.get()).isNull();
 		assertThat(handler.handleOne(new IllegalStateException(), record, consumer, container)).isTrue();
 		assertThat(recovered.get()).isSameAs(record);
 		recovered.set(null);
-		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("foo", 0, 1L, "foo", "bar");
+		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("orders", 0, 1L, "key", "value");
 		assertThat(handler.handleOne(new IllegalArgumentException(), record2, consumer, container)).isTrue();
 		assertThat(recovered.get()).isSameAs(record2);
 	}

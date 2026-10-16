@@ -71,13 +71,13 @@ public class FailedRecordTrackerTests {
 		AtomicInteger functionCalls = new AtomicInteger();
 		List<Integer> failedDeliveries = new ArrayList<>();
 		FailedRecordTracker tracker = new FailedRecordTracker((r, e) -> recovered.incrementAndGet(),
-				new FixedBackOff(0L, 0L), mock(LogAccessor.class));
+				new FixedBackOff(0L, 0L), mock());
 		tracker.setBackOffFunction((record, ex) -> {
 			functionCalls.incrementAndGet();
 			return ex instanceof IllegalStateException ? new FixedBackOff(0L, 2L) : null;
 		});
 		tracker.setRetryListeners((record, ex, attempt) -> failedDeliveries.add(attempt));
-		ConsumerRecord<?, ?> record = new ConsumerRecord<>("foo", 0, 0L, "bar", "baz");
+		ConsumerRecord<?, ?> record = new ConsumerRecord<>("orders", 0, 0L, "key", "value");
 		assertThat(tracker.skip(record, new IllegalStateException())).isFalse();
 		assertThat(tracker.skip(record, new IllegalStateException())).isFalse();
 		assertThat(tracker.skip(record, new IllegalStateException())).isTrue();
@@ -85,7 +85,7 @@ public class FailedRecordTrackerTests {
 		assertThat(functionCalls.get()).isEqualTo(1);
 		assertThat(failedDeliveries).containsExactly(1, 2, 3);
 
-		ConsumerRecord<?, ?> record2 = new ConsumerRecord<>("foo", 0, 1L, "bar", "baz");
+		ConsumerRecord<?, ?> record2 = new ConsumerRecord<>("orders", 0, 1L, "key", "value");
 		assertThat(tracker.skip(record2, new IllegalArgumentException())).isTrue();
 		assertThat(recovered.get()).isEqualTo(2);
 		assertThat(functionCalls.get()).isEqualTo(2);
