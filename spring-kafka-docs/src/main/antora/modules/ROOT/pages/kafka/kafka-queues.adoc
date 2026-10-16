@@ -174,6 +174,10 @@ Unlike `ConsumerStoppingEvent`, this event carries a `ShareConsumer` reference (
 ** `ABNORMAL` - the consumer thread exited because of an `Exception`.
 ** `ERROR` - a `java.lang.Error` was thrown.
 
+After a consumer thread exits with `ABNORMAL` or `ERROR`, `isInExpectedState()` returns `false` until the container is started again.
+The container itself is still running (`isRunning()` returns `true`), so call `stop()` and then `start()` to restart it.
+`isInExpectedState()` also returns `false` after `stopAbnormally()` is called, until the container is started again.
+
 These events can be consumed with `@EventListener` (see xref:kafka/events.adoc#event-consumption[Event Consumption]) to integrate share containers with the same monitoring and restart patterns available for regular containers.
 
 [[share-container-concurrency]]

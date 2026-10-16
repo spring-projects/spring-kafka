@@ -130,6 +130,8 @@ public class ShareKafkaMessageListenerContainer<K, V>
 
 	private volatile CountDownLatch startLatch = new CountDownLatch(1);
 
+	private volatile boolean consumerStoppedAbnormally;
+
 	/**
 	 * Construct an instance with the supplied configuration properties.
 	 * @param shareConsumerFactory the share consumer factory
@@ -173,9 +175,31 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		this.concurrency = concurrency;
 	}
 
+	/**
+	 * Return false if a consumer thread exited due to an exception or error while the
+	 * container was running, or if the container was stopped with
+	 * {@link #stopAbnormally(Runnable)}; the state is reset when the container is started
+	 * again.
+	 * @return true if the state is as expected.
+	 */
 	@Override
 	public boolean isInExpectedState() {
-		return isRunning();
+		return !this.consumerStoppedAbnormally;
+	}
+
+	@Override
+	public void stopAbnormally(Runnable callback) {
+		this.lifecycleLock.lock();
+		try {
+			if (isRunning()) {
+				this.consumerStoppedAbnormally = true;
+			}
+			stop();
+		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
+		callback.run();
 	}
 
 	@Override
@@ -246,6 +270,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			throw e;
 		}
 
+		this.consumerStoppedAbnormally = false;
 		setRunning(true);
 		this.startLatch = new CountDownLatch(this.concurrency);
 
@@ -526,6 +551,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 				}
 				catch (Error e) {
 					this.logger.error(e, "Stopping share consumer due to an Error");
+					ShareKafkaMessageListenerContainer.this.consumerStoppedAbnormally = true;
 					wrapUp(e);
 					throw e;
 				}
@@ -540,6 +566,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			}
 			if (exitThrowable != null) {
 				this.logger.error(exitThrowable, "ShareListenerConsumer exiting due to error");
+				ShareKafkaMessageListenerContainer.this.consumerStoppedAbnormally = true;
 			}
 			wrapUp(exitThrowable);
 		}

@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -792,6 +793,161 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		assertThat(stoppedLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(stoppedReason.get()).isEqualTo(Reason.ABNORMAL);
 		container.stop();
+	}
+
+	@Test
+	void shouldNotBeInExpectedStateAfterConsumerExitsOnException() throws InterruptedException {
+		ShareConsumer<String, String> consumer = mock();
+		given(consumer.poll(any()))
+				.willThrow(new RuntimeException("test exception"))
+				.willAnswer(invocation -> {
+					Thread.sleep(10);
+					return ConsumerRecords.empty();
+				});
+		given(shareConsumerFactory.getConfigurationProperties()).willReturn(Map.of());
+		given(shareConsumerFactory.createShareConsumer(any(), any(), any())).willReturn(consumer);
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		CountDownLatch stoppedLatch = new CountDownLatch(1);
+		container.setApplicationEventPublisher(event -> {
+			if (event instanceof ConsumerStoppedEvent) {
+				stoppedLatch.countDown();
+			}
+		});
+
+		assertThat(container.isInExpectedState()).isTrue();
+		container.start();
+		assertThat(stoppedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(container.isInExpectedState()).isFalse();
+		container.stop();
+		assertThat(container.isInExpectedState()).isFalse();
+		container.start();
+		assertThat(container.isInExpectedState()).isTrue();
+		container.stop();
+	}
+
+	@Test
+	void shouldNotBeInExpectedStateAfterConsumerExitsOnError() throws InterruptedException {
+		ShareConsumer<String, String> consumer = mock();
+		willAnswer(invocation -> {
+			throw new StackOverflowError("test error");
+		}).given(consumer).poll(any());
+		given(shareConsumerFactory.getConfigurationProperties()).willReturn(Map.of());
+		given(shareConsumerFactory.createShareConsumer(any(), any(), any())).willReturn(consumer);
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		CountDownLatch stoppedLatch = new CountDownLatch(1);
+		container.setApplicationEventPublisher(event -> {
+			if (event instanceof ConsumerStoppedEvent) {
+				stoppedLatch.countDown();
+			}
+		});
+
+		container.start();
+		assertThat(stoppedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(container.isInExpectedState()).isFalse();
+		container.stop();
+	}
+
+	@Test
+	void shouldNotBeInExpectedStateAfterStopAbnormally() throws InterruptedException {
+		ShareConsumer<String, String> consumer = mock();
+		CountDownLatch pollLatch = new CountDownLatch(1);
+		given(consumer.poll(any())).willAnswer(invocation -> {
+			pollLatch.countDown();
+			Thread.sleep(10);
+			return ConsumerRecords.empty();
+		});
+		given(shareConsumerFactory.getConfigurationProperties()).willReturn(Map.of());
+		given(shareConsumerFactory.createShareConsumer(any(), any(), any())).willReturn(consumer);
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		container.start();
+		assertThat(pollLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		CountDownLatch callbackLatch = new CountDownLatch(1);
+		container.stopAbnormally(callbackLatch::countDown);
+		assertThat(callbackLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(container.isRunning()).isFalse();
+		assertThat(container.isInExpectedState()).isFalse();
+		container.start();
+		assertThat(container.isInExpectedState()).isTrue();
+		container.stop();
+		assertThat(container.isInExpectedState()).isTrue();
+	}
+
+	@Test
+	void shouldNotBeInExpectedStateAfterStopAbnormallyDuringStart() throws Exception {
+		ShareConsumer<String, String> consumer = mock();
+		given(consumer.poll(any())).willAnswer(invocation -> {
+			Thread.sleep(10);
+			return ConsumerRecords.empty();
+		});
+		CountDownLatch creatingLatch = new CountDownLatch(1);
+		CountDownLatch releaseLatch = new CountDownLatch(1);
+		given(shareConsumerFactory.getConfigurationProperties()).willReturn(Map.of());
+		given(shareConsumerFactory.createShareConsumer(any(), any(), any())).willAnswer(invocation -> {
+			creatingLatch.countDown();
+			assertThat(releaseLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			return consumer;
+		});
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		CompletableFuture<Void> start = CompletableFuture.runAsync(container::start);
+		assertThat(creatingLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		CompletableFuture<Void> stopAbnormally = CompletableFuture.runAsync(() -> container.stopAbnormally(() -> {
+		}));
+		await().atMost(Duration.ofSeconds(10)).until(container.lifecycleLock::hasQueuedThreads);
+		releaseLatch.countDown();
+		start.get(10, TimeUnit.SECONDS);
+		stopAbnormally.get(10, TimeUnit.SECONDS);
+
+		assertThat(container.isRunning()).isFalse();
+		assertThat(container.isInExpectedState()).isFalse();
+	}
+
+	@Test
+	void shouldBeInExpectedStateAfterNormalStop() throws InterruptedException {
+		ShareConsumer<String, String> consumer = mock();
+		CountDownLatch pollLatch = new CountDownLatch(1);
+		given(consumer.poll(any())).willAnswer(invocation -> {
+			pollLatch.countDown();
+			Thread.sleep(10);
+			return ConsumerRecords.empty();
+		});
+		given(shareConsumerFactory.getConfigurationProperties()).willReturn(Map.of());
+		given(shareConsumerFactory.createShareConsumer(any(), any(), any())).willReturn(consumer);
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
+
+		container.start();
+		assertThat(pollLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(container.isInExpectedState()).isTrue();
+		container.stop();
+		assertThat(container.isInExpectedState()).isTrue();
 	}
 
 	@Test
