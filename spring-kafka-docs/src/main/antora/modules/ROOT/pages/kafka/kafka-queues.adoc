@@ -136,6 +136,10 @@ public ShareKafkaMessageListenerContainer<String, String> container(
 }
 ----
 
+If a consumer thread exits because of an `Exception` or `java.lang.Error`, `isInExpectedState()` returns `false` until the container is started again.
+The container itself is still running (`isRunning()` returns `true`), so call `stop()` and then `start()` to restart it.
+`isInExpectedState()` also returns `false` after `stopAbnormally()` is called, until the container is started again.
+
 [[share-container-properties]]
 === Container Properties
 
