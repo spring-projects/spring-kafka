@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.producer.Callback;
@@ -106,13 +107,17 @@ import static org.springframework.kafka.test.assertj.KafkaConditions.value;
  * @author Thomas Strauß
  * @author Soby Chacko
  * @author Gurps Bassi
+ * @author Minju Kim
  */
-@EmbeddedKafka(topics = { KafkaTemplateTests.INT_KEY_TOPIC, KafkaTemplateTests.STRING_KEY_TOPIC })
+@EmbeddedKafka(topics = { KafkaTemplateTests.INT_KEY_TOPIC, KafkaTemplateTests.STRING_KEY_TOPIC,
+		KafkaTemplateTests.RECEIVE_TOPIC })
 public class KafkaTemplateTests {
 
 	public static final String INT_KEY_TOPIC = "intKeyTopic";
 
 	public static final String STRING_KEY_TOPIC = "stringKeyTopic";
+
+	public static final String RECEIVE_TOPIC = "receiveTopic";
 
 	private static EmbeddedKafkaBroker embeddedKafka;
 
@@ -633,6 +638,26 @@ public class KafkaTemplateTests {
 		inOrder.verify(producerInterceptor1).onAcknowledgement(any(RecordMetadata.class), Mockito.isNull());
 		inOrder.verify(producerInterceptor2).onAcknowledgement(any(RecordMetadata.class), Mockito.isNull());
 		assertThat(result.get(10, TimeUnit.SECONDS).getProducerRecord()).isEqualTo(new ProducerRecord<>("prod-interceptor-test-3", "baz"));
+	}
+
+	@Test
+	void receiveReturnsNothingForAnOffsetOutOfRange() throws Exception {
+		Map<String, Object> senderProps = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(senderProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf, true);
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(embeddedKafka, "outOfRange", false);
+		consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		template.setConsumerFactory(new DefaultKafkaConsumerFactory<>(consumerProps));
+		long offset = template.send(RECEIVE_TOPIC, 0, 1, "data").get(10, TimeUnit.SECONDS)
+				.getRecordMetadata().offset();
+
+		assertThat(template.receive(RECEIVE_TOPIC, 0, offset + 1000, Duration.ofSeconds(2))).isNull();
+		assertThat(template.receive(List.of(new TopicPartitionOffset(RECEIVE_TOPIC, 0, offset + 1000)),
+				Duration.ofSeconds(2)).count()).isZero();
+		assertThat(template.receive(RECEIVE_TOPIC, 0, offset))
+				.extracting(ConsumerRecord::offset)
+				.isEqualTo(offset);
+		pf.destroy();
 	}
 
 	@ParameterizedTest(name = "{0} is invalid")
