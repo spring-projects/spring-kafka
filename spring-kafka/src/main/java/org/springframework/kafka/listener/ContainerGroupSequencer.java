@@ -40,6 +40,8 @@ import org.springframework.kafka.event.ListenerContainerIdleEvent;
  *
  * @author Gary Russell
  * @author Sanghyeok An
+ * @author Minju Kim
+ *
  * @since 2.7.3
  *
  */
@@ -205,8 +207,8 @@ public class ContainerGroupSequencer implements ApplicationContextAware,
 					MessageListenerContainer container = this.registry.getListenerContainer(id);
 					if (Objects.requireNonNull(container).getContainerProperties().getIdleEventInterval() == null) {
 						container.getContainerProperties().setIdleEventInterval(this.defaultIdleEventInterval);
-						container.setAutoStartup(false);
 					}
+					container.setAutoStartup(false);
 				});
 			});
 		}
