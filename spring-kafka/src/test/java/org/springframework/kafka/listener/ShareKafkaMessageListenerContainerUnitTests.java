@@ -1061,9 +1061,9 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 	@Test
 	@SuppressWarnings("unchecked")
 	void renewRestartsTheAcknowledgmentTimeout() throws Exception {
-		ShareConsumerFactory<String, String> mockFactory = mock(ShareConsumerFactory.class);
+		ShareConsumerFactory<String, String> mockFactory = mock();
 		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
-		ShareConsumer<String, String> mockConsumer = mock(ShareConsumer.class);
+		ShareConsumer<String, String> mockConsumer = mock();
 		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
 
 		ConsumerRecord<String, String> record = new ConsumerRecord<>("test-topic", 0, 0L, "key", "value");
