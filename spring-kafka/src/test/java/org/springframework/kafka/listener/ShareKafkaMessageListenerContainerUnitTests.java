@@ -927,7 +927,7 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 	@Test
 	void shouldNotBeInExpectedStateAfterStopAbnormallyDuringStart() throws Exception {
 		ShareConsumer<String, String> consumer = mock();
-		given(consumer.poll(any())).willAnswer(invocation -> {
+		lenient().when(consumer.poll(any())).thenAnswer(invocation -> {
 			Thread.sleep(10);
 			return ConsumerRecords.empty();
 		});
