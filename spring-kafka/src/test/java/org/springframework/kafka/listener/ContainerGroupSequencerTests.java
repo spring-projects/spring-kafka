@@ -28,6 +28,7 @@ import org.apache.commons.logging.LogFactory;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
@@ -49,9 +50,14 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 /**
  * @author Gary Russell
+ * @author Minju Kim
+ *
  * @since 2.7.3
  *
  */
@@ -95,6 +101,32 @@ public class ContainerGroupSequencerTests {
 				.as("out of order %s", expected)
 				.isIn("three", "four");
 		assertThat(config.receivedAt.get(3) - config.receivedAt.get(0)).isGreaterThanOrEqualTo(1000);
+	}
+
+	@Test
+	void initializeDisablesAutoStartupOfAllContainersInTheGroups() {
+		ContainerProperties withIntervalProperties = new ContainerProperties("orders");
+		withIntervalProperties.setIdleEventInterval(1000L);
+		MessageListenerContainer withInterval = mock();
+		given(withInterval.getListenerId()).willReturn("withInterval");
+		given(withInterval.getContainerProperties()).willReturn(withIntervalProperties);
+		ContainerProperties withoutIntervalProperties = new ContainerProperties("orders");
+		MessageListenerContainer withoutInterval = mock();
+		given(withoutInterval.getListenerId()).willReturn("withoutInterval");
+		given(withoutInterval.getContainerProperties()).willReturn(withoutIntervalProperties);
+		ListenerContainerRegistry registry = mock();
+		given(registry.getListenerContainer("withInterval")).willReturn(withInterval);
+		given(registry.getListenerContainer("withoutInterval")).willReturn(withoutInterval);
+		ApplicationContext applicationContext = mock();
+		given(applicationContext.getBean("ordersGroup.group", ContainerGroup.class))
+				.willReturn(new ContainerGroup("ordersGroup", withInterval, withoutInterval));
+		ContainerGroupSequencer sequencer = new ContainerGroupSequencer(registry, 5000L, "ordersGroup");
+		sequencer.setApplicationContext(applicationContext);
+		sequencer.initialize();
+		verify(withInterval).setAutoStartup(false);
+		verify(withoutInterval).setAutoStartup(false);
+		assertThat(withIntervalProperties.getIdleEventInterval()).isEqualTo(1000L);
+		assertThat(withoutIntervalProperties.getIdleEventInterval()).isEqualTo(5000L);
 	}
 
 	@Configuration
