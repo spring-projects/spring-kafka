@@ -89,6 +89,7 @@ import static org.mockito.Mockito.verify;
  * @author Jiyeon Kim
  * @author Ngoc Nhan
  * @author Minju Kim
+ *
  * @since 4.0
  */
 @ExtendWith(MockitoExtension.class)
