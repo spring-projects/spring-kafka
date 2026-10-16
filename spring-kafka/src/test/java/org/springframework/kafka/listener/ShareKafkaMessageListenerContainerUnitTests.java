@@ -827,10 +827,9 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		container.stop();
 	}
 
-	@SuppressWarnings("unchecked")
 	@Test
 	void shouldNotBeInExpectedStateAfterConsumerExitsOnException() throws InterruptedException {
-		ShareConsumer<String, String> consumer = mock(ShareConsumer.class);
+		ShareConsumer<String, String> consumer = mock();
 		willAnswer(invocation -> {
 			throw new RuntimeException("test exception");
 		}).given(consumer).poll(any());
@@ -858,10 +857,9 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		assertThat(container.isInExpectedState()).isFalse();
 	}
 
-	@SuppressWarnings("unchecked")
 	@Test
 	void shouldBeInExpectedStateAfterNormalStop() throws InterruptedException {
-		ShareConsumer<String, String> consumer = mock(ShareConsumer.class);
+		ShareConsumer<String, String> consumer = mock();
 		CountDownLatch pollLatch = new CountDownLatch(1);
 		given(consumer.poll(any())).willAnswer(invocation -> {
 			pollLatch.countDown();
