@@ -1,6 +1,6 @@
 buildscript {
 	ext.isCI = System.getenv('GITHUB_ACTION')
-	ext.kotlinVersion = '2.4.20'
+	ext.kotlinVersion = '2.4.21'
 	repositories {
 		gradlePluginPortal()
 		mavenCentral()
