@@ -43,6 +43,8 @@ import org.springframework.util.backoff.BackOffExecution;
  * Track record processing failure counts.
  *
  * @author Gary Russell
+ * @author Minju Kim
+ *
  * @since 2.2
  *
  */
@@ -171,14 +173,21 @@ class FailedRecordTracker implements RecoveryStrategy {
 			@Nullable MessageListenerContainer container,
 			@Nullable Consumer<?, ?> consumer) throws InterruptedException {
 
-		if (this.noRetries) {
-			attemptRecovery(record, exception, null, consumer);
-			return true;
-		}
 		Thread currentThread = Thread.currentThread();
+		BackOff backOffForNewFailure = null;
+		if (this.noRetries && !isRetrying(currentThread, topicPartition, record)) {
+			// the backOffFunction may still provide retries for this record/exception
+			backOffForNewFailure = determineBackOff(record, ErrorHandlingUtils.findRootCause(exception));
+			if (backOffForNewFailure == this.backOff
+					|| backOffForNewFailure.start().nextBackOff() == BackOffExecution.STOP) {
+
+				attemptRecovery(record, exception, topicPartition, consumer);
+				return true;
+			}
+		}
 		Map<TopicPartition, FailedRecord> map = this.failures.computeIfAbsent(currentThread, t -> new HashMap<>());
-		TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
-		FailedRecord failedRecord = getFailedRecordInstance(record, exception, map, topicPartition);
+		FailedRecord failedRecord = getFailedRecordInstance(record, exception, map, topicPartition,
+				backOffForNewFailure);
 		this.retryListeners.forEach(rl ->
 				rl.failedDelivery(record, exception, failedRecord.getDeliveryAttempts().get()));
 		long nextBackOff = failedRecord.getBackOffExecution().nextBackOff();
@@ -196,8 +205,15 @@ class FailedRecordTracker implements RecoveryStrategy {
 		}
 	}
 
+	private boolean isRetrying(Thread thread, TopicPartition topicPartition, ConsumerRecord<?, ?> record) {
+		Map<TopicPartition, FailedRecord> map = this.failures.get(thread);
+		FailedRecord failedRecord = map == null ? null : map.get(topicPartition);
+		return failedRecord != null && failedRecord.getOffset() == record.offset();
+	}
+
 	private FailedRecord getFailedRecordInstance(ConsumerRecord<?, ?> record, @Nullable Exception exception,
-			Map<TopicPartition, FailedRecord> map, TopicPartition topicPartition) {
+			Map<TopicPartition, FailedRecord> map, TopicPartition topicPartition,
+			@Nullable BackOff backOffForNewFailure) {
 
 		Exception realException = ErrorHandlingUtils.findRootCause(exception);
 		FailedRecord failedRecord = map.get(topicPartition);
@@ -205,7 +221,10 @@ class FailedRecordTracker implements RecoveryStrategy {
 				|| (this.resetStateOnExceptionChange
 						&& !Objects.requireNonNull(realException).getClass().isInstance(failedRecord.getLastException()))) {
 
-			failedRecord = new FailedRecord(record.offset(), determineBackOff(record, realException).start());
+			BackOff backOffToUse = backOffForNewFailure != null
+					? backOffForNewFailure
+					: determineBackOff(record, realException);
+			failedRecord = new FailedRecord(record.offset(), backOffToUse.start());
 			map.put(topicPartition, failedRecord);
 		}
 		else {
