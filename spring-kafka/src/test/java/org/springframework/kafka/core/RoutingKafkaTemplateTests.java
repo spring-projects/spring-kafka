@@ -17,11 +17,13 @@
 package org.springframework.kafka.core;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.common.PartitionInfo;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -37,6 +39,8 @@ import static org.mockito.Mockito.verify;
 /**
  * @author Gary Russell
  * @author Nathan Xu
+ * @author Minju Kim
+ *
  * @since 2.5
  *
  */
@@ -64,6 +68,27 @@ public class RoutingKafkaTemplateTests {
 		verify(p1, times(2)).send(any(), any());
 		verify(p2, times(2)).send(any(), any());
 		assertThat(KafkaTestUtils.getPropertyValue(template, "factoryMap", Map.class)).hasSize(2);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	public void partitionsForRoutesByTopic() {
+		Producer<Object, Object> p1 = mock(Producer.class);
+		List<PartitionInfo> fooPartitions = List.of(new PartitionInfo("foo", 0, null, null, null));
+		given(p1.partitionsFor("foo")).willReturn(fooPartitions);
+		Producer<Object, Object> p2 = mock(Producer.class);
+		List<PartitionInfo> barPartitions = List.of(new PartitionInfo("bar", 0, null, null, null));
+		given(p2.partitionsFor("bar")).willReturn(barPartitions);
+		ProducerFactory<Object, Object> pf1 = mock(ProducerFactory.class);
+		ProducerFactory<Object, Object> pf2 = mock(ProducerFactory.class);
+		given(pf1.createProducer()).willReturn(p1);
+		given(pf2.createProducer()).willReturn(p2);
+		Map<Pattern, ProducerFactory<Object, Object>> map = new LinkedHashMap<>();
+		map.put(Pattern.compile("fo.*"), pf1);
+		map.put(Pattern.compile(".*"), pf2);
+		RoutingKafkaTemplate template = new RoutingKafkaTemplate(map);
+		assertThat(template.partitionsFor("foo")).isSameAs(fooPartitions);
+		assertThat(template.partitionsFor("bar")).isSameAs(barPartitions);
 	}
 
 	@SuppressWarnings("unchecked")
