@@ -23,6 +23,7 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
@@ -52,6 +53,7 @@ import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.GenericMessageListenerContainer;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.KafkaUtils;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.micrometer.KafkaListenerObservation;
 import org.springframework.kafka.support.micrometer.KafkaRecordReceiverContext;
@@ -76,6 +78,7 @@ import org.springframework.util.Assert;
  * @author Mikhail Polivakha
  * @author OhKyu Chan
  * @author Ngoc Nhan
+ * @author Minju Kim
  *
  * @since 2.1.3
  *
@@ -441,13 +444,21 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		this.logger.debug(() -> "Sending: " + KafkaUtils.format(record) + WITH_CORRELATION_ID + correlationId);
 		RequestReplyFuture<K, V, R> future = new RequestReplyFuture<>();
 		this.futures.put(correlation, future);
+		CompletableFuture<SendResult<K, V>> sendFuture;
 		try {
-			future.setSendFuture(send(record));
+			sendFuture = send(record);
 		}
 		catch (Exception e) {
 			this.futures.remove(correlation);
 			throw new KafkaException("Send failed", e);
 		}
+		future.setSendFuture(sendFuture);
+		sendFuture.whenComplete((result, ex) -> {
+			if (ex != null && this.futures.remove(correlation) != null) {
+				// No reply can arrive for a request that was not sent
+				future.completeExceptionally(ex);
+			}
+		});
 		scheduleTimeout(record, correlation, timeout);
 		return future;
 	}
