@@ -889,11 +889,11 @@ public class ReplyingKafkaTemplateTests {
 		template.sendAndReceive(new ProducerRecord("foo", 0, "bar", "baz"), null).getSendFuture().get();
 	}
 
-	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@SuppressWarnings("unchecked")
 	@Test
 	void replyFutureCompletesExceptionallyWhenSendFails() throws Exception {
-		ProducerFactory pf = mock(ProducerFactory.class);
-		Producer producer = mock(Producer.class);
+		ProducerFactory<Integer, String> pf = mock();
+		Producer<Integer, String> producer = mock();
 		RuntimeException sendFailure = new RuntimeException("send failed");
 		willAnswer(invocation -> {
 			Callback callback = invocation.getArgument(1);
@@ -901,14 +901,15 @@ public class ReplyingKafkaTemplateTests {
 			return new CompletableFuture<>();
 		}).given(producer).send(any(), any());
 		given(pf.createProducer()).willReturn(producer);
-		GenericMessageListenerContainer container = mock(GenericMessageListenerContainer.class);
-		ContainerProperties properties = new ContainerProperties("two");
+		GenericMessageListenerContainer<Integer, String> container = mock();
+		ContainerProperties properties = new ContainerProperties("replies");
 		given(container.getContainerProperties()).willReturn(properties);
-		ReplyingKafkaTemplate template = new ReplyingKafkaTemplate(pf, container);
+		ReplyingKafkaTemplate<Integer, String, String> template = new ReplyingKafkaTemplate<>(pf, container);
 		template.setDefaultReplyTimeout(Duration.ofSeconds(30));
 		template.start();
 		try {
-			RequestReplyFuture future = template.sendAndReceive(new ProducerRecord("foo", 0, "bar", "baz"));
+			RequestReplyFuture<Integer, String, String> future =
+					template.sendAndReceive(new ProducerRecord<>("requests", 0, 1, "request"));
 			assertThatExceptionOfType(ExecutionException.class)
 					.isThrownBy(() -> future.get(10, TimeUnit.SECONDS))
 					.withCauseInstanceOf(KafkaProducerException.class)
