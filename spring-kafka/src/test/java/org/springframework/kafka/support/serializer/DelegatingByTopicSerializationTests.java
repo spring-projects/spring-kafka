@@ -81,6 +81,25 @@ public class DelegatingByTopicSerializationTests {
 	}
 
 	@Test
+	void deserializeWithoutHeaders() {
+		DelegatingByTopicDeserializer deserializer = new DelegatingByTopicDeserializer();
+		Map<String, Object> configs = new HashMap<>();
+		configs.put(DelegatingByTopicDeserializer.VALUE_SERIALIZATION_TOPIC_CONFIG,
+				"baz:" + StringDeserializer.class.getName());
+		configs.put(DelegatingByTopicDeserializer.VALUE_SERIALIZATION_TOPIC_DEFAULT, ByteArrayDeserializer.class);
+		deserializer.configure(configs, false);
+
+		byte[] serialized = "qux".getBytes(StandardCharsets.UTF_8);
+		assertThat(deserializer.deserialize("baz", serialized)).isEqualTo("qux");
+		byte[] payload = "payload".getBytes(StandardCharsets.UTF_8);
+		assertThat(deserializer.deserialize("unmatched-topic", payload)).isEqualTo(payload);
+		assertThat(deserializer.deserialize("baz", null)).isNull();
+
+		ErrorHandlingDeserializer<Object> ehd = new ErrorHandlingDeserializer<>(deserializer);
+		assertThat(ehd.deserialize("baz", serialized)).isEqualTo("qux");
+	}
+
+	@Test
 	void testWithPropertyConfig() {
 		DelegatingByTopicSerializer serializer = new DelegatingByTopicSerializer();
 		Map<String, Object> configs = new HashMap<>();
