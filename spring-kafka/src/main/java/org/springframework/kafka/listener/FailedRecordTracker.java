@@ -173,6 +173,7 @@ class FailedRecordTracker implements RecoveryStrategy {
 			@Nullable MessageListenerContainer container,
 			@Nullable Consumer<?, ?> consumer) throws InterruptedException {
 
+		TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
 		Thread currentThread = Thread.currentThread();
 		BackOff backOffForNewFailure = null;
 		if (this.noRetries && !isRetrying(currentThread, topicPartition, record)) {
