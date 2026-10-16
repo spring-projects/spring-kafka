@@ -32,13 +32,17 @@ import org.springframework.kafka.listener.ConsumerSeekAware.ConsumerSeekCallback
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
  * @author Gary Russell
  * @author Borahm Lee
  * @author Yash Kadam
+ * @author Minju Kim
+ *
  * @since 2.6
  *
  */
@@ -163,6 +167,55 @@ public class ConsumerSeekAwareTests {
 				csa.onPartitionsRevoked(Collections.emptyList());
 				csa.unregisterSeekCallback();
 			}).get();
+
+			assertThat(topicToCallbacks).isEmpty();
+			assertThat(callbackToTopics).isEmpty();
+		}
+		finally {
+			exec1.shutdown();
+			exec2.shutdown();
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void onPartitionsRevokedRemovesOnlyThisCallbackMappings() throws Exception {
+		class CSA extends AbstractConsumerSeekAware {
+		}
+
+		AbstractConsumerSeekAware csa = new CSA();
+		var exec1 = Executors.newSingleThreadExecutor();
+		var exec2 = Executors.newSingleThreadExecutor();
+		ConsumerSeekCallback cb1 = mock();
+		ConsumerSeekCallback cb2 = mock();
+		var tp = new TopicPartition("topic", 0);
+		var map = new LinkedHashMap<>(Map.of(tp, 0L));
+
+		try {
+			exec1.submit(() -> {
+				csa.registerSeekCallback(cb1);
+				csa.onPartitionsAssigned(map, cb1);
+			}).get();
+			exec2.submit(() -> {
+				csa.registerSeekCallback(cb2);
+				csa.onPartitionsAssigned(map, cb2);
+			}).get();
+			exec1.submit(() -> csa.onPartitionsRevoked(List.of(tp))).get();
+
+			Map<TopicPartition, List<ConsumerSeekCallback>> topicToCallbacks =
+					KafkaTestUtils.getPropertyValue(csa, "topicToCallbacks", Map.class);
+			Map<ConsumerSeekCallback, List<TopicPartition>> callbackToTopics =
+					KafkaTestUtils.getPropertyValue(csa, "callbackToTopics", Map.class);
+
+			assertThat(topicToCallbacks).containsOnlyKeys(tp);
+			assertThat(topicToCallbacks.get(tp)).containsExactly(cb2);
+			assertThat(callbackToTopics).containsOnlyKeys(cb2);
+			assertThat(callbackToTopics.get(cb2)).containsExactly(tp);
+			csa.seekToBeginning();
+			verify(cb2).seekToBeginning(List.of(tp));
+			verify(cb1, never()).seekToBeginning(any());
+
+			exec2.submit(() -> csa.onPartitionsRevoked(List.of(tp))).get();
 
 			assertThat(topicToCallbacks).isEmpty();
 			assertThat(callbackToTopics).isEmpty();
