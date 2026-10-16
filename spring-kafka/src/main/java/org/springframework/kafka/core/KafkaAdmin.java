@@ -82,6 +82,7 @@ import org.springframework.util.Assert;
  * @author Omer Celik
  * @author Choi Wang Gyu
  * @author Go Beom Jun
+ * @author Minju Kim
  *
  * @since 1.3
  */
@@ -556,10 +557,10 @@ public class KafkaAdmin extends KafkaResourceFactory
 		}
 		catch (InterruptedException ie) {
 			Thread.currentThread().interrupt();
-			throw new KafkaException("Interrupted while getting topic descriptions:" + topics, ie);
+			throw new KafkaException("Interrupted while getting topic configs: " + topics, ie);
 		}
 		catch (ExecutionException | TimeoutException ex) {
-			throw new KafkaException("Failed to obtain topic descriptions:" + topics, ex);
+			throw new KafkaException("Failed to obtain topic configs: " + topics, ex);
 		}
 	}
 
@@ -571,29 +572,28 @@ public class KafkaAdmin extends KafkaResourceFactory
 			Optional<NewTopic> topicOptional = topics.stream().filter(p -> p.name().equals(topicConfigResource.name()))
 					.findFirst();
 			if (topicOptional.isPresent()) {
+				List<AlterConfigOp> alterConfigOperations = new ArrayList<>();
+				Map<String, String> desiredConfigs = topicOptional.get().configs();
 				for (ConfigEntry mismatchConfigEntry : mismatchingConfigsOfTopic.getValue()) {
-					List<AlterConfigOp> alterConfigOperations = new ArrayList<>();
-					Map<String, String> desiredConfigs = topicOptional.get().configs();
-					if (desiredConfigs.get(mismatchConfigEntry.name()) != null) {
+					String desiredValue = desiredConfigs.get(mismatchConfigEntry.name());
+					if (desiredValue != null) {
 						alterConfigOperations.add(
-								new AlterConfigOp(
-										new ConfigEntry(mismatchConfigEntry.name(),
-												desiredConfigs.get(mismatchConfigEntry.name())),
+								new AlterConfigOp(new ConfigEntry(mismatchConfigEntry.name(), desiredValue),
 										OpType.SET));
 					}
-					if (!alterConfigOperations.isEmpty()) {
-						try {
-							AlterConfigsResult alterConfigsResult = adminClient
-									.incrementalAlterConfigs(Map.of(topicConfigResource, alterConfigOperations));
-							alterConfigsResult.all().get(this.operationTimeout, TimeUnit.SECONDS);
-						}
-						catch (InterruptedException ie) {
-							Thread.currentThread().interrupt();
-							throw new KafkaException("Interrupted while getting topic descriptions", ie);
-						}
-						catch (ExecutionException | TimeoutException ex) {
-							throw new KafkaException("Failed to obtain topic descriptions", ex);
-						}
+				}
+				if (!alterConfigOperations.isEmpty()) {
+					try {
+						AlterConfigsResult alterConfigsResult = adminClient
+								.incrementalAlterConfigs(Map.of(topicConfigResource, alterConfigOperations));
+						alterConfigsResult.all().get(this.operationTimeout, TimeUnit.SECONDS);
+					}
+					catch (InterruptedException ie) {
+						Thread.currentThread().interrupt();
+						throw new KafkaException("Interrupted while altering topic configs: " + topicConfigResource, ie);
+					}
+					catch (ExecutionException | TimeoutException ex) {
+						throw new KafkaException("Failed to alter topic configs: " + topicConfigResource, ex);
 					}
 				}
 			}
