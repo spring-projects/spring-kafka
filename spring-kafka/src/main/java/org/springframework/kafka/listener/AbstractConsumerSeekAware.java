@@ -35,6 +35,8 @@ import org.jspecify.annotations.Nullable;
  * @author Gary Russell
  * @author Borahm Lee
  * @author Yash Kadam
+ * @author Minju Kim
+ *
  * @since 2.3
  *
  */
@@ -64,20 +66,17 @@ public abstract class AbstractConsumerSeekAware implements ConsumerSeekAware {
 
 	@Override
 	public void onPartitionsRevoked(@Nullable Collection<TopicPartition> partitions) {
-		if (partitions != null) {
+		ConsumerSeekCallback threadCallback = this.callbackForThread.get(Thread.currentThread());
+		if (partitions != null && threadCallback != null) {
 			partitions.forEach(tp -> {
-				List<ConsumerSeekCallback> removedCallbacks = this.topicToCallbacks.remove(tp);
-				if (removedCallbacks != null && !removedCallbacks.isEmpty()) {
-					removedCallbacks.forEach(cb -> {
-						List<TopicPartition> topics = this.callbackToTopics.get(cb);
-						if (topics != null) {
-							topics.remove(tp);
-							if (topics.isEmpty()) {
-								this.callbackToTopics.remove(cb);
-							}
-						}
-					});
-				}
+				this.topicToCallbacks.computeIfPresent(tp, (key, callbacks) -> {
+					callbacks.remove(threadCallback);
+					return callbacks.isEmpty() ? null : callbacks;
+				});
+				this.callbackToTopics.computeIfPresent(threadCallback, (key, topics) -> {
+					topics.remove(tp);
+					return topics.isEmpty() ? null : topics;
+				});
 			});
 		}
 	}
