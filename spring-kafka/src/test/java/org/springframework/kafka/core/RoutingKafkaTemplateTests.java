@@ -70,25 +70,24 @@ public class RoutingKafkaTemplateTests {
 		assertThat(KafkaTestUtils.getPropertyValue(template, "factoryMap", Map.class)).hasSize(2);
 	}
 
-	@SuppressWarnings("unchecked")
 	@Test
 	public void partitionsForRoutesByTopic() {
-		Producer<Object, Object> p1 = mock(Producer.class);
-		List<PartitionInfo> fooPartitions = List.of(new PartitionInfo("foo", 0, null, null, null));
-		given(p1.partitionsFor("foo")).willReturn(fooPartitions);
-		Producer<Object, Object> p2 = mock(Producer.class);
-		List<PartitionInfo> barPartitions = List.of(new PartitionInfo("bar", 0, null, null, null));
-		given(p2.partitionsFor("bar")).willReturn(barPartitions);
-		ProducerFactory<Object, Object> pf1 = mock(ProducerFactory.class);
-		ProducerFactory<Object, Object> pf2 = mock(ProducerFactory.class);
-		given(pf1.createProducer()).willReturn(p1);
-		given(pf2.createProducer()).willReturn(p2);
+		Producer<Object, Object> ordersProducer = mock();
+		List<PartitionInfo> ordersPartitions = List.of(new PartitionInfo("orders", 0, null, null, null));
+		given(ordersProducer.partitionsFor("orders")).willReturn(ordersPartitions);
+		Producer<Object, Object> defaultProducer = mock();
+		List<PartitionInfo> paymentsPartitions = List.of(new PartitionInfo("payments", 0, null, null, null));
+		given(defaultProducer.partitionsFor("payments")).willReturn(paymentsPartitions);
+		ProducerFactory<Object, Object> ordersProducerFactory = mock();
+		ProducerFactory<Object, Object> defaultProducerFactory = mock();
+		given(ordersProducerFactory.createProducer()).willReturn(ordersProducer);
+		given(defaultProducerFactory.createProducer()).willReturn(defaultProducer);
 		Map<Pattern, ProducerFactory<Object, Object>> map = new LinkedHashMap<>();
-		map.put(Pattern.compile("fo.*"), pf1);
-		map.put(Pattern.compile(".*"), pf2);
+		map.put(Pattern.compile("orders.*"), ordersProducerFactory);
+		map.put(Pattern.compile(".*"), defaultProducerFactory);
 		RoutingKafkaTemplate template = new RoutingKafkaTemplate(map);
-		assertThat(template.partitionsFor("foo")).isSameAs(fooPartitions);
-		assertThat(template.partitionsFor("bar")).isSameAs(barPartitions);
+		assertThat(template.partitionsFor("orders")).isSameAs(ordersPartitions);
+		assertThat(template.partitionsFor("payments")).isSameAs(paymentsPartitions);
 	}
 
 	@SuppressWarnings("unchecked")
