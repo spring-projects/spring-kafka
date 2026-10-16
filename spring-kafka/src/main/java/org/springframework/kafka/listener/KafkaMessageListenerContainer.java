@@ -179,6 +179,7 @@ import org.springframework.util.StringUtils;
  * @author Hyun Lee
  * @author Gangeun Lee
  * @author Jiyeon Kim
+ * @author Minju Kim
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -3793,16 +3794,21 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						"nack() is not supported with out-of-order commits");
 				Assert.isTrue(!sleep.isNegative(), "sleep cannot be negative");
 				Assert.isTrue(index >= 0 && index < this.records.count(), "index out of bounds");
+				Assert.state(!this.acked, "The batch has already been acknowledged");
+				Assert.isTrue(index > this.partial,
+						() -> String.format("index (%d) must be greater than the previous partial commit (%d)", index,
+								this.partial));
 				ListenerConsumer.this.nackIndex = index;
 				ListenerConsumer.this.nackSleepDurationMillis = sleep.toMillis();
 				int i = 0;
 				List<ConsumerRecord<K, V>> toAck = new LinkedList<>();
 				for (ConsumerRecord<K, V> cRecord : this.records) {
-					if (i++ < index) {
-						toAck.add(cRecord);
-					}
-					else {
+					if (i >= index) {
 						break;
+					}
+					// Records up to the previous partial commit have already been committed
+					if (i++ > this.partial) {
+						toAck.add(cRecord);
 					}
 				}
 				Map<TopicPartition, List<ConsumerRecord<K, V>>> newRecords = new HashMap<>();
