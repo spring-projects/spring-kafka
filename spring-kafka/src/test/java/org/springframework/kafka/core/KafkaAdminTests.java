@@ -19,6 +19,7 @@ package org.springframework.kafka.core;
 import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -37,6 +38,7 @@ import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.AlterConfigOp;
 import org.apache.kafka.clients.admin.AlterConfigOp.OpType;
+import org.apache.kafka.clients.admin.AlterConfigsResult;
 import org.apache.kafka.clients.admin.ConfigEntry;
 import org.apache.kafka.clients.admin.DescribeClusterResult;
 import org.apache.kafka.clients.admin.DescribeConfigsResult;
@@ -45,12 +47,15 @@ import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.common.KafkaFuture;
+import org.apache.kafka.common.TopicPartitionInfo;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.config.ConfigResource.Type;
 import org.apache.kafka.common.config.TopicConfig;
+import org.apache.kafka.common.errors.PolicyViolationException;
 import org.apache.kafka.common.errors.UnknownTopicOrPartitionException;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import org.springframework.beans.DirectFieldAccessor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,6 +63,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.KafkaAdmin.NewTopics;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -67,15 +73,21 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.util.ReflectionUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 /**
  * @author Gary Russell
  * @author Adrian Gygax
  * @author Anders Swanson
+ * @author Minju Kim
  *
  * @since 1.3
  */
@@ -449,6 +461,56 @@ public class KafkaAdminTests {
 	@Test
 	void testDeleteTopicsWithEmptyArray() {
 		this.admin.deleteTopics();
+	}
+
+	@Test
+	void mismatchedTopicConfigsAreAlteredInOneRequest() throws Exception {
+		String topicName = "orders";
+		ConfigResource resource = new ConfigResource(Type.TOPIC, topicName);
+		Admin adminClient = mock();
+		DescribeTopicsResult describeTopicsResult = mock();
+		given(describeTopicsResult.topicNameValues()).willReturn(Map.of(topicName, KafkaFuture.completedFuture(
+				new TopicDescription(topicName, false, List.of(new TopicPartitionInfo(0, null, List.of(), List.of()))))));
+		given(adminClient.describeTopics(List.of(topicName))).willReturn(describeTopicsResult);
+		DescribeConfigsResult describeConfigsResult = mock();
+		given(describeConfigsResult.all()).willReturn(KafkaFuture.completedFuture(Map.of(resource,
+				new org.apache.kafka.clients.admin.Config(List.of(
+						new ConfigEntry(TopicConfig.RETENTION_MS_CONFIG, "1000"),
+						new ConfigEntry(TopicConfig.RETENTION_BYTES_CONFIG, "1024"))))));
+		given(adminClient.describeConfigs(List.of(resource))).willReturn(describeConfigsResult);
+		AlterConfigsResult alterConfigsResult = mock();
+		KafkaFuture<Void> alterFuture = mock();
+		given(alterFuture.get(anyLong(), any())).willThrow(new ExecutionException(new PolicyViolationException("not allowed")));
+		given(alterConfigsResult.all()).willReturn(alterFuture);
+		given(adminClient.incrementalAlterConfigs(any())).willReturn(alterConfigsResult);
+		KafkaAdmin kafkaAdmin = new KafkaAdmin(Map.of()) {
+
+			@Override
+			protected Admin createAdmin() {
+				return adminClient;
+			}
+
+		};
+		kafkaAdmin.setModifyTopicConfigs(true);
+		NewTopic topic = TopicBuilder.name(topicName)
+				.partitions(1)
+				.config(TopicConfig.RETENTION_MS_CONFIG, "2000")
+				.config(TopicConfig.RETENTION_BYTES_CONFIG, "2048")
+				.build();
+
+		assertThatExceptionOfType(KafkaException.class)
+				.isThrownBy(() -> kafkaAdmin.createOrModifyTopics(topic))
+				.withMessageContaining("Failed to alter topic configs")
+				.withRootCauseInstanceOf(PolicyViolationException.class);
+
+		ArgumentCaptor<Map<ConfigResource, Collection<AlterConfigOp>>> captor = ArgumentCaptor.captor();
+		verify(adminClient).incrementalAlterConfigs(captor.capture());
+		assertThat(captor.getValue()).containsOnlyKeys(resource);
+		assertThat(captor.getValue().get(resource))
+				.extracting(op -> op.configEntry().name(), op -> op.configEntry().value())
+				.containsExactlyInAnyOrder(
+						tuple(TopicConfig.RETENTION_MS_CONFIG, "2000"),
+						tuple(TopicConfig.RETENTION_BYTES_CONFIG, "2048"));
 	}
 
 	@Configuration
