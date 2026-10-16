@@ -85,6 +85,7 @@ import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -97,6 +98,7 @@ import static org.mockito.Mockito.verify;
  * @author Hyun Lee
  * @author Jian Kim
  * @author Jiyeon Kim
+ * @author Minju Kim
  *
  * @since 2.2.4
  *
@@ -1017,7 +1019,10 @@ public class ConcurrentMessageListenerContainerMockTests {
 			assertThat(container.getContainers().get(1).isPartitionPauseRequested(tp1)).isTrue();
 			assertThat(container.isPartitionPauseRequested(tp1)).isTrue();
 			assertThat(container.isPartitionPauseRequested(tp0)).isFalse();
+			// Like a single container, the request is kept for a partition that is not (yet) assigned
 			container.pausePartition(unassigned);
+			assertThat(container.isPartitionPauseRequested(unassigned)).isTrue();
+			container.resumePartition(unassigned);
 			assertThat(container.isPartitionPauseRequested(unassigned)).isFalse();
 			container.pausePartition(tp0);
 			assertThat(container.isPartitionPauseRequested(tp0)).isTrue();
@@ -1089,6 +1094,58 @@ public class ConcurrentMessageListenerContainerMockTests {
 		rebal.get().onPartitionsAssigned(assignments);
 		verify(consumer, times(2)).pause(any()); // no immediate pause this time
 		container.stop();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void partitionPauseRequestFollowsPartitionToAnotherChild() throws InterruptedException {
+		Consumer<String, String> consumer0 = mock();
+		Consumer<String, String> consumer1 = mock();
+		CountDownLatch pollLatch = new CountDownLatch(2);
+		Map<Consumer<String, String>, ConsumerRebalanceListener> rebalanceListeners = new ConcurrentHashMap<>();
+		for (Consumer<String, String> consumer : List.of(consumer0, consumer1)) {
+			willAnswer(inv -> {
+				pollLatch.countDown();
+				Thread.sleep(50);
+				return ConsumerRecords.empty();
+			}).given(consumer).poll(any());
+			willAnswer(inv -> {
+				rebalanceListeners.put(consumer, inv.getArgument(1));
+				return null;
+			}).given(consumer).subscribe(any(Collection.class), any());
+		}
+		ConsumerFactory<String, String> cf = mock();
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer0, consumer1);
+		ContainerProperties containerProperties = new ContainerProperties("orders");
+		containerProperties.setGroupId("grp");
+		containerProperties.setMessageListener((MessageListener<String, String>) rec -> { });
+		containerProperties.setMissingTopicsFatal(false);
+		containerProperties.setAssignmentCommitOption(AssignmentCommitOption.NEVER);
+		ConcurrentMessageListenerContainer<String, String> container =
+				new ConcurrentMessageListenerContainer<>(cf, containerProperties);
+		container.setConcurrency(2);
+		TopicPartition orders0 = new TopicPartition("orders", 0);
+		container.start();
+		try {
+			assertThat(pollLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			rebalanceListeners.get(consumer0).onPartitionsAssigned(List.of(orders0));
+			container.pausePartition(orders0);
+			assertThat(container.isPartitionPauseRequested(orders0)).isTrue();
+
+			// The partition moves to the other child; it must stay paused there
+			rebalanceListeners.get(consumer0).onPartitionsRevoked(List.of(orders0));
+			rebalanceListeners.get(consumer1).onPartitionsAssigned(List.of(orders0));
+			verify(consumer1).pause(List.of(orders0));
+			assertThat(container.getContainers().get(1).isPartitionPauseRequested(orders0)).isTrue();
+			assertThat(container.isPartitionPauseRequested(orders0)).isTrue();
+
+			container.resumePartition(orders0);
+			assertThat(container.isPartitionPauseRequested(orders0)).isFalse();
+			verify(consumer1, timeout(10_000)).resume(List.of(orders0));
+		}
+		finally {
+			container.stop();
+		}
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
