@@ -43,6 +43,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.kafka.config.KafkaListenerEndpoint;
 import org.springframework.kafka.config.ShareKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ShareConsumerFactory;
@@ -912,10 +913,11 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		ShareKafkaMessageListenerContainer<String, String> container =
 				new ShareKafkaMessageListenerContainer<>(shareConsumerFactory, containerProperties);
 
-		CompletableFuture<Void> start = CompletableFuture.runAsync(container::start);
+		SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor();
+		CompletableFuture<Void> start = CompletableFuture.runAsync(container::start, executor);
 		assertThat(creatingLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		CompletableFuture<Void> stopAbnormally = CompletableFuture.runAsync(() -> container.stopAbnormally(() -> {
-		}));
+		}), executor);
 		await().atMost(Duration.ofSeconds(10)).until(container.lifecycleLock::hasQueuedThreads);
 		releaseLatch.countDown();
 		start.get(10, TimeUnit.SECONDS);
