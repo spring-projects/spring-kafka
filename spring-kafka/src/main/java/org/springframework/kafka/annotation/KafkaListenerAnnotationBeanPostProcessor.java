@@ -71,6 +71,7 @@ import org.springframework.context.support.GenericApplicationContext;
 import org.springframework.core.MethodIntrospector;
 import org.springframework.core.OrderComparator;
 import org.springframework.core.Ordered;
+import org.springframework.core.ResolvableType;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.convert.TypeDescriptor;
@@ -151,6 +152,7 @@ import org.springframework.validation.Validator;
  * @author Omer Celik
  * @author Go BeomJun
  * @author Maxim Ceban
+ * @author Burak Kalaycı
  *
  * @see KafkaListener
  * @see KafkaListenerErrorHandler
@@ -1187,27 +1189,62 @@ public class KafkaListenerAnnotationBeanPostProcessor<K, V>
 	}
 
 	private void addFormatters(FormatterRegistry registry) {
-		for (Converter<?, ?> converter : getBeansOfType(Converter.class)) {
+		if (!(this.beanFactory instanceof ListableBeanFactory lbf)) {
+			return;
+		}
+		lbf.getBeansOfType(Converter.class)
+				.forEach((name, converter) -> addConverter(registry, lbf, name, converter));
+		lbf.getBeansOfType(ConverterFactory.class).values().forEach(factory -> addConverterFactory(registry, factory));
+		for (GenericConverter converter : lbf.getBeansOfType(GenericConverter.class).values()) {
 			registry.addConverter(converter);
 		}
-		for (ConverterFactory<?, ?> converter : getBeansOfType(ConverterFactory.class)) {
-			registry.addConverterFactory(converter);
-		}
-		for (GenericConverter converter : getBeansOfType(GenericConverter.class)) {
-			registry.addConverter(converter);
-		}
-		for (Formatter<?> formatter : getBeansOfType(Formatter.class)) {
+		for (Formatter<?> formatter : lbf.getBeansOfType(Formatter.class).values()) {
 			registry.addFormatter(formatter);
 		}
 	}
 
-	private <T> Collection<T> getBeansOfType(Class<T> type) {
-		if (KafkaListenerAnnotationBeanPostProcessor.this.beanFactory instanceof ListableBeanFactory lbf) {
-			return lbf.getBeansOfType(type).values();
+	@SuppressWarnings({UNCHECKED, "rawtypes"})
+	private void addConverter(FormatterRegistry registry, ListableBeanFactory lbf, String beanName,
+			Converter<?, ?> converter) {
+
+		ResolvableType type = getBeanResolvableType(lbf, beanName).as(Converter.class);
+		Class<?> sourceType = type.resolveGeneric(0);
+		Class<?> targetType = type.resolveGeneric(1);
+		if (sourceType != null && targetType != null) {
+			registry.addConverter(sourceType, targetType, (Converter) converter);
+			return;
 		}
-		else {
-			return Collections.emptySet();
+		try {
+			registry.addConverter(converter);
 		}
+		catch (IllegalArgumentException ex) {
+			this.logger.debug(ex, () -> "Skipping Converter bean '" + beanName
+					+ "' because its source/target types cannot be determined");
+		}
+	}
+
+	private void addConverterFactory(FormatterRegistry registry, ConverterFactory<?, ?> converterFactory) {
+		try {
+			registry.addConverterFactory(converterFactory);
+		}
+		catch (IllegalArgumentException ex) {
+			this.logger.debug(ex, () -> "Skipping ConverterFactory bean "
+					+ converterFactory.getClass().getName()
+					+ " because its source/target types cannot be determined");
+		}
+	}
+
+	private ResolvableType getBeanResolvableType(ListableBeanFactory lbf, String beanName) {
+		if (lbf instanceof ConfigurableListableBeanFactory clbf) {
+			try {
+				return clbf.getBeanDefinition(beanName).getResolvableType();
+			}
+			catch (NoSuchBeanDefinitionException ex) {
+				// Fall through to the runtime bean type, which may still carry generics.
+			}
+		}
+		Class<?> beanType = lbf.getType(beanName);
+		return beanType != null ? ResolvableType.forClass(beanType) : ResolvableType.NONE;
 	}
 
 	/**
