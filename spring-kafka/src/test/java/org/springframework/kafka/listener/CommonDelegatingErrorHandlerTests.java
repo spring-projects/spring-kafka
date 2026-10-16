@@ -34,6 +34,7 @@ import org.mockito.ArgumentCaptor;
 
 import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaProducerException;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.util.backoff.FixedBackOff;
 
@@ -59,6 +60,8 @@ import static org.mockito.Mockito.verify;
  * @author Dan Blackney
  * @author Burak Kalayci
  * @author Cobi Eun
+ * @author Minju Kim
+ *
  * @since 2.8
  *
  */
@@ -409,6 +412,38 @@ public class CommonDelegatingErrorHandlerTests {
 		verify(one).onPartitionsAssigned(same(consumer), eq(partitions), same(publishPause));
 		verify(two).onPartitionsAssigned(same(consumer), eq(partitions), same(publishPause));
 		assertThat(publishPauseInvocations).hasValue(0);
+	}
+
+	@Test
+	void deliveryAttemptIsReportedByTheHandlerThatHandledTheFailure() {
+		DefaultErrorHandler defaultHandler = noSeekErrorHandler();
+		DefaultErrorHandler delegate = noSeekErrorHandler();
+		var eh = new CommonDelegatingErrorHandler(defaultHandler);
+		eh.addDelegate(IllegalStateException.class, delegate);
+		assertThat(eh.deliveryAttemptHeader()).isTrue();
+
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("topic", 0, 0L, "k0", "v0");
+		TopicPartitionOffset tpo = new TopicPartitionOffset("topic", 0, 0L);
+		assertThat(eh.deliveryAttempt(tpo)).isEqualTo(1);
+
+		eh.handleOne(wrap(new IllegalStateException()), record, mock(Consumer.class),
+				mock(MessageListenerContainer.class));
+		assertThat(eh.deliveryAttempt(tpo)).isEqualTo(2);
+
+		eh.handleOne(wrap(new IllegalArgumentException()), record, mock(Consumer.class),
+				mock(MessageListenerContainer.class));
+		assertThat(eh.deliveryAttempt(tpo)).isEqualTo(2);
+
+		eh.handleOne(wrap(new IllegalStateException()), record, mock(Consumer.class),
+				mock(MessageListenerContainer.class));
+		assertThat(eh.deliveryAttempt(tpo)).isEqualTo(3);
+	}
+
+	@Test
+	void deliveryAttemptHeaderIsNotSupportedWhenNoHandlerSupportsIt() {
+		var eh = new CommonDelegatingErrorHandler(mock(CommonErrorHandler.class));
+		eh.addDelegate(IllegalStateException.class, mock(CommonErrorHandler.class));
+		assertThat(eh.deliveryAttemptHeader()).isFalse();
 	}
 
 	private static DefaultErrorHandler noSeekErrorHandler() {

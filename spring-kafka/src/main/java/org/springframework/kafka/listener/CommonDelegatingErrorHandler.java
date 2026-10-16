@@ -30,12 +30,15 @@ import org.apache.kafka.common.TopicPartition;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.kafka.support.ExceptionMatcher;
+import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.util.Assert;
 
 /**
  * An error handler that delegates to different error handlers, depending on the exception
  * type. The delegates must have compatible properties ({@link #isAckAfterHandle()} etc.
- * {@link #deliveryAttemptHeader()} is not supported - always returns false.
+ * {@link #deliveryAttemptHeader()} is supported when the default error handler or any
+ * delegate supports it; the delivery attempt is reported by the handler that handled the
+ * failures for the record.
  *
  * @author Gary Russell
  * @author Adrian Chlebosz
@@ -43,6 +46,8 @@ import org.springframework.util.Assert;
  * @author Dan Blackney
  * @author Burak Kalayci
  * @author Cobi Eun
+ * @author Minju Kim
+ *
  * @since 2.8
  *
  */
@@ -93,6 +98,22 @@ public class CommonDelegatingErrorHandler implements CommonErrorHandler {
 	@Override
 	public boolean seeksAfterHandling() {
 		return this.defaultErrorHandler.seeksAfterHandling();
+	}
+
+	@Override
+	public boolean deliveryAttemptHeader() {
+		return this.defaultErrorHandler.deliveryAttemptHeader()
+				|| this.delegates.values().stream().anyMatch(CommonErrorHandler::deliveryAttemptHeader);
+	}
+
+	@Override
+	public int deliveryAttempt(TopicPartitionOffset topicPartitionOffset) {
+		// Only the handler that handled the failures for this record has state for it
+		int deliveryAttempt = this.defaultErrorHandler.deliveryAttempt(topicPartitionOffset);
+		for (CommonErrorHandler handler : this.delegates.values()) {
+			deliveryAttempt = Math.max(deliveryAttempt, handler.deliveryAttempt(topicPartitionOffset));
+		}
+		return deliveryAttempt;
 	}
 
 	@Override

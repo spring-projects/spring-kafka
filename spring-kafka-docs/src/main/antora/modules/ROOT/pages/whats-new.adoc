@@ -55,6 +55,13 @@ This applies to record listeners only.
 By default, there is no limit.
 See xref:kafka/annotation-error-handling.adoc#default-eh[Default Error Handler].
 
+[[x42-delegating-error-handler-delivery-attempt]]
+=== Delivery Attempts Header with `CommonDelegatingErrorHandler`
+
+The `CommonDelegatingErrorHandler` now supports the `KafkaHeaders.DELIVERY_ATTEMPT` header when its default error handler or any of its delegates supports it (for example, a `DefaultErrorHandler`).
+Previously, the header was never added when the container's error handler was a `CommonDelegatingErrorHandler`, even with the `deliveryAttemptHeader` container property set to `true`.
+See xref:kafka/annotation-error-handling.adoc#delivery-header[Delivery Attempts Header].
+
 [[x42-listener-observation-tags]]
 === Listener Observation Meter Tags
 
