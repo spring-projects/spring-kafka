@@ -793,7 +793,12 @@ public class KafkaTemplate<K, V> implements KafkaOperations<K, V>, ApplicationCo
 		consumer.seek(topicPartition, offset);
 		ConsumerRecords<K, V> records = consumer.poll(pollTimeout);
 		if (records.count() == 1) {
-			return records.iterator().next();
+			ConsumerRecord<K, V> record = records.iterator().next();
+			// The position may have moved: an out-of-range offset is reset by 'auto.offset.reset',
+			// and a missing offset (compaction, transaction markers) is skipped
+			if (record.offset() == offset) {
+				return record;
+			}
 		}
 		return null;
 	}
