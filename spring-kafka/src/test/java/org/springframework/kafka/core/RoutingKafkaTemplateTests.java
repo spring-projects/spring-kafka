@@ -17,11 +17,13 @@
 package org.springframework.kafka.core;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.common.PartitionInfo;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -37,6 +39,8 @@ import static org.mockito.Mockito.verify;
 /**
  * @author Gary Russell
  * @author Nathan Xu
+ * @author Minju Kim
+ *
  * @since 2.5
  *
  */
@@ -64,6 +68,26 @@ public class RoutingKafkaTemplateTests {
 		verify(p1, times(2)).send(any(), any());
 		verify(p2, times(2)).send(any(), any());
 		assertThat(KafkaTestUtils.getPropertyValue(template, "factoryMap", Map.class)).hasSize(2);
+	}
+
+	@Test
+	public void partitionsForRoutesByTopic() {
+		Producer<Object, Object> ordersProducer = mock();
+		List<PartitionInfo> ordersPartitions = List.of(new PartitionInfo("orders", 0, null, null, null));
+		given(ordersProducer.partitionsFor("orders")).willReturn(ordersPartitions);
+		Producer<Object, Object> defaultProducer = mock();
+		List<PartitionInfo> paymentsPartitions = List.of(new PartitionInfo("payments", 0, null, null, null));
+		given(defaultProducer.partitionsFor("payments")).willReturn(paymentsPartitions);
+		ProducerFactory<Object, Object> ordersProducerFactory = mock();
+		ProducerFactory<Object, Object> defaultProducerFactory = mock();
+		given(ordersProducerFactory.createProducer()).willReturn(ordersProducer);
+		given(defaultProducerFactory.createProducer()).willReturn(defaultProducer);
+		Map<Pattern, ProducerFactory<Object, Object>> map = new LinkedHashMap<>();
+		map.put(Pattern.compile("orders.*"), ordersProducerFactory);
+		map.put(Pattern.compile(".*"), defaultProducerFactory);
+		RoutingKafkaTemplate template = new RoutingKafkaTemplate(map);
+		assertThat(template.partitionsFor("orders")).isSameAs(ordersPartitions);
+		assertThat(template.partitionsFor("payments")).isSameAs(paymentsPartitions);
 	}
 
 	@SuppressWarnings("unchecked")
