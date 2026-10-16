@@ -78,6 +78,7 @@ import static org.mockito.Mockito.verify;
  * @author Gary Russell
  * @author Artem Bilan
  * @author Vladimir Loginov
+ * @author Minju Kim
  *
  * @since 1.3.2
  *
@@ -155,10 +156,12 @@ public class BatchListenerConversionTests {
 	}
 
 	@Test
-	void conversionError() throws InterruptedException {
-		this.template.send("blc6", 0, null, "{\"bar\":\"baz\"}");
-		this.template.send("blc6", 0, null, "JUNK");
-		this.template.send("blc6", 0, null, "{\"bar\":\"qux\"}");
+	void conversionError(@Autowired KafkaListenerEndpointRegistry registry) throws Exception {
+		this.template.send("blc6", 0, null, "{\"bar\":\"baz\"}").get(10, TimeUnit.SECONDS);
+		this.template.send("blc6", 0, null, "JUNK").get(10, TimeUnit.SECONDS);
+		this.template.send("blc6", 0, null, "{\"bar\":\"qux\"}").get(10, TimeUnit.SECONDS);
+		// Start the listener after all the records are sent, so they are received in one batch
+		registry.getListenerContainer("blc6").start();
 		Listener5 listener5 = this.config.listener5();
 		assertThat(listener5.latch1.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(listener5.received).containsExactly(new Foo("baz"), null, new Foo("qux"), new Foo("qux"));
@@ -365,7 +368,7 @@ public class BatchListenerConversionTests {
 
 		volatile String dlt;
 
-		@KafkaListener(topics = "blc6", groupId = "blc6")
+		@KafkaListener(id = "blc6", topics = "blc6", groupId = "blc6", autoStartup = "false")
 		public void listen5(List<Foo> foos,
 				@Header(KafkaHeaders.CONVERSION_FAILURES) List<ConversionException> conversionFailures) {
 
