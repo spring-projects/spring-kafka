@@ -352,6 +352,7 @@ RequestReplyFuture<K, V, R> sendAndReceive(ProducerRecord<K, V> record,
 The result is a `CompletableFuture` that is asynchronously populated with the result (or an exception, for a timeout).
 The result also has a `sendFuture` property, which is the result of calling `KafkaTemplate.send()`.
 You can use this future to determine the result of the send operation.
+If the send fails, the result is also completed exceptionally with the send failure, rather than waiting for the reply timeout.
 
 If the first method is used, or the `replyTimeout` argument is `null`, the template's `defaultReplyTimeout` property is used (5 seconds by default).
 

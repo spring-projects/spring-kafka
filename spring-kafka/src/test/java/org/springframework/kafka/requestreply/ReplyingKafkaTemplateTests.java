@@ -63,6 +63,7 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.config.KafkaListenerEndpointRegistry;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaProducerException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
@@ -105,6 +106,8 @@ import static org.mockito.Mockito.verify;
  * @author Mikhail Polivakha
  * @author Ngoc Nhan
  * @author OhKyu Chan
+ * @author Minju Kim
+ *
  * @since 2.1.3
  *
  */
@@ -882,6 +885,39 @@ public class ReplyingKafkaTemplateTests {
 				.build();
 		// was NPE here
 		template.sendAndReceive(new ProducerRecord("foo", 0, "bar", "baz"), null).getSendFuture().get();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void replyFutureCompletesExceptionallyWhenSendFails() throws Exception {
+		ProducerFactory<Integer, String> pf = mock();
+		Producer<Integer, String> producer = mock();
+		RuntimeException sendFailure = new RuntimeException("send failed");
+		willAnswer(invocation -> {
+			Callback callback = invocation.getArgument(1);
+			callback.onCompletion(null, sendFailure);
+			return new CompletableFuture<>();
+		}).given(producer).send(any(), any());
+		given(pf.createProducer()).willReturn(producer);
+		GenericMessageListenerContainer<Integer, String> container = mock();
+		ContainerProperties properties = new ContainerProperties("replies");
+		given(container.getContainerProperties()).willReturn(properties);
+		ReplyingKafkaTemplate<Integer, String, String> template = new ReplyingKafkaTemplate<>(pf, container);
+		template.setDefaultReplyTimeout(Duration.ofSeconds(30));
+		template.start();
+		try {
+			RequestReplyFuture<Integer, String, String> future =
+					template.sendAndReceive(new ProducerRecord<>("requests", 0, 1, "request"));
+			assertThatExceptionOfType(ExecutionException.class)
+					.isThrownBy(() -> future.get(10, TimeUnit.SECONDS))
+					.withCauseInstanceOf(KafkaProducerException.class)
+					.satisfies(ex -> assertThat(ex.getCause().getCause()).isSameAs(sendFailure));
+			assertThat(KafkaTestUtils.getPropertyValue(template, "futures", Map.class)).isEmpty();
+		}
+		finally {
+			template.stop();
+			template.destroy();
+		}
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
