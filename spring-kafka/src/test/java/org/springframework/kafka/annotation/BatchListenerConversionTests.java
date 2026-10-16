@@ -115,12 +115,12 @@ public class BatchListenerConversionTests {
 
 	private void doTest(Listener listener, String topic) throws Exception {
 		this.template.send(new GenericMessage<>(
-				new Foo("bar"), Collections.singletonMap(KafkaHeaders.TOPIC, topic))).get(10, TimeUnit.SECONDS);
+				new Item("test"), Collections.singletonMap(KafkaHeaders.TOPIC, topic))).get(10, TimeUnit.SECONDS);
 		assertThat(listener.latch1.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(listener.latch2.await(30, TimeUnit.SECONDS)).isTrue();
 		assertThat(listener.received.size()).isGreaterThan(0);
-		assertThat(listener.received.get(0)).isInstanceOf(Foo.class);
-		assertThat(listener.received.get(0).bar).isEqualTo("bar");
+		assertThat(listener.received.get(0)).isInstanceOf(Item.class);
+		assertThat(listener.received.get(0).name).isEqualTo("test");
 		assertThat((listener.receivedTopics).get(0)).isEqualTo(topic);
 		assertThat((listener.receivedPartitions).get(0)).isEqualTo(0);
 	}
@@ -129,12 +129,12 @@ public class BatchListenerConversionTests {
 	public void testBatchOfPojoMessages(@Autowired KafkaAdmin admin) throws Exception {
 		String topic = "blc3";
 		this.template.send(new GenericMessage<>(
-				new Foo("bar"), Collections.singletonMap(KafkaHeaders.TOPIC, topic)));
+				new Item("test"), Collections.singletonMap(KafkaHeaders.TOPIC, topic)));
 		Listener3 listener = this.config.listener3();
 		assertThat(listener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(listener.received.size()).isGreaterThan(0);
-		assertThat(listener.received.get(0).getPayload()).isInstanceOf(Foo.class);
-		assertThat(listener.received.get(0).getPayload().getBar()).isEqualTo("bar");
+		assertThat(listener.received.get(0).getPayload()).isInstanceOf(Item.class);
+		assertThat(listener.received.get(0).getPayload().getName()).isEqualTo("test");
 		assertThatNoException().isThrownBy(() -> this.template.send(
 				new GenericMessage<>(KafkaNull.INSTANCE, Collections.singletonMap(KafkaHeaders.TOPIC, topic))));
 		verify(admin, never()).clusterId();
@@ -145,26 +145,27 @@ public class BatchListenerConversionTests {
 		Listener4 listener = this.config.listener4();
 		String topic = "blc4";
 		this.template.send(new GenericMessage<>(
-				new Foo("bar"), Collections.singletonMap(KafkaHeaders.TOPIC, topic)));
+				new Item("test"), Collections.singletonMap(KafkaHeaders.TOPIC, topic)));
 		assertThat(listener.latch1.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(listener.received.size()).isGreaterThan(0);
-		assertThat(listener.received.get(0)).isInstanceOf(Foo.class);
-		assertThat(listener.received.get(0).bar).isEqualTo("bar");
+		assertThat(listener.received.get(0)).isInstanceOf(Item.class);
+		assertThat(listener.received.get(0).name).isEqualTo("test");
 		assertThat(listener.replies.size()).isGreaterThan(0);
-		assertThat(listener.replies.get(0)).isInstanceOf(Foo.class);
-		assertThat(listener.replies.get(0).bar).isEqualTo("BAR");
+		assertThat(listener.replies.get(0)).isInstanceOf(Item.class);
+		assertThat(listener.replies.get(0).name).isEqualTo("TEST");
 	}
 
 	@Test
 	void conversionError(@Autowired KafkaListenerEndpointRegistry registry) throws Exception {
-		this.template.send("blc6", 0, null, "{\"bar\":\"baz\"}").get(10, TimeUnit.SECONDS);
+		this.template.send("blc6", 0, null, "{\"name\":\"first\"}").get(10, TimeUnit.SECONDS);
 		this.template.send("blc6", 0, null, "JUNK").get(10, TimeUnit.SECONDS);
-		this.template.send("blc6", 0, null, "{\"bar\":\"qux\"}").get(10, TimeUnit.SECONDS);
-		// Start the listener after all the records are sent, so they are received in one batch
+		this.template.send("blc6", 0, null, "{\"name\":\"second\"}").get(10, TimeUnit.SECONDS);
+		// Start the listener after all the records are sent, so they are most likely received in one batch;
+		// the assertions below do not depend on how the records are split into batches
 		registry.getListenerContainer("blc6").start();
 		Listener5 listener5 = this.config.listener5();
 		assertThat(listener5.latch1.await(10, TimeUnit.SECONDS)).isTrue();
-		assertThat(listener5.received).containsExactly(new Foo("baz"), null, new Foo("qux"), new Foo("qux"));
+		assertThat(listener5.received).containsSubsequence(new Item("first"), null, new Item("second"));
 		assertThat(listener5.latch2.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(listener5.dlt).isEqualTo("JUNK");
 	}
@@ -182,7 +183,7 @@ public class BatchListenerConversionTests {
 		public KafkaListenerContainerFactory<?> kafkaListenerContainerFactory(EmbeddedKafkaBroker embeddedKafka,
 				KafkaTemplate<Integer, Object> template) {
 
-			ConcurrentKafkaListenerContainerFactory<Integer, Foo> factory =
+			ConcurrentKafkaListenerContainerFactory<Integer, Item> factory =
 					new ConcurrentKafkaListenerContainerFactory<>();
 			factory.setConsumerFactory(consumerFactory(embeddedKafka));
 			factory.setBatchListener(true);
@@ -195,7 +196,7 @@ public class BatchListenerConversionTests {
 		}
 
 		@Bean
-		public DefaultKafkaConsumerFactory<Integer, Foo> consumerFactory(EmbeddedKafkaBroker embeddedKafka) {
+		public DefaultKafkaConsumerFactory<Integer, Item> consumerFactory(EmbeddedKafkaBroker embeddedKafka) {
 			return new DefaultKafkaConsumerFactory<>(consumerConfigs(embeddedKafka));
 		}
 
@@ -273,7 +274,7 @@ public class BatchListenerConversionTests {
 
 		private final KafkaListenerContainerFactory<?> cf;
 
-		volatile List<Foo> received;
+		volatile List<Item> received;
 
 		volatile List<String> receivedTopics;
 
@@ -291,11 +292,11 @@ public class BatchListenerConversionTests {
 		@KafkaListener(id = "#{__listener.topic}.id", topics = "#{__listener.topic}",
 				groupId = "#{__listener.topic}.group",
 				containerFactory = "#{__listener.containerFactory}")
-		// @SendTo("foo") test WARN log for void return
-		public void listen1(List<Foo> foos, @Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topics,
+		// @SendTo("replies") test WARN log for void return
+		public void listen1(List<Item> items, @Header(KafkaHeaders.RECEIVED_TOPIC) List<String> topics,
 				@Header(KafkaHeaders.RECEIVED_PARTITION) List<Integer> partitions) {
 			if (this.received == null) {
-				this.received = foos;
+				this.received = items;
 			}
 			this.receivedTopics = topics;
 			this.receivedPartitions = partitions;
@@ -303,7 +304,7 @@ public class BatchListenerConversionTests {
 		}
 
 		@KafkaListener(beanRef = "__x", topics = "#{__x.topic}", groupId = "#{__x.topic}.group2")
-		public void listen2(List<Foo> foos) {
+		public void listen2(List<Item> items) {
 			this.latch2.countDown();
 		}
 
@@ -317,12 +318,12 @@ public class BatchListenerConversionTests {
 
 		final CountDownLatch latch1 = new CountDownLatch(1);
 
-		volatile List<Message<Foo>> received;
+		volatile List<Message<Item>> received;
 
 		@KafkaListener(topics = "blc3", groupId = "blc3")
-		public void listen1(List<Message<Foo>> foos) {
+		public void listen1(List<Message<Item>> items) {
 			if (this.received == null) {
-				this.received = foos;
+				this.received = items;
 			}
 			this.latch1.countDown();
 		}
@@ -333,17 +334,17 @@ public class BatchListenerConversionTests {
 
 		final CountDownLatch latch1 = new CountDownLatch(1);
 
-		volatile List<Foo> received;
+		volatile List<Item> received;
 
-		volatile List<Foo> replies;
+		volatile List<Item> replies;
 
 		@KafkaListener(topics = "blc4", groupId = "blc4")
 		@SendTo
-		public Collection<Message<?>> listen1(List<Foo> foos) {
+		public Collection<Message<?>> listen1(List<Item> items) {
 			if (this.received == null) {
-				this.received = foos;
+				this.received = items;
 			}
-			return foos.stream().map(f -> MessageBuilder.withPayload(new Foo(f.getBar().toUpperCase()))
+			return items.stream().map(item -> MessageBuilder.withPayload(new Item(item.getName().toUpperCase()))
 					.setHeader(KafkaHeaders.TOPIC, "blc5")
 					.setHeader(KafkaHeaders.KEY, 42)
 					.build())
@@ -351,8 +352,8 @@ public class BatchListenerConversionTests {
 		}
 
 		@KafkaListener(topics = "blc5", groupId = "blc5")
-		public void listen2(List<Foo> foos) {
-			this.replies = foos;
+		public void listen2(List<Item> items) {
+			this.replies = items;
 			this.latch1.countDown();
 		}
 
@@ -364,18 +365,18 @@ public class BatchListenerConversionTests {
 
 		final CountDownLatch latch2 = new CountDownLatch(1);
 
-		final List<Foo> received = Collections.synchronizedList(new ArrayList<>());
+		final List<Item> received = Collections.synchronizedList(new ArrayList<>());
 
 		volatile String dlt;
 
 		@KafkaListener(id = "blc6", topics = "blc6", groupId = "blc6", autoStartup = "false")
-		public void listen5(List<Foo> foos,
+		public void listen5(List<Item> items,
 				@Header(KafkaHeaders.CONVERSION_FAILURES) List<ConversionException> conversionFailures) {
 
-			this.received.addAll(foos);
+			this.received.addAll(items);
 			this.latch1.countDown();
-			for (int i = 0; i < foos.size(); i++) {
-				if (foos.get(i) == null && conversionFailures.get(i) != null) {
+			for (int i = 0; i < items.size(); i++) {
+				if (items.get(i) == null && conversionFailures.get(i) != null) {
 					throw new BatchListenerFailedException("Conversion error", conversionFailures.get(i), i);
 				}
 			}
@@ -392,28 +393,28 @@ public class BatchListenerConversionTests {
 
 	}
 
-	public static class Foo {
+	public static class Item {
 
-		public String bar;
+		public String name;
 
-		public Foo() {
+		public Item() {
 		}
 
-		public Foo(String bar) {
-			this.bar = bar;
+		public Item(String name) {
+			this.name = name;
 		}
 
-		public String getBar() {
-			return this.bar;
+		public String getName() {
+			return this.name;
 		}
 
-		public void setBar(String bar) {
-			this.bar = bar;
+		public void setName(String name) {
+			this.name = name;
 		}
 
 		@Override
 		public int hashCode() {
-			return Objects.hash(bar);
+			return Objects.hash(name);
 		}
 
 		@Override
@@ -427,13 +428,13 @@ public class BatchListenerConversionTests {
 			if (getClass() != obj.getClass()) {
 				return false;
 			}
-			Foo other = (Foo) obj;
-			return Objects.equals(this.bar, other.bar);
+			Item other = (Item) obj;
+			return Objects.equals(this.name, other.name);
 		}
 
 		@Override
 		public String toString() {
-			return "Foo [bar=" + this.bar + "]";
+			return "Item [name=" + this.name + "]";
 		}
 
 	}
