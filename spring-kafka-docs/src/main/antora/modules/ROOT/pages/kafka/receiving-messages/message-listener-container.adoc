@@ -286,6 +286,9 @@ The following limitations apply:
 
 These restrictions are enforced and the method will throw an `IllegalArgumentException` or `IllegalStateException`, depending on the violation.
 
+Calling `nack(index, sleep)` after a partial batch commit only commits the records between the previous partial commit and the index.
+The index must be larger than that used in a previous `acknowledge(index)` call, and `nack()` cannot be called after the whole batch has been acknowledged.
+
 [[container-auto-startup]]
 == Listener Container Auto Startup
 
