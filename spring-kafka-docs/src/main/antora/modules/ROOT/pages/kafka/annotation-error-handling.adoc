@@ -808,6 +808,7 @@ To enable population of this header, set the container property `deliveryAttempt
 It is disabled by default to avoid the (small) overhead of looking up the state for each record and adding the header.
 
 The `DefaultErrorHandler` and `DefaultAfterRollbackProcessor` support this feature.
+Starting with version 4.2, the `CommonDelegatingErrorHandler` also supports it when its default error handler or any of its delegates does.
 
 [[delivery-attempts-header-for-batch-listener]]
 == Delivery Attempts Header for batch listener
