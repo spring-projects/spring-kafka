@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: sample-09
+  docker:
+    compose:
+      lifecycle-management: start_and_stop
+      start:
+        command: up
+      stop:
+        command: down
+        timeout: 10s
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+sample09:
+  topic: share-demo-topic
+  group: sample09-share-group
+
+logging:
+  level:
+    root: warn
+    com.example.sample09: info
