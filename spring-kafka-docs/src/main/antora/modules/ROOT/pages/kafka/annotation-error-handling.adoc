@@ -1030,6 +1030,10 @@ Starting with version 2.7, the recoverer checks that the partition selected by t
 If the partition is not present, the partition in the `ProducerRecord` is set to `null`, allowing the `KafkaProducer` to select the partition.
 You can disable this check by setting the `verifyPartition` property to `false`.
 
+NOTE: Starting with version 4.2, the check also applies when the records of a batch listener are recovered, either by the `DefaultErrorHandler` (when the listener does not throw a `BatchListenerFailedException`) or by the `DefaultAfterRollbackProcessor`.
+To do so, these components now call the three-argument `accept(ConsumerRecord, Consumer, Exception)` method of the recoverer.
+If you have a `DeadLetterPublishingRecoverer` subclass that overrides only the two-argument `accept(ConsumerRecord, Exception)` method, it is no longer called for batch listeners; override the three-argument method instead.
+
 Starting with version 3.1, setting the `logRecoveryRecord` property to `true` will log the recovery record and exception.
 
 [[dlpr-headers]]
