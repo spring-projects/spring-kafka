@@ -17,6 +17,7 @@
 package org.springframework.kafka.listener;
 
 import java.time.Duration;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -24,10 +25,14 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -298,6 +303,12 @@ public class ShareKafkaMessageListenerContainer<K, V>
 					+ "Switch to ShareAckMode.MANUAL if the listener needs to manage acknowledgments.");
 		}
 
+		if (containerProperties.isShareAutoRenewLocks()
+				&& !ContainerProperties.ShareAckMode.EXPLICIT.equals(containerProperties.getShareAckMode())) {
+			this.logger.warn("shareAutoRenewLocks is enabled but ShareAckMode." + containerProperties.getShareAckMode()
+					+ " is active; automatic lock renewal only applies to ShareAckMode.EXPLICIT and will be ignored.");
+		}
+
 		List<ShareListenerConsumer> builtConsumers = new ArrayList<>();
 		try {
 			for (int i = 0; i < this.concurrency; i++) {
@@ -452,6 +463,25 @@ public class ShareKafkaMessageListenerContainer<K, V>
 
 		private final long ackTimeoutMs;
 
+		private final boolean autoRenewLocks;
+
+		private final long lockRenewIntervalMs;
+
+		private final @Nullable ExecutorService dispatchExecutor;
+
+		// Records acquired with automatic lock renewal that have not been terminally acknowledged
+		// yet, mapped to the time their acquisition lock was last renewed (or acquired).
+		// Only accessed on the consumer thread.
+		private final Map<ConsumerRecord<K, V>, Long> lockRenewalTimestamps = new LinkedHashMap<>();
+
+		private final Queue<ConsumerRecord<K, V>> recordsToDispatch = new ArrayDeque<>();
+
+		private @Nullable ConsumerRecord<K, V> inFlightRecord;
+
+		private @Nullable Future<?> inFlightFuture;
+
+		private final AtomicReference<@Nullable Throwable> inFlightError = new AtomicReference<>();
+
 		ShareListenerConsumer(GenericMessageListener<?> listener, @Nullable String consumerClientId) {
 			this.genericListener = listener;
 			this.clientId = consumerClientId;
@@ -462,6 +492,10 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			this.isManualAckMode = ContainerProperties.ShareAckMode.MANUAL.equals(shareAckMode);
 			this.syncShareCommits = containerProperties.isSyncShareCommits();
 			this.ackTimeoutMs = containerProperties.getShareAcknowledgmentTimeout().toMillis();
+			this.autoRenewLocks = ContainerProperties.ShareAckMode.EXPLICIT.equals(shareAckMode)
+					&& containerProperties.isShareAutoRenewLocks();
+			this.lockRenewIntervalMs = Math.max(1, this.ackTimeoutMs / 2);
+			this.dispatchExecutor = this.autoRenewLocks ? newDispatchExecutor(consumerClientId) : null;
 
 			if (ContainerProperties.ShareAckMode.IMPLICIT.equals(shareAckMode)) {
 				ShareConsumerRecordRecoverer recoverer =
@@ -510,6 +544,15 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			this.consumer.subscribe(Arrays.asList(topics));
 		}
 
+		private static ExecutorService newDispatchExecutor(@Nullable String consumerClientId) {
+			return Executors.newSingleThreadExecutor(runnable -> {
+				Thread thread = new Thread(runnable,
+						(consumerClientId != null ? consumerClientId : "share") + "-dispatch");
+				thread.setDaemon(true);
+				return thread;
+			});
+		}
+
 		/**
 		 * Quietly close the underlying {@link ShareConsumer} after a failed startup.
 		 * No lifecycle events are published because the consumer never reached {@code run()}.
@@ -539,6 +582,24 @@ public class ShareKafkaMessageListenerContainer<K, V>
 					// In MANUAL mode, check for acknowledgment timeouts before polling
 					if (this.isManualAckMode && !this.pendingAcknowledgments.isEmpty()) {
 						checkAcknowledgmentTimeouts();
+					}
+
+					if (this.autoRenewLocks) {
+						processInFlightRecords();
+						if (hasOutstandingRecords()) {
+							// The Kafka client does not allow polling while records from a
+							// previous poll are unacknowledged, so wait for the in-flight
+							// record to complete instead; its acquisition lock is renewed
+							// by processInFlightRecords() in the meantime.
+							try {
+								Thread.sleep(10);
+							}
+							catch (InterruptedException ie) {
+								Thread.currentThread().interrupt();
+								break;
+							}
+							continue;
+						}
 					}
 
 					ConsumerRecords<K, V> records;
@@ -617,6 +678,18 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		}
 
 		private void processRecords(ConsumerRecords<K, V> records) {
+			if (this.autoRenewLocks) {
+				// Dispatch one record at a time on the dispatch thread so the consumer thread
+				// stays free to renew acquisition locks while processing is in flight;
+				// see processInFlightRecords().
+				long acquiredAt = System.currentTimeMillis();
+				for (var record : records) {
+					this.recordsToDispatch.add(record);
+					this.lockRenewalTimestamps.put(record, acquiredAt);
+				}
+				processInFlightRecords();
+				return;
+			}
 			for (var record : records) {
 				ShareConsumerAcknowledgment acknowledgment = null;
 
@@ -627,18 +700,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 						this.acknowledgmentTimestamps.put(record, System.currentTimeMillis());
 					}
 
-					if (this.genericListener instanceof AcknowledgingShareConsumerAwareMessageListener<?, ?> ackListener) {
-						@SuppressWarnings("unchecked")
-						AcknowledgingShareConsumerAwareMessageListener<K, V> typedAckListener =
-								(AcknowledgingShareConsumerAwareMessageListener<K, V>) ackListener;
-						typedAckListener.onShareRecord(record, acknowledgment, this.consumer);
-					}
-					else {
-						@SuppressWarnings("unchecked")
-						GenericMessageListener<ConsumerRecord<K, V>> listener =
-								(GenericMessageListener<ConsumerRecord<K, V>>) this.genericListener;
-						listener.onMessage(record);
-					}
+					invokeListener(record, acknowledgment);
 
 					// EXPLICIT: container sends ACCEPT on success.
 					// IMPLICIT: broker auto-ACCEPTs — no acknowledge() call.
@@ -652,6 +714,102 @@ public class ShareKafkaMessageListenerContainer<K, V>
 				}
 			}
 			commitAcknowledgments();
+		}
+
+		private void invokeListener(ConsumerRecord<K, V> record,
+				@Nullable ShareConsumerAcknowledgment acknowledgment) throws Exception {
+
+			if (this.genericListener instanceof AcknowledgingShareConsumerAwareMessageListener<?, ?> ackListener) {
+				@SuppressWarnings("unchecked")
+				AcknowledgingShareConsumerAwareMessageListener<K, V> typedAckListener =
+						(AcknowledgingShareConsumerAwareMessageListener<K, V>) ackListener;
+				typedAckListener.onShareRecord(record, acknowledgment, this.consumer);
+			}
+			else {
+				@SuppressWarnings("unchecked")
+				GenericMessageListener<ConsumerRecord<K, V>> listener =
+						(GenericMessageListener<ConsumerRecord<K, V>>) this.genericListener;
+				listener.onMessage(record);
+			}
+		}
+
+		private boolean hasOutstandingRecords() {
+			return this.inFlightRecord != null || !this.recordsToDispatch.isEmpty();
+		}
+
+		/**
+		 * Drive the records acquired with automatic lock renewal, on the consumer thread:
+		 * complete the acknowledgment of the record whose listener invocation has finished,
+		 * dispatch the next queued record, and renew the acquisition locks of all records
+		 * that have been waiting or in flight for longer than the renewal interval.
+		 */
+		private void processInFlightRecords() {
+			if (this.inFlightRecord != null && this.inFlightFuture != null && this.inFlightFuture.isDone()) {
+				ConsumerRecord<K, V> record = this.inFlightRecord;
+				Throwable error = this.inFlightError.get();
+				this.inFlightRecord = null;
+				this.inFlightFuture = null;
+				this.inFlightError.set(null);
+				this.lockRenewalTimestamps.remove(record);
+				if (error == null) {
+					this.consumer.acknowledge(record, AcknowledgeType.ACCEPT);
+				}
+				else if (error instanceof Exception exception) {
+					handleProcessingError(record, null, exception);
+				}
+				else {
+					throw (Error) error;
+				}
+				commitAcknowledgments();
+			}
+
+			if (this.inFlightRecord == null) {
+				ConsumerRecord<K, V> next = this.recordsToDispatch.poll();
+				if (next != null) {
+					dispatchRecord(next);
+				}
+			}
+
+			renewLocksIfDue();
+		}
+
+		private void dispatchRecord(ConsumerRecord<K, V> record) {
+			ExecutorService executor = this.dispatchExecutor;
+			Assert.state(executor != null, "dispatchExecutor must not be null when autoRenewLocks is enabled");
+			this.inFlightRecord = record;
+			this.inFlightFuture = executor.submit(() -> {
+				try {
+					invokeListener(record, null);
+				}
+				catch (Throwable ex) { // captured for completion handling on the consumer thread
+					this.inFlightError.set(ex);
+				}
+			});
+		}
+
+		private void renewLocksIfDue() {
+			if (this.lockRenewalTimestamps.isEmpty()) {
+				return;
+			}
+			long now = System.currentTimeMillis();
+			boolean renewed = false;
+			for (Map.Entry<ConsumerRecord<K, V>, Long> entry : this.lockRenewalTimestamps.entrySet()) {
+				if (now - entry.getValue() >= this.lockRenewIntervalMs) {
+					try {
+						this.consumer.acknowledge(entry.getKey(), AcknowledgeType.RENEW);
+						entry.setValue(now);
+						renewed = true;
+					}
+					catch (Exception e) {
+						this.logger.error(e, () -> "Failed to renew acquisition lock for record: " + entry.getKey());
+					}
+				}
+			}
+			if (renewed) {
+				// Polling is blocked while records are unacknowledged, so commit right away
+				// for the renewal to reach the broker before the lock expires.
+				commitAcknowledgments();
+			}
 		}
 
 		private void handleProcessingError(ConsumerRecord<K, V> record,
@@ -785,6 +943,9 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		}
 
 		private void wrapUp(@Nullable Throwable throwable) {
+			if (this.dispatchExecutor != null) {
+				this.dispatchExecutor.shutdown();
+			}
 			publishConsumerStoppingEvent(this.consumer);
 			if (!this.acknowledgmentQueue.isEmpty()) {
 				// Acknowledgments queued after the last drain - the listener acknowledged during the

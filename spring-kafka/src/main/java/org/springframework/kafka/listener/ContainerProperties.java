@@ -360,6 +360,8 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private Duration shareAcknowledgmentTimeout = Duration.ofSeconds(30); // Align with Kafka's share.record.lock.duration.ms default
 
+	private boolean shareAutoRenewLocks = false;
+
 	/**
 	 * Create properties for a container that will subscribe to the specified topics.
 	 * @param topics the topics.
@@ -1304,6 +1306,38 @@ public class ContainerProperties extends ConsumerProperties {
 	 */
 	public Duration getShareAcknowledgmentTimeout() {
 		return this.shareAcknowledgmentTimeout;
+	}
+
+	/**
+	 * Set whether the container should automatically renew the acquisition locks of
+	 * records that are still being processed in {@link ShareAckMode#EXPLICIT} mode.
+	 * <p>
+	 * When enabled, records are dispatched to the listener on a separate thread and,
+	 * while a record is being processed, the container sends a {@code RENEW}
+	 * acknowledgment for it once it has been in flight for half of the
+	 * {@link #setShareAcknowledgmentTimeout(Duration) share acknowledgment timeout}
+	 * (which is aligned with the broker's {@code group.share.record.lock.duration.ms}),
+	 * repeating until the record completes. When processing completes, the container
+	 * sends {@code ACCEPT} or delegates to the
+	 * {@link ShareConsumerRecordRecoverer} on error, exactly as with the default
+	 * synchronous dispatch.
+	 * <p>
+	 * Only applies to {@code EXPLICIT} mode. Default is {@code false}.
+	 * @param shareAutoRenewLocks true to enable automatic lock renewal
+	 * @since 4.2
+	 */
+	public void setShareAutoRenewLocks(boolean shareAutoRenewLocks) {
+		this.shareAutoRenewLocks = shareAutoRenewLocks;
+	}
+
+	/**
+	 * Check whether automatic acquisition lock renewal is enabled for
+	 * {@link ShareAckMode#EXPLICIT} mode.
+	 * @return true if automatic lock renewal is enabled
+	 * @since 4.2
+	 */
+	public boolean isShareAutoRenewLocks() {
+		return this.shareAutoRenewLocks;
 	}
 
 	@Override
