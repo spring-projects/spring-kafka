@@ -40,6 +40,7 @@ import org.springframework.util.ClassUtils;
  * @author Gary Russell
  * @author Wang ZhiYang
  * @author Soby Chacko
+ * @author Seungho Kang
  *
  * @since 2.2
  *
@@ -87,7 +88,7 @@ public final class KafkaUtils {
 		Type returnType = method.getGenericReturnType();
 		if (returnType instanceof ParameterizedType prt) {
 			returnType = prt.getRawType();
-			if (Collection.class.equals(returnType)) {
+			if (returnType instanceof Class<?> rawType && Collection.class.isAssignableFrom(rawType)) {
 				returnType = prt.getActualTypeArguments()[0];
 			}
 			if (returnType instanceof ParameterizedType pType) {

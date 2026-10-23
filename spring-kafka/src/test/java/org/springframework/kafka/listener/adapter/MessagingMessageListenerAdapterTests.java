@@ -17,6 +17,7 @@
 package org.springframework.kafka.listener.adapter;
 
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -29,14 +30,19 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import reactor.core.publisher.Mono;
 
 import org.springframework.kafka.annotation.KafkaListenerAnnotationBeanPostProcessor;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.AcknowledgingMessageListener;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.support.GenericMessage;
+import org.springframework.messaging.support.MessageBuilder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -50,12 +56,14 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * @author Gary Russell
  * @author Abhishek Moondra
  * @author Kumar Gaurav
  * @author Nikita Kibitkin
+ * @author Seungho Kang
  * @since 1.1.2
  *
  */
@@ -274,6 +282,54 @@ public class MessagingMessageListenerAdapterTests {
 				new ConsumerRecord<>("foo", 0, 0L, null, "foo"), null, null));
 	}
 
+	@Test
+	void testListOfMessagesReturnWithoutSendTo() throws NoSuchMethodException {
+		KafkaListenerAnnotationBeanPostProcessor<String, String> bpp = new KafkaListenerAnnotationBeanPostProcessor<>();
+		Method method = getClass().getDeclaredMethod("listOfMessages", String.class);
+		RecordMessagingMessageListenerAdapter<String, String> adapter =
+				new RecordMessagingMessageListenerAdapter<>(this, method);
+		adapter.setHandlerMethod(
+				new HandlerAdapter(bpp.getMessageHandlerMethodFactory().createInvocableHandlerMethod(this, method)));
+		KafkaTemplate<String, String> replyTemplate = mock();
+		adapter.setReplyTemplate(replyTemplate);
+		adapter.onMessage(new ConsumerRecord<>("foo", 0, 0L, null, "foo"), null, null);
+		ArgumentCaptor<Message<?>> captor = ArgumentCaptor.captor();
+		verify(replyTemplate, times(2)).send(captor.capture());
+		assertThat(captor.getAllValues())
+				.extracting(message -> message.getHeaders().get(KafkaHeaders.TOPIC))
+				.containsExactly("bar", "baz");
+	}
+
+	@Test
+	void testListOfMessagesReturnWithoutSendToClassLevel() throws NoSuchMethodException {
+		KafkaListenerAnnotationBeanPostProcessor<String, String> bpp = new KafkaListenerAnnotationBeanPostProcessor<>();
+		Method method = getClass().getDeclaredMethod("listOfMessages", String.class);
+		DelegatingInvocableHandler handler = new DelegatingInvocableHandler(
+				List.of(bpp.getMessageHandlerMethodFactory().createInvocableHandlerMethod(this, method)),
+				null, this, null, null, null, null);
+		RecordMessagingMessageListenerAdapter<String, String> adapter =
+				new RecordMessagingMessageListenerAdapter<>(this, null);
+		adapter.setHandlerMethod(new HandlerAdapter(handler));
+		KafkaTemplate<String, String> replyTemplate = mock();
+		adapter.setReplyTemplate(replyTemplate);
+		adapter.onMessage(new ConsumerRecord<>("foo", 0, 0L, null, "foo"), null, null);
+		verify(replyTemplate, times(2)).send(any(Message.class));
+	}
+
+	@Test
+	void testListOfPayloadsReturnWithoutSendToIsNotSent() throws NoSuchMethodException {
+		KafkaListenerAnnotationBeanPostProcessor<String, String> bpp = new KafkaListenerAnnotationBeanPostProcessor<>();
+		Method method = getClass().getDeclaredMethod("listOfPayloads", String.class);
+		RecordMessagingMessageListenerAdapter<String, String> adapter =
+				new RecordMessagingMessageListenerAdapter<>(this, method);
+		adapter.setHandlerMethod(
+				new HandlerAdapter(bpp.getMessageHandlerMethodFactory().createInvocableHandlerMethod(this, method)));
+		KafkaTemplate<String, String> replyTemplate = mock();
+		adapter.setReplyTemplate(replyTemplate);
+		adapter.onMessage(new ConsumerRecord<>("foo", 0, 0L, null, "foo"), null, null);
+		verifyNoInteractions(replyTemplate);
+	}
+
 	public void test(@Nullable Acknowledgment ack) {
 
 	}
@@ -305,6 +361,17 @@ public class MessagingMessageListenerAdapterTests {
 	public String sync(String data, Acknowledgment ack) {
 
 		return data;
+	}
+
+	public List<Message<String>> listOfMessages(String data) {
+
+		return List.of(MessageBuilder.withPayload(data).setHeader(KafkaHeaders.TOPIC, "bar").build(),
+				MessageBuilder.withPayload(data).setHeader(KafkaHeaders.TOPIC, "baz").build());
+	}
+
+	public List<String> listOfPayloads(String data) {
+
+		return List.of(data, data);
 	}
 
 }
