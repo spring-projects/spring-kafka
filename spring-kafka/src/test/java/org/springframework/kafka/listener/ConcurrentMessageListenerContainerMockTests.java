@@ -1765,6 +1765,107 @@ public class ConcurrentMessageListenerContainerMockTests {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
+	@Test
+	void removeOffsetsInBatchHoldsListenerConsumerMonitor() throws InterruptedException {
+		String topic = "remove-offsets-monitor";
+		TopicPartition partition = new TopicPartition(topic, 0);
+		ConsumerRecords<String, String> polledRecords = new ConsumerRecords<>(Map.of(partition, List.of(
+				new ConsumerRecord<>(topic, 0, 0, null, "async"),
+				new ConsumerRecord<>(topic, 0, 1, null, "retry"))), Map.of());
+		AtomicInteger pollCount = new AtomicInteger();
+
+		Consumer<String, String> consumer = mock();
+		given(consumer.assignment()).willReturn(Set.of(partition));
+		AtomicReference<ConsumerRebalanceListener> rebal = new AtomicReference<>();
+		willAnswer(invocation -> {
+			rebal.set(invocation.getArgument(1));
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any());
+		willAnswer(invocation -> {
+			if (pollCount.getAndIncrement() == 0) {
+				rebal.get().onPartitionsAssigned(List.of(partition));
+				return polledRecords;
+			}
+			Thread.sleep(10);
+			return ConsumerRecords.empty();
+		}).given(consumer).poll(any());
+		ConsumerFactory<String, String> cf = mock();
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		given(cf.getConfigurationProperties())
+				.willReturn(Collections.singletonMap(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"));
+		ContainerProperties containerProperties = new ContainerProperties(topic);
+		containerProperties.setGroupId("grp");
+		containerProperties.setAckMode(AckMode.MANUAL);
+		containerProperties.setAsyncAcks(true);
+		AtomicReference<Acknowledgment> pendingAck = new AtomicReference<>();
+		AtomicReference<Thread> consumerThread = new AtomicReference<>();
+		containerProperties.setMessageListener((AcknowledgingMessageListener<String, String>) (rec, ack) -> {
+			consumerThread.set(Thread.currentThread());
+			if (rec.offset() == 0) {
+				// completed later, on another thread
+				pendingAck.set(ack);
+			}
+			else {
+				throw new RuntimeException("retry");
+			}
+		});
+		KafkaMessageListenerContainer<String, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProperties);
+		CountDownLatch inErrorHandler = new CountDownLatch(1);
+		CountDownLatch monitorHeld = new CountDownLatch(1);
+		container.setCommonErrorHandler(new CommonErrorHandler() {
+
+			@Override
+			public boolean seeksAfterHandling() {
+				return true;
+			}
+
+			@Override
+			public void handleRemaining(Exception thrownException, List<ConsumerRecord<?, ?>> records,
+					Consumer<?, ?> kafkaConsumer, MessageListenerContainer listenerContainer) {
+
+				inErrorHandler.countDown();
+				try {
+					monitorHeld.await(10, TimeUnit.SECONDS);
+				}
+				catch (InterruptedException ex) {
+					Thread.currentThread().interrupt();
+				}
+				throw new RecordInRetryException("retrying", thrownException);
+			}
+
+		});
+		container.start();
+		try {
+			assertThat(inErrorHandler.await(10, TimeUnit.SECONDS)).isTrue();
+			Object listenerConsumer = KafkaTestUtils.getPropertyValue(container, "listenerConsumer");
+			Map<TopicPartition, List<Long>> offsets =
+					KafkaTestUtils.getPropertyValue(container, "listenerConsumer.offsetsInThisBatch", Map.class);
+			// stand in for an ack completing at the same moment: hold the monitor that ackInOrder() uses
+			synchronized (listenerConsumer) {
+				monitorHeld.countDown();
+				for (int i = 0; i < 200 && consumerThread.get().getState() != Thread.State.BLOCKED; i++) {
+					Thread.sleep(50);
+				}
+				assertThat(consumerThread.get().getState()).isEqualTo(Thread.State.BLOCKED);
+				assertThat(offsets.get(partition)).containsExactly(0L, 1L);
+			}
+			for (int i = 0; i < 200 && offsets.get(partition).size() > 1; i++) {
+				Thread.sleep(50);
+			}
+			assertThat(offsets.get(partition)).containsExactly(0L);
+			pendingAck.get().acknowledge();
+			assertThat(offsets).isEmpty();
+			assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.deferredOffsets", Map.class))
+					.isEmpty();
+			verify(consumer, timeout(10_000)).commitSync(eq(Map.of(partition, new OffsetAndMetadata(1L))), any());
+		}
+		finally {
+			container.stop();
+		}
+	}
+
 	@SuppressWarnings("rawtypes")
 	private AcknowledgingMessageListener ackOffset1() {
 		return new AcknowledgingMessageListener() {
