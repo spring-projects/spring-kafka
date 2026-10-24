@@ -72,7 +72,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
@@ -146,6 +145,7 @@ import static org.mockito.Mockito.verify;
  * @author Mikael Carlstedt
  * @author Borahm Lee
  * @author Sanghyeok An
+ * @author WooSeung Kim
  */
 @EmbeddedKafka(topics = { KafkaMessageListenerContainerTests.topic1, KafkaMessageListenerContainerTests.topic2,
 		KafkaMessageListenerContainerTests.topic3, KafkaMessageListenerContainerTests.topic4,
@@ -4181,7 +4181,9 @@ public class KafkaMessageListenerContainerTests {
 				Arguments.of(AckMode.RECORD, false),
 				Arguments.of(AckMode.RECORD, true),
 				Arguments.of(AckMode.BATCH, false),
-				Arguments.of(AckMode.BATCH, true));
+				Arguments.of(AckMode.BATCH, true),
+				Arguments.of(AckMode.MANUAL, false),
+				Arguments.of(AckMode.MANUAL, true));
 		}
 
 	@ParameterizedTest(name = "{index} testInvokeRecordInterceptorAllSkipped AckMode.{0} early intercept {1}")
@@ -4197,7 +4199,9 @@ public class KafkaMessageListenerContainerTests {
 		records.put(new TopicPartition("foo", 0), List.of(firstRecord, secondRecord));
 		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		AtomicBoolean first = new AtomicBoolean(true);
+		CountDownLatch pollLatch = new CountDownLatch(4);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			pollLatch.countDown();
 			Thread.sleep(50);
 			return first.getAndSet(false) ? consumerRecords : ConsumerRecords.empty();
 		});
@@ -4217,6 +4221,7 @@ public class KafkaMessageListenerContainerTests {
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
 		containerProps.setGroupId("grp");
 		containerProps.setAckMode(ackMode);
+		containerProps.setAsyncAcks(AckMode.MANUAL.equals(ackMode));
 
 		containerProps.setMessageListener((MessageListener<?, ?>) msg -> {
 		});
@@ -4248,6 +4253,7 @@ public class KafkaMessageListenerContainerTests {
 		container.start();
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(afterRecordLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(pollLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		container.stop();
 		assertThat(closeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 
@@ -4272,17 +4278,26 @@ public class KafkaMessageListenerContainerTests {
 		}
 		inOrder.verify(recordInterceptor).success(eq(secondRecord), eq(consumer));
 		inOrder.verify(recordInterceptor).afterRecord(eq(secondRecord), eq(consumer));
-		if (AckMode.BATCH.equals(ackMode)) {
+		if (AckMode.BATCH.equals(ackMode) || AckMode.MANUAL.equals(ackMode)) {
 			inOrder.verify(consumer).commitSync(eq(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(2L))),
 					any(Duration.class));
 		}
 		inOrder.verify(consumer).close();
+		verify(consumer, never()).pause(any());
 	}
 
-	@ParameterizedTest(name = "{index} testInvokeBatchInterceptorAllSkipped early intercept {0}")
-	@ValueSource(booleans = { true, false })
+	private static Stream<Arguments> paramsForBatchAllSkipped() {
+		return Stream.of(
+				Arguments.of(AckMode.BATCH, false),
+				Arguments.of(AckMode.BATCH, true),
+				Arguments.of(AckMode.MANUAL, false),
+				Arguments.of(AckMode.MANUAL, true));
+	}
+
+	@ParameterizedTest(name = "{index} testInvokeBatchInterceptorAllSkipped AckMode.{0} early intercept {1}")
+	@MethodSource("paramsForBatchAllSkipped")
 	@SuppressWarnings("unchecked")
-	public void testInvokeBatchInterceptorAllSkipped(boolean early) throws Exception {
+	public void testInvokeBatchInterceptorAllSkipped(AckMode ackMode, boolean early) throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
@@ -4292,7 +4307,9 @@ public class KafkaMessageListenerContainerTests {
 		records.put(new TopicPartition("foo", 0), List.of(firstRecord, secondRecord));
 		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		AtomicBoolean first = new AtomicBoolean(true);
+		CountDownLatch pollLatch = new CountDownLatch(4);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			pollLatch.countDown();
 			Thread.sleep(50);
 			return first.getAndSet(false) ? consumerRecords : ConsumerRecords.empty();
 		});
@@ -4306,7 +4323,8 @@ public class KafkaMessageListenerContainerTests {
 
 		ContainerProperties containerProps = new ContainerProperties(topicPartition);
 		containerProps.setGroupId("grp");
-		containerProps.setAckMode(AckMode.BATCH);
+		containerProps.setAckMode(ackMode);
+		containerProps.setAsyncAcks(AckMode.MANUAL.equals(ackMode));
 
 		containerProps.setMessageListener((BatchMessageListener<?, ?>) msgs -> {
 		});
@@ -4339,6 +4357,8 @@ public class KafkaMessageListenerContainerTests {
 		inOrder.verify(interceptor).intercept(any(), eq(consumer));
 		inOrder.verify(consumer).commitSync(eq(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(2L))),
 				any(Duration.class));
+		assertThat(pollLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		verify(consumer, never()).pause(any());
 		container.stop();
 	}
 
