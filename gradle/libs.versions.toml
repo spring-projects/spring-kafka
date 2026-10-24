@@ -4,7 +4,7 @@ micrometerTracingVersion = "1.8.0-RC1"
 micrometerVersion = "1.18.0-RC1"
 reactorVersion = "2026.0.0-RC1"
 springDataVersion = "2026.1.0-RC1"
-springVersion = "7.1.0-RC1"
+springVersion = "7.1.0-SNAPSHOT"
 
 # Third-party dependencies
 assertjVersion = "3.27.7"
