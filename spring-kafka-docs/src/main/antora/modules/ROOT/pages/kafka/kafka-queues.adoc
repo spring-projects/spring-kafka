@@ -504,6 +504,18 @@ public void listen(ConsumerRecord<String, String> record) {
 }
 ----
 
+[[share-ack-mode-explicit-auto-renew]]
+==== Automatic Lock Renewal in EXPLICIT Mode
+
+A record's acquisition lock expires after the broker's `group.share.record.lock.duration.ms` (default 30 seconds).
+If processing a record takes longer than that, the broker may redeliver the record to another member of the share group while it is still being processed.
+In `MANUAL` mode the listener can call `renew()` to extend the lock, but in `EXPLICIT` mode there is no listener-facing acknowledgment to call.
+
+For such workloads, enable automatic lock renewal with `factory.getContainerProperties().setShareAutoRenewLocks(true)`.
+The container then dispatches each record to the listener on a separate thread (one record at a time, in order) and, while processing is in flight, sends `RENEW` for the record once it has been in flight for half of the `shareAcknowledgmentTimeout` (which is aligned with the broker lock duration), repeating until processing completes.
+When the listener returns, the container sends `ACCEPT`; on an exception, the recoverer decides the outcome, exactly as with the default synchronous dispatch.
+Automatic renewal is disabled by default, in which case records are dispatched synchronously on the consumer thread as described above.
+
 [[share-ack-mode-manual]]
 === MANUAL: Listener-Managed Acknowledgment
 
