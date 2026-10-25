@@ -197,6 +197,17 @@ class KafkaStreamsInteractiveQueryServiceTests {
 	}
 
 	@Test
+	void currentHostInfoWithIpv6ApplicationServer() {
+		StreamsBuilderFactoryBean sbfb = new StreamsBuilderFactoryBean(new KafkaStreamsConfiguration(
+				Map.of(StreamsConfig.APPLICATION_ID_CONFIG, "iqs-ipv6",
+						StreamsConfig.APPLICATION_SERVER_CONFIG, "[::1]:8080")));
+		sbfb.setAutoStartup(false);
+		KafkaStreamsInteractiveQueryService iqs = new KafkaStreamsInteractiveQueryService(sbfb);
+		HostInfo currentKafkaStreamsApplicationHostInfo = iqs.getCurrentKafkaStreamsApplicationHostInfo();
+		assertThat(currentKafkaStreamsApplicationHostInfo).isEqualTo(new HostInfo("::1", 8080));
+	}
+
+	@Test
 	void hostInfoForKeyAndStore() throws Exception {
 		ensureKafkaStreamsProcessorIsUpAndRunning();
 
