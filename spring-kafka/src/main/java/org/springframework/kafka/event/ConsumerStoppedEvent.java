@@ -56,7 +56,8 @@ public class ConsumerStoppedEvent extends KafkaEvent {
 
 		/**
 		 * The transactional producer was fenced and the container
-		 * {@code stopContainerWhenFenced} property is true.
+		 * {@code stopContainerWhenFenced} property is true, or the consumer's
+		 * {@code group.instance.id} was fenced or is still in use by another member.
 		 */
 		FENCED,
 

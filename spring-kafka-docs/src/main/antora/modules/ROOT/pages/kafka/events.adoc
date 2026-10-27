@@ -104,7 +104,7 @@ In addition, the `ConsumerStoppedEvent` has the following additional property:
 ** `NORMAL` - the consumer stopped normally (container was stopped).
 ** `ABNORMAL` - the consumer stopped abnormally (container was stopped abnormally).
 ** `ERROR` - a `java.lang.Error` was thrown.
-** `FENCED` - the transactional producer was fenced and the `stopContainerWhenFenced` container property is `true`.
+** `FENCED` - the transactional producer was fenced and the `stopContainerWhenFenced` container property is `true`, or the consumer's `group.instance.id` was fenced or is still in use by another member.
 ** `AUTH` - an `AuthenticationException` or `AuthorizationException` was thrown and the `authExceptionRetryInterval` is not configured.
 ** `NO_OFFSET` - there is no offset for a partition and the `auto.offset.reset` policy is `none`.
 
