@@ -19,10 +19,11 @@ Not sure what a **pull request** is, or how to submit one? Take a look at GitHub
 
 ## Search GitHub issues first; create one if necessary
 
-Is there already an issue that addresses your concern?
-Search the [GitHub issue tracker](https://github.com/spring-projects/spring-kafka/issues) to see if you can find something similar.
-If not, please create a new issue before submitting a pull request unless the change is truly trivial, e.g. typo fixes,
-removing compiler warnings, etc.
+Is there already an issue that addresses your concern? Search the GitHub issue tracker to see if you can find something similar.
+If not, please create a new issue in GitHub before submitting a pull request unless the change is truly trivial, e.g. typo fixes, removing compiler warnings, etc.
+
+If you already have a fix or an idea worked out, feel free to open a pull request directly — there is no need to create an issue upfront just so it can be closed by that same pull request.
+An issue and a pull request are equal entities on GitHub: we can discuss the proposed solution right in the pull request, and it gets folded into the release notes just as easily as an issue would.
 
 ## Developer Certificate of Origin
 
