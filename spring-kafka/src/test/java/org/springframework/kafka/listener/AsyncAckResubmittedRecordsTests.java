@@ -14,117 +14,104 @@
  * limitations under the License.
  */
 
+
 package org.springframework.kafka.listener;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 
-import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
-import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
 import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.kafka.support.TopicPartitionOffset;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
+import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
 import org.springframework.util.backoff.FixedBackOff;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyMap;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willAnswer;
-import static org.mockito.Mockito.mock;
 
 /**
  * @author Sharang Gupta
  *
  * @since 4.2
  */
-public class AsyncAckResubmittedRecordsTests {
+@EmbeddedKafka(topics = AsyncAckResubmittedRecordsTests.TOPIC, partitions = 2)
+class AsyncAckResubmittedRecordsTests {
 
-	private static final TopicPartition TP0 = new TopicPartition("foo", 0);
+	static final String TOPIC = "asyncAckResubmittedRecords";
 
-	private static final TopicPartition TP1 = new TopicPartition("foo", 1);
+	private static final String GROUP = "asyncAckResubmittedRecords";
 
 	@Test
 	void pendingAckOnAnotherPartitionSurvivesResubmittedRecords() throws Exception {
-		ConsumerFactory<Integer, String> cf = mock();
-		Consumer<Integer, String> consumer = mock();
-		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
-		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new LinkedHashMap<>();
-		records.put(TP0, List.of(new ConsumerRecord<>("foo", 0, 0L, 0, "a1")));
-		records.put(TP1, List.of(new ConsumerRecord<>("foo", 1, 0L, 0, "b1"),
-				new ConsumerRecord<>("foo", 1, 1L, 0, "b2")));
-		AtomicBoolean first = new AtomicBoolean(true);
-		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
-			if (first.getAndSet(false)) {
-				return new ConsumerRecords<>(records, Map.of());
-			}
-			Thread.sleep(50);
-			return ConsumerRecords.empty();
-		});
-		given(consumer.paused()).willReturn(Collections.emptySet());
-		List<Map<TopicPartition, OffsetAndMetadata>> commits = Collections.synchronizedList(new ArrayList<>());
-		CountDownLatch partition1Committed = new CountDownLatch(2);
-		willAnswer(i -> {
-			Map<TopicPartition, OffsetAndMetadata> commit = i.getArgument(0);
-			commits.add(new LinkedHashMap<>(commit));
-			if (commit.containsKey(TP1)) {
-				partition1Committed.countDown();
-			}
-			return null;
-		}).given(consumer).commitSync(anyMap(), any());
+		EmbeddedKafkaBroker broker = EmbeddedKafkaCondition.getBroker();
+		KafkaTemplate<Integer, String> template =
+				new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(KafkaTestUtils.producerProps(broker)));
+		for (int partition = 0; partition < 2; partition++) {
+			template.send(TOPIC, partition, null, "first");
+			template.send(TOPIC, partition, null, "second");
+		}
+		template.flush();
 
-		ContainerProperties containerProps = new ContainerProperties(new TopicPartitionOffset("foo", 0),
-				new TopicPartitionOffset("foo", 1));
-		containerProps.setGroupId("grp");
+		ContainerProperties containerProps = new ContainerProperties(TOPIC);
 		containerProps.setAckMode(AckMode.MANUAL_IMMEDIATE);
 		containerProps.setAsyncAcks(true);
-		containerProps.setAssignmentCommitOption(AssignmentCommitOption.NEVER);
+		List<String> deliveries = new CopyOnWriteArrayList<>();
+		AtomicInteger pendingPartition = new AtomicInteger(-1);
 		AtomicReference<Acknowledgment> pendingAck = new AtomicReference<>();
 		AtomicBoolean failedOnce = new AtomicBoolean();
 		containerProps.setMessageListener((AcknowledgingMessageListener<Integer, String>) (record, ack) -> {
-			if ("a1".equals(record.value())) {
+			deliveries.add(record.partition() + ":" + record.value());
+			// Whichever partition comes first keeps its first record unacknowledged,
+			// the other partition fails once on its first record.
+			if (pendingPartition.compareAndSet(-1, record.partition())) {
 				pendingAck.set(ack);
 				return;
 			}
-			if ("b1".equals(record.value()) && failedOnce.compareAndSet(false, true)) {
-				throw new RuntimeException("b1 fails once");
+			if (record.partition() != pendingPartition.get() && failedOnce.compareAndSet(false, true)) {
+				throw new IllegalStateException("The record fails once");
 			}
 			ack.acknowledge();
 		});
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(broker, GROUP, false);
 		KafkaMessageListenerContainer<Integer, String> container =
-				new KafkaMessageListenerContainer<>(cf, containerProps);
+				new KafkaMessageListenerContainer<>(new DefaultKafkaConsumerFactory<>(consumerProps), containerProps);
 		DefaultErrorHandler errorHandler = new DefaultErrorHandler(new FixedBackOff(0L, 1L));
 		errorHandler.setSeekAfterError(false);
 		container.setCommonErrorHandler(errorHandler);
 		container.start();
 		try {
-			assertThat(partition1Committed.await(10, TimeUnit.SECONDS)).isTrue();
-			assertThat(commits).containsExactly(
-					Map.of(TP1, new OffsetAndMetadata(1L)),
-					Map.of(TP1, new OffsetAndMetadata(2L)));
+			await().atMost(Duration.ofSeconds(30))
+					.untilAsserted(() -> assertThat(committedOffset(broker, 1 - pendingPartition.get())).isEqualTo(2L));
+			// The other partition was resubmitted after its failure while the first record waited for its ack
+			assertThat(deliveries).hasSize(5);
+
 			pendingAck.get().acknowledge();
-			await().atMost(Duration.ofSeconds(5))
-					.untilAsserted(() -> assertThat(commits).contains(Map.of(TP0, new OffsetAndMetadata(1L))));
+
+			await().atMost(Duration.ofSeconds(30))
+					.untilAsserted(() -> assertThat(committedOffset(broker, pendingPartition.get())).isEqualTo(2L));
 		}
 		finally {
 			container.stop();
+			template.destroy();
 		}
+	}
+
+	private static long committedOffset(EmbeddedKafkaBroker broker, int partition) throws Exception {
+		OffsetAndMetadata offset = KafkaTestUtils.getCurrentOffset(broker.getBrokersAsString(), GROUP, TOPIC, partition);
+		return offset != null ? offset.offset() : -1;
 	}
 
 }
