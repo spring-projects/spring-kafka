@@ -1885,6 +1885,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			else {
 				records = pollConsumer();
 				savePositionsIfNeeded(records);
+				boolean resubmitted = false;
 				if (this.remainingRecords != null) {
 					int howManyRecords = records.count();
 					if (howManyRecords > 0) {
@@ -1898,9 +1899,14 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					if (!isPaused) {
 						records = this.remainingRecords;
 						this.remainingRecords = null;
+						resubmitted = true;
 					}
 				}
-				captureOffsets(records);
+				if (!resubmitted) {
+					// the offsets of resubmitted records are still tracked from their original poll;
+					// capturing them again would drop pending async acks for other partitions
+					captureOffsets(records);
+				}
 				checkRebalanceCommits();
 			}
 			return records;
