@@ -182,6 +182,7 @@ import org.springframework.util.StringUtils;
  * @author Gangeun Lee
  * @author Jiyeon Kim
  * @author Minju Kim
+ * @author WooSeung Kim
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -2604,6 +2605,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (records == null) {
 					this.logger.debug(() -> "BatchInterceptor returned null, skipping: "
 							+ recordsArg + " with " + recordsArg.count() + " records");
+					if (this.offsetsInThisBatch != null) {
+						removeOffsetsInBatch(recordsArg);
+						processAcks(recordsArg);
+					}
 					return;
 				}
 				else {
@@ -2876,6 +2881,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					catch (InterruptedException e) {
 						Thread.currentThread().interrupt();
 					}
+					removeOffsetsInBatch(nextArg);
 					this.earlyBatchInterceptor.success(nextArg, this.consumer);
 				}
 			}
@@ -2890,7 +2896,12 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				if (cRecord == null) {
 					this.logger.debug(() -> "RecordInterceptor returned null, skipping: "
 							+ KafkaUtils.format(recordArg));
-					ackCurrent(recordArg);
+					if (this.offsetsInThisBatch != null) { // NOSONAR (sync)
+						ackInOrder(recordArg);
+					}
+					else {
+						ackCurrent(recordArg);
+					}
 					this.earlyRecordInterceptor.success(recordArg, this.consumer);
 					this.earlyRecordInterceptor.afterRecord(recordArg, this.consumer);
 				}
@@ -3098,6 +3109,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (cRecord == null) {
 				this.logger.debug(() -> "RecordInterceptor returned null, skipping: "
 						+ KafkaUtils.format(recordArg));
+				if (this.offsetsInThisBatch != null) { // NOSONAR (sync)
+					ackInOrder(recordArg);
+				}
 			}
 			else {
 				try {
