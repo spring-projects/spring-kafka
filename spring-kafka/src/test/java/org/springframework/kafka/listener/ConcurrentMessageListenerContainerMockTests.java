@@ -99,6 +99,7 @@ import static org.mockito.Mockito.verify;
  * @author Jian Kim
  * @author Jiyeon Kim
  * @author Minju Kim
+ * @author Sharang Gupta
  *
  * @since 2.2.4
  *
@@ -1146,6 +1147,68 @@ public class ConcurrentMessageListenerContainerMockTests {
 		finally {
 			container.stop();
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void partitionPauseRequestedBeforeStartIsAppliedToChildren() throws InterruptedException {
+		ConcurrentMessageListenerContainer<String, String> container = twoChildContainer();
+		TopicPartition tp1 = new TopicPartition("foo", 1);
+		container.pausePartition(tp1);
+		assertThat(container.isPartitionPauseRequested(tp1)).isTrue();
+		container.start();
+		try {
+			assertThat(container.getContainers()).hasSize(2)
+					.allSatisfy(child -> assertThat(child.isPartitionPauseRequested(tp1)).isTrue());
+			container.resumePartition(tp1);
+			assertThat(container.isPartitionPauseRequested(tp1)).isFalse();
+			assertThat(container.getContainers())
+					.allSatisfy(child -> assertThat(child.isPartitionPauseRequested(tp1)).isFalse());
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void partitionPauseRequestSurvivesRestart() throws InterruptedException {
+		ConcurrentMessageListenerContainer<String, String> container = twoChildContainer();
+		TopicPartition tp1 = new TopicPartition("foo", 1);
+		container.start();
+		try {
+			container.pausePartition(tp1);
+			container.stop();
+			assertThat(container.isPartitionPauseRequested(tp1)).isTrue();
+			container.start();
+			assertThat(container.getContainers()).hasSize(2)
+					.allSatisfy(child -> assertThat(child.isPartitionPauseRequested(tp1)).isTrue());
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private ConcurrentMessageListenerContainer<String, String> twoChildContainer() {
+		Consumer<String, String> consumer0 = mock();
+		Consumer<String, String> consumer1 = mock();
+		for (Consumer<String, String> consumer : List.of(consumer0, consumer1)) {
+			willAnswer(inv -> {
+				Thread.sleep(50);
+				return ConsumerRecords.empty();
+			}).given(consumer).poll(any());
+		}
+		ConsumerFactory<String, String> cf = mock();
+		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer0, consumer1, consumer0, consumer1);
+		ContainerProperties containerProperties = new ContainerProperties(
+				new TopicPartitionOffset("foo", 0), new TopicPartitionOffset("foo", 1));
+		containerProperties.setGroupId("grp");
+		containerProperties.setMessageListener((MessageListener<String, String>) rec -> { });
+		ConcurrentMessageListenerContainer<String, String> container =
+				new ConcurrentMessageListenerContainer<>(cf, containerProperties);
+		container.setConcurrency(2);
+		return container;
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
