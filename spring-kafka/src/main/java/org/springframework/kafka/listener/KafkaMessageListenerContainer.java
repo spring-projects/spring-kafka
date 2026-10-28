@@ -3420,7 +3420,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void removeOffsetsInBatch(Iterable<? extends ConsumerRecord<?, ?>> records) {
+		private synchronized void removeOffsetsInBatch(Iterable<? extends ConsumerRecord<?, ?>> records) {
 			if (this.offsetsInThisBatch == null || this.deferredOffsets == null) {
 				return;
 			}
