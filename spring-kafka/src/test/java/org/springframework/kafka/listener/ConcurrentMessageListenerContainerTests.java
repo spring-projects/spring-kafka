@@ -68,6 +68,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -82,6 +83,7 @@ import static org.mockito.Mockito.mock;
  * @author Vladimir Tsanev
  * @author Soby Chacko
  * @author Lokesh Alamuri
+ * @author Sharang Gupta
  */
 @EmbeddedKafka(topics = {ConcurrentMessageListenerContainerTests.topic1,
 		ConcurrentMessageListenerContainerTests.topic2,
@@ -89,7 +91,8 @@ import static org.mockito.Mockito.mock;
 		ConcurrentMessageListenerContainerTests.topic6, ConcurrentMessageListenerContainerTests.topic7,
 		ConcurrentMessageListenerContainerTests.topic8, ConcurrentMessageListenerContainerTests.topic9,
 		ConcurrentMessageListenerContainerTests.topic10, ConcurrentMessageListenerContainerTests.topic11,
-		ConcurrentMessageListenerContainerTests.topic12, ConcurrentMessageListenerContainerTests.topic13},
+		ConcurrentMessageListenerContainerTests.topic12, ConcurrentMessageListenerContainerTests.topic13,
+		ConcurrentMessageListenerContainerTests.topic14},
 		brokerProperties = "group.initial.rebalance.delay.ms:500")
 public class ConcurrentMessageListenerContainerTests {
 
@@ -118,6 +121,8 @@ public class ConcurrentMessageListenerContainerTests {
 	public static final String topic12 = "testTopic12";
 
 	public static final String topic13 = "testTopic13";
+
+	public static final String topic14 = "testTopic14";
 
 	private static EmbeddedKafkaBroker embeddedKafka;
 
@@ -1112,6 +1117,34 @@ public class ConcurrentMessageListenerContainerTests {
 		});
 
 		this.logger.info("Stop containerStartStop");
+	}
+
+	@Test
+	public void testPartitionPauseRequestedBeforeStartAndKeptAcrossRestart() {
+		Map<String, Object> props = KafkaTestUtils.consumerProps(embeddedKafka, "test14", false);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(props);
+		ContainerProperties containerProps = new ContainerProperties(topic14);
+		containerProps.setMessageListener((MessageListener<Integer, String>) message -> { });
+		ConcurrentMessageListenerContainer<Integer, String> container =
+				new ConcurrentMessageListenerContainer<>(cf, containerProps);
+		container.setConcurrency(2);
+		container.setBeanName("testPartitionPauseBeforeStart");
+		TopicPartition partition1 = new TopicPartition(topic14, 1);
+		container.pausePartition(partition1);
+		container.start();
+		try {
+			await().atMost(Duration.ofSeconds(30))
+					.untilAsserted(() -> assertThat(container.isPartitionPaused(partition1)).isTrue());
+
+			container.stop();
+			container.start();
+
+			await().atMost(Duration.ofSeconds(30))
+					.untilAsserted(() -> assertThat(container.isPartitionPaused(partition1)).isTrue());
+		}
+		finally {
+			container.stop();
+		}
 	}
 
 }
