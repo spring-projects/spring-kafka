@@ -68,6 +68,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -89,7 +90,8 @@ import static org.mockito.Mockito.mock;
 		ConcurrentMessageListenerContainerTests.topic6, ConcurrentMessageListenerContainerTests.topic7,
 		ConcurrentMessageListenerContainerTests.topic8, ConcurrentMessageListenerContainerTests.topic9,
 		ConcurrentMessageListenerContainerTests.topic10, ConcurrentMessageListenerContainerTests.topic11,
-		ConcurrentMessageListenerContainerTests.topic12, ConcurrentMessageListenerContainerTests.topic13},
+		ConcurrentMessageListenerContainerTests.topic12, ConcurrentMessageListenerContainerTests.topic13,
+		ConcurrentMessageListenerContainerTests.topic14},
 		brokerProperties = "group.initial.rebalance.delay.ms:500")
 public class ConcurrentMessageListenerContainerTests {
 
@@ -118,6 +120,8 @@ public class ConcurrentMessageListenerContainerTests {
 	public static final String topic12 = "testTopic12";
 
 	public static final String topic13 = "testTopic13";
+
+	public static final String topic14 = "testTopic14";
 
 	private static EmbeddedKafkaBroker embeddedKafka;
 
@@ -1112,6 +1116,63 @@ public class ConcurrentMessageListenerContainerTests {
 		});
 
 		this.logger.info("Stop containerStartStop");
+	}
+
+	@Test
+	void fencedChildFromPreviousRunDoesNotStopRestartedParent() throws Exception {
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(embeddedKafka, "fencedChild", true);
+		DefaultKafkaConsumerFactory<Integer, String> consumerFactory =
+				new DefaultKafkaConsumerFactory<>(consumerProps);
+		ContainerProperties containerProperties = new ContainerProperties(topic14);
+		CountDownLatch blockedListener = new CountDownLatch(1);
+		CountDownLatch releaseListener = new CountDownLatch(1);
+		CountDownLatch oldListenerFailed = new CountDownLatch(1);
+		AtomicBoolean firstRecord = new AtomicBoolean(true);
+		containerProperties.setMessageListener((MessageListener<Integer, String>) record -> {
+			if (firstRecord.getAndSet(false)) {
+				blockedListener.countDown();
+				try {
+					releaseListener.await(30, TimeUnit.SECONDS);
+				}
+				catch (InterruptedException ex) {
+					Thread.currentThread().interrupt();
+					throw new IllegalStateException(ex);
+				}
+				oldListenerFailed.countDown();
+				throw new IllegalStateException("test exception from fenced child");
+			}
+		});
+
+		ConcurrentMessageListenerContainer<Integer, String> container =
+				new ConcurrentMessageListenerContainer<>(consumerFactory, containerProperties);
+		container.setConcurrency(2);
+		container.setCommonErrorHandler(new CommonContainerStoppingErrorHandler(Runnable::run));
+		container.start();
+		ContainerTestUtils.waitForAssignment(container, embeddedKafka.getPartitionsPerTopic());
+
+		Map<String, Object> producerProps = KafkaTestUtils.producerProps(embeddedKafka);
+		DefaultKafkaProducerFactory<Integer, String> producerFactory =
+				new DefaultKafkaProducerFactory<>(producerProps);
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(producerFactory);
+		try {
+			template.send(topic14, 0, 0, "block").get(10, TimeUnit.SECONDS);
+			assertThat(blockedListener.await(10, TimeUnit.SECONDS)).isTrue();
+
+			container.stop();
+			container.start();
+			assertThat(container.isRunning()).isTrue();
+			assertThat(container.getContainers()).allMatch(MessageListenerContainer::isRunning);
+
+			releaseListener.countDown();
+			assertThat(oldListenerFailed.await(10, TimeUnit.SECONDS)).isTrue();
+			await().during(Duration.ofSeconds(1)).atMost(Duration.ofSeconds(5))
+					.untilAsserted(() -> assertThat(container.isRunning()).isTrue());
+		}
+		finally {
+			releaseListener.countDown();
+			container.stop();
+			producerFactory.destroy();
+		}
 	}
 
 }
