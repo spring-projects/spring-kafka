@@ -4,7 +4,7 @@ micrometerTracingVersion = "1.7.2"
 micrometerVersion = "1.17.2"
 micrometerDocsVersion = "1.0.4"
 reactorVersion = "2025.0.8"
-springBootVersion = "4.0.8"
+springBootVersion = "4.0.9"
 springDataVersion = "2026.0.2"
 springVersion = "7.0.10"
 
@@ -56,6 +56,6 @@ com-github-spotbugs-annotations = { module = "com.github.spotbugs:spotbugs-annot
 
 [plugins]
 aggregate-javadoc = { id = "io.freefair.aggregate-javadoc", version = "9.2.0" }
-nullability = { id = "io.spring.nullability", version = "0.0.17" }
+nullability = { id = "io.spring.nullability", version = "0.0.18" }
 antora = { id = "org.antora", version = "1.0.0" }
 io-spring-antora-generate-yml = { id = "io.spring.antora.generate-antora-yml", version = "0.0.1" }
