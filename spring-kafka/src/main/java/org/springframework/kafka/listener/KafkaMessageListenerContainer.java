@@ -77,6 +77,7 @@ import org.apache.kafka.common.errors.AuthorizationException;
 import org.apache.kafka.common.errors.FencedInstanceIdException;
 import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.errors.RebalanceInProgressException;
+import org.apache.kafka.common.errors.UnreleasedInstanceIdException;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeader;
@@ -590,7 +591,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (throwable instanceof Error) {
 				reason = Reason.ERROR;
 			}
-			else if (throwable instanceof StopAfterFenceException || throwable instanceof FencedInstanceIdException) {
+			else if (throwable instanceof StopAfterFenceException || throwable instanceof FencedInstanceIdException
+					|| throwable instanceof UnreleasedInstanceIdException) {
 				reason = Reason.FENCED;
 			}
 			else if (throwable instanceof AuthenticationException || throwable instanceof AuthorizationException) {
@@ -1492,6 +1494,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					ListenerConsumer.this.logger.error(fie, "'" + ConsumerConfig.GROUP_INSTANCE_ID_CONFIG
 							+ "' has been fenced");
 					exitThrowable = fie;
+					break;
+				}
+				catch (UnreleasedInstanceIdException uie) {
+					this.fatalError = true;
+					ListenerConsumer.this.logger.error(uie, "'" + ConsumerConfig.GROUP_INSTANCE_ID_CONFIG
+							+ "' is still in use by another member of the group");
+					exitThrowable = uie;
 					break;
 				}
 				catch (StopAfterFenceException e) {

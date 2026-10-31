@@ -61,6 +61,7 @@ import org.apache.kafka.common.errors.AuthorizationException;
 import org.apache.kafka.common.errors.FencedInstanceIdException;
 import org.apache.kafka.common.errors.RebalanceInProgressException;
 import org.apache.kafka.common.errors.TopicAuthorizationException;
+import org.apache.kafka.common.errors.UnreleasedInstanceIdException;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -3693,6 +3694,46 @@ public class KafkaMessageListenerContainerTests {
 
 		container.start();
 		assertThat(stopped.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(container.isInExpectedState()).isFalse();
+		container.stop();
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Test
+	void testFatalErrorOnUnreleasedInstanceException() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock();
+		Consumer<Integer, String> consumer = mock();
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		given(cf.getConfigurationProperties()).willReturn(new HashMap<>());
+
+		willThrow(UnreleasedInstanceIdException.class)
+				.given(consumer).poll(any());
+
+		ContainerProperties containerProps = new ContainerProperties(topic1);
+		containerProps.setGroupId("grp");
+		containerProps.setClientId("clientId");
+		containerProps.setMessageListener((MessageListener) r -> { });
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+
+		AtomicReference<ConsumerStoppedEvent.Reason> reason = new AtomicReference<>();
+		CountDownLatch consumerStopped = new CountDownLatch(1);
+		CountDownLatch containerStopped = new CountDownLatch(1);
+
+		container.setApplicationEventPublisher(e -> {
+			if (e instanceof ConsumerStoppedEvent) {
+				reason.set(((ConsumerStoppedEvent) e).getReason());
+				consumerStopped.countDown();
+			}
+			else if (e instanceof ContainerStoppedEvent) {
+				containerStopped.countDown();
+			}
+		});
+
+		container.start();
+		assertThat(consumerStopped.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(reason.get()).isEqualTo(Reason.FENCED);
+		assertThat(containerStopped.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(container.isInExpectedState()).isFalse();
 		container.stop();
 	}
