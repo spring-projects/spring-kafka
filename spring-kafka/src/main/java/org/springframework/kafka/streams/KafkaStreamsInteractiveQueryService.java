@@ -31,7 +31,6 @@ import org.springframework.core.retry.RetryException;
 import org.springframework.core.retry.RetryTemplate;
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
 import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
 
 /**
  * Provide a wrapper API around the interactive query stores in Kafka Streams.
@@ -40,6 +39,7 @@ import org.springframework.util.StringUtils;
  *
  * @author Soby Chacko
  * @author Stephane Nicoll
+ * @author Yingzi Zhang
  *
  * @since 3.2
  */
@@ -122,10 +122,7 @@ public class KafkaStreamsInteractiveQueryService {
 				.getStreamsConfiguration();
 		if (streamsConfiguration != null && streamsConfiguration.containsKey("application.server")) {
 			String applicationServer = (String) streamsConfiguration.get("application.server");
-			String[] appServerComponents = StringUtils.split(applicationServer, ":");
-			if (appServerComponents != null) {
-				return new HostInfo(appServerComponents[0], Integer.parseInt(appServerComponents[1]));
-			}
+			return HostInfo.buildFromEndpoint(applicationServer);
 		}
 		return null;
 	}
