@@ -95,4 +95,4 @@ Use the [`spring-kafka` tag on Stack Overflow](https://stackoverflow.com/questio
 
 # License
 
-Spring Kafka is released under the terms of the Apache Software License Version 2.0 (see [LICENSE.txt](LICENCE.txt)).
+Spring Kafka is released under the terms of the Apache Software License Version 2.0 (see [LICENSE.txt](LICENSE.txt)).
