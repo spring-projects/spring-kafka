@@ -82,7 +82,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
-import static org.assertj.core.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.assertThatExecutionException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
@@ -610,19 +610,10 @@ public class ReplyingKafkaTemplateTests {
 			RequestReplyFuture<Integer, String, Collection<ConsumerRecord<Integer, String>>> future =
 					template.sendAndReceive(record);
 			future.getSendFuture().get(10, TimeUnit.SECONDS); // send ok
-			try {
-				future.get(30, TimeUnit.SECONDS);
-				fail("Expected Exception");
-			}
-			catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-				throw e;
-			}
-			catch (ExecutionException e) {
-				assertThat(e)
-					.hasCauseExactlyInstanceOf(KafkaReplyTimeoutException.class)
-					.hasMessageContaining("Reply timed out");
-			}
+			assertThatExecutionException()
+					.isThrownBy(() -> future.get(30, TimeUnit.SECONDS))
+					.withCauseExactlyInstanceOf(KafkaReplyTimeoutException.class)
+					.withMessageContaining("Reply timed out");
 			Thread.sleep(10_000);
 			assertThat(KafkaTestUtils.getPropertyValue(template, "futures", Map.class)).isEmpty();
 			assertThat(KafkaTestUtils.getPropertyValue(template, "pending", Map.class)).isEmpty();
