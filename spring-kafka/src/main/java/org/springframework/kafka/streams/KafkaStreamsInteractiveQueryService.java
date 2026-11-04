@@ -19,7 +19,6 @@ import org.springframework.core.retry.RetryException;
 import org.springframework.core.retry.RetryTemplate;
 import org.springframework.kafka.config.StreamsBuilderFactoryBean;
 import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
 
 /**
  * Provide a wrapper API around the interactive query stores in Kafka Streams.
@@ -28,6 +27,7 @@ import org.springframework.util.StringUtils;
  *
  * @author Soby Chacko
  * @author Stephane Nicoll
+ * @author Yingzi Zhang
  *
  * @since 3.2
  */
@@ -98,11 +98,15 @@ public class KafkaStreamsInteractiveQueryService {
 
 	/**
 	 * Retrieve the current {@link HostInfo} where this Kafka Streams application is running on.
-	 * This {link @HostInfo} is different from the Kafka `bootstrap.server` property and is based on
+	 * This {@link HostInfo} is different from the Kafka `bootstrap.server` property and is based on
 	 * the Kafka Streams configuration property `application.server` where user-defined REST
 	 * endpoints can be invoked per each Kafka Streams application instance.
 	 * If this property - `application.server` - is not available from the end-user application, then null is returned.
+	 * The value is parsed with {@link HostInfo#buildFromEndpoint(String)}, the same as Kafka Streams does,
+	 * so IPv6 addresses such as {@code [::1]:8080} are supported.
 	 * @return the current {@link HostInfo}
+	 * @throws org.apache.kafka.common.config.ConfigException if `application.server` is not in the
+	 * {@code host:port} format
 	 */
 	@Nullable
 	public HostInfo getCurrentKafkaStreamsApplicationHostInfo() {
@@ -110,10 +114,7 @@ public class KafkaStreamsInteractiveQueryService {
 				.getStreamsConfiguration();
 		if (streamsConfiguration != null && streamsConfiguration.containsKey("application.server")) {
 			String applicationServer = (String) streamsConfiguration.get("application.server");
-			String[] appServerComponents = StringUtils.split(applicationServer, ":");
-			if (appServerComponents != null) {
-				return new HostInfo(appServerComponents[0], Integer.parseInt(appServerComponents[1]));
-			}
+			return HostInfo.buildFromEndpoint(applicationServer);
 		}
 		return null;
 	}
