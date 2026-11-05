@@ -18,6 +18,7 @@ import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 /**
@@ -29,6 +30,7 @@ import org.springframework.util.StringUtils;
  * @author Wang Zhiyang
  * @author Soby Chacko
  * @author Ngoc Nhan
+ * @author Yingzi Zhang
  *
  * @since 2.3
  *
@@ -86,7 +88,8 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 				}
 				else {
 					throw new IllegalStateException(configKey
-							+ " map entries must be Serializers or class names, not " + value.getClass());
+							+ " map entries must be Deserializers or class names, not "
+							+ ObjectUtils.nullSafeClassName(deser));
 				}
 			});
 		}
