@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
@@ -20,6 +21,7 @@ import org.apache.kafka.common.serialization.BytesSerializer;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.apache.kafka.common.serialization.IntegerSerializer;
+import org.apache.kafka.common.serialization.LongDeserializer;
 import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -166,10 +168,10 @@ public class DelegatingSerializationTests {
 		verify(spySe, times(1)).trySerdes(42L);
 		assertThat(headers.lastHeader(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR).value())
 				.isEqualTo(Long.class.getName().getBytes());
-		DelegatingDeserializer spyDe = spy(deserializer);
-		assertThat(spyDe.deserialize("foo", headers, serialized)).isEqualTo(42L);
-		assertThat(spyDe.deserialize("foo", headers, ByteBuffer.wrap(serialized))).isEqualTo(42L);
-		verify(spyDe, times(1)).trySerdes(Long.class.getName());
+		assertThat(deserializer.deserialize("topic", headers, serialized)).isSameAs(serialized);
+		deserializer.addDelegate(Long.class.getName(), new LongDeserializer());
+		assertThat(deserializer.deserialize("topic", headers, serialized)).isEqualTo(42L);
+		assertThat(deserializer.deserialize("topic", headers, ByteBuffer.wrap(serialized))).isEqualTo(42L);
 
 		// The DKHM will jsonize the value; test that we ignore the quotes
 		MessageHeaders messageHeaders = new MessageHeaders(
@@ -205,10 +207,10 @@ public class DelegatingSerializationTests {
 		verify(spySe, times(1)).trySerdes(42L);
 		assertThat(headers.lastHeader(DelegatingSerializer.KEY_SERIALIZATION_SELECTOR).value())
 				.isEqualTo(Long.class.getName().getBytes());
-		DelegatingDeserializer spyDe = spy(deserializer);
-		assertThat(spyDe.deserialize("foo", headers, serialized)).isEqualTo(42L);
-		assertThat(spyDe.deserialize("foo", headers, ByteBuffer.wrap(serialized))).isEqualTo(42L);
-		verify(spyDe, times(1)).trySerdes(Long.class.getName());
+		assertThat(deserializer.deserialize("topic", headers, serialized)).isSameAs(serialized);
+		deserializer.addDelegate(Long.class.getName(), new LongDeserializer());
+		assertThat(deserializer.deserialize("topic", headers, serialized)).isEqualTo(42L);
+		assertThat(deserializer.deserialize("topic", headers, ByteBuffer.wrap(serialized))).isEqualTo(42L);
 
 		// The DKHM will jsonize the value; test that we ignore the quotes
 		MessageHeaders messageHeaders = new MessageHeaders(
@@ -224,16 +226,55 @@ public class DelegatingSerializationTests {
 
 	@Test
 	void testBadIncomingFallsBackToRawInput() {
-		DelegatingDeserializer spy = spy(new DelegatingDeserializer());
+		DelegatingDeserializer deserializer = new DelegatingDeserializer();
 		Headers headers = new RecordHeaders();
 		headers.add(new RecordHeader(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR, "junk".getBytes()));
-		byte[] data = "foo".getBytes();
+		byte[] data = "payload".getBytes();
 		ByteBuffer buffer = ByteBuffer.wrap(data);
-		Object deserialized1 = spy.deserialize("foo", headers, data);
+		Object deserialized1 = deserializer.deserialize("topic", headers, data);
 		assertThat(deserialized1).isSameAs(data);
-		Object deserialized2 = spy.deserialize("foo", headers, buffer);
+		Object deserialized2 = deserializer.deserialize("topic", headers, buffer);
 		assertThat(deserialized2).isEqualTo(buffer);
-		verify(spy, times(2)).trySerdes("junk");
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void testSelectorForSerdesTypeWithoutDelegateFallsBackToRawInput() {
+		try (DelegatingDeserializer deserializer = new DelegatingDeserializer()) {
+			Map<String, Deserializer<?>> delegates =
+					(Map<String, Deserializer<?>>) ReflectionTestUtils.getField(deserializer, "delegates");
+			assertThat(delegates).isNotNull();
+			byte[] data = "payload".getBytes();
+			for (Class<?> type : new Class<?>[] { String.class, Long.class, byte[].class, UUID.class,
+					ByteBuffer.wrap(data).getClass() }) {
+				Headers headers = new RecordHeaders();
+				headers.add(new RecordHeader(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR,
+						type.getName().getBytes()));
+				assertThat(deserializer.deserialize("topic", headers, data)).isSameAs(data);
+				assertThat(deserializer.deserialize("topic", headers, ByteBuffer.wrap(data)))
+						.isEqualTo(ByteBuffer.wrap(data));
+			}
+			assertThat(delegates).isEmpty();
+		}
+	}
+
+	@Test
+	void testSerdesTypesWithClassNameSelectorsFromConfig() {
+		try (DelegatingSerializer serializer = new DelegatingSerializer();
+				DelegatingDeserializer deserializer = new DelegatingDeserializer()) {
+			deserializer.configure(Collections.singletonMap(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR_CONFIG,
+					Long.class.getName() + ":" + LongDeserializer.class.getName() + ", "
+							+ String.class.getName() + ":" + StringDeserializer.class.getName()), false);
+			Headers headers = new RecordHeaders();
+			byte[] serialized = serializer.serialize("topic", headers, 42L);
+			assertThat(deserializer.deserialize("topic", headers, serialized)).isEqualTo(42L);
+			headers = new RecordHeaders();
+			serialized = serializer.serialize("topic", headers, "payload");
+			assertThat(deserializer.deserialize("topic", headers, serialized)).isEqualTo("payload");
+			headers = new RecordHeaders();
+			serialized = serializer.serialize("topic", headers, 42);
+			assertThat(deserializer.deserialize("topic", headers, serialized)).isSameAs(serialized);
+		}
 	}
 
 	@Test

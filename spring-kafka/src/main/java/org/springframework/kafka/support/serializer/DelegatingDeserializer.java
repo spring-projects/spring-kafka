@@ -12,8 +12,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Deserializer;
-import org.apache.kafka.common.serialization.Serde;
-import org.apache.kafka.common.serialization.Serdes;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
@@ -23,8 +21,10 @@ import org.springframework.util.StringUtils;
 
 /**
  * A {@link Deserializer} that delegates to other deserializers based on a serialization
- * selector header. It is not necessary to configure standard deserializers supported by
- * {@link Serdes}.
+ * selector header. The selector header is supplied by the producer of each record; if it
+ * does not match a configured delegate, the raw data is returned. To deserialize the
+ * standard types for which the {@link DelegatingSerializer} sets the selector to the class
+ * name, configure delegates with those class names as selectors.
  *
  * @author Gary Russell
  * @author Wang Zhiyang
@@ -37,8 +37,6 @@ import org.springframework.util.StringUtils;
 public class DelegatingDeserializer implements Deserializer<Object> {
 
 	private final Map<String, Deserializer<?>> delegates = new ConcurrentHashMap<>();
-
-	private final Map<String, Object> autoConfigs = new HashMap<>();
 
 	private boolean forKeys;
 
@@ -55,8 +53,7 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 	 * Construct an instance with the supplied mapping of selectors to delegate
 	 * deserializers. The selector must be supplied in the
 	 * {@link DelegatingSerializer#KEY_SERIALIZATION_SELECTOR_CONFIG} and
-	 * {@link DelegatingSerializer#VALUE_SERIALIZATION_SELECTOR_CONFIG} headers. It is not
-	 * necessary to configure standard deserializers supported by {@link Serdes}.
+	 * {@link DelegatingSerializer#VALUE_SERIALIZATION_SELECTOR_CONFIG} headers.
 	 * @param delegates the map of delegates.
 	 */
 	public DelegatingDeserializer(Map<String, Deserializer<?>> delegates) {
@@ -66,7 +63,6 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 	@SuppressWarnings("unchecked")
 	@Override
 	public void configure(Map<String, ?> configs, boolean isKey) {
-		this.autoConfigs.putAll(configs);
 		this.forKeys = isKey;
 		String configKey = configKey();
 		Object value = configs.get(configKey);
@@ -181,35 +177,13 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 			throw new IllegalStateException("No '" + selectorKey + "' header present");
 		}
 		String selector = new String(value).replaceAll("\"", "");
-		Deserializer<?> deserializer = this.delegates.get(selector);
-		if (deserializer == null) {
-			deserializer = trySerdes(selector);
-		}
-		return deserializer;
+		return this.delegates.get(selector);
 	}
 
 	private String selectorKey() {
 		return this.forKeys
 				? DelegatingSerializer.KEY_SERIALIZATION_SELECTOR
 				: DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR;
-	}
-
-	/*
-	 * Package for testing.
-	 */
-	@Nullable
-	Deserializer<?> trySerdes(String key) {
-		try {
-			Class<?> clazz = ClassUtils.forName(key, ClassUtils.getDefaultClassLoader());
-			Serde<?> serdeFrom = Serdes.serdeFrom(clazz);
-			Deserializer<?> deserializer = serdeFrom.deserializer();
-			deserializer.configure(this.autoConfigs, this.forKeys);
-			this.delegates.put(key, deserializer);
-			return deserializer;
-		}
-		catch (IllegalStateException | IllegalArgumentException | ClassNotFoundException | LinkageError e) {
-			return null;
-		}
 	}
 
 	@Override
