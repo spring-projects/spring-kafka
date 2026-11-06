@@ -93,12 +93,14 @@ public class ManualAckPartialBatchTests {
 		InOrder inOrder = inOrder(this.consumer);
 		inOrder.verify(this.consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
 		inOrder.verify(this.consumer).poll(Duration.ofMillis(ContainerProperties.DEFAULT_POLL_TIMEOUT));
-		Map<TopicPartition, OffsetAndMetadata> commit1 = Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(2L),
-				new TopicPartition("foo", 1), new OffsetAndMetadata(1L));
-		Map<TopicPartition, OffsetAndMetadata> commit2 = Map.of(new TopicPartition("foo", 1), new OffsetAndMetadata(2L),
-				new TopicPartition("foo", 2), new OffsetAndMetadata(1L));
+		Map<TopicPartition, OffsetAndMetadata> commit1 = Map.of(
+				new TopicPartition("foo", 0), new OffsetAndMetadata(2L, Optional.of(8), ""),
+				new TopicPartition("foo", 1), new OffsetAndMetadata(1L, Optional.of(9), ""));
+		Map<TopicPartition, OffsetAndMetadata> commit2 = Map.of(
+				new TopicPartition("foo", 1), new OffsetAndMetadata(2L, Optional.of(10), ""),
+				new TopicPartition("foo", 2), new OffsetAndMetadata(1L, Optional.of(11), ""));
 		Map<TopicPartition, OffsetAndMetadata> commit3 = Map.of(
-				new TopicPartition("foo", 2), new OffsetAndMetadata(2L));
+				new TopicPartition("foo", 2), new OffsetAndMetadata(2L, Optional.of(12), ""));
 		inOrder.verify(this.consumer).commitSync(commit1, Duration.ofSeconds(60));
 		inOrder.verify(this.consumer).commitSync(commit2, Duration.ofSeconds(60));
 		inOrder.verify(this.consumer).commitSync(commit3, Duration.ofSeconds(60));
@@ -159,19 +161,19 @@ public class ManualAckPartialBatchTests {
 			Map<TopicPartition, List<ConsumerRecord>> records1 = new LinkedHashMap<>();
 			records1.put(topicPartition0, Arrays.asList(
 					new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
-							new RecordHeaders(), Optional.empty()),
+							new RecordHeaders(), Optional.of(7)),
 					new ConsumerRecord("foo", 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "bar",
-							new RecordHeaders(), Optional.empty())));
+							new RecordHeaders(), Optional.of(8))));
 			records1.put(topicPartition1, Arrays.asList(
 					new ConsumerRecord("foo", 1, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "baz",
-							new RecordHeaders(), Optional.empty()),
+							new RecordHeaders(), Optional.of(9)),
 					new ConsumerRecord("foo", 1, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "qux",
-							new RecordHeaders(), Optional.empty())));
+							new RecordHeaders(), Optional.of(10))));
 			records1.put(topicPartition2, Arrays.asList(
 					new ConsumerRecord("foo", 2, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "fiz",
-							new RecordHeaders(), Optional.empty()),
+							new RecordHeaders(), Optional.of(11)),
 					new ConsumerRecord("foo", 2, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "buz",
-							new RecordHeaders(), Optional.empty())));
+							new RecordHeaders(), Optional.of(12))));
 			final AtomicInteger which = new AtomicInteger();
 			willAnswer(i -> {
 				this.pollLatch.countDown();

@@ -9,6 +9,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -17,8 +18,14 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.record.TimestampType;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InOrder;
 
 import org.springframework.kafka.core.KafkaOperations;
@@ -29,6 +36,7 @@ import org.springframework.util.backoff.BackOffExecution;
 import org.springframework.util.backoff.FixedBackOff;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.BDDMockito.given;
@@ -39,6 +47,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /**
  * @author Gary Russell
@@ -50,6 +59,170 @@ import static org.mockito.Mockito.verify;
  *
  */
 public class DefaultAfterRollbackProcessorTests {
+
+	@ParameterizedTest
+	@ValueSource(booleans = { false, true })
+	void singleRecoveryPreservesLeaderEpoch(boolean nullContainer) {
+		KafkaOperations<String, String> template = mock();
+		given(template.isTransactional()).willReturn(true);
+		ConsumerRecordRecoverer recoverer = mock();
+		DefaultAfterRollbackProcessor<String, String> processor = new DefaultAfterRollbackProcessor<>(recoverer,
+				new FixedBackOff(0, 0), template, true);
+		Consumer<String, String> consumer = mock();
+		ConsumerGroupMetadata group = new ConsumerGroupMetadata("group");
+		given(consumer.groupMetadata()).willReturn(group);
+		MessageListenerContainer container = mock();
+		given(container.getContainerProperties()).willReturn(new ContainerProperties("foo"));
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("foo", 0, 41L, 0L,
+				TimestampType.NO_TIMESTAMP_TYPE, 0, 0, "key", "value", new RecordHeaders(), Optional.of(7));
+		IllegalStateException failure = new IllegalStateException("listener failed");
+
+		processor.process(List.of(record), consumer, nullContainer ? null : container, failure, true, EOSMode.V2);
+
+		InOrder order = inOrder(recoverer, consumer, template);
+		order.verify(recoverer).accept(record, failure);
+		order.verify(template).isTransactional();
+		order.verify(consumer).groupMetadata();
+		order.verify(template).sendOffsetsToTransaction(
+				Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(42L, Optional.of(7), "")), group);
+		order.verifyNoMoreInteractions();
+	}
+
+	@Test
+	void batchRecoveryPreservesLeaderEpoch() {
+		KafkaOperations<String, String> template = mock();
+		given(template.isTransactional()).willReturn(true);
+		ConsumerRecordRecoverer recoverer = mock();
+		DefaultAfterRollbackProcessor<String, String> processor = new DefaultAfterRollbackProcessor<>(recoverer,
+				new FixedBackOff(0, 0), template, true);
+		Consumer<String, String> consumer = mock();
+		ConsumerGroupMetadata group = new ConsumerGroupMetadata("group");
+		given(consumer.groupMetadata()).willReturn(group);
+		MessageListenerContainer container = mock();
+		given(container.getContainerProperties()).willReturn(new ContainerProperties("foo"));
+		TopicPartition first = new TopicPartition("foo", 0);
+		TopicPartition second = new TopicPartition("foo", 1);
+		ConsumerRecord<String, String> record1 = epochRecord(0, 41L, Optional.of(7));
+		ConsumerRecord<String, String> record2 = epochRecord(0, 43L, Optional.of(8));
+		ConsumerRecord<String, String> record3 = epochRecord(1, 99L, Optional.of(2));
+		ConsumerRecords<String, String> records = new ConsumerRecords<>(
+				Map.of(first, List.of(record1, record2), second, List.of(record3)), Map.of());
+		IllegalStateException failure = new IllegalStateException("listener failed");
+
+		processor.processBatch(records, List.of(record1, record2, record3), consumer, container,
+				failure, true, EOSMode.V2);
+
+		verify(recoverer).accept(record1, failure);
+		verify(recoverer).accept(record2, failure);
+		verify(recoverer).accept(record3, failure);
+		verify(template).isTransactional();
+		verify(template).sendOffsetsToTransaction(Map.of(
+				first, new OffsetAndMetadata(44L, Optional.of(8), ""),
+				second, new OffsetAndMetadata(100L, Optional.of(2), "")), group);
+		verifyNoMoreInteractions(template, recoverer);
+	}
+
+	@ParameterizedTest
+	@CsvSource({ "false,7,-1,0,7", "false,7,9,100,9", "true,7,-1,0,7", "true,7,9,100,9" })
+	void recoveryProviderPolicy(boolean batch, int sourceEpoch, int providerEpoch, long delta, int expectedEpoch) {
+		KafkaOperations<String, String> template = mock();
+		given(template.isTransactional()).willReturn(true);
+		AtomicInteger recoveries = new AtomicInteger();
+		DefaultAfterRollbackProcessor<String, String> processor = new DefaultAfterRollbackProcessor<>(
+				(record, failure) -> recoveries.incrementAndGet(), new FixedBackOff(0, 0), template, true);
+		Consumer<String, String> consumer = mock();
+		ConsumerGroupMetadata group = new ConsumerGroupMetadata("group");
+		given(consumer.groupMetadata()).willReturn(group);
+		MessageListenerContainer container = mock();
+		ContainerProperties properties = new ContainerProperties("foo");
+		given(container.getContainerProperties()).willReturn(properties);
+		List<Long> calls = new ArrayList<>();
+		properties.setOffsetAndMetadataProvider((metadata, offset) -> {
+			assertThat(recoveries.get()).isEqualTo(batch ? 2 : 1);
+			calls.add(offset);
+			return new OffsetAndMetadata(offset + delta,
+					providerEpoch < 0 ? Optional.empty() : Optional.of(providerEpoch), "custom-" + offset);
+		});
+		Optional<Integer> epoch = sourceEpoch < 0 ? Optional.empty() : Optional.of(sourceEpoch);
+		List<ConsumerRecord<String, String>> list = batch
+				? List.of(epochRecord(0, 41L, Optional.of(5)), epochRecord(0, 43L, epoch))
+				: List.of(epochRecord(0, 43L, epoch));
+		TopicPartition partition = new TopicPartition("foo", 0);
+		if (batch) {
+			processor.processBatch(new ConsumerRecords<>(Map.of(partition, list), Map.of()), list,
+					consumer, container, new IllegalStateException(), true, EOSMode.V2);
+		}
+		else {
+			processor.process(list, consumer, container, new IllegalStateException(), true, EOSMode.V2);
+		}
+		verify(template).sendOffsetsToTransaction(Map.of(partition, new OffsetAndMetadata(44L + delta,
+				expectedEpoch < 0 ? Optional.empty() : Optional.of(expectedEpoch), "custom-44")), group);
+		assertThat(calls).containsExactlyElementsOf(batch ? List.of(42L, 44L) : List.of(44L));
+	}
+
+	@ParameterizedTest
+	@ValueSource(booleans = { false, true })
+	void unacceptedRecoverySendsNothing(boolean batch) {
+		KafkaOperations<String, String> template = mock();
+		RuntimeException failure = new IllegalStateException("recovery failed");
+		DefaultAfterRollbackProcessor<String, String> processor = new DefaultAfterRollbackProcessor<>((record, ex) -> {
+			throw failure;
+		}, new FixedBackOff(0, 0), template, true);
+		Consumer<String, String> consumer = mock();
+		MessageListenerContainer container = mock();
+		ContainerProperties properties = new ContainerProperties("foo");
+		given(container.getContainerProperties()).willReturn(properties);
+		OffsetAndMetadataProvider provider = mock();
+		properties.setOffsetAndMetadataProvider(provider);
+		TopicPartition partition = new TopicPartition("foo", 0);
+		List<ConsumerRecord<String, String>> list = List.of(epochRecord(0, 41L, Optional.of(7)));
+		if (batch) {
+			assertThatExceptionOfType(IllegalStateException.class).isThrownBy(() -> processor.processBatch(
+					new ConsumerRecords<>(Map.of(partition, list), Map.of()), list,
+					consumer, container, new IllegalStateException(), true, EOSMode.V2)).isSameAs(failure);
+		}
+		else {
+			processor.process(list, consumer, container, new IllegalStateException(), true, EOSMode.V2);
+		}
+		verify(consumer).seek(partition, 41L);
+		verifyNoMoreInteractions(consumer, template, provider);
+	}
+
+	@Test
+	void recoveryReadsCurrentProviderPerRecord() {
+		KafkaOperations<String, String> template = mock();
+		given(template.isTransactional()).willReturn(true);
+		DefaultAfterRollbackProcessor<String, String> processor = new DefaultAfterRollbackProcessor<>(
+				(record, failure) -> { }, new FixedBackOff(0, 0), template, true);
+		Consumer<String, String> consumer = mock();
+		ConsumerGroupMetadata group = new ConsumerGroupMetadata("group");
+		given(consumer.groupMetadata()).willReturn(group);
+		MessageListenerContainer container = mock();
+		ContainerProperties properties = new ContainerProperties("foo");
+		given(container.getContainerProperties()).willReturn(properties);
+		List<Long> calls = new ArrayList<>();
+		properties.setOffsetAndMetadataProvider((metadata, offset) -> {
+			calls.add(offset);
+			properties.setOffsetAndMetadataProvider((nextMetadata, nextOffset) -> {
+				calls.add(nextOffset);
+				return new OffsetAndMetadata(nextOffset, Optional.of(9), "replacement");
+			});
+			return new OffsetAndMetadata(offset, "first");
+		});
+		TopicPartition partition = new TopicPartition("foo", 0);
+		List<ConsumerRecord<String, String>> list = List.of(
+				epochRecord(0, 41L, Optional.of(7)), epochRecord(0, 43L, Optional.of(8)));
+		processor.processBatch(new ConsumerRecords<>(Map.of(partition, list), Map.of()), list,
+				consumer, container, new IllegalStateException(), true, EOSMode.V2);
+		verify(template).sendOffsetsToTransaction(Map.of(partition,
+				new OffsetAndMetadata(44L, Optional.of(9), "replacement")), group);
+		assertThat(calls).containsExactly(42L, 44L);
+	}
+
+	private static ConsumerRecord<String, String> epochRecord(int partition, long offset, Optional<Integer> epoch) {
+		return new ConsumerRecord<>("foo", partition, offset, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+				0, 0, "key", "value", new RecordHeaders(), epoch);
+	}
 
 	@Test
 	void testClassifier() {
@@ -105,11 +278,12 @@ public class DefaultAfterRollbackProcessorTests {
 			throw new RuntimeException("test recoverer failure");
 		}, new FixedBackOff(0L, 0L), template, true);
 		processor.setMaxRecoveryFailures(2);
-		ConsumerRecord<String, String> record1 = new ConsumerRecord<>("foo", 0, 0L, "foo", "bar");
+		ConsumerRecord<String, String> record1 = epochRecord(0, 0L, Optional.of(7));
 		ConsumerRecord<String, String> record2 = new ConsumerRecord<>("foo", 1, 1L, "foo", "bar");
 		List<ConsumerRecord<String, String>> records = Arrays.asList(record1, record2);
 		Consumer<String, String> consumer = mock();
-		given(consumer.groupMetadata()).willReturn(mock());
+		ConsumerGroupMetadata group = new ConsumerGroupMetadata("group");
+		given(consumer.groupMetadata()).willReturn(group);
 		MessageListenerContainer container = mock();
 		given(container.getContainerProperties()).willReturn(new ContainerProperties("foo"));
 		IllegalStateException illegalState = new IllegalStateException();
@@ -118,7 +292,8 @@ public class DefaultAfterRollbackProcessorTests {
 		verify(template, never()).sendOffsetsToTransaction(anyMap(), any(ConsumerGroupMetadata.class));
 		processor.process(records, consumer, container, illegalState, true, EOSMode.V2);
 		// the second failure hits the limit, so the record is treated as recovered
-		verify(template).sendOffsetsToTransaction(anyMap(), any(ConsumerGroupMetadata.class));
+		verify(template).sendOffsetsToTransaction(
+				Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(1L, Optional.of(7), "")), group);
 		assertThat(recoveryAttempts.get()).isEqualTo(2);
 		InOrder inOrder = inOrder(consumer);
 		inOrder.verify(consumer).seek(new TopicPartition("foo", 0), 0L); // recovery failed, still seeked
