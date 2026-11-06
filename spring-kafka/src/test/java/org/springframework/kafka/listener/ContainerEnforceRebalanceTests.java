@@ -10,6 +10,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 
@@ -33,10 +34,15 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.mock;
 
 /**
  * @author Soby Chacko
  * @author Artem Bilan
+ * @author Minju Kim
  *
  * @since 3.1.2
  */
@@ -71,6 +77,37 @@ public class ContainerEnforceRebalanceTests {
 		// it will pause the rebalanced consumers again.
 		assertThat(listenerContainer.isPauseRequested()).isTrue();
 		assertThat(listenerContainer.isContainerPaused()).isTrue();
+	}
+
+	@Test
+	void enforceRebalanceBeforeStartIsAppliedOnStart() throws InterruptedException {
+		ConsumerFactory<Integer, String> consumerFactory = mock();
+		Consumer<Integer, String> consumer = mock();
+		given(consumerFactory.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		given(consumer.poll(any())).willReturn(ConsumerRecords.empty());
+		CountDownLatch enforceRebalanceLatch = new CountDownLatch(1);
+		willAnswer(invocation -> {
+			enforceRebalanceLatch.countDown();
+			return null;
+		}).given(consumer).enforceRebalance(any());
+
+		ContainerProperties containerProperties = new ContainerProperties("enforce-rebalance-topic");
+		containerProperties.setGroupId("enforce-rebalance-before-start");
+		containerProperties.setMessageListener((MessageListener<Integer, String>) data -> {
+		});
+		ConcurrentMessageListenerContainer<Integer, String> container =
+				new ConcurrentMessageListenerContainer<>(consumerFactory, containerProperties);
+
+		container.enforceRebalance();
+		assertThat(container.enforceRebalanceRequested).isTrue();
+
+		container.start();
+		try {
+			assertThat(enforceRebalanceLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		}
+		finally {
+			container.stop();
+		}
 	}
 
 	@Configuration(proxyBeanMethods = false)

@@ -432,16 +432,10 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	@Override
 	public void enforceRebalance() {
-		this.lifecycleLock.lock();
-		try {
-			// Since the rebalance is for the whole consumer group, there is no need to
-			// initiate this operation for every single container in the group.
-			final KafkaMessageListenerContainer<K, V> listenerContainer = this.containers.get(0);
-			listenerContainer.enforceRebalance();
-		}
-		finally {
-			this.lifecycleLock.unlock();
-		}
+		// Since the rebalance is for the whole consumer group, there is no need to
+		// initiate this operation for every single container in the group.
+		// The child containers check this flag, so it works even before they are created.
+		this.enforceRebalanceRequested.set(true);
 	}
 
 	@Override
