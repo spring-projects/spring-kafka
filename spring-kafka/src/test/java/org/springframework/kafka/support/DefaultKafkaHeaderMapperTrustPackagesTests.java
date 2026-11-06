@@ -54,4 +54,16 @@ public class DefaultKafkaHeaderMapperTrustPackagesTests {
 		assertThat(mapper.trusted("[Ljava.lang.Class;")).isFalse();
 	}
 
+	@Test
+	void memoryAllocatingTypesAreNeverTrusted() {
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		assertThat(mapper.trusted("org.springframework.util.ResizableByteArrayOutputStream")).isFalse();
+		assertThat(mapper.trusted("org.springframework.util.ConcurrentReferenceHashMap")).isFalse();
+		assertThat(mapper.trusted("[Lorg.springframework.util.ResizableByteArrayOutputStream;")).isFalse();
+		assertThat(mapper.trusted("org.springframework.util.LinkedMultiValueMap")).isTrue();
+		mapper.addTrustedPackages("*");
+		assertThat(mapper.trusted("org.springframework.util.ResizableByteArrayOutputStream")).isFalse();
+		assertThat(mapper.trusted("org.springframework.util.ConcurrentReferenceHashMap")).isFalse();
+	}
+
 }

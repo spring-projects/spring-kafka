@@ -186,6 +186,60 @@ public class JsonKafkaHeaderMapperTests {
 	}
 
 	@ParameterizedTest
+	@ValueSource(strings = { "org.springframework.util.ResizableByteArrayOutputStream",
+			"org.springframework.util.ConcurrentReferenceHashMap" })
+	void memoryAllocatingTypesAreNeverTrusted(String type) {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		Map<String, Object> headers = new HashMap<>();
+		mapper.toHeaders(capacityHeaders(type, "2147483647"), headers);
+		assertThat(headers.get("buffer")).isInstanceOf(NonTrustedHeaderType.class);
+		assertThat(((NonTrustedHeaderType) headers.get("buffer")).getUntrustedType()).isEqualTo(type);
+		headers = new HashMap<>();
+		mapper.toHeaders(capacityHeaders(type, "\"2147483647\""), headers);
+		assertThat(headers.get("buffer")).isInstanceOf(NonTrustedHeaderType.class);
+	}
+
+	@Test
+	void memoryAllocatingTypesNotTrustedEvenWithWildcard() {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		mapper.addTrustedPackages("*");
+		Map<String, Object> headers = new HashMap<>();
+		mapper.toHeaders(capacityHeaders("org.springframework.util.ResizableByteArrayOutputStream", "2147483647"),
+				headers);
+		assertThat(headers.get("buffer")).isInstanceOf(NonTrustedHeaderType.class);
+	}
+
+	@Test
+	void memoryAllocatingArrayTypesAreNeverTrusted() {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		Map<String, Object> headers = new HashMap<>();
+		mapper.toHeaders(capacityHeaders("[Lorg.springframework.util.ResizableByteArrayOutputStream;",
+				"[2147483647]"), headers);
+		assertThat(headers.get("buffer")).isInstanceOf(NonTrustedHeaderType.class);
+	}
+
+	@Test
+	void propagatedMemoryAllocatingTypeIsNeverTrusted() {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		mapper.addTrustedPackages("*");
+		String propagated = "{\"headerValue\":\"MjE0NzQ4MzY0Nw==\",\"untrustedType\":"
+				+ "\"org.springframework.util.ResizableByteArrayOutputStream\"}";
+		Map<String, Object> headers = new HashMap<>();
+		mapper.toHeaders(capacityHeaders(NonTrustedHeaderType.class.getName(), propagated), headers);
+		assertThat(headers.get("buffer")).isInstanceOf(NonTrustedHeaderType.class);
+		assertThat(((NonTrustedHeaderType) headers.get("buffer")).getUntrustedType())
+				.isEqualTo("org.springframework.util.ResizableByteArrayOutputStream");
+	}
+
+	private static RecordHeaders capacityHeaders(String type, String value) {
+		RecordHeaders recordHeaders = new RecordHeaders();
+		recordHeaders.add(new RecordHeader(JsonKafkaHeaderMapper.JSON_TYPES,
+				("{\"buffer\":\"" + type + "\"}").getBytes(StandardCharsets.UTF_8)));
+		recordHeaders.add(new RecordHeader("buffer", value.getBytes(StandardCharsets.UTF_8)));
+		return recordHeaders;
+	}
+
+	@ParameterizedTest
 	@ValueSource(strings = { "[Ljava.net.InetAddress;", "[Ljava.net.Inet4Address;", "[Ljava.net.Inet6Address;",
 			"[Ljava.net.InetSocketAddress;", "[[Ljava.net.InetAddress;", "[[Ljava.net.Inet4Address;",
 			"[[[Ljava.net.InetAddress;" })
