@@ -301,7 +301,7 @@ Alternatively, as long as you don't use the fluent API to configure properties, 
 Version 2.3 introduced the `DelegatingSerializer` and `DelegatingDeserializer`, which allow producing and consuming records with different key and/or value types.
 Producers must set a header `DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR` to a selector value that is used to select which serializer to use for the value and `DelegatingSerializer.KEY_SERIALIZATION_SELECTOR` for the key; if a match is not found, an `IllegalStateException` is thrown.
 
-For incoming records, the deserializer uses the same headers to select the deserializer to use; if a match is not found or the header is not present, the raw `byte[]` is returned.
+For incoming records, the deserializer uses the same headers to select the deserializer to use; if a match is not found, the raw `byte[]` is returned; if the header is not present, an `IllegalStateException` is thrown.
 
 You can configure the map of selector to `Serializer` / `Deserializer` via a constructor, or you can configure it via Kafka producer/consumer properties with the keys `DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR_CONFIG` and `DelegatingSerializer.KEY_SERIALIZATION_SELECTOR_CONFIG`.
 For the serializer, the producer property can be a `Map<String, Object>` where the key is the selector and the value is a `Serializer` instance, a serializer `Class` or the class name.
@@ -327,7 +327,24 @@ This technique supports sending different types to the same topic (or different 
 
 NOTE: Starting with version 2.5.1, it is not necessary to set the selector header, if the type (key or value) is one of the standard types supported by `Serdes` (`Long`, `Integer`, etc).
 Instead, the serializer will set the header to the class name of the type.
-It is not necessary to configure serializers or deserializers for these types, they will be created (once) dynamically.
+It is not necessary to configure serializers for these types, they will be created (once) dynamically.
+
+[[delegating-serdes-types]]
+The `DelegatingDeserializer` only uses the configured delegates; it does not create deserializers for these types dynamically.
+Previous versions also created a deserializer for any of these types named in the selector header, which allowed the producer to choose how a record was deserialized, regardless of the configured delegates.
+If you relied on that behavior, records for these types are now returned as raw `byte[]`; to consume them, configure delegates using the class names as selectors:
+
+[source, java]
+----
+consumerProps.put(DelegatingDeserializer.VALUE_SERIALIZATION_SELECTOR_CONFIG,
+    "java.lang.Long:org.apache.kafka.common.serialization.LongDeserializer, "
+        + "java.lang.String:org.apache.kafka.common.serialization.StringDeserializer")
+----
+
+For a `ByteBuffer`, the serializer sets the header to the class name of the concrete buffer (for example, `java.nio.HeapByteBuffer`), so use that class name as the selector.
+
+IMPORTANT: The selector header is set by the producer of each record, so it selects which of the configured delegates is applied to the record's data.
+Only configure delegates that are safe to use with any data that can be published to the topic.
 
 For another technique to send different types to different topics, see xref:kafka/sending-messages.adoc#routing-template[Using `RoutingKafkaTemplate`].
 
