@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -20,6 +21,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.record.TimestampType;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.kafka.core.ConsumerFactory;
@@ -60,8 +63,9 @@ public class ManualAckPartialBatchRemainderTests {
 			ack.acknowledge();
 		});
 		assertThat(commits).containsExactly(
-				Map.of(TP0, new OffsetAndMetadata(2L)),
-				Map.of(TP1, new OffsetAndMetadata(2L), TP2, new OffsetAndMetadata(2L)));
+				Map.of(TP0, new OffsetAndMetadata(2L, Optional.of(8), "")),
+				Map.of(TP1, new OffsetAndMetadata(2L, Optional.of(10), ""),
+						TP2, new OffsetAndMetadata(2L, Optional.of(12), "")));
 	}
 
 	@Test
@@ -71,8 +75,9 @@ public class ManualAckPartialBatchRemainderTests {
 			ack.acknowledge();
 		});
 		assertThat(commits).containsExactly(
-				Map.of(TP0, new OffsetAndMetadata(2L), TP1, new OffsetAndMetadata(2L),
-						TP2, new OffsetAndMetadata(2L)));
+				Map.of(TP0, new OffsetAndMetadata(2L, Optional.of(8), ""),
+						TP1, new OffsetAndMetadata(2L, Optional.of(10), ""),
+						TP2, new OffsetAndMetadata(2L, Optional.of(12), "")));
 	}
 
 	@Test
@@ -84,8 +89,9 @@ public class ManualAckPartialBatchRemainderTests {
 			}
 		});
 		assertThat(commits).containsExactly(
-				Map.of(TP0, new OffsetAndMetadata(2L)),
-				Map.of(TP1, new OffsetAndMetadata(2L), TP2, new OffsetAndMetadata(2L)));
+				Map.of(TP0, new OffsetAndMetadata(2L, Optional.of(8), "")),
+				Map.of(TP1, new OffsetAndMetadata(2L, Optional.of(10), ""),
+						TP2, new OffsetAndMetadata(2L, Optional.of(12), "")));
 	}
 
 	@Test
@@ -95,8 +101,8 @@ public class ManualAckPartialBatchRemainderTests {
 			ack.nack(3, Duration.ZERO);
 		});
 		assertThat(commits).containsExactly(
-				Map.of(TP0, new OffsetAndMetadata(2L)),
-				Map.of(TP1, new OffsetAndMetadata(1L)));
+				Map.of(TP0, new OffsetAndMetadata(2L, Optional.of(8), "")),
+				Map.of(TP1, new OffsetAndMetadata(1L, Optional.of(9), "")));
 	}
 
 	@Test
@@ -113,7 +119,8 @@ public class ManualAckPartialBatchRemainderTests {
 		});
 		assertThat(nackFailure.get()).hasMessageContaining("previous partial commit");
 		assertThat(commits).containsExactly(
-				Map.of(TP0, new OffsetAndMetadata(2L), TP1, new OffsetAndMetadata(2L)));
+				Map.of(TP0, new OffsetAndMetadata(2L, Optional.of(8), ""),
+						TP1, new OffsetAndMetadata(2L, Optional.of(10), "")));
 	}
 
 	@Test
@@ -130,7 +137,8 @@ public class ManualAckPartialBatchRemainderTests {
 		});
 		assertThat(nackFailure.get()).hasMessageContaining("previous partial commit");
 		assertThat(commits).containsExactly(
-				Map.of(TP0, new OffsetAndMetadata(2L), TP1, new OffsetAndMetadata(2L)));
+				Map.of(TP0, new OffsetAndMetadata(2L, Optional.of(8), ""),
+						TP1, new OffsetAndMetadata(2L, Optional.of(10), "")));
 	}
 
 	@Test
@@ -139,7 +147,7 @@ public class ManualAckPartialBatchRemainderTests {
 			ack.acknowledge(1);
 			ack.nack(2, Duration.ZERO);
 		});
-		assertThat(commits).containsExactly(Map.of(TP0, new OffsetAndMetadata(2L)));
+		assertThat(commits).containsExactly(Map.of(TP0, new OffsetAndMetadata(2L, Optional.of(8), "")));
 	}
 
 	@Test
@@ -156,8 +164,9 @@ public class ManualAckPartialBatchRemainderTests {
 		});
 		assertThat(nackFailure.get()).hasMessageContaining("already been acknowledged");
 		assertThat(commits).containsExactly(
-				Map.of(TP0, new OffsetAndMetadata(2L), TP1, new OffsetAndMetadata(2L),
-						TP2, new OffsetAndMetadata(2L)));
+				Map.of(TP0, new OffsetAndMetadata(2L, Optional.of(8), ""),
+						TP1, new OffsetAndMetadata(2L, Optional.of(10), ""),
+						TP2, new OffsetAndMetadata(2L, Optional.of(12), "")));
 	}
 
 	private List<Map<TopicPartition, OffsetAndMetadata>> runBatch(java.util.function.Consumer<Acknowledgment> acks)
@@ -167,9 +176,21 @@ public class ManualAckPartialBatchRemainderTests {
 		Consumer<Integer, String> consumer = mock();
 		given(cf.createConsumer(any(), any(), any(), any())).willReturn(consumer);
 		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new LinkedHashMap<>();
-		records.put(TP0, List.of(new ConsumerRecord<>("foo", 0, 0L, 0, "a"), new ConsumerRecord<>("foo", 0, 1L, 0, "b")));
-		records.put(TP1, List.of(new ConsumerRecord<>("foo", 1, 0L, 0, "c"), new ConsumerRecord<>("foo", 1, 1L, 0, "d")));
-		records.put(TP2, List.of(new ConsumerRecord<>("foo", 2, 0L, 0, "e"), new ConsumerRecord<>("foo", 2, 1L, 0, "f")));
+		records.put(TP0, List.of(
+				new ConsumerRecord<>("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 0, "a", new RecordHeaders(), Optional.of(7)),
+				new ConsumerRecord<>("foo", 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 0, "b", new RecordHeaders(), Optional.of(8))));
+		records.put(TP1, List.of(
+				new ConsumerRecord<>("foo", 1, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 0, "c", new RecordHeaders(), Optional.of(9)),
+				new ConsumerRecord<>("foo", 1, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 0, "d", new RecordHeaders(), Optional.of(10))));
+		records.put(TP2, List.of(
+				new ConsumerRecord<>("foo", 2, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 0, "e", new RecordHeaders(), Optional.of(11)),
+				new ConsumerRecord<>("foo", 2, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 0, "f", new RecordHeaders(), Optional.of(12))));
 		AtomicBoolean first = new AtomicBoolean(true);
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			if (first.getAndSet(false)) {

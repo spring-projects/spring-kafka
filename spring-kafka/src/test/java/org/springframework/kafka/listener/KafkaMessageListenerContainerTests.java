@@ -17,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,6 +52,8 @@ import org.apache.kafka.common.errors.RebalanceInProgressException;
 import org.apache.kafka.common.errors.TopicAuthorizationException;
 import org.apache.kafka.common.errors.UnreleasedInstanceIdException;
 import org.apache.kafka.common.errors.WakeupException;
+import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.jspecify.annotations.NonNull;
@@ -723,10 +726,14 @@ public class KafkaMessageListenerContainerTests {
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				// Simulate offset gap in transaction context, the gap is often larger than 1, an additional offset for control record offset
-				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
-				new ConsumerRecord<>("foo", 0, 2L, 1, "bar"),
-				new ConsumerRecord<>("foo", 0, 4L, 1, "baz"),
-				new ConsumerRecord<>("foo", 0, 6L, 1, "qux")));
+				new ConsumerRecord<>("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "foo", new RecordHeaders(), Optional.of(7)),
+				new ConsumerRecord<>("foo", 0, 2L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "bar", new RecordHeaders(), Optional.of(9)),
+				new ConsumerRecord<>("foo", 0, 4L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "baz", new RecordHeaders(), Optional.of(11)),
+				new ConsumerRecord<>("foo", 0, 6L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "qux", new RecordHeaders(), Optional.of(13))));
 		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
@@ -753,9 +760,10 @@ public class KafkaMessageListenerContainerTests {
 			acks.add(ack);
 			if (latch.getCount() == 0) {
 				records.clear();
+				acks.get(3).acknowledge();
+				verify(consumer, never()).commitSync(anyMap(), any());
 				acks.get(0).acknowledge();
 				acks.get(1).acknowledge();
-				acks.get(3).acknowledge();
 				acks.get(2).acknowledge();
 			}
 		};
@@ -776,7 +784,8 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		// Assume that all async messages are acked
-		verify(consumer).commitSync(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(7L)),
+		verify(consumer).commitSync(
+				Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(7L, Optional.of(13), "")),
 				Duration.ofMinutes(1));
 		verify(consumer, times(1)).commitSync(any(), any());
 		container.stop();
@@ -793,10 +802,14 @@ public class KafkaMessageListenerContainerTests {
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(new TopicPartition("foo", 0), Arrays.asList(
 				// Simulate offset gap in transaction context, the gap is often larger than 1, an additional offset for control record offset
-				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
-				new ConsumerRecord<>("foo", 0, 2L, 1, "bar"),
-				new ConsumerRecord<>("foo", 0, 4L, 1, "baz"),
-				new ConsumerRecord<>("foo", 0, 6L, 1, "qux")));
+				new ConsumerRecord<>("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "foo", new RecordHeaders(), Optional.of(7)),
+				new ConsumerRecord<>("foo", 0, 2L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "bar", new RecordHeaders(), Optional.of(9)),
+				new ConsumerRecord<>("foo", 0, 4L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "baz", new RecordHeaders(), Optional.of(11)),
+				new ConsumerRecord<>("foo", 0, 6L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "qux", new RecordHeaders(), Optional.of(13))));
 		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
@@ -823,9 +836,10 @@ public class KafkaMessageListenerContainerTests {
 			acks.add(ack);
 			if (latch.getCount() == 0) {
 				records.clear();
+				acks.get(3).acknowledge();
+				verify(consumer, never()).commitSync(anyMap(), any());
 				acks.get(0).acknowledge();
 				acks.get(1).acknowledge();
-				acks.get(3).acknowledge();
 				acks.get(2).acknowledge();
 			}
 		};
@@ -846,7 +860,8 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		// Assume that all async messages are acked
-		verify(consumer).commitSync(Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(7L)),
+		verify(consumer).commitSync(
+				Map.of(new TopicPartition("foo", 0), new OffsetAndMetadata(7L, Optional.of(13), "")),
 				Duration.ofMinutes(1));
 		verify(consumer, times(3)).commitSync(any(), any());
 
@@ -3266,8 +3281,9 @@ public class KafkaMessageListenerContainerTests {
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	@Test
-	public void testAckModeCount() throws Exception {
+	@ParameterizedTest
+	@EnumSource(value = AckMode.class, names = { "COUNT", "COUNT_TIME" })
+	public void testAckModeCount(AckMode ackMode) throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
@@ -3277,17 +3293,24 @@ public class KafkaMessageListenerContainerTests {
 		TopicPartition topicPartition = new TopicPartition("foo", 0);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records1 = new HashMap<>();
 		records1.put(topicPartition, Arrays.asList(
-				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
-				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
+				new ConsumerRecord<>("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "foo", new RecordHeaders(), Optional.of(7)),
+				new ConsumerRecord<>("foo", 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "bar", new RecordHeaders(), Optional.of(8))));
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records2 = new HashMap<>();
 		records2.put(topicPartition, Arrays.asList(
-				new ConsumerRecord<>("foo", 0, 2L, 1, "baz"),
-				new ConsumerRecord<>("foo", 0, 3L, 1, "qux"))); // commit (3 = 3)
+				new ConsumerRecord<>("foo", 0, 2L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "baz", new RecordHeaders(), Optional.of(9)),
+				new ConsumerRecord<>("foo", 0, 3L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "qux", new RecordHeaders(), Optional.of(10)))); // commit (3 = 3)
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records3 = new HashMap<>();
 		records3.put(topicPartition, Arrays.asList(
-				new ConsumerRecord<>("foo", 0, 4L, 1, "fiz"),
-				new ConsumerRecord<>("foo", 0, 5L, 1, "buz"), // commit (3 = 3)
-				new ConsumerRecord<>("foo", 0, 6L, 1, "bif"))); // commit (1 when next poll returns no records)
+				new ConsumerRecord<>("foo", 0, 4L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "fiz", new RecordHeaders(), Optional.of(11)),
+				new ConsumerRecord<>("foo", 0, 5L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "buz", new RecordHeaders(), Optional.of(12)), // commit (3 = 3)
+				new ConsumerRecord<>("foo", 0, 6L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "bif", new RecordHeaders(), Optional.of(13)))); // Commit at next empty poll.
 		ConsumerRecords<Integer, String> consumerRecords1 = new ConsumerRecords<>(records1, Map.of());
 		ConsumerRecords<Integer, String> consumerRecords2 = new ConsumerRecords<>(records2, Map.of());
 		ConsumerRecords<Integer, String> consumerRecords3 = new ConsumerRecords<>(records3, Map.of());
@@ -3313,7 +3336,8 @@ public class KafkaMessageListenerContainerTests {
 				new TopicPartitionOffset("foo", 0) };
 		ContainerProperties containerProps = new ContainerProperties(topicPartitionOffset);
 		containerProps.setGroupId("grp");
-		containerProps.setAckMode(AckMode.COUNT);
+		containerProps.setAckMode(ackMode);
+		containerProps.setAckTime(60000);
 		containerProps.setAckCount(3);
 		containerProps.setClientId("clientId");
 		containerProps.setMissingTopicsFatal(false);
@@ -3330,18 +3354,22 @@ public class KafkaMessageListenerContainerTests {
 		container.start();
 		assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(recordCount.get()).isEqualTo(7);
-		verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(3L)),
+		verify(consumer).commitSync(
+				Collections.singletonMap(topicPartition, new OffsetAndMetadata(3L, Optional.of(9), "")),
 				Duration.ofSeconds(42));
-		verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(6L)),
+		verify(consumer).commitSync(
+				Collections.singletonMap(topicPartition, new OffsetAndMetadata(6L, Optional.of(12), "")),
 				Duration.ofSeconds(42));
-		verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(7L)),
+		verify(consumer).commitSync(
+				Collections.singletonMap(topicPartition, new OffsetAndMetadata(7L, Optional.of(13), "")),
 				Duration.ofSeconds(42));
 		container.stop();
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	@Test
-	public void testAckModeCountTimeCommitsWhenTimeElapsed() throws Exception {
+	@ParameterizedTest
+	@EnumSource(value = AckMode.class, names = { "TIME", "COUNT_TIME" })
+	public void testAckModeCountTimeCommitsWhenTimeElapsed(AckMode ackMode) throws Exception {
 		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
 		Consumer<Integer, String> consumer = mock(Consumer.class);
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
@@ -3351,7 +3379,8 @@ public class KafkaMessageListenerContainerTests {
 		TopicPartition topicPartition = new TopicPartition("foo", 0);
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
 		records.put(topicPartition, Collections.singletonList(
-				new ConsumerRecord<>("foo", 0, 0L, 1, "foo")));
+				new ConsumerRecord<>("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "foo", new RecordHeaders(), Optional.of(7))));
 		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
@@ -3367,7 +3396,7 @@ public class KafkaMessageListenerContainerTests {
 				new TopicPartitionOffset("foo", 0) };
 		ContainerProperties containerProps = new ContainerProperties(topicPartitionOffset);
 		containerProps.setGroupId("grp");
-		containerProps.setAckMode(AckMode.COUNT_TIME);
+		containerProps.setAckMode(ackMode);
 		containerProps.setAckCount(Integer.MAX_VALUE);
 		containerProps.setAckTime(10);
 		containerProps.setClientId("clientId");
@@ -3386,7 +3415,8 @@ public class KafkaMessageListenerContainerTests {
 			container.start();
 			assertThat(commitLatch.await(10, TimeUnit.SECONDS)).isTrue();
 			assertThat(recordCount.get()).isGreaterThan(0);
-			verify(consumer).commitSync(Collections.singletonMap(topicPartition, new OffsetAndMetadata(1L)),
+			verify(consumer).commitSync(
+					Collections.singletonMap(topicPartition, new OffsetAndMetadata(1L, Optional.of(7), "")),
 					Duration.ofSeconds(42));
 		}
 		finally {
@@ -3774,35 +3804,34 @@ public class KafkaMessageListenerContainerTests {
 	@Test
 	void testCommitRebalanceInProgressBatch() throws Exception {
 		testCommitRebalanceInProgressGuts(AckMode.BATCH, 3, commits -> {
-			assertThat(commits).hasSize(5);
-			assertThat(commits.get(0)).hasSize(2); // assignment
-			assertThat(commits.get(1)).hasSize(2); // batch commit which should fail due to rebalance in progress
-			assertThat(commits.get(2)).hasSize(2); // commit retry which should fail due to rebalance in progress
-			assertThat(commits.get(3)).hasSize(1); // GH-3186: additional batch commit with only one partition which should be successful
-			assertThat(commits.get(4)).hasSize(1); // GH-2489: offsets for both uncommitted partition should be re-committed before partition 0 is revoked
-			assertThat(commits.get(4).get(new TopicPartition("foo", 0)))
-					.isNotNull()
-					.extracting(OffsetAndMetadata::offset)
-					.isEqualTo(2L);
+			TopicPartition tp0 = new TopicPartition("foo", 0);
+			TopicPartition tp1 = new TopicPartition("foo", 1);
+			assertThat(commits).containsExactly(
+					Map.of(tp0, new OffsetAndMetadata(0), tp1, new OffsetAndMetadata(0)),
+					Map.of(tp0, new OffsetAndMetadata(2, Optional.of(8), ""),
+							tp1, new OffsetAndMetadata(2, Optional.of(10), "")),
+					Map.of(tp0, new OffsetAndMetadata(2, Optional.of(8), ""),
+							tp1, new OffsetAndMetadata(2, Optional.of(10), "")),
+					Map.of(tp1, new OffsetAndMetadata(3, Optional.of(11), "")),
+					Map.of(tp0, new OffsetAndMetadata(2, Optional.of(8), "")));
 		});
 	}
 
 	@Test
 	void testCommitRebalanceInProgressRecord() throws Exception {
 		testCommitRebalanceInProgressGuts(AckMode.RECORD, 6, commits -> {
-			assertThat(commits).hasSize(8);
-			assertThat(commits.get(0)).hasSize(2); // assignment
-			assertThat(commits.get(1)).hasSize(1); // 4 individual commits which should fail due to rebalance in progress
-			assertThat(commits.get(2)).hasSize(1);
-			assertThat(commits.get(3)).hasSize(1);
-			assertThat(commits.get(4)).hasSize(1);
-			assertThat(commits.get(5)).hasSize(2); // commit retry which should fail due to rebalance in progress
-			assertThat(commits.get(6)).hasSize(1); // GH-3186: additional commit which should be successful
-			assertThat(commits.get(7)).hasSize(1); // GH-2489: offsets for both partition should be re-committed before partition 0 is revoked
-			assertThat(commits.get(7).get(new TopicPartition("foo", 0)))
-				.isNotNull()
-				.extracting(OffsetAndMetadata::offset)
-				.isEqualTo(2L);
+			TopicPartition tp0 = new TopicPartition("foo", 0);
+			TopicPartition tp1 = new TopicPartition("foo", 1);
+			assertThat(commits).containsExactly(
+					Map.of(tp0, new OffsetAndMetadata(0), tp1, new OffsetAndMetadata(0)),
+					Map.of(tp0, new OffsetAndMetadata(1, Optional.of(7), "")),
+					Map.of(tp0, new OffsetAndMetadata(2, Optional.of(8), "")),
+					Map.of(tp1, new OffsetAndMetadata(1, Optional.of(9), "")),
+					Map.of(tp1, new OffsetAndMetadata(2, Optional.of(10), "")),
+					Map.of(tp0, new OffsetAndMetadata(2, Optional.of(8), ""),
+							tp1, new OffsetAndMetadata(2, Optional.of(10), "")),
+					Map.of(tp1, new OffsetAndMetadata(3, Optional.of(11), "")),
+					Map.of(tp0, new OffsetAndMetadata(2, Optional.of(8), "")));
 		});
 	}
 
@@ -3815,20 +3844,26 @@ public class KafkaMessageListenerContainerTests {
 		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
 		Map<String, Object> cfProps = new LinkedHashMap<>();
 		given(cf.getConfigurationProperties()).willReturn(cfProps);
-		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new HashMap<>();
+		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> records = new LinkedHashMap<>();
 		TopicPartition topicPartition0 = new TopicPartition("foo", 0);
 		records.put(topicPartition0, Arrays.asList(
-				new ConsumerRecord<>("foo", 0, 0L, 1, "foo"),
-				new ConsumerRecord<>("foo", 0, 1L, 1, "bar")));
+				new ConsumerRecord<>("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "foo", new RecordHeaders(), Optional.of(7)),
+				new ConsumerRecord<>("foo", 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "bar", new RecordHeaders(), Optional.of(8))));
 		records.put(new TopicPartition("foo", 1), Arrays.asList(
-				new ConsumerRecord<>("foo", 1, 0L, 1, "foo"),
-				new ConsumerRecord<>("foo", 1, 1L, 1, "bar")));
+				new ConsumerRecord<>("foo", 1, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "foo", new RecordHeaders(), Optional.of(9)),
+				new ConsumerRecord<>("foo", 1, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "bar", new RecordHeaders(), Optional.of(10))));
 		final Map<TopicPartition, List<ConsumerRecord<Integer, String>>> additionalRecords = Collections.singletonMap(
 			new TopicPartition("foo", 1),
-				Collections.singletonList(new ConsumerRecord<>("foo", 1, 2L, 1, "foo")));
+				Collections.singletonList(new ConsumerRecord<>("foo", 1, 2L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, 1, "foo", new RecordHeaders(), Optional.of(11))));
 		ConsumerRecords<Integer, String> consumerRecords = new ConsumerRecords<>(records, Map.of());
 		ConsumerRecords<Integer, String> additionalConsumerRecords = new ConsumerRecords<>(additionalRecords, Map.of());
 		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
+		AtomicInteger providerCalls = new AtomicInteger();
 		AtomicInteger pollIteration = new AtomicInteger();
 		AtomicReference<ConsumerRebalanceListener> rebal = new AtomicReference<>();
 		CountDownLatch latch = new CountDownLatch(3);
@@ -3839,13 +3874,17 @@ public class KafkaMessageListenerContainerTests {
 			if (call == 0) {
 				rebal.get().onPartitionsRevoked(Collections.emptyList());
 				rebal.get().onPartitionsAssigned(records.keySet());
+				assertThat(providerCalls.get()).isEqualTo(2); // initial assignment only
 				result = consumerRecords;
 			}
 			else if (call == 1) {
+				assertThat(providerCalls.get()).isEqualTo(ackMode == AckMode.BATCH ? 4 : 6);
 				result = additionalConsumerRecords;
 			}
 			else if (call == 2) {
+				assertThat(providerCalls.get()).isEqualTo(ackMode == AckMode.BATCH ? 5 : 7);
 				rebal.get().onPartitionsRevoked(Collections.singletonList(topicPartition0));
+				assertThat(providerCalls.get()).isEqualTo(ackMode == AckMode.BATCH ? 5 : 7);
 				rebal.get().onPartitionsAssigned(Collections.emptyList());
 				result = emptyRecords;
 			}
@@ -3871,6 +3910,10 @@ public class KafkaMessageListenerContainerTests {
 		ContainerProperties containerProps = new ContainerProperties("foo");
 		containerProps.setGroupId("grp");
 		containerProps.setAckMode(ackMode);
+		containerProps.setOffsetAndMetadataProvider((metadata, offset) -> {
+			providerCalls.incrementAndGet();
+			return new OffsetAndMetadata(offset);
+		});
 		containerProps.setClientId("clientId");
 		containerProps.setIdleEventInterval(100L);
 		containerProps.setMessageListener((MessageListener<?, ?>) msg -> { });
@@ -3882,6 +3925,7 @@ public class KafkaMessageListenerContainerTests {
 		assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
 		container.stop();
 		verifier.accept(commits);
+		assertThat(providerCalls.get()).isEqualTo(ackMode == AckMode.BATCH ? 5 : 7);
 	}
 
 	@SuppressWarnings({ "unchecked"})

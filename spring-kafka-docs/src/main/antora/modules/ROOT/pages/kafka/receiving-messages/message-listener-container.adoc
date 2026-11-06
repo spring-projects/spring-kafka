@@ -234,6 +234,18 @@ See `setCommitCallback` to get the results of asynchronous commits; the default 
 Because the listener container has its own mechanism for committing offsets, it prefers the Kafka `ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG` to be `false`.
 Starting with version 2.3, it unconditionally sets it to false unless specifically set in the consumer factory or the container's consumer property overrides.
 
+[[committed-leader-epoch]]
+Starting with version 4.2, the offsets the container commits include the leader epoch of the record that the offset comes from (`ConsumerRecord.leaderEpoch()`).
+This applies to synchronous, asynchronous, and transactional commits, and to the commits the error handlers and the `DefaultAfterRollbackProcessor` perform after recovering a record.
+It matches what the Kafka consumer itself commits when `enable.auto.commit` is `true`.
+When a consumer later starts from such an offset, it can check the offset against the partition's log and detect that the log was truncated (for example, after an unclean leader election).
+If the record has no leader epoch, the offset is committed without one, as before.
+The commits performed on partition assignment use the consumer's position and are committed without a leader epoch.
+See xref:kafka/container-props.adoc#offsetAndMetadataProvider[`offsetAndMetadataProvider`] for how a custom provider interacts with the leader epoch.
+
+IMPORTANT: When the consumer detects such a truncation and `auto.offset.reset` is `none`, it throws a `LogTruncationException`; with any other reset policy, it resets its position to where the logs diverge.
+Previously, the committed offset had no leader epoch, so the truncation went undetected and the consumer resumed from the committed offset.
+
 The `Acknowledgment` has the following method:
 
 [source, java]

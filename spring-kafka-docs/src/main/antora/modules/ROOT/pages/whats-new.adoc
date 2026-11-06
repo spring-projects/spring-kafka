@@ -70,6 +70,15 @@ The `CommonDelegatingErrorHandler` now supports the `KafkaHeaders.DELIVERY_ATTEM
 Previously, the header was never added when the container's error handler was a `CommonDelegatingErrorHandler`, even with the `deliveryAttemptHeader` container property set to `true`.
 See xref:kafka/annotation-error-handling.adoc#delivery-header[Delivery Attempts Header].
 
+[[x42-committed-leader-epoch]]
+=== Leader Epoch in Committed Offsets
+
+The offsets committed by the listener container, the error handlers, and the `DefaultAfterRollbackProcessor` now include the leader epoch of the record the offset comes from.
+This lets a consumer that starts from a committed offset detect that the partition's log was truncated, for example after an unclean leader election.
+With `auto.offset.reset` set to `none`, the consumer then throws a `LogTruncationException` instead of silently resuming.
+A custom `OffsetAndMetadataProvider` can still supply its own leader epoch.
+See xref:kafka/receiving-messages/message-listener-container.adoc#committed-leader-epoch[Committing Offsets] for more information.
+
 [[x42-listener-observation-tags]]
 === Listener Observation Meter Tags
 

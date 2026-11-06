@@ -22,10 +22,13 @@ import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.record.TimestampType;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.InOrder;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,6 +57,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /**
  * {@link DefaultErrorHandler} tests for batch listeners.
@@ -151,11 +155,11 @@ public class DefaultErrorHandlerBatchTests {
 		ConsumerRecords<?, ?> records = new ConsumerRecords(Collections.singletonMap(tp,
 			Arrays.asList(
 				new ConsumerRecord("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "foo",
-						new RecordHeaders(), Optional.empty()),
+						new RecordHeaders(), Optional.of(7)),
 				new ConsumerRecord("foo", 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "bar",
-						new RecordHeaders(), Optional.empty()),
+						new RecordHeaders(), Optional.of(8)),
 				new ConsumerRecord("foo", 0, 2L, 0L, TimestampType.NO_TIMESTAMP_TYPE, 0, 0, null, "baz",
-						new RecordHeaders(), Optional.empty()))
+						new RecordHeaders(), Optional.of(9)))
 		), Map.of());
 		assertThatExceptionOfType(KafkaException.class).isThrownBy(() ->
 			beh.handleBatch(new ListenerExecutionFailedException("", new MessagingException("",
@@ -163,14 +167,91 @@ public class DefaultErrorHandlerBatchTests {
 		);
 
 		Map<TopicPartition, OffsetAndMetadata> offsets = new LinkedHashMap<>();
-		offsets.put(tp, new OffsetAndMetadata(1L));
+		offsets.put(tp, new OffsetAndMetadata(1L, Optional.of(7), ""));
 		inOrder.verify(mockConsumer).commitSync(offsets, syncCommitTimeout);
 
 		inOrder.verify(mockConsumer).seek(tp, 2);
 
 		offsets = new LinkedHashMap<>();
-		offsets.put(tp, new OffsetAndMetadata(2L));
+		offsets.put(tp, new OffsetAndMetadata(2L, Optional.of(8), ""));
 		inOrder.verify(mockConsumer).commitSync(offsets, syncCommitTimeout);
+	}
+
+	@ParameterizedTest
+	@CsvSource({ "7,-1,0,7,true", "7,9,100,9,false" })
+	void recoveryProviderPolicy(int sourceEpoch, int providerEpoch, long delta, int expectedEpoch, boolean sync) {
+		Consumer<?, ?> consumer = mock();
+		MessageListenerContainer container = mock();
+		ContainerProperties properties = new ContainerProperties("topic");
+		properties.setSyncCommits(sync);
+		properties.setSyncCommitTimeout(Duration.ofSeconds(42));
+		OffsetCommitCallback callback = mock();
+		properties.setCommitCallback(callback);
+		given(container.getContainerProperties()).willReturn(properties);
+		List<Long> calls = new ArrayList<>();
+		properties.setOffsetAndMetadataProvider((metadata, offset) -> {
+			calls.add(offset);
+			return new OffsetAndMetadata(offset + delta,
+					providerEpoch < 0 ? Optional.empty() : Optional.of(providerEpoch), "custom-" + offset);
+		});
+		Optional<Integer> epoch = sourceEpoch < 0 ? Optional.empty() : Optional.of(sourceEpoch);
+		TopicPartition partition = new TopicPartition("topic", 0);
+		List<ConsumerRecord<String, String>> list = new ArrayList<>();
+		for (long offset : new long[] { 41, 43, 45, 49 }) {
+			list.add(new ConsumerRecord<>("topic", 0, offset, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+					0, 0, "key", "value", new RecordHeaders(), epoch));
+		}
+		DefaultErrorHandler handler = new DefaultErrorHandler(new FixedBackOff(0, 0));
+		assertThatExceptionOfType(KafkaException.class).isThrownBy(() -> handler.handleBatch(
+				new BatchListenerFailedException("failed", 2),
+				new ConsumerRecords<>(Map.of(partition, list), Map.of()), consumer, container, () -> { }));
+		Optional<Integer> expected = expectedEpoch < 0 ? Optional.empty() : Optional.of(expectedEpoch);
+		Map<TopicPartition, OffsetAndMetadata> prefix = Map.of(partition,
+				new OffsetAndMetadata(44L + delta, expected, "custom-44"));
+		Map<TopicPartition, OffsetAndMetadata> recovered = Map.of(partition,
+				new OffsetAndMetadata(46L + delta, expected, "custom-46"));
+		InOrder order = inOrder(consumer);
+		if (sync) {
+			order.verify(consumer).commitSync(prefix, Duration.ofSeconds(42));
+		}
+		else {
+			order.verify(consumer).commitAsync(prefix, callback);
+		}
+		order.verify(consumer).seek(partition, 49L);
+		if (sync) {
+			order.verify(consumer).commitSync(recovered, Duration.ofSeconds(42));
+		}
+		else {
+			order.verify(consumer).commitAsync(recovered, callback);
+		}
+		order.verifyNoMoreInteractions();
+		assertThat(calls).containsExactly(42L, 44L, 46L);
+	}
+
+	@Test
+	void unacceptedRecoveryCommitsOnlyPrefix() {
+		Consumer<?, ?> consumer = mock();
+		MessageListenerContainer container = mock();
+		ContainerProperties properties = new ContainerProperties("topic");
+		properties.setSyncCommitTimeout(Duration.ofSeconds(42));
+		given(container.getContainerProperties()).willReturn(properties);
+		TopicPartition partition = new TopicPartition("topic", 0);
+		List<ConsumerRecord<String, String>> list = new ArrayList<>();
+		for (int offset = 0; offset < 3; offset++) {
+			list.add(new ConsumerRecord<>("topic", 0, offset, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+					0, 0, "key", "value", new RecordHeaders(), Optional.of(7 + offset)));
+		}
+		DefaultErrorHandler handler = new DefaultErrorHandler((record, failure) -> {
+			throw new IllegalStateException("not recovered");
+		}, new FixedBackOff(0, 0));
+		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(() -> handler.handleBatch(
+				new BatchListenerFailedException("failed", 1),
+				new ConsumerRecords<>(Map.of(partition, list), Map.of()), consumer, container, () -> { }));
+		InOrder order = inOrder(consumer);
+		order.verify(consumer).commitSync(Map.of(partition, new OffsetAndMetadata(1L, Optional.of(7), "")),
+				Duration.ofSeconds(42));
+		order.verify(consumer).seek(partition, 1L);
+		verifyNoMoreInteractions(consumer);
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })

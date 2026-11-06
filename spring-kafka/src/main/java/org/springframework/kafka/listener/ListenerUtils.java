@@ -7,6 +7,7 @@ package org.springframework.kafka.listener;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.apache.kafka.clients.consumer.Consumer;
@@ -195,5 +196,20 @@ public final class ListenerUtils {
 			return metadataProvider.provide(new DefaultListenerMetadata(container), offset);
 		}
 		return new OffsetAndMetadata(offset);
+	}
+
+	static OffsetAndMetadata createOffsetAndMetadata(@Nullable MessageListenerContainer container, long offset,
+			Optional<Integer> leaderEpoch) {
+
+		return withLeaderEpoch(createOffsetAndMetadata(container, offset), offset, leaderEpoch);
+	}
+
+	static OffsetAndMetadata withLeaderEpoch(OffsetAndMetadata result, long sourceOffset,
+			Optional<Integer> leaderEpoch) {
+
+		if (result.offset() != sourceOffset || result.leaderEpoch().isPresent() || leaderEpoch.isEmpty()) {
+			return result;
+		}
+		return new OffsetAndMetadata(result.offset(), leaderEpoch, result.metadata());
 	}
 }

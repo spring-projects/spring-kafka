@@ -182,6 +182,10 @@ See `monitorInterval`.
 |[[offsetAndMetadataProvider]]<<offsetAndMetadataProvider,`offsetAndMetadataProvider`>>
 |`null`
 |A provider for `OffsetAndMetadata`; by default, the provider creates an offset and metadata with empty metadata. The provider gives a way to customize the metadata.
+The offset and metadata the provider returns are always committed as is.
+If the provider returns a leader epoch, that epoch is committed.
+Otherwise, the leader epoch of the record is added, but only when the provider returns the offset it was given; if the provider changes the offset, no leader epoch is committed.
+See xref:kafka/receiving-messages/message-listener-container.adoc#committed-leader-epoch[Committing Offsets].
 
 |[[pauseImmediate]]<<pauseImmediate,`pauseImmediate`>>
 |`false`

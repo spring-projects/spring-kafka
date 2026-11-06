@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -22,11 +23,16 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.Serializer;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.InOrder;
 
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -48,6 +54,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -286,7 +293,8 @@ public class SeekToCurrentRecovererTests {
 		DefaultErrorHandler eh = new DefaultErrorHandler(recoverer, new FixedBackOff(0L, 1));
 		eh.setCommitRecovered(true);
 		List<ConsumerRecord<?, ?>> records = new ArrayList<>();
-		records.add(new ConsumerRecord<>("foo", 0, 0, null, "foo"));
+		records.add(new ConsumerRecord<>("foo", 0, 41L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+				0, 0, null, "value", new RecordHeaders(), Optional.of(7)));
 		records.add(new ConsumerRecord<>("foo", 1, 0, null, "bar"));
 		Consumer<?, ?> consumer = mock(Consumer.class);
 		MessageListenerContainer container = mock(MessageListenerContainer.class);
@@ -299,24 +307,74 @@ public class SeekToCurrentRecovererTests {
 		given(container.getContainerProperties()).willReturn(properties);
 		assertThatExceptionOfType(RecordInRetryException.class).isThrownBy(() ->
 			eh.handleRemaining(new RuntimeException(), records, consumer, container));
-		verify(consumer).seek(new TopicPartition("foo", 0), 0L);
+		verify(consumer).seek(new TopicPartition("foo", 0), 41L);
 		verify(consumer).seek(new TopicPartition("foo", 1), 0L);
 		verifyNoMoreInteractions(consumer);
 		eh.handleRemaining(new RuntimeException(), records, consumer, container);
 		verify(consumer, times(2)).seek(new TopicPartition("foo", 1), 0L);
 		if (syncCommits) {
 			verify(consumer)
-					.commitSync(Collections.singletonMap(new TopicPartition("foo", 0), new OffsetAndMetadata(1L)),
+					.commitSync(
+							Collections.singletonMap(new TopicPartition("foo", 0),
+									new OffsetAndMetadata(42L, Optional.of(7), "")),
 							Duration.ofSeconds(42));
 		}
 		else {
 			verify(consumer)
 					.commitAsync(
-							Collections.singletonMap(new TopicPartition("foo", 0), new OffsetAndMetadata(1L)),
+							Collections.singletonMap(new TopicPartition("foo", 0),
+									new OffsetAndMetadata(42L, Optional.of(7), "")),
 							commitCallback);
 		}
 		verifyNoMoreInteractions(consumer);
 		verify(recoverer).accept(eq(records.get(0)), any());
+	}
+
+	@ParameterizedTest
+	@CsvSource({ "-1,0,7", "9,100,9" })
+	void recoveredProviderPolicy(int providerEpoch, long delta, int expectedEpoch) {
+		ConsumerRecordRecoverer recoverer = mock();
+		DefaultErrorHandler handler = new DefaultErrorHandler(recoverer, new FixedBackOff(0, 0));
+		handler.setCommitRecovered(true);
+		Consumer<?, ?> consumer = mock();
+		MessageListenerContainer container = mock();
+		ContainerProperties properties = new ContainerProperties("topic");
+		properties.setAckMode(AckMode.MANUAL_IMMEDIATE);
+		properties.setSyncCommitTimeout(Duration.ofSeconds(42));
+		given(container.getContainerProperties()).willReturn(properties);
+		List<Long> calls = new ArrayList<>();
+		properties.setOffsetAndMetadataProvider((metadata, offset) -> {
+			calls.add(offset);
+			return new OffsetAndMetadata(offset + delta,
+					providerEpoch < 0 ? Optional.empty() : Optional.of(providerEpoch), "custom");
+		});
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("topic", 0, 41L, 0L,
+				TimestampType.NO_TIMESTAMP_TYPE, 0, 0, "key", "value", new RecordHeaders(), Optional.of(7));
+		RuntimeException failure = new RuntimeException();
+		handler.handleRemaining(failure, List.of(record), consumer, container);
+		InOrder order = inOrder(recoverer, consumer);
+		order.verify(recoverer).accept(record, failure);
+		order.verify(consumer).commitSync(Map.of(new TopicPartition("topic", 0), new OffsetAndMetadata(42L + delta,
+				expectedEpoch < 0 ? Optional.empty() : Optional.of(expectedEpoch), "custom")), Duration.ofSeconds(42));
+		order.verifyNoMoreInteractions();
+		assertThat(calls).containsExactly(42L);
+	}
+
+	@Test
+	void commitRecoveredStillRequiresManualImmediate() {
+		ConsumerRecordRecoverer recoverer = mock();
+		DefaultErrorHandler handler = new DefaultErrorHandler(recoverer, new FixedBackOff(0, 0));
+		handler.setCommitRecovered(true);
+		Consumer<?, ?> consumer = mock();
+		MessageListenerContainer container = mock();
+		ContainerProperties properties = new ContainerProperties("topic");
+		given(container.getContainerProperties()).willReturn(properties);
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("topic", 0, 41L, 0L,
+				TimestampType.NO_TIMESTAMP_TYPE, 0, 0, "key", "value", new RecordHeaders(), Optional.of(7));
+		RuntimeException failure = new RuntimeException();
+		handler.handleRemaining(failure, List.of(record), consumer, container);
+		verify(recoverer).accept(record, failure);
+		verifyNoMoreInteractions(consumer);
 	}
 
 	@Test

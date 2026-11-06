@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -34,13 +35,18 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
+import org.apache.kafka.clients.consumer.OffsetCommitCallback;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.GroupAuthorizationException;
 import org.apache.kafka.common.errors.WakeupException;
+import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.record.TimestampType;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
 import org.springframework.kafka.annotation.KafkaListenerAnnotationBeanPostProcessor;
@@ -66,8 +72,12 @@ import org.springframework.util.CollectionUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.atLeastOnce;
@@ -76,6 +86,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /**
  * @author Gary Russell
@@ -94,6 +106,438 @@ import static org.mockito.Mockito.verify;
 public class ConcurrentMessageListenerContainerMockTests {
 
 	private final CompletableFuture<Void> pendingResult = new CompletableFuture<>();
+
+	@ParameterizedTest
+	@ValueSource(strings = { "lower", "equalUnknown", "equalKnown", "higherUnknown",
+			"partitions", "unacked", "transformedLower" })
+	@SuppressWarnings("unchecked")
+	void pendingCommitsKeepEligibleSourcePairs(String scenario) throws InterruptedException {
+		ConsumerFactory<Integer, String> factory = mock();
+		Consumer<Integer, String> consumer = mock();
+		given(factory.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		TopicPartition first = new TopicPartition("topic", 0);
+		TopicPartition second = new TopicPartition("topic", 1);
+		List<ConsumerRecord<Integer, String>> records = switch (scenario) {
+			case "lower", "transformedLower" ->
+					List.of(epochRecord(first, 43, Optional.of(8)), epochRecord(first, 41, Optional.of(7)));
+			case "equalUnknown" -> List.of(epochRecord(first, 43, Optional.of(8)), epochRecord(first, 43, Optional.empty()));
+			case "equalKnown" -> List.of(epochRecord(first, 43, Optional.empty()), epochRecord(first, 43, Optional.of(0)));
+			case "higherUnknown" -> List.of(epochRecord(first, 41, Optional.of(7)), epochRecord(first, 43, Optional.empty()));
+			case "partitions" -> List.of(epochRecord(first, 41, Optional.of(7)), epochRecord(second, 99, Optional.of(2)));
+			default -> List.of(epochRecord(first, 41, Optional.of(7)), epochRecord(first, 99, Optional.of(9)));
+		};
+		AtomicInteger poll = new AtomicInteger();
+		given(consumer.poll(any(Duration.class))).willAnswer(invocation -> {
+			int index = poll.getAndIncrement();
+			if (index < records.size()) {
+				ConsumerRecord<Integer, String> record = records.get(index);
+				return new ConsumerRecords<>(
+						Map.of(new TopicPartition("topic", record.partition()), List.of(record)), Map.of());
+			}
+			Thread.sleep(10);
+			return ConsumerRecords.empty();
+		});
+		OffsetAndMetadataProvider provider = mock();
+		OffsetAndMetadataProvider replacement = mock();
+		given(provider.provide(any(), anyLong())).willAnswer(invocation ->
+				new OffsetAndMetadata(scenario.equals("transformedLower") ? 1000 - invocation.getArgument(1, Long.class)
+						: invocation.getArgument(1, Long.class), "pending"));
+		CountDownLatch committedLatch = new CountDownLatch(1);
+		AtomicReference<Map<TopicPartition, OffsetAndMetadata>> committed = new AtomicReference<>();
+		willAnswer(invocation -> {
+			committed.set(Map.copyOf(invocation.getArgument(0)));
+			committedLatch.countDown();
+			return null;
+		}).given(consumer).commitSync(anyMap(), any(Duration.class));
+		ContainerProperties properties = new ContainerProperties(new TopicPartitionOffset("topic", 0),
+				new TopicPartitionOffset("topic", 1));
+		properties.setGroupId("grp");
+		properties.setAckMode(AckMode.MANUAL);
+		properties.setFixTxOffsets(false);
+		properties.setOffsetAndMetadataProvider(provider);
+		AtomicReference<ContainerProperties> liveProperties = new AtomicReference<>();
+		List<Acknowledgment> acknowledgments = new ArrayList<>();
+		properties.setMessageListener((AcknowledgingMessageListener<Integer, String>) (record, acknowledgment) -> {
+			acknowledgments.add(acknowledgment);
+			if (scenario.equals("partitions") && acknowledgments.size() == 1) {
+				liveProperties.get().setOffsetAndMetadataProvider(replacement);
+			}
+			if (acknowledgments.size() == records.size()) {
+				acknowledgments.get(0).acknowledge();
+				if (!scenario.equals("unacked")) {
+					acknowledgments.get(1).acknowledge();
+				}
+				verifyNoInteractions(provider);
+			}
+		});
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(factory, properties);
+		liveProperties.set(container.getContainerProperties());
+		try {
+			container.start();
+			assertThat(committedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		}
+		finally {
+			container.stop();
+		}
+		Map<TopicPartition, OffsetAndMetadata> expected = switch (scenario) {
+			case "transformedLower" -> Map.of(first, new OffsetAndMetadata(956, Optional.empty(), "pending"));
+			case "lower" -> Map.of(first, new OffsetAndMetadata(44, Optional.of(8), "pending"));
+			case "equalUnknown", "higherUnknown" ->
+					Map.of(first, new OffsetAndMetadata(44, Optional.empty(), "pending"));
+			case "equalKnown" -> Map.of(first, new OffsetAndMetadata(44, Optional.of(0), "pending"));
+			case "partitions" -> Map.of(first, new OffsetAndMetadata(42, Optional.of(7), "pending"),
+					second, new OffsetAndMetadata(100, Optional.of(2), "pending"));
+			default -> Map.of(first, new OffsetAndMetadata(42, Optional.of(7), "pending"));
+		};
+		assertThat(committed.get()).isEqualTo(expected);
+		ArgumentCaptor<ListenerMetadata> metadata = ArgumentCaptor.forClass(ListenerMetadata.class);
+		for (OffsetAndMetadata offset : expected.values()) {
+			verify(provider).provide(metadata.capture(),
+					eq(scenario.equals("transformedLower") ? 44L : offset.offset()));
+		}
+		assertThat(metadata.getAllValues()).allSatisfy(value -> {
+			assertThat(value).isSameAs(metadata.getValue());
+			assertThat(value.getGroupId()).isEqualTo("grp");
+		});
+		verifyNoMoreInteractions(provider);
+		verifyNoInteractions(replacement);
+		verify(consumer, times(1)).commitSync(anyMap(), any(Duration.class));
+	}
+
+	@ParameterizedTest
+	@ValueSource(booleans = { false, true })
+	@SuppressWarnings("unchecked")
+	void asyncBatchCommitCompletesWithTheSamePair(boolean failure) throws InterruptedException {
+		Consumer<Integer, String> consumer = mock();
+		ConsumerFactory<Integer, String> factory = consumerFactory(consumer);
+		TopicPartition partition = new TopicPartition("topic", 0);
+		ConsumerRecord<Integer, String> record = epochRecord(partition, 41L, Optional.of(7));
+		ConsumerRecords<Integer, String> records = new ConsumerRecords<>(Map.of(partition, List.of(
+				record,
+				epochRecord(partition, 42L, "second", Optional.of(8)),
+				epochRecord(partition, 43L, "third", Optional.of(9)))), Map.of());
+		pollOnce(consumer, records);
+		OffsetCommitCallback callback = mock();
+		Exception error = failure ? new IllegalStateException("commit failed") : null;
+		CountDownLatch committedLatch = new CountDownLatch(1);
+		AtomicReference<Map<TopicPartition, OffsetAndMetadata>> committed = new AtomicReference<>();
+		willAnswer(invocation -> {
+			Map<TopicPartition, OffsetAndMetadata> offsets = invocation.getArgument(0);
+			committed.set(offsets);
+			OffsetCommitCallback completion = invocation.getArgument(1);
+			completion.onComplete(offsets, error);
+			committedLatch.countDown();
+			return null;
+		}).given(consumer).commitAsync(anyMap(), any());
+		ContainerProperties properties = new ContainerProperties(new TopicPartitionOffset("topic", 0));
+		properties.setGroupId("grp");
+		properties.setClientId("clientId");
+		properties.setAckMode(AckMode.BATCH);
+		properties.setSyncCommits(false);
+		properties.setCommitCallback(callback);
+		properties.setFixTxOffsets(false);
+		properties.setMessageListener((MessageListener<Integer, String>) data -> { });
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(factory, properties);
+		try {
+			container.start();
+			assertThat(committedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			verify(callback).onComplete(same(committed.get()),
+					same(error));
+			verifyNoMoreInteractions(callback);
+			assertThat(committed.get()).containsEntry(partition, new OffsetAndMetadata(44L, Optional.of(9), ""));
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void revokeFlushesPendingEpochBetweenCallbacks() throws InterruptedException {
+		ConsumerFactory<Integer, String> factory = mock();
+		Consumer<Integer, String> consumer = mock();
+		given(factory.createConsumer(any(), any(), any(), any())).willReturn(consumer);
+		TopicPartition partition = new TopicPartition("topic", 0);
+		AtomicReference<ConsumerRebalanceListener> rebalance = new AtomicReference<>();
+		willAnswer(inv -> {
+			rebalance.set(inv.getArgument(1));
+			return null;
+		}).given(consumer).subscribe(any(Collection.class), any());
+		List<String> events = new ArrayList<>();
+		List<Map<TopicPartition, OffsetAndMetadata>> commits = new ArrayList<>();
+		Map<TopicPartition, OffsetAndMetadata> expected =
+				Map.of(partition, new OffsetAndMetadata(44, Optional.of(8), ""));
+		willAnswer(inv -> {
+			events.add("commit");
+			commits.add(Map.copyOf(inv.getArgument(0)));
+			return null;
+		}).given(consumer).commitSync(anyMap(), any(Duration.class));
+		AtomicInteger poll = new AtomicInteger();
+		CountDownLatch revoked = new CountDownLatch(1);
+		given(consumer.poll(any(Duration.class))).willAnswer(inv -> {
+			int phase = poll.getAndIncrement();
+			if (phase == 0) {
+				rebalance.get().onPartitionsAssigned(List.of(partition));
+				return new ConsumerRecords<>(Map.of(partition, List.of(epochRecord(partition, 43, Optional.of(8)))), Map.of());
+			}
+			if (phase == 1) {
+				rebalance.get().onPartitionsRevoked(List.of(partition));
+				revoked.countDown();
+			}
+			Thread.sleep(10);
+			return ConsumerRecords.empty();
+		});
+		ContainerProperties properties = new ContainerProperties("topic");
+		properties.setGroupId("grp");
+		properties.setAckMode(AckMode.COUNT);
+		properties.setAckCount(100);
+		properties.setAssignmentCommitOption(ContainerProperties.AssignmentCommitOption.NEVER);
+		properties.setMessageListener((MessageListener<Integer, String>) record -> { });
+		properties.setConsumerRebalanceListener(new ConsumerAwareRebalanceListener() {
+			@Override
+			public void onPartitionsRevokedBeforeCommit(Consumer<?, ?> source, Collection<TopicPartition> partitions) {
+				assertThat(commits).isEmpty();
+				events.add("before");
+			}
+
+			@Override
+			public void onPartitionsRevokedAfterCommit(Consumer<?, ?> source, Collection<TopicPartition> partitions) {
+				assertThat(commits).containsExactly(expected);
+				events.add("after");
+			}
+		});
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(factory, properties);
+		try {
+			container.start();
+			assertThat(revoked.await(10, TimeUnit.SECONDS)).isTrue();
+		}
+		finally {
+			container.stop();
+		}
+		assertThat(events).containsExactly("before", "commit", "after");
+		assertThat(commits).containsExactly(expected);
+		verify(consumer, times(1)).commitSync(anyMap(), any(Duration.class));
+	}
+
+	private static ConsumerRecord<Integer, String> epochRecord(TopicPartition partition, long offset,
+			Optional<Integer> epoch) {
+
+		return epochRecord(partition, offset, "value", epoch);
+	}
+
+	private static ConsumerRecord<Integer, String> epochRecord(TopicPartition partition, long offset, String value,
+			Optional<Integer> epoch) {
+
+		return new ConsumerRecord<>(partition.topic(), partition.partition(), offset, 0L,
+				TimestampType.NO_TIMESTAMP_TYPE, 0, 0, 1, value, new RecordHeaders(), epoch);
+	}
+
+	@SuppressWarnings("unchecked")
+	private static ConsumerFactory<Integer, String> consumerFactory(Consumer<Integer, String> consumer) {
+		ConsumerFactory<Integer, String> factory = mock();
+		given(factory.getConfigurationProperties()).willReturn(Map.of(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false));
+		given(factory.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		return factory;
+	}
+
+	private static void pollOnce(Consumer<Integer, String> consumer, ConsumerRecords<Integer, String> records) {
+		AtomicBoolean firstPoll = new AtomicBoolean(true);
+		given(consumer.poll(any(Duration.class))).willAnswer(invocation -> {
+			if (firstPoll.getAndSet(false)) {
+				return records;
+			}
+			Thread.sleep(10);
+			return ConsumerRecords.empty();
+		});
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void recordCommitPreservesLeaderEpoch() throws InterruptedException {
+		Consumer<Integer, String> consumer = mock();
+		ConsumerFactory<Integer, String> factory = consumerFactory(consumer);
+		TopicPartition partition = new TopicPartition("topic", 0);
+		ConsumerRecord<Integer, String> record = epochRecord(partition, 41L, Optional.of(7));
+		ConsumerRecords<Integer, String> records = new ConsumerRecords<>(Map.of(partition, List.of(record)), Map.of());
+		pollOnce(consumer, records);
+		CountDownLatch committedLatch = new CountDownLatch(1);
+		AtomicReference<Map<TopicPartition, OffsetAndMetadata>> committed = new AtomicReference<>();
+		willAnswer(invocation -> {
+			Map<TopicPartition, OffsetAndMetadata> offsets = invocation.getArgument(0);
+			committed.set(Map.copyOf(offsets));
+			committedLatch.countDown();
+			return null;
+		}).given(consumer).commitSync(anyMap(), any(Duration.class));
+		ContainerProperties properties = new ContainerProperties(new TopicPartitionOffset("topic", 0));
+		properties.setGroupId("grp");
+		properties.setClientId("clientId");
+		properties.setAckMode(AckMode.RECORD);
+		properties.setSyncCommits(true);
+		properties.setFixTxOffsets(false);
+		properties.setMessageListener((MessageListener<Integer, String>) data -> { });
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(factory, properties);
+		try {
+			container.start();
+			assertThat(committedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			assertThat(committed.get()).containsEntry(partition, new OffsetAndMetadata(42L, Optional.of(7), ""));
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void batchCommitPreservesLastAcknowledgedEpoch() throws InterruptedException {
+		Consumer<Integer, String> consumer = mock();
+		ConsumerFactory<Integer, String> factory = consumerFactory(consumer);
+		TopicPartition partition = new TopicPartition("topic", 0);
+		ConsumerRecord<Integer, String> record = epochRecord(partition, 41L, Optional.of(7));
+		ConsumerRecords<Integer, String> records = new ConsumerRecords<>(Map.of(partition, List.of(
+				record,
+				epochRecord(partition, 42L, "second", Optional.of(8)),
+				epochRecord(partition, 43L, "third", Optional.of(9)))), Map.of());
+		pollOnce(consumer, records);
+		CountDownLatch committedLatch = new CountDownLatch(1);
+		AtomicReference<Map<TopicPartition, OffsetAndMetadata>> committed = new AtomicReference<>();
+		willAnswer(invocation -> {
+			Map<TopicPartition, OffsetAndMetadata> offsets = invocation.getArgument(0);
+			committed.set(Map.copyOf(offsets));
+			committedLatch.countDown();
+			return null;
+		}).given(consumer).commitSync(anyMap(), any(Duration.class));
+		ContainerProperties properties = new ContainerProperties(new TopicPartitionOffset("topic", 0));
+		properties.setGroupId("grp");
+		properties.setClientId("clientId");
+		properties.setAckMode(AckMode.BATCH);
+		properties.setSyncCommits(true);
+		properties.setFixTxOffsets(false);
+		properties.setMessageListener((MessageListener<Integer, String>) data -> { });
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(factory, properties);
+		try {
+			container.start();
+			assertThat(committedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			assertThat(committed.get()).containsEntry(partition, new OffsetAndMetadata(44L, Optional.of(9), ""));
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void immediateBatchCommitPreservesLastIncludedEpoch() throws InterruptedException {
+		Consumer<Integer, String> consumer = mock();
+		ConsumerFactory<Integer, String> factory = consumerFactory(consumer);
+		TopicPartition partition = new TopicPartition("topic", 0);
+		ConsumerRecord<Integer, String> record = epochRecord(partition, 41L, Optional.of(7));
+		ConsumerRecords<Integer, String> records = new ConsumerRecords<>(Map.of(partition, List.of(
+				record,
+				epochRecord(partition, 42L, "second", Optional.of(8)),
+				epochRecord(partition, 43L, "third", Optional.of(9)))), Map.of());
+		pollOnce(consumer, records);
+		CountDownLatch committedLatch = new CountDownLatch(1);
+		AtomicReference<Map<TopicPartition, OffsetAndMetadata>> committed = new AtomicReference<>();
+		willAnswer(invocation -> {
+			Map<TopicPartition, OffsetAndMetadata> offsets = invocation.getArgument(0);
+			committed.set(Map.copyOf(offsets));
+			committedLatch.countDown();
+			return null;
+		}).given(consumer).commitSync(anyMap(), any(Duration.class));
+		ContainerProperties properties = new ContainerProperties(new TopicPartitionOffset("topic", 0));
+		properties.setGroupId("grp");
+		properties.setClientId("clientId");
+		properties.setAckMode(AckMode.MANUAL_IMMEDIATE);
+		properties.setSyncCommits(true);
+		properties.setFixTxOffsets(false);
+		properties.setMessageListener((BatchAcknowledgingMessageListener<Integer, String>)
+				(data, acknowledgment) -> acknowledgment.acknowledge());
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(factory, properties);
+		try {
+			container.start();
+			assertThat(committedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			assertThat(committed.get()).containsEntry(partition, new OffsetAndMetadata(44L, Optional.of(9), ""));
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void recordCommitsUseCachedProviderAfterListenerReturns() throws InterruptedException {
+		Consumer<Integer, String> consumer = mock();
+		ConsumerFactory<Integer, String> factory = consumerFactory(consumer);
+		TopicPartition partition = new TopicPartition("topic", 0);
+		ConsumerRecord<Integer, String> first = epochRecord(partition, 41L, "first", Optional.of(7));
+		ConsumerRecord<Integer, String> second = epochRecord(partition, 42L, "second", Optional.of(8));
+		ConsumerRecords<Integer, String> records = new ConsumerRecords<>(
+				Map.of(partition, List.of(first, second)), Map.of());
+		pollOnce(consumer, records);
+		OffsetAndMetadataProvider provider = mock();
+		OffsetAndMetadataProvider replacement = mock();
+		given(provider.provide(any(), anyLong())).willAnswer(invocation ->
+				new OffsetAndMetadata(invocation.getArgument(1, Long.class), "cached"));
+		CountDownLatch listenerEntered = new CountDownLatch(1);
+		CountDownLatch releaseListener = new CountDownLatch(1);
+		CountDownLatch committedLatch = new CountDownLatch(2);
+		List<Map<TopicPartition, OffsetAndMetadata>> committed = new ArrayList<>();
+		willAnswer(invocation -> {
+			Map<TopicPartition, OffsetAndMetadata> offsets = invocation.getArgument(0);
+			committed.add(Map.copyOf(offsets));
+			committedLatch.countDown();
+			return null;
+		}).given(consumer).commitSync(anyMap(), any(Duration.class));
+		ContainerProperties properties = new ContainerProperties(new TopicPartitionOffset("topic", 0));
+		properties.setGroupId("grp");
+		properties.setClientId("clientId");
+		properties.setAckMode(AckMode.RECORD);
+		properties.setSyncCommits(true);
+		properties.setFixTxOffsets(false);
+		properties.setOffsetAndMetadataProvider(provider);
+		properties.setMessageListener((MessageListener<Integer, String>) data -> {
+			listenerEntered.countDown();
+			try {
+				if (!releaseListener.await(10, TimeUnit.SECONDS)) {
+					throw new IllegalStateException("Listener was not released");
+				}
+			}
+			catch (InterruptedException ex) {
+				Thread.currentThread().interrupt();
+				throw new IllegalStateException(ex);
+			}
+		});
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(factory, properties);
+		try {
+			container.start();
+			assertThat(listenerEntered.await(10, TimeUnit.SECONDS)).isTrue();
+			verifyNoInteractions(provider, replacement);
+			container.getContainerProperties().setOffsetAndMetadataProvider(replacement);
+			releaseListener.countDown();
+			assertThat(committedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			assertThat(committed).containsExactly(
+					Map.of(partition, new OffsetAndMetadata(42L, Optional.of(7), "cached")),
+					Map.of(partition, new OffsetAndMetadata(43L, Optional.of(8), "cached")));
+			ArgumentCaptor<ListenerMetadata> metadata = ArgumentCaptor.forClass(ListenerMetadata.class);
+			verify(provider).provide(metadata.capture(), eq(42L));
+			verify(provider).provide(metadata.capture(), eq(43L));
+			assertThat(metadata.getAllValues().get(0)).isSameAs(metadata.getAllValues().get(1));
+			assertThat(metadata.getValue().getGroupId()).isEqualTo("grp");
+			verifyNoMoreInteractions(provider);
+			verifyNoInteractions(replacement);
+		}
+		finally {
+			releaseListener.countDown();
+			container.stop();
+		}
+	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	@Test
@@ -863,11 +1307,12 @@ public class ConcurrentMessageListenerContainerMockTests {
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
-	@Test
-	void commitRetriedAfterWakeup() throws InterruptedException {
+	@ParameterizedTest
+	@ValueSource(strings = { "wakeup", "retriable" })
+	void commitRetriedAfterWakeup(String failure) throws InterruptedException {
 		TopicPartition tp0 = new TopicPartition("foo", 0);
 		ConsumerRecords records = new ConsumerRecords<>(
-				Map.of(tp0, List.of(new ConsumerRecord("foo", 0, 0, null, "bar"))), Map.of());
+				Map.of(tp0, List.of(epochRecord(tp0, 0, Optional.of(7)))), Map.of());
 		AtomicInteger pollPhase = new AtomicInteger();
 		Consumer consumer = mock(Consumer.class);
 		AtomicReference<ConsumerRebalanceListener> rebal = new AtomicReference<>();
@@ -888,7 +1333,10 @@ public class ConcurrentMessageListenerContainerMockTests {
 		willAnswer(inv -> {
 			// a wakeup that landed after the poll returned aborts the first attempt
 			if (commitAttempts.getAndIncrement() == 0) {
-				throw new WakeupException();
+				if (failure.equals("wakeup")) {
+					throw new WakeupException();
+				}
+				throw new org.apache.kafka.clients.consumer.RetriableCommitFailedException("retry");
 			}
 			committed.countDown();
 			return null;
@@ -899,6 +1347,9 @@ public class ConcurrentMessageListenerContainerMockTests {
 				.willReturn(Collections.singletonMap(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"));
 		ContainerProperties containerProperties = new ContainerProperties("foo");
 		containerProperties.setGroupId("grp");
+		OffsetAndMetadataProvider provider = mock();
+		given(provider.provide(any(), eq(1L))).willReturn(new OffsetAndMetadata(1));
+		containerProperties.setOffsetAndMetadataProvider(provider);
 		containerProperties.setAckMode(AckMode.MANUAL);
 		containerProperties.setMessageListener((AcknowledgingMessageListener<String, String>) (rec, ack) -> {
 			ack.acknowledge();
@@ -910,8 +1361,10 @@ public class ConcurrentMessageListenerContainerMockTests {
 		container.stop();
 		ArgumentCaptor<Map<TopicPartition, OffsetAndMetadata>> commits = ArgumentCaptor.forClass(Map.class);
 		verify(consumer, times(2)).commitSync(commits.capture(), any(Duration.class));
-		assertThat(commits.getAllValues().get(0)).containsEntry(tp0, new OffsetAndMetadata(1));
-		assertThat(commits.getAllValues().get(1)).isEqualTo(commits.getAllValues().get(0));
+		assertThat(commits.getAllValues().get(0)).containsEntry(tp0, new OffsetAndMetadata(1, Optional.of(7), ""));
+		assertThat(commits.getAllValues().get(1)).isSameAs(commits.getAllValues().get(0));
+		verify(provider).provide(any(), eq(1L));
+		verifyNoMoreInteractions(provider);
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -1403,9 +1856,12 @@ public class ConcurrentMessageListenerContainerMockTests {
 			}
 			String value = poll == 0 ? "old" : "new";
 			return new ConsumerRecords<>(Map.of(partition, List.of(
-					new ConsumerRecord<>("foo", 0, 0, "key", value),
-					new ConsumerRecord<>("foo", 0, 1, "key", value),
-					new ConsumerRecord<>("foo", 0, 2, "key", value))), Map.of());
+					new ConsumerRecord<>("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+							0, 0, "key", value, new RecordHeaders(), Optional.of(poll == 0 ? 7 : 9)),
+					new ConsumerRecord<>("foo", 0, 1L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+							0, 0, "key", value, new RecordHeaders(), Optional.of(poll == 0 ? 7 : 9)),
+					new ConsumerRecord<>("foo", 0, 2L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+							0, 0, "key", value, new RecordHeaders(), Optional.of(poll == 0 ? 7 : 9)))), Map.of());
 		}).given(consumer).poll(any());
 		KafkaMessageListenerContainer<String, String> container = new KafkaMessageListenerContainer<>(factory, properties);
 		container.start();
@@ -1418,6 +1874,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 			acknowledgments.get("old0").acknowledge();
 			Map<?, ?> offsets = KafkaTestUtils.getPropertyValue(container, "listenerConsumer.offsetsInThisBatch", Map.class);
 			assertThat(offsets.get(partition)).isEqualTo(List.of(0L, 1L, 2L));
+			verify(consumer, never()).commitSync(anyMap(), any());
 			acknowledgments.get("new0").acknowledge();
 			assertThat(offsets).isEmpty();
 			assertThat(KafkaTestUtils.getPropertyValue(container, "listenerConsumer.deferredOffsets", Map.class)).isEmpty();
@@ -1426,6 +1883,10 @@ public class ConcurrentMessageListenerContainerMockTests {
 			finish.countDown();
 			container.stop();
 		}
+
+		verify(consumer).commitSync(Map.of(partition, new OffsetAndMetadata(3, Optional.of(9), "")),
+				Duration.ofSeconds(60));
+		verify(consumer, times(1)).commitSync(anyMap(), any());
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -1513,11 +1974,11 @@ public class ConcurrentMessageListenerContainerMockTests {
 		TopicPartition tp0 = new TopicPartition("foo", 0);
 		TopicPartition tp1 = new TopicPartition("foo", 1);
 		List<TopicPartition> allAssignments = List.of(tp0, tp1);
-		Map<TopicPartition, List<ConsumerRecord<String, String>>> allRecordMap = new HashMap<>();
+		Map<TopicPartition, List<ConsumerRecord<Integer, String>>> allRecordMap = new HashMap<>();
 		allRecordMap.put(tp0,
-				List.of(new ConsumerRecord("foo", 0, 0, null, "bar"), new ConsumerRecord("foo", 0, 1, null, "bar")));
+				List.of(epochRecord(tp0, 0, Optional.of(7)), epochRecord(tp0, 1, Optional.of(8))));
 		allRecordMap.put(tp1,
-				List.of(new ConsumerRecord("foo", 1, 0, null, "bar"), new ConsumerRecord("foo", 1, 1, null, "bar")));
+				List.of(epochRecord(tp1, 0, Optional.of(9)), epochRecord(tp1, 1, Optional.of(10))));
 		ConsumerRecords allRecords = new ConsumerRecords<>(allRecordMap, Map.of());
 		AtomicInteger pollPhase = new AtomicInteger();
 
@@ -1541,10 +2002,23 @@ public class ConcurrentMessageListenerContainerMockTests {
 		ContainerProperties containerProperties = new ContainerProperties("foo");
 		containerProperties.setGroupId("grp");
 		containerProperties.setAckMode(AckMode.MANUAL);
-		containerProperties.setMessageListener(ackOffset1());
+		AtomicReference<Acknowledgment> retainedPrefix = new AtomicReference<>();
+		containerProperties.setMessageListener((AcknowledgingMessageListener<Integer, String>) (record, ack) -> {
+			if (record.partition() == 1 && record.offset() == 0) {
+				retainedPrefix.set(ack);
+			}
+			if (record.offset() == 1) {
+				ack.acknowledge();
+			}
+		});
 		containerProperties.setAsyncAcks(true);
 		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer(cf,
 				containerProperties);
+		CountDownLatch committedLatch = new CountDownLatch(1);
+		willAnswer(inv -> {
+			committedLatch.countDown();
+			return null;
+		}).given(consumer).commitSync(anyMap(), any(Duration.class));
 		CountDownLatch pollLatch = new CountDownLatch(2);
 		CountDownLatch rebalLatch = new CountDownLatch(1);
 		CountDownLatch continueLatch = new CountDownLatch(1);
@@ -1561,6 +2035,7 @@ public class ConcurrentMessageListenerContainerMockTests {
 					rebal.get().onPartitionsAssigned(List.of(new TopicPartition("foo", 2)));
 					rebalLatch.countDown();
 					continueLatch.await(10, TimeUnit.SECONDS);
+					retainedPrefix.get().acknowledge();
 					return ConsumerRecords.empty();
 				}
 				default -> {
@@ -1579,10 +2054,15 @@ public class ConcurrentMessageListenerContainerMockTests {
 		assertThat(offsets).hasSize(1);
 		assertThat(offsets.get(tp1)).isNotNull();
 		assertThat(KafkaTestUtils.getPropertyValue(child, "listenerConsumer.consumerPaused", Boolean.class)).isTrue();
-		continueLatch.countDown();
 		verify(consumer, times(2)).pause(any());
 		verify(consumer, never()).resume(any());
+		verify(consumer, never()).commitSync(anyMap(), any(Duration.class));
+		continueLatch.countDown();
+		assertThat(committedLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		container.stop();
+		verify(consumer).commitSync(Map.of(tp1, new OffsetAndMetadata(2, Optional.of(10), "")),
+				Duration.ofSeconds(60));
+		verify(consumer, times(1)).commitSync(anyMap(), any(Duration.class));
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
