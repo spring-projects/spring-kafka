@@ -11,7 +11,7 @@ assertjVersion = "3.27.7"
 awaitilityVersion = "4.3.0"
 bouncycastleVersion = "1.86" # align with the bcpkix version used by kafkaVersion
 hamcrestVersion = "3.0"
-hibernateValidationVersion = "9.1.5.Final"
+hibernateValidationVersion = "9.1.6.Final"
 jacksonVersion = "2.22.4"
 jackson3Version = "3.2.4"
 jaywayJsonPathVersion = "3.0.0"
@@ -57,7 +57,7 @@ tools-jackson-bom = { module = "tools.jackson:jackson-bom", version.ref = "jacks
 com-github-spotbugs-annotations = { module = "com.github.spotbugs:spotbugs-annotations", version.ref = "spotbugsVersion" }
 
 [plugins]
-aggregate-javadoc = { id = "io.freefair.aggregate-javadoc", version = "9.8.2" }
+aggregate-javadoc = { id = "io.freefair.aggregate-javadoc", version = "9.8.3" }
 nullability = { id = "io.spring.nullability", version = "0.0.18" }
 antora = { id = "org.antora", version = "1.0.0" }
 io-spring-antora-generate-yml = { id = "io.spring.antora.generate-antora-yml", version = "0.0.1" }
