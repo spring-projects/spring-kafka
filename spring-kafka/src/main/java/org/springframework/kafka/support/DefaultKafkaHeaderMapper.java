@@ -73,9 +73,10 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * {@code InetAddress.getByName()}, which performs a DNS lookup, deserializing a
 	 * {@code java.lang.Class} loads (and, depending on the Jackson version, initializes)
 	 * the class named by the header value, which is not itself subject to the trusted
-	 * packages check, and deserializing a
+	 * packages check, deserializing a
 	 * {@code org.springframework.util.ResizableByteArrayOutputStream} from a number
-	 * allocates a buffer of that size.
+	 * allocates a buffer of that size, and constructing a {@code java.util.Timer}
+	 * starts a new thread.
 	 * Such headers are returned to the application as a {@link NonTrustedHeaderType}.
 	 */
 	private static final Set<String> UNTRUSTED_TYPES = new HashSet<>(Arrays.asList(
@@ -84,9 +85,17 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 					"java.net.Inet4Address",
 					"java.net.Inet6Address",
 					"java.net.InetSocketAddress",
+					"java.util.Timer",
 					"org.springframework.util.ConcurrentReferenceHashMap",
 					"org.springframework.util.ResizableByteArrayOutputStream"
 			));
+
+	/**
+	 * The maximum number of array dimensions in a trusted header type; the JVM does not
+	 * allow more than 255. Resolving a type with more dimensions than this is rejected
+	 * because it can exhaust the stack of the consumer thread.
+	 */
+	private static final int MAX_ARRAY_DIMENSIONS = 255;
 
 	private static final List<String> DEFAULT_TO_STRING_CLASSES = List.of(
 					"org.springframework.util.MimeType",
@@ -260,10 +269,11 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 	 * trusted: those whose construction has a network side effect
 	 * ({@code java.net.InetAddress}, {@code java.net.Inet4Address},
 	 * {@code java.net.Inet6Address} and {@code java.net.InetSocketAddress}, since
-	 * deserializing them performs a DNS lookup) and those whose construction allocates
+	 * deserializing them performs a DNS lookup), those whose construction allocates
 	 * memory sized by the header value
 	 * ({@code org.springframework.util.ConcurrentReferenceHashMap} and
-	 * {@code org.springframework.util.ResizableByteArrayOutputStream}). Such headers, and
+	 * {@code org.springframework.util.ResizableByteArrayOutputStream}), and
+	 * {@code java.util.Timer}, whose construction starts a new thread. Such headers, and
 	 * arrays of them, are always returned as a {@link NonTrustedHeaderType}.
 	 * <p>
 	 * Similarly, {@code java.lang.Class} is never trusted, even if {@code java.lang} or
@@ -460,12 +470,27 @@ public class DefaultKafkaHeaderMapper extends AbstractKafkaHeaderMapper {
 		String type = requestedType;
 		int start = 0;
 		int end = type.length();
+		int dimensions = 0;
+		// Reduce the type to its element class name between start and end, counting the
+		// array dimensions. Both array notations are accepted (and resolved by
+		// ClassUtils.forName), e.g. "[[Ljava.lang.String;" and "java.lang.String[][]".
+		// Leading '[' characters (JVM notation)
 		while (start < end && type.charAt(start) == '[') {
 			start++;
+			dimensions++;
 		}
+		// The "L...;" wrapper of an object element type in JVM notation
 		if (start < end && type.charAt(start) == 'L' && type.charAt(end - 1) == ';') {
 			start++;
 			end--;
+		}
+		// Trailing "[]" pairs (source notation); stop before the element name would be empty
+		while (end - 2 > start && type.charAt(end - 2) == '[' && type.charAt(end - 1) == ']') {
+			end -= 2;
+			dimensions++;
+		}
+		if (dimensions > MAX_ARRAY_DIMENSIONS) {
+			return false;
 		}
 		if (start > 0 || end < type.length()) {
 			type = type.substring(start, end);

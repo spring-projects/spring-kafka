@@ -85,6 +85,7 @@ If you receive messages from untrusted sources, register only the specific packa
 To trust every package, pass `+++*+++` to `addTrustedPackages` (for example, `mapper.addTrustedPackages("+++*+++")` or `spring.json.trusted.packages=+++*+++`).
 Trusting all packages means any type on the classpath can be deserialized from message headers, so prefer registering the specific packages you need.
 Classes in a non-trusted package are returned to the application as a `NonTrustedHeaderType` value instead of being deserialized.
+Array types with more than 255 dimensions, the limit of the JVM, are never trusted and are returned the same way.
 
 [source, java]
 ----
@@ -100,6 +101,7 @@ A small set of types is never trusted, even when its package is trusted or `addT
 * `java.net.InetAddress`, `java.net.Inet4Address`, `java.net.Inet6Address`, and `java.net.InetSocketAddress`, because deserializing them performs a DNS lookup.
 * `java.lang.Class`, because its header value names another class, which would otherwise be loaded without being subject to the trusted packages check.
 * `org.springframework.util.ConcurrentReferenceHashMap` and `org.springframework.util.ResizableByteArrayOutputStream`, because deserializing them can allocate memory sized by the header value.
+* `java.util.Timer`, because constructing it starts a new thread.
 
 Headers of these types, and arrays of them, are always returned to the application as a `NonTrustedHeaderType`.
 If you need to convey a class in a header, send its name as a `String` (for example, `OrderEvent.class.getName()`) and resolve it in the consuming application against the classes you expect.

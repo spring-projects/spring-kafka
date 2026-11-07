@@ -34,6 +34,38 @@ public class DefaultKafkaHeaderMapperTrustPackagesTests {
 	}
 
 	@Test
+	void deeplyNestedArrayTypeIsNotTrusted() {
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		assertThat(mapper.trusted("java.lang.String" + "[]".repeat(100_000))).isFalse();
+		assertThat(mapper.trusted("[".repeat(100_000) + "Ljava.lang.String;")).isFalse();
+		assertThat(mapper.trusted("java.lang.String" + "[]".repeat(255))).isTrue();
+		assertThat(mapper.trusted("java.lang.String" + "[]".repeat(256))).isFalse();
+	}
+
+	@Test
+	void sourceFormArrayTypesOfUntrustedTypesAreNeverTrusted() {
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		mapper.addTrustedPackages("*");
+		assertThat(mapper.trusted("java.net.InetAddress[]")).isFalse();
+		assertThat(mapper.trusted("java.net.Inet4Address[][]")).isFalse();
+		assertThat(mapper.trusted("java.lang.Class[]")).isFalse();
+		assertThat(mapper.trusted("org.springframework.util.ConcurrentReferenceHashMap[]")).isFalse();
+		assertThat(mapper.trusted("java.lang.String[][]")).isTrue();
+	}
+
+	@Test
+	void threadCreatingTypesAreNeverTrusted() {
+		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
+		assertThat(mapper.trusted("java.util.Timer")).isFalse();
+		assertThat(mapper.trusted("[Ljava.util.Timer;")).isFalse();
+		mapper.addTrustedPackages("*");
+		assertThat(mapper.trusted("java.util.Timer")).isFalse();
+		assertThat(mapper.trusted("[Ljava.util.Timer;")).isFalse();
+		assertThat(mapper.trusted("java.util.Timer[][]")).isFalse();
+		assertThat(mapper.trusted("java.util.UUID")).isTrue();
+	}
+
+	@Test
 	void userAddedSubpackagesMustBeAddedExplicitly() {
 		DefaultKafkaHeaderMapper mapper = new DefaultKafkaHeaderMapper();
 		mapper.addTrustedPackages("com.acme");

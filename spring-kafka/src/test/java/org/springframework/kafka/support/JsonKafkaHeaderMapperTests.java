@@ -350,6 +350,72 @@ public class JsonKafkaHeaderMapperTests {
 		return recordHeaders;
 	}
 
+	@Test
+	void deeplyNestedArrayTypeIsNotTrusted() {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		String type = "java.lang.String" + "[]".repeat(100_000);
+		assertThat(mapper.trusted(type)).isFalse();
+		assertThat(mapper.trusted("[".repeat(100_000) + "Ljava.lang.String;")).isFalse();
+
+		Map<String, Object> headers = new HashMap<>();
+		mapper.toHeaders(inboundHeaders(type), headers);
+		assertThat(headers.get("host")).isInstanceOf(NonTrustedHeaderType.class);
+		assertThat(((NonTrustedHeaderType) headers.get("host")).getUntrustedType()).isEqualTo(type);
+	}
+
+	@Test
+	void arrayTypesUpToTheJvmLimitAreTrusted() {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		assertThat(mapper.trusted("java.lang.String" + "[]".repeat(255))).isTrue();
+		assertThat(mapper.trusted("java.lang.String" + "[]".repeat(256))).isFalse();
+		assertThat(mapper.trusted("[".repeat(255) + "Ljava.lang.String;")).isTrue();
+		assertThat(mapper.trusted("[".repeat(256) + "Ljava.lang.String;")).isFalse();
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "java.net.InetAddress[]", "java.net.Inet4Address[][]", "java.net.InetSocketAddress[]",
+			"java.lang.Class[]", "org.springframework.util.ResizableByteArrayOutputStream[]" })
+	void sourceFormArrayTypesOfUntrustedTypesAreNeverTrusted(String type) {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		assertThat(mapper.trusted(type)).isFalse();
+		mapper.addTrustedPackages("*");
+		assertThat(mapper.trusted(type)).isFalse();
+	}
+
+	@Test
+	void sourceFormArrayTypesOfTrustedTypesAreTrusted() {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		assertThat(mapper.trusted("java.lang.String[][]")).isTrue();
+		assertThat(mapper.trusted("java.net.URI[]")).isTrue();
+		assertThat(mapper.trusted("com.example.Order[]")).isFalse();
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "java.util.Timer", "[Ljava.util.Timer;", "[[Ljava.util.Timer;", "java.util.Timer[]" })
+	void threadCreatingTypesAreNeverTrusted(String type) {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		assertThat(mapper.trusted(type)).isFalse();
+		mapper.addTrustedPackages("*");
+		assertThat(mapper.trusted(type)).isFalse();
+	}
+
+	@Test
+	void timerArrayHeaderIsReturnedAsNonTrustedHeaderType() {
+		JsonKafkaHeaderMapper mapper = new JsonKafkaHeaderMapper();
+		String type = java.util.Timer[].class.getName();
+		byte[] value = "[{},{},{}]".getBytes(StandardCharsets.UTF_8);
+		RecordHeaders recordHeaders = new RecordHeaders();
+		recordHeaders.add(new RecordHeader(JsonKafkaHeaderMapper.JSON_TYPES,
+				("{\"timers\":\"" + type + "\"}").getBytes(StandardCharsets.UTF_8)));
+		recordHeaders.add(new RecordHeader("timers", value));
+		Map<String, Object> headers = new HashMap<>();
+		mapper.toHeaders(recordHeaders, headers);
+		assertThat(headers.get("timers")).isInstanceOf(NonTrustedHeaderType.class);
+		NonTrustedHeaderType nonTrusted = (NonTrustedHeaderType) headers.get("timers");
+		assertThat(nonTrusted.getUntrustedType()).isEqualTo("[Ljava.util.Timer;");
+		assertThat(nonTrusted.getHeaderValue()).isEqualTo(value);
+	}
+
 	private static RecordHeaders inboundHeaders(String type) {
 		RecordHeaders recordHeaders = new RecordHeaders();
 		recordHeaders.add(new RecordHeader(JsonKafkaHeaderMapper.JSON_TYPES,
