@@ -37,6 +37,7 @@ import org.springframework.util.backoff.FixedBackOff;
  *
  * @author Gary Russell
  * @author Leos Bitto
+ * @author WooSeung Kim
  * @since 2.3.7
  *
  */
@@ -46,7 +47,7 @@ class FallbackBatchErrorHandler extends ExceptionClassifier implements CommonErr
 
 	private final BackOff backOff;
 
-	private final BiConsumer<ConsumerRecords<?, ?>, Exception> recoverer;
+	private final @Nullable ConsumerAwareRecordRecoverer recoverer;
 
 	private final CommonErrorHandler seeker = new SeekAfterRecoverFailsOrInterrupted();
 
@@ -79,14 +80,12 @@ class FallbackBatchErrorHandler extends ExceptionClassifier implements CommonErr
 	 */
 	FallbackBatchErrorHandler(BackOff backOff, @Nullable ConsumerRecordRecoverer recoverer) {
 		this.backOff = backOff;
-		this.recoverer = (crs, ex) -> {
-			if (recoverer == null) {
-				this.logger.error(ex, () -> "Records discarded: " + ErrorHandlingUtils.recordsToString(crs));
-			}
-			else {
-				crs.spliterator().forEachRemaining(rec -> recoverer.accept(rec, ex));
-			}
-		};
+		if (recoverer == null || recoverer instanceof ConsumerAwareRecordRecoverer) {
+			this.recoverer = (ConsumerAwareRecordRecoverer) recoverer;
+		}
+		else {
+			this.recoverer = (rec, consumer, ex) -> recoverer.accept(rec, ex);
+		}
 	}
 
 	/**
@@ -168,13 +167,25 @@ class FallbackBatchErrorHandler extends ExceptionClassifier implements CommonErr
 					backOffExecution = backOffToUse.start();
 				}
 				thrownException = ErrorHandlingUtils.retryBatch(thrownException, records, consumer, container, invokeListener,
-						backOffExecution, this.seeker, this.recoverer, this.logger, getLogLevel(), this.retryListeners,
+						backOffExecution, this.seeker, recoverer(consumer), this.logger, getLogLevel(), this.retryListeners,
 						getExceptionMatcher(), this.reclassifyOnExceptionChange, this.resetStateOnExceptionChange);
 			}
 		}
 		finally {
 			this.retrying.remove(Thread.currentThread());
 		}
+	}
+
+	private BiConsumer<ConsumerRecords<?, ?>, Exception> recoverer(Consumer<?, ?> consumer) {
+		ConsumerAwareRecordRecoverer theRecoverer = this.recoverer;
+		return (crs, ex) -> {
+			if (theRecoverer == null) {
+				this.logger.error(ex, () -> "Records discarded: " + ErrorHandlingUtils.recordsToString(crs));
+			}
+			else {
+				crs.spliterator().forEachRemaining(rec -> theRecoverer.accept(rec, consumer, ex));
+			}
+		};
 	}
 
 	@Override

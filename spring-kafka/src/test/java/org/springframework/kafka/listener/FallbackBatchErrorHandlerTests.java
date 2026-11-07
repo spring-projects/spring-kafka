@@ -5,11 +5,13 @@
 package org.springframework.kafka.listener;
 
 import java.lang.reflect.Field;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -17,11 +19,15 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
 import org.springframework.kafka.KafkaException;
+import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.util.ReflectionUtils;
 import org.springframework.util.backoff.FixedBackOff;
 
@@ -41,6 +47,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /**
  * @author Gary Russell
+ * @author WooSeung Kim
  * @since 2.3.7
  *
  */
@@ -339,6 +346,26 @@ public class FallbackBatchErrorHandlerTests {
 				.extracting("cause")
 				.isInstanceOf(IllegalArgumentException.class);
 		assertThat(retries.get()).isEqualTo(2);
+	}
+
+	@Test
+	void recoverWithConsumerToVerifyDeadLetterPartition() {
+		KafkaOperations<Object, Object> template = mock();
+		given(template.send(any(ProducerRecord.class))).willReturn(CompletableFuture.completedFuture(null));
+		Consumer<?, ?> consumer = mock();
+		given(consumer.partitionsFor("orders-dlt", Duration.ofSeconds(5)))
+				.willReturn(List.of(new PartitionInfo("orders-dlt", 0, null, null, null)));
+		FallbackBatchErrorHandler eh = new FallbackBatchErrorHandler(new FixedBackOff(0L, 0L),
+				new DeadLetterPublishingRecoverer(template));
+		ConsumerRecords<?, ?> records = new ConsumerRecords<>(Map.of(new TopicPartition("orders", 1),
+				List.of(new ConsumerRecord<>("orders", 1, 0L, "key", "value"))), Map.of());
+		MessageListenerContainer container = mock();
+		given(container.isRunning()).willReturn(true);
+		eh.handleBatch(new RuntimeException(), records, consumer, container, () -> { });
+		ArgumentCaptor<ProducerRecord<Object, Object>> captor = ArgumentCaptor.captor();
+		verify(template).send(captor.capture());
+		assertThat(captor.getValue().topic()).isEqualTo("orders-dlt");
+		assertThat(captor.getValue().partition()).isNull();
 	}
 
 	private boolean getRetryingFieldValue(FallbackBatchErrorHandler errorHandler) {

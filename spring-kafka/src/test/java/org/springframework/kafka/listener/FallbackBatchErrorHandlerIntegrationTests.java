@@ -39,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author Gary Russell
+ * @author WooSeung Kim
  * @since 2.3.7
  *
  */
@@ -92,8 +93,8 @@ public class FallbackBatchErrorHandlerIntegrationTests {
 						(r, e) -> new TopicPartition(topic1DLT, r.partition())) {
 
 			@Override
-			public void accept(ConsumerRecord<?, ?> record, Exception exception) {
-				super.accept(record, exception);
+			public void accept(ConsumerRecord<?, ?> record, Consumer<?, ?> consumer, Exception exception) {
+				super.accept(record, consumer, exception);
 				if (exception instanceof ListenerExecutionFailedException) {
 					failedGroupId.set(((ListenerExecutionFailedException) exception).getGroupId());
 				}
@@ -178,14 +179,14 @@ public class FallbackBatchErrorHandlerIntegrationTests {
 						(r, e) -> new TopicPartition(topic2DLT, r.partition())) {
 
 			@Override
-			public void accept(ConsumerRecord<?, ?> record, Exception exception) {
+			public void accept(ConsumerRecord<?, ?> record, Consumer<?, ?> consumer, Exception exception) {
 				if (exception instanceof ListenerExecutionFailedException) {
 					failedGroupId.set(((ListenerExecutionFailedException) exception).getGroupId());
 				}
 				if (failRecovery.getAndSet(false)) {
 					throw new RuntimeException("Recovery failed");
 				}
-				super.accept(record, exception);
+				super.accept(record, consumer, exception);
 				recoverLatch.countDown();
 			}
 
