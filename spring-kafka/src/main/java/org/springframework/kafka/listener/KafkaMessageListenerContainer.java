@@ -2670,12 +2670,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void invokeBatchOnMessage(final ConsumerRecords<K, V> records, // NOSONAR - Cyclomatic Complexity
 				List<ConsumerRecord<K, V>> recordList) throws InterruptedException {
 
-			invokeBatchOnMessageWithRecordsOrList(records, recordList);
+			ConsumerRecords<K, V> listenerRecords = invokeBatchOnMessageWithRecordsOrList(records, recordList);
 			List<ConsumerRecord<?, ?>> toSeek = null;
 			if (this.nackSleepDurationMillis >= 0) {
 				int index = 0;
 				toSeek = new ArrayList<>();
-				for (ConsumerRecord<K, V> cRecord : records) {
+				// the nack index refers to the records the listener received, after any batch interceptor
+				for (ConsumerRecord<K, V> cRecord : listenerRecords) {
 					if (index++ >= this.nackIndex) {
 						toSeek.add(cRecord);
 					}
@@ -2770,7 +2771,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 		}
 
-		private void invokeBatchOnMessageWithRecordsOrList(final ConsumerRecords<K, V> recordsArg,
+		private ConsumerRecords<K, V> invokeBatchOnMessageWithRecordsOrList(final ConsumerRecords<K, V> recordsArg,
 				List<ConsumerRecord<K, V>> recordListArg) {
 
 			ConsumerRecords<K, V> records = recordsArg;
@@ -2787,7 +2788,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						removeOffsetsInBatch(recordsArg);
 						processAcks(recordsArg);
 					}
-					return;
+					return recordsArg;
 				}
 				else {
 					recordList = createRecordList(records);
@@ -2811,6 +2812,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				}
 				batchInterceptAfter(records, null);
 				successTimer(sample, null);
+				return records;
 			}
 			catch (RuntimeException e) {
 				this.batchFailed = true;
