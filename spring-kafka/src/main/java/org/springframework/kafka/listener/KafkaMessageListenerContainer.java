@@ -682,7 +682,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private final Consumer<K, V> consumer;
 
-		private final Map<TopicPartition, Long> offsets = new LinkedHashMap<>();
+		private final Map<TopicPartition, OffsetAndMetadata> offsets = new LinkedHashMap<>();
 
 		private final Collection<TopicPartition> assignedPartitions = Collections.synchronizedSet(new LinkedHashSet<>());
 
@@ -2443,8 +2443,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private void ackImmediate(ConsumerRecords<K, V> records) {
 			Map<TopicPartition, OffsetAndMetadata> commits = new HashMap<>();
 			for (TopicPartition part : records.partitions()) {
-				commits.put(part, createOffsetAndMetadata(records.records(part)
-						.get(records.records(part).size() - 1).offset() + 1));
+				List<ConsumerRecord<K, V>> partitionRecords = records.records(part);
+				ConsumerRecord<K, V> last = partitionRecords.get(partitionRecords.size() - 1);
+				commits.put(part, createOffsetAndMetadata(last.offset() + 1, last.leaderEpoch()));
 			}
 			commitOffsetsInTransactions(commits);
 		}
@@ -3763,8 +3764,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		}
 
 		private void addOffset(ConsumerRecord<K, V> cRecord) {
+			OffsetAndMetadata next = new OffsetAndMetadata(cRecord.offset() + 1, cRecord.leaderEpoch(), "");
 			this.offsets.compute(new TopicPartition(cRecord.topic(), cRecord.partition()),
-					(k, v) -> v == null ? cRecord.offset() : Math.max(v, cRecord.offset()));
+					(partition, previous) -> previous == null || next.offset() >= previous.offset() ? next : previous);
 		}
 
 		private void commitIfNecessary() {
@@ -3851,14 +3853,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		Map<TopicPartition, OffsetAndMetadata> buildSingleCommits(ConsumerRecord<K, V> cRecord) {
 			return Collections.singletonMap(
 					new TopicPartition(cRecord.topic(), cRecord.partition()),
-					createOffsetAndMetadata(cRecord.offset() + 1));
+					createOffsetAndMetadata(cRecord.offset() + 1, cRecord.leaderEpoch()));
 		}
 
 		private Map<TopicPartition, OffsetAndMetadata> buildCommits() {
 			Map<TopicPartition, OffsetAndMetadata> commits = new LinkedHashMap<>();
-			this.offsets.forEach((topicPartition, offset) -> {
-				commits.put(topicPartition, createOffsetAndMetadata(offset + 1));
-			});
+			this.offsets.forEach((partition, next) ->
+					commits.put(partition, createOffsetAndMetadata(next.offset(), next.leaderEpoch())));
 			this.offsets.clear();
 			return commits;
 		}
@@ -3979,6 +3980,10 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		private OffsetAndMetadata createOffsetAndMetadata(long offset) {
 			return this.offsetAndMetadataProvider.provide(this.listenerMetadata, offset);
+		}
+
+		private OffsetAndMetadata createOffsetAndMetadata(long offset, Optional<Integer> leaderEpoch) {
+			return ListenerUtils.withLeaderEpoch(createOffsetAndMetadata(offset), offset, leaderEpoch);
 		}
 
 		private final class ConsumerAcknowledgment implements Acknowledgment {

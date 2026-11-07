@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -20,6 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
+import org.apache.commons.logging.LogFactory;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
@@ -35,9 +37,12 @@ import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.record.TimestampType;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
@@ -72,6 +77,7 @@ import org.springframework.util.backoff.FixedBackOff;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -106,7 +112,8 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 		TransactionalContainerTests.topic5, TransactionalContainerTests.topic6, TransactionalContainerTests.topic7,
 		TransactionalContainerTests.topic8, TransactionalContainerTests.topic8DLT, TransactionalContainerTests.topic9,
 		TransactionalContainerTests.topic10, TransactionalContainerTests.topic11, TransactionalContainerTests.topic12,
-		TransactionalContainerTests.topic13, TransactionalContainerTests.topic14, TransactionalContainerTests.topic15
+		TransactionalContainerTests.topic13, TransactionalContainerTests.topic14, TransactionalContainerTests.topic15,
+		"epochCommittrue", "epochCommitfalse", "epochTransaction", "epochTransactionOutput"
 },
 		brokerProperties = { "transaction.state.log.replication.factor=1", "transaction.state.log.min.isr=1" })
 public class TransactionalContainerTests {
@@ -152,6 +159,142 @@ public class TransactionalContainerTests {
 		embeddedKafka = EmbeddedKafkaCondition.getBroker();
 	}
 
+	@ParameterizedTest
+	@ValueSource(booleans = { true, false })
+	void brokerCommitPreservesRecordEpoch(boolean sync) throws Exception {
+		String topic = "epochCommit" + sync;
+		TopicPartition partition = new TopicPartition(topic, 0);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(
+				KafkaTestUtils.consumerProps(embeddedKafka, topic, false));
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(
+				KafkaTestUtils.producerProps(embeddedKafka));
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		ContainerProperties properties = new ContainerProperties(new TopicPartitionOffset(topic, 0));
+		properties.setAckMode(AckMode.RECORD);
+		properties.setSyncCommits(sync);
+		properties.setFixTxOffsets(false);
+		AtomicReference<ConsumerRecord<Integer, String>> source = new AtomicReference<>();
+		CountDownLatch delivered = new CountDownLatch(1);
+		properties.setMessageListener((MessageListener<Integer, String>) record -> {
+			source.set(record);
+			delivered.countDown();
+		});
+		CountDownLatch callback = new CountDownLatch(1);
+		AtomicReference<Exception> callbackFailure = new AtomicReference<>();
+		AtomicReference<Map<TopicPartition, OffsetAndMetadata>> callbackOffsets = new AtomicReference<>();
+		properties.setCommitCallback((offsets, exception) -> {
+			callbackOffsets.set(offsets);
+			callbackFailure.set(exception);
+			callback.countDown();
+		});
+		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf, properties);
+		try (Consumer<Integer, String> observer = cf.createConsumer()) {
+			template.send(topic, 0, 0, "data").get(10, TimeUnit.SECONDS);
+			container.start();
+			assertThat(delivered.await(30, TimeUnit.SECONDS)).isTrue();
+			ConsumerRecord<Integer, String> record = source.get();
+			assertThat(record.leaderEpoch()).isPresent();
+			OffsetAndMetadata expected = new OffsetAndMetadata(record.offset() + 1, record.leaderEpoch(), "");
+			if (!sync) {
+				assertThat(callback.await(30, TimeUnit.SECONDS)).isTrue();
+				assertThat(callbackFailure.get()).isNull();
+				assertThat(callbackOffsets.get()).containsEntry(partition, expected);
+			}
+			await().pollInSameThread().atMost(Duration.ofSeconds(30)).untilAsserted(() ->
+					assertThat(observer.committed(Set.of(partition))).containsEntry(partition, expected));
+			LogFactory.getLog(getClass()).info("broker epoch sync=" + sync + " source=" + record.offset() + "/"
+					+ record.leaderEpoch() + " committed=" + observer.committed(Set.of(partition)));
+		}
+		finally {
+			container.stop();
+			pf.destroy();
+		}
+	}
+
+	@Test
+	void brokerTransactionPreservesEpochAndAbortDoesNotAdvance() throws Exception {
+		String topic = "epochTransaction";
+		TopicPartition partition = new TopicPartition(topic, 0);
+		Map<String, Object> consumerProperties = KafkaTestUtils.consumerProps(embeddedKafka, topic, false);
+		consumerProperties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
+		consumerProperties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 1);
+		DefaultKafkaConsumerFactory<Integer, String> cf = new DefaultKafkaConsumerFactory<>(consumerProperties);
+		DefaultKafkaProducerFactory<Integer, String> pf = new DefaultKafkaProducerFactory<>(
+				KafkaTestUtils.producerProps(embeddedKafka));
+		pf.setTransactionIdPrefix("brokerEpoch.");
+		KafkaTemplate<Integer, String> template = new KafkaTemplate<>(pf);
+		KafkaTransactionManager<Integer, String> tm = new KafkaTransactionManager<>(pf);
+		CountDownLatch rolledBack = new CountDownLatch(1);
+		AtomicReference<Throwable> rollbackFailure = new AtomicReference<>();
+		tm.addListener(new TransactionExecutionListener() {
+			@Override
+			public void afterRollback(TransactionExecution transaction, @Nullable Throwable failure) {
+				rollbackFailure.set(failure);
+				rolledBack.countDown();
+			}
+		});
+		ContainerProperties properties = new ContainerProperties(new TopicPartitionOffset(topic, 0));
+		properties.setAckMode(AckMode.RECORD);
+		properties.setFixTxOffsets(false);
+		properties.setKafkaAwareTransactionManager(tm);
+		AtomicReference<ConsumerRecord<Integer, String>> successful = new AtomicReference<>();
+		AtomicReference<ConsumerRecord<Integer, String>> failed = new AtomicReference<>();
+		AtomicInteger deliveries = new AtomicInteger();
+		properties.setMessageListener((MessageListener<Integer, String>) record -> {
+			deliveries.incrementAndGet();
+			// Ensure both the successful and aborted consumer transactions reach the broker.
+			template.send("epochTransactionOutput", 0, record.key(), record.value()).join();
+			if (record.value().equals("abort")) {
+				failed.set(record);
+				throw new IllegalStateException("abort consumer transaction");
+			}
+			successful.set(record);
+		});
+		KafkaMessageListenerContainer<Integer, String> container = new KafkaMessageListenerContainer<>(cf, properties);
+		CountDownLatch processedRollback = new CountDownLatch(1);
+		container.setAfterRollbackProcessor((records, consumer, listenerContainer, exception, recoverable, eosMode) -> {
+			// Do not retry or recover the failed record before the post-abort readback.
+			listenerContainer.pause();
+			processedRollback.countDown();
+		});
+		CountDownLatch stopped = new CountDownLatch(1);
+		container.setApplicationEventPublisher(event -> {
+			if (event instanceof ConsumerStoppedEvent) {
+				stopped.countDown();
+			}
+		});
+		try (Consumer<Integer, String> observer = cf.createConsumer()) {
+			template.executeInTransaction(t -> t.send(topic, 0, 0, "success").join());
+			container.start();
+			await().pollInSameThread().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
+				assertThat(successful.get()).isNotNull();
+				ConsumerRecord<Integer, String> record = successful.get();
+				assertThat(record.leaderEpoch()).isPresent();
+				assertThat(observer.committed(Set.of(partition))).containsEntry(partition,
+						new OffsetAndMetadata(record.offset() + 1, record.leaderEpoch(), ""));
+			});
+			OffsetAndMetadata before = observer.committed(Set.of(partition)).get(partition);
+			template.executeInTransaction(t -> t.send(topic, 0, 0, "abort").join());
+			assertThat(rolledBack.await(30, TimeUnit.SECONDS)).isTrue();
+			assertThat(rollbackFailure.get()).isNull();
+			assertThat(processedRollback.await(30, TimeUnit.SECONDS)).isTrue();
+			container.stop();
+			assertThat(stopped.await(10, TimeUnit.SECONDS)).isTrue();
+			assertThat(deliveries.get()).isEqualTo(2);
+			assertThat(failed.get().leaderEpoch()).isPresent();
+			assertThat(before.offset()).isLessThan(failed.get().offset() + 1);
+			OffsetAndMetadata after = observer.committed(Set.of(partition)).get(partition);
+			assertThat(after).isEqualTo(before);
+			LogFactory.getLog(getClass()).info("broker epoch transaction source=" + successful.get().offset() + "/"
+					+ successful.get().leaderEpoch() + " before=" + before + " abortedSource="
+					+ failed.get().offset() + "/" + failed.get().leaderEpoch() + " after=" + after);
+		}
+		finally {
+			container.stop();
+			pf.destroy();
+		}
+	}
+
 	@Test
 	public void testConsumeAndProduceTransactionKTM() throws Exception {
 		testConsumeAndProduceTransactionGuts(false, AckMode.RECORD, EOSMode.V2);
@@ -160,6 +303,21 @@ public class TransactionalContainerTests {
 	@Test
 	public void testConsumeAndProduceTransactionHandleError() throws Exception {
 		testConsumeAndProduceTransactionGuts(true, AckMode.RECORD, EOSMode.V2);
+	}
+
+	@Test
+	public void testConsumeAndProduceTransactionKTMBatch() throws Exception {
+		testConsumeAndProduceTransactionGuts(false, AckMode.BATCH, EOSMode.V2, false, true);
+	}
+
+	@Test
+	public void testConsumeAndProduceTransactionKTMImmediateBatch() throws Exception {
+		testConsumeAndProduceTransactionGuts(false, AckMode.MANUAL_IMMEDIATE, EOSMode.V2, false, true);
+	}
+
+	@Test
+	public void testConsumeAndProduceTransactionKTMQueuedManual() throws Exception {
+		testConsumeAndProduceTransactionGuts(false, AckMode.MANUAL, EOSMode.V2);
 	}
 
 	@Test
@@ -182,6 +340,13 @@ public class TransactionalContainerTests {
 	private void testConsumeAndProduceTransactionGuts(boolean handleError, AckMode ackMode,
 			EOSMode eosMode, boolean stopWhenFenced) throws Exception {
 
+		testConsumeAndProduceTransactionGuts(handleError, ackMode, eosMode, stopWhenFenced, false);
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private void testConsumeAndProduceTransactionGuts(boolean handleError, AckMode ackMode,
+			EOSMode eosMode, boolean stopWhenFenced, boolean batch) throws Exception {
+
 		Consumer consumer = mock(Consumer.class);
 		AtomicBoolean assigned = new AtomicBoolean();
 		final TopicPartition topicPartition = new TopicPartition("foo", 0);
@@ -192,7 +357,8 @@ public class TransactionalContainerTests {
 			return null;
 		}).given(consumer).subscribe(any(Collection.class), any(ConsumerRebalanceListener.class));
 		ConsumerRecords records = new ConsumerRecords(Collections.singletonMap(topicPartition,
-				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0, "key", "value"))), Map.of());
+				Collections.singletonList(new ConsumerRecord<>("foo", 0, 0L, 0L, TimestampType.NO_TIMESTAMP_TYPE,
+						0, 0, "key", "value", new RecordHeaders(), Optional.of(7)))), Map.of());
 		ConsumerRecords empty = new ConsumerRecords(Collections.emptyMap(), Map.of());
 		final AtomicBoolean done = new AtomicBoolean();
 		willAnswer(i -> {
@@ -227,6 +393,7 @@ public class TransactionalContainerTests {
 		KafkaTransactionManager tm = new KafkaTransactionManager(pf);
 		ContainerProperties props = new ContainerProperties("foo");
 		props.setAckMode(ackMode);
+		props.setFixTxOffsets(false);
 		props.setGroupId("group");
 		props.setKafkaAwareTransactionManager(tm);
 		props.setAssignmentCommitOption(AssignmentCommitOption.ALWAYS);
@@ -235,7 +402,15 @@ public class TransactionalContainerTests {
 		ConsumerGroupMetadata consumerGroupMetadata = mock(ConsumerGroupMetadata.class);
 		given(consumer.groupMetadata()).willReturn(consumerGroupMetadata);
 		final KafkaTemplate template = new KafkaTemplate(pf);
-		if (AckMode.MANUAL_IMMEDIATE.equals(ackMode)) {
+		if (batch) {
+			props.setMessageListener((BatchAcknowledgingMessageListener<Object, Object>) (data, acknowledgment) -> {
+				template.send("bar", "baz");
+				if (AckMode.MANUAL_IMMEDIATE.equals(ackMode)) {
+					acknowledgment.acknowledge();
+				}
+			});
+		}
+		else if (AckMode.MANUAL_IMMEDIATE.equals(ackMode) || AckMode.MANUAL.equals(ackMode)) {
 			props.setMessageListener((AcknowledgingMessageListener<Object, Object>) (data, acknowledgment) -> {
 				template.send("bar", "baz");
 				if (handleError) {
@@ -283,8 +458,10 @@ public class TransactionalContainerTests {
 			ArgumentCaptor<ProducerRecord> captor = ArgumentCaptor.forClass(ProducerRecord.class);
 			inOrder.verify(producer).send(captor.capture(), any(Callback.class));
 			assertThat(captor.getValue()).isEqualTo(new ProducerRecord("bar", "baz"));
-			inOrder.verify(producer).sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
-					new OffsetAndMetadata(1)), consumerGroupMetadata);
+			// Transactional batches also send offsets after the listener returns.
+			inOrder.verify(producer, times(batch && AckMode.MANUAL_IMMEDIATE.equals(ackMode) ? 2 : 1))
+					.sendOffsetsToTransaction(Collections.singletonMap(topicPartition,
+							new OffsetAndMetadata(1, Optional.of(7), "")), consumerGroupMetadata);
 			inOrder.verify(producer).commitTransaction();
 			inOrder.verify(producer).close(any());
 			container.stop();
@@ -689,6 +866,7 @@ public class TransactionalContainerTests {
 		final CountDownLatch recoverLatch = new CountDownLatch(1);
 		final KafkaOperations<Object, Object> dlTemplate = spy(new KafkaTemplate<>(pf));
 		AtomicBoolean recovererShouldFail = new AtomicBoolean(true);
+		AtomicReference<Optional<Integer>> recoveredEpoch = new AtomicReference<>();
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(dlTemplate) {
 
 			@Override
@@ -697,6 +875,7 @@ public class TransactionalContainerTests {
 					throw new RuntimeException("test recoverer failure");
 				}
 				super.accept(record, consumer, exception);
+				recoveredEpoch.set(record.leaderEpoch());
 				recoverLatch.countDown();
 			}
 
@@ -760,7 +939,8 @@ public class TransactionalContainerTests {
 		verify(afterRollbackProcessor).clearThreadState();
 		verify(dlTemplate).send(any(ProducerRecord.class));
 		verify(dlTemplate).sendOffsetsToTransaction(
-				eq(Collections.singletonMap(new TopicPartition(topic3, 0), new OffsetAndMetadata(1L))),
+				eq(Collections.singletonMap(new TopicPartition(topic3, 0),
+						new OffsetAndMetadata(1L, recoveredEpoch.get(), ""))),
 				any(ConsumerGroupMetadata.class));
 	}
 
@@ -795,6 +975,7 @@ public class TransactionalContainerTests {
 		final CountDownLatch recoverLatch = new CountDownLatch(5);
 		final KafkaOperations<Object, Object> dlTemplate = spy(new KafkaTemplate<>(pf));
 		AtomicBoolean recovererShouldFail = new AtomicBoolean(true);
+		AtomicReference<Optional<Integer>> recoveredEpoch = new AtomicReference<>();
 		DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(dlTemplate) {
 
 			@Override
@@ -803,6 +984,9 @@ public class TransactionalContainerTests {
 					throw new RuntimeException("test recoverer failure");
 				}
 				super.accept(record, consumer, exception);
+				if (record.offset() == 3L) {
+					recoveredEpoch.set(record.leaderEpoch());
+				}
 				recoverLatch.countDown();
 			}
 
@@ -878,7 +1062,8 @@ public class TransactionalContainerTests {
 		verify(afterRollbackProcessor, times(2)).clearThreadState();
 		verify(dlTemplate, times(5)).send(any(ProducerRecord.class));
 		verify(dlTemplate).sendOffsetsToTransaction(
-				eq(Collections.singletonMap(new TopicPartition(topic8, 0), new OffsetAndMetadata(4L))),
+				eq(Collections.singletonMap(new TopicPartition(topic8, 0),
+						new OffsetAndMetadata(4L, recoveredEpoch.get(), ""))),
 				any(ConsumerGroupMetadata.class));
 	}
 

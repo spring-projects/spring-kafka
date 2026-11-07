@@ -219,7 +219,7 @@ public final class SeekUtils {
 				ConsumerRecord<?, ?> record = records.get(0);
 				Map<TopicPartition, OffsetAndMetadata> offsetToCommit = Collections.singletonMap(
 						new TopicPartition(record.topic(), record.partition()),
-						ListenerUtils.createOffsetAndMetadata(container, record.offset() + 1));
+						ListenerUtils.createOffsetAndMetadata(container, record.offset() + 1, record.leaderEpoch()));
 				if (container.getContainerProperties().isSyncCommits()) {
 					consumer.commitSync(offsetToCommit, container.getContainerProperties().getSyncCommitTimeout());
 				}

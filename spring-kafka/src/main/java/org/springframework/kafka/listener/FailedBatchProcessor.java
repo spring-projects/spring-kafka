@@ -235,7 +235,8 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 		for (ConsumerRecord<?, ?> datum : data) {
 			if (index-- > 0) {
 				offsets.compute(new TopicPartition(datum.topic(), datum.partition()),
-						(key, val) -> ListenerUtils.createOffsetAndMetadata(container, datum.offset() + 1));
+						(key, val) -> ListenerUtils.createOffsetAndMetadata(container, datum.offset() + 1,
+								datum.leaderEpoch()));
 			}
 			else {
 				remaining.add(datum);
@@ -258,7 +259,8 @@ public abstract class FailedBatchProcessor extends FailedRecordProcessor {
 				ConsumerRecord<?, ?> recovered = remaining.get(0);
 				commit(consumer, container,
 						Collections.singletonMap(new TopicPartition(recovered.topic(), recovered.partition()),
-								ListenerUtils.createOffsetAndMetadata(container, recovered.offset() + 1)));
+								ListenerUtils.createOffsetAndMetadata(container, recovered.offset() + 1,
+										recovered.leaderEpoch())));
 				if (remaining.size() > 1) {
 					throw new KafkaException("Seek to current after exception", getLogLevel(), thrownException);
 				}

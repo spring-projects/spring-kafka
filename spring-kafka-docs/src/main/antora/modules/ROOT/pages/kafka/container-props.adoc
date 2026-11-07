@@ -182,6 +182,9 @@ See `monitorInterval`.
 |[[offsetAndMetadataProvider]]<<offsetAndMetadataProvider,`offsetAndMetadataProvider`>>
 |`null`
 |A provider for `OffsetAndMetadata`; by default, the provider creates an offset and metadata with empty metadata. The provider gives a way to customize the metadata.
+The provider's offset and metadata are preserved, and an explicit provider leader epoch takes precedence over the source record's epoch.
+If the provider omits the epoch, a known source record epoch is added only when the provider leaves the commit offset unchanged.
+Changing the offset without supplying an epoch leaves the epoch unknown; position-only assignment commits do not synthesize one.
 
 |[[pauseImmediate]]<<pauseImmediate,`pauseImmediate`>>
 |`false`

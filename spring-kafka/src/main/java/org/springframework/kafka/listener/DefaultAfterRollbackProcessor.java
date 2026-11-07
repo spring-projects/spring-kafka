@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
@@ -163,7 +164,7 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 			ConsumerRecord<K, V> skipped = records.get(0);
 			this.kafkaTemplate.sendOffsetsToTransaction(
 					Collections.singletonMap(new TopicPartition(skipped.topic(), skipped.partition()),
-							createOffsetAndMetadata(container, skipped.offset() + 1)
+							createOffsetAndMetadata(container, skipped.offset() + 1, skipped.leaderEpoch())
 					), consumer.groupMetadata());
 		}
 
@@ -200,7 +201,7 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 				this.recoverer.accept(records, exception);
 				Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
 				records.forEach(rec -> offsets.put(new TopicPartition(rec.topic(), rec.partition()),
-						ListenerUtils.createOffsetAndMetadata(container, rec.offset() + 1)));
+						ListenerUtils.createOffsetAndMetadata(container, rec.offset() + 1, rec.leaderEpoch())));
 				if (!offsets.isEmpty() && this.kafkaTemplate != null && this.kafkaTemplate.isTransactional()) {
 					this.kafkaTemplate.sendOffsetsToTransaction(offsets, consumer.groupMetadata());
 				}
@@ -238,10 +239,12 @@ public class DefaultAfterRollbackProcessor<K, V> extends FailedRecordProcessor
 		this.lastIntervals.remove(currentThread);
 	}
 
-	private static OffsetAndMetadata createOffsetAndMetadata(@Nullable MessageListenerContainer container, long offset) {
+	private static OffsetAndMetadata createOffsetAndMetadata(@Nullable MessageListenerContainer container, long offset,
+			Optional<Integer> leaderEpoch) {
+
 		if (container == null) {
-			return new OffsetAndMetadata(offset);
+			return new OffsetAndMetadata(offset, leaderEpoch, "");
 		}
-		return ListenerUtils.createOffsetAndMetadata(container, offset);
+		return ListenerUtils.createOffsetAndMetadata(container, offset, leaderEpoch);
 	}
 }

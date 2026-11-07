@@ -224,6 +224,11 @@ After that, the same semantics as `BATCH` are applied.
 
 When using xref:kafka/transactions.adoc[transactions], the offset(s) are sent to the transaction and the semantics are equivalent to `RECORD` or `BATCH`, depending on the listener type (record or batch).
 
+For container-managed commits and error-handler recovery commits derived from records, a known leader epoch is preserved from the same record that determines the committed offset.
+This applies to synchronous, asynchronous, and transactional commits without changing acknowledgment or transaction boundaries.
+An unknown record epoch is not synthesized, and an initial assignment commit based only on the consumer position does not acquire a record epoch.
+A custom xref:kafka/container-props.adoc#offsetAndMetadataProvider[`OffsetAndMetadataProvider`] can override the epoch as described in the container properties.
+
 NOTE: `MANUAL` and `MANUAL_IMMEDIATE` require the listener to be an `AcknowledgingMessageListener` or a `BatchAcknowledgingMessageListener`.
 See xref:kafka/receiving-messages/message-listeners.adoc[Message Listeners].
 
