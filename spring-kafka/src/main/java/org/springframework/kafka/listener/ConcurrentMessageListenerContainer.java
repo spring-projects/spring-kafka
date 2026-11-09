@@ -434,10 +434,17 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	public void enforceRebalance() {
 		this.lifecycleLock.lock();
 		try {
-			// Since the rebalance is for the whole consumer group, there is no need to
-			// initiate this operation for every single container in the group.
-			final KafkaMessageListenerContainer<K, V> listenerContainer = this.containers.get(0);
-			listenerContainer.enforceRebalance();
+			if (this.containers.isEmpty()) {
+				// No children yet (before start() or after stop()); they check this flag
+				// on their first poll.
+				this.enforceRebalanceRequested.set(true);
+			}
+			else {
+				// Since the rebalance is for the whole consumer group, there is no need to
+				// initiate this operation for every single container in the group.
+				// The child sets the shared flag and wakes its consumer if it is polling.
+				this.containers.get(0).enforceRebalance();
+			}
 		}
 		finally {
 			this.lifecycleLock.unlock();
