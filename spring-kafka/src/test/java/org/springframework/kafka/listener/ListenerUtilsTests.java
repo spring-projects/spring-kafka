@@ -27,7 +27,7 @@ public class ListenerUtilsTests {
 
 	@Test
 	void stoppableSleep() throws InterruptedException {
-		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		MessageListenerContainer container = mock();
 		given(container.isRunning()).willReturn(true);
 		long t1 = System.currentTimeMillis();
 		ListenerUtils.stoppableSleep(container, 500);
@@ -69,14 +69,14 @@ public class ListenerUtilsTests {
 
 	@Test
 	void stoppableSleepWithZeroInterval() throws InterruptedException {
-		MessageListenerContainer container = mock(MessageListenerContainer.class);
+		MessageListenerContainer container = mock();
 		ListenerUtils.stoppableSleep(container, 0);
 		verifyNoInteractions(container);
 	}
 
 	@Test
 	void testCreationOfOffsetAndMetadataWithoutProvider() {
-		final MessageListenerContainer container = mock(MessageListenerContainer.class);
+		final MessageListenerContainer container = mock();
 		given(container.getContainerProperties()).willReturn(new ContainerProperties("foo"));
 		final OffsetAndMetadata offsetAndMetadata = ListenerUtils.createOffsetAndMetadata(container, 1L);
 		assertThat(offsetAndMetadata.offset()).isEqualTo(1);
@@ -85,7 +85,7 @@ public class ListenerUtilsTests {
 
 	@Test
 	void testCreationOfOffsetAndMetadataWithProvider() {
-		final MessageListenerContainer container = mock(MessageListenerContainer.class);
+		final MessageListenerContainer container = mock();
 		final ContainerProperties properties = new ContainerProperties("foo");
 		properties.setOffsetAndMetadataProvider((listenerMetadata, offset) -> new OffsetAndMetadata(offset, "my-metadata"));
 		given(container.getContainerProperties()).willReturn(properties);
