@@ -25,6 +25,7 @@ import org.springframework.util.backoff.BackOffExecution;
  * @author Antonio Tomac
  * @author Wang Zhiyang
  * @author Sanghyeok An
+ * @author Dongmin Kim
  * @since 2.0
  *
  */
@@ -121,12 +122,16 @@ public final class ListenerUtils {
 
 	/**
 	 * Sleep for the desired timeout, as long as shouldSleepCondition supplies true.
+	 * A non-positive interval returns immediately without evaluating the condition.
 	 * @param shouldSleepCondition to.
 	 * @param interval the timeout.
 	 * @throws InterruptedException if the thread is interrupted.
 	 * @since 3.0.9
 	 */
 	public static void conditionalSleep(Supplier<Boolean> shouldSleepCondition, long interval) throws InterruptedException {
+		if (interval <= 0) {
+			return;
+		}
 		long timeout = System.currentTimeMillis() + interval;
 		long sleepInterval = interval > SMALL_INTERVAL_THRESHOLD ? DEFAULT_SLEEP_INTERVAL : SMALL_SLEEP_INTERVAL;
 		do {
@@ -142,6 +147,7 @@ public final class ListenerUtils {
 	 * Sleep for the desired timeout, as long as shouldSleepCondition supplies true.
 	 * This method requires that the consumer is paused; otherwise, ConsumerRecord may be lost.
 	 * Periodically calls {@code Consumer.poll(Duration.ZERO)} to prevent a paused consumer from being rebalanced.
+	 * A non-positive interval returns immediately without evaluating the condition or polling the consumer.
 	 * @param shouldSleepCondition to.
 	 * @param interval the timeout.
 	 * @param consumer the kafka consumer to call poll().
@@ -150,6 +156,9 @@ public final class ListenerUtils {
 	public static void conditionalSleepWithPoll(Supplier<Boolean> shouldSleepCondition,
 												long interval,
 												Consumer<?, ?> consumer) throws InterruptedException {
+		if (interval <= 0) {
+			return;
+		}
 		boolean isFirst = true;
 		long timeout = System.currentTimeMillis() + interval;
 		long sleepInterval = interval > SMALL_INTERVAL_THRESHOLD ? DEFAULT_SLEEP_INTERVAL : SMALL_SLEEP_INTERVAL;
