@@ -432,10 +432,23 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 
 	@Override
 	public void enforceRebalance() {
-		// Since the rebalance is for the whole consumer group, there is no need to
-		// initiate this operation for every single container in the group.
-		// The child containers check this flag, so it works even before they are created.
-		this.enforceRebalanceRequested.set(true);
+		this.lifecycleLock.lock();
+		try {
+			if (this.containers.isEmpty()) {
+				// No children yet (before start() or after stop()); they check this flag
+				// on their first poll.
+				this.enforceRebalanceRequested.set(true);
+			}
+			else {
+				// Since the rebalance is for the whole consumer group, there is no need to
+				// initiate this operation for every single container in the group.
+				// The child sets the shared flag and wakes its consumer if it is polling.
+				this.containers.get(0).enforceRebalance();
+			}
+		}
+		finally {
+			this.lifecycleLock.unlock();
+		}
 	}
 
 	@Override
