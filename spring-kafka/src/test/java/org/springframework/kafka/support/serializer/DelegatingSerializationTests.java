@@ -32,6 +32,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -43,6 +44,7 @@ import static org.mockito.Mockito.verify;
  * @author Soby Chacko
  * @author Jiwoo Lee
  * @author Seonghun Lee
+ * @author Yingzi Zhang
  *
  * @since 2.3
  *
@@ -244,6 +246,36 @@ public class DelegatingSerializationTests {
 			byte[] data = "payload".getBytes();
 			Object deserialized = deserializer.deserialize("topic", headers, data);
 			assertThat(deserialized).isSameAs(data);
+		}
+	}
+
+	@Test
+	void testTypeNotKnownToSerdesWithoutSelectorReportsTheMissingHeader() {
+		try (DelegatingSerializer serializer = new DelegatingSerializer()) {
+			Headers headers = new RecordHeaders();
+			assertThatIllegalStateException()
+					.isThrownBy(() -> serializer.serialize("topic", headers, new Object()))
+					.withMessage("No '" + DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR
+							+ "' header present and type (java.lang.Object) is not supported by Serdes");
+			assertThat(headers.lastHeader(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR)).isNull();
+		}
+	}
+
+	@Test
+	void testMapConfigEntryOfWrongTypeIsReported() {
+		Map<String, Object> configs = Map.of(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR_CONFIG,
+				Map.of("int", 42));
+		try (DelegatingSerializer serializer = new DelegatingSerializer()) {
+			assertThatIllegalStateException()
+					.isThrownBy(() -> serializer.configure(configs, false))
+					.withMessage(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR_CONFIG
+							+ " map entries must be Serializers or class names, not java.lang.Integer");
+		}
+		try (DelegatingDeserializer deserializer = new DelegatingDeserializer()) {
+			assertThatIllegalStateException()
+					.isThrownBy(() -> deserializer.configure(configs, false))
+					.withMessage(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR_CONFIG
+							+ " map entries must be Deserializers or class names, not java.lang.Integer");
 		}
 	}
 
