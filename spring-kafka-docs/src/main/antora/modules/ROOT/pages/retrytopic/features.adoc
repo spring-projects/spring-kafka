@@ -6,14 +6,13 @@ Most of the features are available both for the `@RetryableTopic` annotation and
 [[backoff-configuration]]
 == BackOff Configuration
 
-The BackOff configuration relies on the `BackOffPolicy` interface from the `Spring Retry` project.
+The BackOff configuration relies on the `BackOff` interface from Spring Framework (`org.springframework.util.backoff`).
 
 It includes:
 
 * Fixed Back Off
-* Exponential Back Off
-* Random Exponential Back Off
-* Uniform Random Back Off
+* Exponential Back Off, optionally with a jitter
+* Uniform Random Back Off (deprecated since 4.0)
 * No Back Off
 * Custom Back Off
 
@@ -39,7 +38,7 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
 }
 ----
 
-You can also provide a custom implementation of Spring Retry's `SleepingBackOffPolicy` interface:
+You can also provide a custom `BackOff` implementation:
 
 [source, java]
 ----
@@ -47,16 +46,16 @@ You can also provide a custom implementation of Spring Retry's `SleepingBackOffP
 public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
     return RetryTopicConfigurationBuilder
             .newInstance()
-            .customBackoff(new MyCustomBackOffPolicy())
+            .customBackoff(new MyCustomBackOff())
             .maxAttempts(5)
             .create(template);
 }
 ----
 
-NOTE: The default back off policy is `FixedBackOffPolicy` with a maximum of 3 attempts and 1000ms intervals.
+NOTE: The default back off is a `FixedBackOff` with 1000ms intervals, with a maximum of 3 attempts.
 
-NOTE: There is a 30-second default maximum delay for the `ExponentialBackOffPolicy`.
-If your back off policy requires delays with values bigger than that, adjust the `maxDelay` property accordingly.
+NOTE: Without a `maxDelay`, the delays of an exponential `@BackOff` keep growing with each attempt, so set `maxDelay` to limit them.
+`RetryTopicConfigurationBuilder.exponentialBackoff()` always takes a maximum interval.
 
 IMPORTANT: The first attempt counts against `maxAttempts`, so if you provide a `maxAttempts` value of 4 there'll be the original attempt plus 3 retries.
 
