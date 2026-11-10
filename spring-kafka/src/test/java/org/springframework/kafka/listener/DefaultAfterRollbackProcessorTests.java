@@ -4,11 +4,13 @@
 
 package org.springframework.kafka.listener;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -17,8 +19,11 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
 import org.springframework.kafka.core.KafkaOperations;
@@ -197,6 +202,31 @@ public class DefaultAfterRollbackProcessorTests {
 		long t1 = System.currentTimeMillis();
 		processor.process(records, consumer, container, illegalState, true, EOSMode.V2);
 		assertThat(System.currentTimeMillis() >= t1 + 200).isTrue();
+	}
+
+	@Test
+	void batchRecoverWithConsumerToVerifyDeadLetterPartition() {
+		KafkaOperations<Object, Object> template = mock();
+		given(template.isTransactional()).willReturn(true);
+		given(template.inTransaction()).willReturn(true);
+		given(template.send(any(ProducerRecord.class))).willReturn(CompletableFuture.completedFuture(null));
+		Consumer<String, String> consumer = mock();
+		given(consumer.groupMetadata()).willReturn(mock());
+		given(consumer.partitionsFor("orders-dlt", Duration.ofSeconds(5)))
+				.willReturn(List.of(new PartitionInfo("orders-dlt", 0, null, null, null)));
+		DefaultAfterRollbackProcessor<String, String> processor = new DefaultAfterRollbackProcessor<>(
+				new DeadLetterPublishingRecoverer(template), new FixedBackOff(0L, 0L), template, true);
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("orders", 1, 0L, "key", "value");
+		ConsumerRecords<String, String> records = new ConsumerRecords<>(
+				Map.of(new TopicPartition("orders", 1), List.of(record)), Map.of());
+		MessageListenerContainer container = mock();
+		given(container.getContainerProperties()).willReturn(new ContainerProperties("orders"));
+		processor.processBatch(records, List.of(record), consumer, container, new RuntimeException(), true,
+				EOSMode.V2);
+		ArgumentCaptor<ProducerRecord<Object, Object>> captor = ArgumentCaptor.captor();
+		verify(template).send(captor.capture());
+		assertThat(captor.getValue().topic()).isEqualTo("orders-dlt");
+		assertThat(captor.getValue().partition()).isNull();
 	}
 
 }

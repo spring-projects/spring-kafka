@@ -55,6 +55,14 @@ This applies to record listeners only.
 By default, there is no limit.
 See xref:kafka/annotation-error-handling.adoc#default-eh[Default Error Handler].
 
+[[x42-batch-recovery-dlt-partition-check]]
+=== Dead-letter Partition Check for Batch Listeners
+
+When the records of a batch listener are recovered by the `DefaultErrorHandler` (when the listener does not throw a `BatchListenerFailedException`) or by the `DefaultAfterRollbackProcessor`, the `DeadLetterPublishingRecoverer` now checks that the destination partition exists, as it already did for record listeners.
+Previously, a record on a partition that the dead-letter topic does not have failed to publish, and the batch was redelivered indefinitely.
+A `DeadLetterPublishingRecoverer` subclass that overrides only the two-argument `accept(ConsumerRecord, Exception)` method is no longer called on these paths; override the three-argument `accept(ConsumerRecord, Consumer, Exception)` method instead.
+See xref:kafka/annotation-error-handling.adoc#dead-letters[Publishing Dead-letter Records].
+
 [[x42-delegating-error-handler-delivery-attempt]]
 === Delivery Attempts Header with `CommonDelegatingErrorHandler`
 
