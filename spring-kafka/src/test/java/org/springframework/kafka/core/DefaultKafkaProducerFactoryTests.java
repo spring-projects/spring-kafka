@@ -22,6 +22,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
+import org.apache.kafka.common.errors.InvalidPidMappingException;
 import org.apache.kafka.common.errors.UnknownProducerIdException;
 import org.apache.kafka.common.serialization.Serializer;
 import org.junit.jupiter.api.Test;
@@ -496,11 +497,20 @@ public class DefaultKafkaProducerFactoryTests {
 	}
 
 	@Test
-	@SuppressWarnings({"rawtypes", "unchecked"})
 	void testUnknownProducerIdException() {
+		assertProducerRecreatedAfterSendFailure(new UnknownProducerIdException("test"));
+	}
+
+	@Test
+	void testInvalidPidMappingException() {
+		assertProducerRecreatedAfterSendFailure(new InvalidPidMappingException("test"));
+	}
+
+	@SuppressWarnings({"rawtypes", "unchecked"})
+	private void assertProducerRecreatedAfterSendFailure(Exception exception) {
 		final Producer producer1 = mock(Producer.class);
 		willAnswer(inv -> {
-			((Callback) inv.getArgument(1)).onCompletion(null, new UnknownProducerIdException("test"));
+			((Callback) inv.getArgument(1)).onCompletion(null, exception);
 			return null;
 		}).given(producer1).send(isNull(), any());
 		final Producer producer2 = mock(Producer.class);
