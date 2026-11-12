@@ -7,6 +7,10 @@ The pausing and resuming take place respectively before and after the `poll()` s
 The `isPartitionPauseRequested()` method returns true if pause for that partition has been requested.
 The `isPartitionPaused()` method returns true if that partition has effectively been paused.
 
+With a `ConcurrentMessageListenerContainer`, a partition pause is remembered by the container and applied to the child containers created by each `start()`.
+A pause requested before the container is started, or before it is stopped and started again, therefore remains in effect; call `resumePartition()` to resume consumption from that partition.
+Previously, such a request was lost when the child containers were created.
+
 Also since version 2.7 `ConsumerPartitionPausedEvent` and `ConsumerPartitionResumedEvent` instances are published with the container as the `source` property and the `TopicPartition` instance.
 
 
