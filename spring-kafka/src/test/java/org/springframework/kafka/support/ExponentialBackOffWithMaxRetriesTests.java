@@ -10,9 +10,11 @@ import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import org.springframework.util.backoff.BackOffExecution;
+import org.springframework.util.backoff.ExponentialBackOff;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
@@ -20,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 /**
  * @author Gary Russell
  * @author Jialin Chen
+ * @author Yingzi Zhang
  * @since 2.7.3
  *
  */
@@ -45,6 +48,31 @@ public class ExponentialBackOffWithMaxRetriesTests {
 
 		backOff.setMaxInterval(1_000L);
 		assertThat(backOff.start().nextBackOff()).isEqualTo(BackOffExecution.STOP);
+	}
+
+	@ParameterizedTest
+	@CsvSource({
+			"3, 1000, 2.0, 30000, 500",
+			"5, 1000, 1.5, 30000, 800",
+			"5, 1000, 2.0, 4000, 1000"
+	})
+	void jitterKeepsTheNumberOfRetries(int maxRetries, long initialInterval, double multiplier, long maxInterval,
+			long jitter) {
+
+		ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(maxRetries);
+		backOff.setInitialInterval(initialInterval);
+		backOff.setMultiplier(multiplier);
+		backOff.setMaxInterval(maxInterval);
+		backOff.setJitter(jitter);
+
+		for (int i = 0; i < 1000; i++) {
+			BackOffExecution execution = backOff.start();
+			for (int retry = 0; retry < maxRetries; retry++) {
+				assertThat(execution.nextBackOff()).isNotEqualTo(BackOffExecution.STOP);
+			}
+			assertThat(execution.nextBackOff()).isEqualTo(BackOffExecution.STOP);
+		}
+		assertThat(backOff.getMaxElapsedTime()).isEqualTo(ExponentialBackOff.DEFAULT_MAX_ELAPSED_TIME);
 	}
 
 	@Test
