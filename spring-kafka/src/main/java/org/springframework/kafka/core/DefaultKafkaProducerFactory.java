@@ -36,6 +36,7 @@ import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.Uuid;
+import org.apache.kafka.common.errors.InvalidPidMappingException;
 import org.apache.kafka.common.errors.OutOfOrderSequenceException;
 import org.apache.kafka.common.errors.ProducerFencedException;
 import org.apache.kafka.common.errors.TimeoutException;
@@ -1118,7 +1119,7 @@ public class DefaultKafkaProducerFactory<K, V> extends KafkaResourceFactory
 
 				@Override
 				public void onCompletion(RecordMetadata metadata, Exception exception) {
-					if (exception instanceof OutOfOrderSequenceException) {
+					if (exception instanceof OutOfOrderSequenceException || exception instanceof InvalidPidMappingException) {
 						CloseSafeProducer.this.producerFailed = exception;
 						close(CloseSafeProducer.this.closeTimeout);
 					}
