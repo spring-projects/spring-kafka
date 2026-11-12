@@ -12,6 +12,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.kafka.common.Metric;
@@ -58,6 +60,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	private final List<KafkaMessageListenerContainer<K, V>> containers = new ArrayList<>();
 
 	private final List<AsyncTaskExecutor> executors = new ArrayList<>();
+
+	private final Set<TopicPartition> requestedPartitionPauses = ConcurrentHashMap.newKeySet();
 
 	private final AtomicInteger startedContainers = new AtomicInteger();
 
@@ -253,6 +257,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 				if (isPauseRequested()) {
 					container.pause();
 				}
+				this.requestedPartitionPauses.forEach(container::pausePartition);
 				container.start();
 				this.containers.add(container);
 			}
@@ -480,7 +485,9 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 		this.lifecycleLock.lock();
 		try {
 			// Request the pause on all the children, not only on the current owner of the partition,
-			// so it remains paused if a rebalance assigns it to another child
+			// so it remains paused if a rebalance assigns it to another child.
+			// Remember it for the children created by the next start().
+			this.requestedPartitionPauses.add(topicPartition);
 			this.containers.forEach(container -> container.pausePartition(topicPartition));
 		}
 		finally {
@@ -492,6 +499,7 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	public void resumePartition(TopicPartition topicPartition) {
 		this.lifecycleLock.lock();
 		try {
+			this.requestedPartitionPauses.remove(topicPartition);
 			this.containers
 					.stream()
 					.filter(container -> container.isPartitionPauseRequested(topicPartition))
@@ -506,7 +514,8 @@ public class ConcurrentMessageListenerContainer<K, V> extends AbstractMessageLis
 	public boolean isPartitionPauseRequested(TopicPartition topicPartition) {
 		this.lifecycleLock.lock();
 		try {
-			return this.containers
+			return this.requestedPartitionPauses.contains(topicPartition)
+					|| this.containers
 					.stream()
 					.anyMatch(container -> container.isPartitionPauseRequested(topicPartition));
 		}
