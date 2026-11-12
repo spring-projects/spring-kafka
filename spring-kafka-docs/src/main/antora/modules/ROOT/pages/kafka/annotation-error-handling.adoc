@@ -1098,3 +1098,5 @@ DefaultErrorHandler handler() {
 ----
 
 This will retry after `1, 2, 4, 8, 10, 10` seconds, before calling the recoverer.
+
+If you set a `jitter`, the intervals vary, so the number of retries is limited with `maxAttempts` instead, and the maximum elapsed time is not limited.

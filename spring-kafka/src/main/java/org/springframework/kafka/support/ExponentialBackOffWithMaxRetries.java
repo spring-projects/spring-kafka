@@ -9,9 +9,12 @@ import org.springframework.util.backoff.ExponentialBackOff;
 /**
  * Subclass of {@link ExponentialBackOff} that allows the specification of the maximum
  * number of retries rather than the maximum elapsed time.
+ * <p>With a {@link #setJitter(long) jitter}, the intervals vary, so the number of retries
+ * is only limited by {@link #getMaxAttempts()}, and the maximum elapsed time is not limited.
  *
  * @author Gary Russell
  * @author Jialin Chen
+ * @author Yingzi Zhang
  * @since 2.7.3
  *
  */
@@ -27,6 +30,7 @@ public class ExponentialBackOffWithMaxRetries extends ExponentialBackOff {
 	@SuppressWarnings("this-escape")
 	public ExponentialBackOffWithMaxRetries(int maxRetries) {
 		this.maxRetries = maxRetries;
+		super.setMaxAttempts(Math.max(maxRetries, 0));
 		calculateMaxElapsed();
 	}
 
@@ -57,6 +61,12 @@ public class ExponentialBackOffWithMaxRetries extends ExponentialBackOff {
 	}
 
 	@Override
+	public void setJitter(long jitter) {
+		super.setJitter(jitter);
+		calculateMaxElapsed();
+	}
+
+	@Override
 	public void setMaxElapsedTime(long maxElapsedTime) {
 		throw new IllegalStateException("'maxElapsedTime' is calculated from the 'maxRetries' property");
 	}
@@ -65,6 +75,11 @@ public class ExponentialBackOffWithMaxRetries extends ExponentialBackOff {
 	private void calculateMaxElapsed() {
 		if (this.maxRetries <= 0) {
 			super.setMaxElapsedTime(0);
+			return;
+		}
+		if (getJitter() > 0) {
+			// The intervals vary, so the elapsed time can't tell when maxRetries is reached.
+			super.setMaxElapsedTime(DEFAULT_MAX_ELAPSED_TIME);
 			return;
 		}
 		long maxInterval = getMaxInterval();
