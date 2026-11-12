@@ -1890,9 +1890,11 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 						resubmitted = true;
 					}
 				}
-				if (!resubmitted) {
+				if (!resubmitted || this.isBatchListener) {
 					// the offsets of resubmitted records are still tracked from their original poll;
-					// capturing them again would drop pending async acks for other partitions
+					// capturing them again would drop pending async acks for other partitions.
+					// A batch error handler commits the records before the failed one without
+					// acking them, so the offsets must be captured again for a batch listener
 					captureOffsets(records);
 				}
 				checkRebalanceCommits();
