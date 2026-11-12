@@ -1805,6 +1805,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			else {
 				records = pollConsumer();
 				savePositionsIfNeeded(records);
+				boolean resubmitted = false;
 				if (this.remainingRecords != null) {
 					int howManyRecords = records.count();
 					if (howManyRecords > 0) {
@@ -1818,9 +1819,16 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 					if (!isPaused) {
 						records = this.remainingRecords;
 						this.remainingRecords = null;
+						resubmitted = true;
 					}
 				}
-				captureOffsets(records);
+				if (!resubmitted || this.isBatchListener) {
+					// the offsets of resubmitted records are still tracked from their original poll;
+					// capturing them again would drop pending async acks for other partitions.
+					// A batch error handler commits the records before the failed one without
+					// acking them, so the offsets must be captured again for a batch listener
+					captureOffsets(records);
+				}
 				checkRebalanceCommits();
 			}
 			return records;
