@@ -1,0 +1,165 @@
+/*
+ * Copyright 2026-present the original author or authors.
+ */
+
+package org.springframework.kafka.listener;
+
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.junit.jupiter.api.Test;
+
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.ContainerProperties.AckMode;
+import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.condition.EmbeddedKafkaCondition;
+import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.util.backoff.FixedBackOff;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
+
+/**
+ * @author Sharang Gupta
+ * @author Soby Chacko
+ *
+ * @since 4.2
+ */
+@EmbeddedKafka(topics = { AsyncAckResubmittedRecordsTests.TOPIC, AsyncAckResubmittedRecordsTests.BATCH_TOPIC },
+		partitions = 2)
+class AsyncAckResubmittedRecordsTests {
+
+	static final String TOPIC = "asyncAckResubmittedRecords";
+
+	static final String BATCH_TOPIC = "asyncAckResubmittedBatch";
+
+	private static final String GROUP = "asyncAckResubmittedRecords";
+
+	@Test
+	void pendingAckOnAnotherPartitionSurvivesResubmittedRecords() throws Exception {
+		EmbeddedKafkaBroker broker = EmbeddedKafkaCondition.getBroker();
+		KafkaTemplate<Integer, String> template =
+				new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(KafkaTestUtils.producerProps(broker)));
+		for (int partition = 0; partition < 2; partition++) {
+			template.send(TOPIC, partition, null, "first");
+			template.send(TOPIC, partition, null, "second");
+		}
+		template.flush();
+
+		ContainerProperties containerProps = new ContainerProperties(TOPIC);
+		containerProps.setAckMode(AckMode.MANUAL_IMMEDIATE);
+		containerProps.setAsyncAcks(true);
+		List<String> deliveries = new CopyOnWriteArrayList<>();
+		AtomicInteger pendingPartition = new AtomicInteger(-1);
+		AtomicReference<Acknowledgment> pendingAck = new AtomicReference<>();
+		AtomicBoolean failedOnce = new AtomicBoolean();
+		containerProps.setMessageListener((AcknowledgingMessageListener<Integer, String>) (record, ack) -> {
+			deliveries.add(record.partition() + ":" + record.value());
+			// Whichever partition comes first keeps its first record unacknowledged,
+			// the other partition fails once on its first record.
+			if (pendingPartition.compareAndSet(-1, record.partition())) {
+				pendingAck.set(ack);
+				return;
+			}
+			if (record.partition() != pendingPartition.get() && failedOnce.compareAndSet(false, true)) {
+				throw new IllegalStateException("The record fails once");
+			}
+			ack.acknowledge();
+		});
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(broker, GROUP, false);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(new DefaultKafkaConsumerFactory<>(consumerProps), containerProps);
+		DefaultErrorHandler errorHandler = new DefaultErrorHandler(new FixedBackOff(0L, 1L));
+		errorHandler.setSeekAfterError(false);
+		container.setCommonErrorHandler(errorHandler);
+		container.start();
+		try {
+			await().atMost(Duration.ofSeconds(30))
+					.untilAsserted(() -> assertThat(committedOffset(broker, 1 - pendingPartition.get())).isEqualTo(2L));
+			// The other partition was resubmitted after its failure while the first record waited for its ack
+			assertThat(deliveries).hasSize(5);
+
+			pendingAck.get().acknowledge();
+
+			await().atMost(Duration.ofSeconds(30))
+					.untilAsserted(() -> assertThat(committedOffset(broker, pendingPartition.get())).isEqualTo(2L));
+		}
+		finally {
+			container.stop();
+			template.destroy();
+		}
+	}
+
+	@Test
+	void batchListenerResumesAfterResubmittedRecordsAreAcknowledged() throws Exception {
+		EmbeddedKafkaBroker broker = EmbeddedKafkaCondition.getBroker();
+		KafkaTemplate<Integer, String> template =
+				new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(KafkaTestUtils.producerProps(broker)));
+		for (int partition = 0; partition < 2; partition++) {
+			template.send(BATCH_TOPIC, partition, null, "first");
+			template.send(BATCH_TOPIC, partition, null, "second");
+		}
+		template.flush();
+
+		ContainerProperties containerProps = new ContainerProperties(BATCH_TOPIC);
+		containerProps.setAckMode(AckMode.MANUAL_IMMEDIATE);
+		containerProps.setAsyncAcks(true);
+		List<String> deliveries = new CopyOnWriteArrayList<>();
+		AtomicBoolean failedOnce = new AtomicBoolean();
+		AtomicBoolean resubmittedAcked = new AtomicBoolean();
+		containerProps.setMessageListener((BatchAcknowledgingMessageListener<Integer, String>) (records, ack) -> {
+			records.forEach(record -> deliveries.add(record.partition() + ":" + record.value()));
+			// Fail on the first record of the last partition in a batch spanning both partitions, so the
+			// error handler commits the other partition and resubmits only the failed one
+			if (records.stream().map(ConsumerRecord::partition).distinct().count() == 2
+					&& failedOnce.compareAndSet(false, true)) {
+				int lastPartition = records.get(records.size() - 1).partition();
+				ConsumerRecord<Integer, String> failed = records.stream()
+						.filter(record -> record.partition() == lastPartition)
+						.findFirst()
+						.orElseThrow();
+				throw new BatchListenerFailedException("The batch fails once", failed);
+			}
+			ack.acknowledge();
+			if (failedOnce.get()) {
+				resubmittedAcked.set(true);
+			}
+		});
+		Map<String, Object> consumerProps = KafkaTestUtils.consumerProps(broker, "asyncAckResubmittedBatch", false);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(new DefaultKafkaConsumerFactory<>(consumerProps), containerProps);
+		DefaultErrorHandler errorHandler = new DefaultErrorHandler(new FixedBackOff(0L, 1L));
+		errorHandler.setSeekAfterError(false);
+		container.setCommonErrorHandler(errorHandler);
+		container.start();
+		try {
+			await().atMost(Duration.ofSeconds(30)).untilTrue(resubmittedAcked);
+
+			template.send(BATCH_TOPIC, 0, null, "later");
+			template.flush();
+
+			await().atMost(Duration.ofSeconds(30)).until(() -> deliveries.contains("0:later"));
+		}
+		finally {
+			container.stop();
+			template.destroy();
+		}
+	}
+
+	private static long committedOffset(EmbeddedKafkaBroker broker, int partition) throws Exception {
+		OffsetAndMetadata offset = KafkaTestUtils.getCurrentOffset(broker.getBrokersAsString(), GROUP, TOPIC, partition);
+		return offset != null ? offset.offset() : -1;
+	}
+
+}
