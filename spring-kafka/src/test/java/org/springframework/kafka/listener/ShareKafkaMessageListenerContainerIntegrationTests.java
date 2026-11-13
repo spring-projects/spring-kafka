@@ -5,6 +5,7 @@
 package org.springframework.kafka.listener;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import java.util.function.ToLongFunction;
 
 import org.apache.kafka.clients.admin.Admin;
 import org.apache.kafka.clients.admin.AlterConfigOp;
@@ -50,6 +52,7 @@ import org.springframework.kafka.test.utils.KafkaTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -73,7 +76,9 @@ import static org.mockito.Mockito.verify;
 		partitions = 1,
 		brokerProperties = {
 				"share.coordinator.state.topic.replication.factor=1",
-				"share.coordinator.state.topic.min.isr=1"
+				"share.coordinator.state.topic.min.isr=1",
+				// Allow a short record lock for a share group, so tests can let locks expire or renew them
+				"group.share.min.record.lock.duration.ms=1000"
 		}
 )
 class ShareKafkaMessageListenerContainerIntegrationTests {
@@ -927,6 +932,89 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 	}
 
 	@Test
+	void explicitModeAutoRenewKeepsLockOfRecordProcessedLongerThanLockDuration(EmbeddedKafkaBroker broker)
+			throws Exception {
+
+		String topic = "share-container-auto-renew-long-test";
+		String groupId = "share-container-auto-renew-long-group";
+		String bootstrapServers = broker.getBrokersAsString();
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
+		setShareGroupConfig(bootstrapServers, groupId, "share.record.lock.duration.ms", "3000");
+		produceTestRecords(bootstrapServers, topic, 1);
+
+		AutoRenewProbe probe = new AutoRenewProbe(topic, value -> 8000);
+		ShareKafkaMessageListenerContainer<String, String> container =
+				probe.container(bootstrapServers, groupId, "autoRenewLongContainer");
+		container.start();
+		try {
+			probe.awaitAccepted(0L, 30);
+			Thread.sleep(2000);
+			assertThat(probe.processed).containsExactly("value0/1");
+			probe.assertEachRecordAcceptedOnceWithoutErrors(container);
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	void explicitModeAutoRenewProcessesBatchInOrderAndAcceptsEachRecord(EmbeddedKafkaBroker broker) throws Exception {
+		String topic = "share-container-auto-renew-batch-test";
+		String groupId = "share-container-auto-renew-batch-group";
+		String bootstrapServers = broker.getBrokersAsString();
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
+		setShareGroupConfig(bootstrapServers, groupId, "share.record.lock.duration.ms", "3000");
+		produceTestRecords(bootstrapServers, topic, 3);
+
+		AutoRenewProbe probe = new AutoRenewProbe(topic, value -> 4000);
+		ShareKafkaMessageListenerContainer<String, String> container =
+				probe.container(bootstrapServers, groupId, "autoRenewBatchContainer");
+		container.start();
+		try {
+			probe.awaitAccepted(2L, 40);
+			probe.awaitAccepted(1L, 1);
+			probe.awaitAccepted(0L, 1);
+			Thread.sleep(2000);
+			assertThat(probe.processed).containsExactly("value0/1", "value1/1", "value2/1");
+			probe.assertEachRecordAcceptedOnceWithoutErrors(container);
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	void explicitModeAutoRenewProcessesRecordProducedWhileRenewing(EmbeddedKafkaBroker broker) throws Exception {
+		String topic = "share-container-auto-renew-late-test";
+		String groupId = "share-container-auto-renew-late-group";
+		String bootstrapServers = broker.getBrokersAsString();
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
+		setShareGroupConfig(bootstrapServers, groupId, "share.record.lock.duration.ms", "3000");
+		produceTestRecords(bootstrapServers, topic, 1);
+
+		AutoRenewProbe probe = new AutoRenewProbe(topic, value -> "value0".equals(value) ? 10000 : 0);
+		ShareKafkaMessageListenerContainer<String, String> container =
+				probe.container(bootstrapServers, groupId, "autoRenewLateContainer");
+		container.start();
+		try {
+			Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> !probe.processed.isEmpty());
+			// Produced while the first record is processed and its lock is renewed
+			try (var producer = createProducer(bootstrapServers)) {
+				producer.send(new ProducerRecord<>(topic, "key1", "value1")).get();
+			}
+			probe.awaitAccepted(1L, 40);
+			probe.awaitAccepted(0L, 1);
+			Thread.sleep(2000);
+			assertThat(probe.processed).containsExactly("value0/1", "value1/1");
+			probe.assertEachRecordAcceptedOnceWithoutErrors(container);
+			assertThat(container.isRunning()).isTrue();
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
 	void shouldThrowWhenTerminalAcknowledgmentCalledTwice(EmbeddedKafkaBroker broker) throws Exception {
 		String topic = "share-container-double-terminal-test";
 		String groupId = "share-container-double-terminal-group";
@@ -1491,4 +1579,110 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 
 		container.stop();
 	}
+
+	/**
+	 * A share container with automatic lock renewal whose listener sleeps for a time chosen per
+	 * record value, recording processed records (value/delivery count) and commit errors. The
+	 * consumer is a spy that records each ACCEPT; since nothing is acknowledged for a record after
+	 * its ACCEPT, a successful commit of the record's offset after the ACCEPT shows that the ACCEPT
+	 * was committed.
+	 */
+	private static final class AutoRenewProbe {
+
+		private final String topic;
+
+		private final ToLongFunction<String> processingMillis;
+
+		private final List<String> processed = Collections.synchronizedList(new ArrayList<>());
+
+		private final List<Exception> commitErrors = Collections.synchronizedList(new ArrayList<>());
+
+		private final Map<Long, Long> completedAt = new ConcurrentHashMap<>();
+
+		private final Map<Long, Long> acceptedAt = new ConcurrentHashMap<>();
+
+		private final Map<Long, Integer> accepts = new ConcurrentHashMap<>();
+
+		private final Map<Long, Long> lastCommittedAt = new ConcurrentHashMap<>();
+
+		AutoRenewProbe(String topic, ToLongFunction<String> processingMillis) {
+			this.topic = topic;
+			this.processingMillis = processingMillis;
+		}
+
+		@SuppressWarnings("unchecked")
+		ShareKafkaMessageListenerContainer<String, String> container(String bootstrapServers, String groupId,
+				String beanName) {
+
+			ContainerProperties containerProps = new ContainerProperties(this.topic);
+			containerProps.setShareAckMode(ContainerProperties.ShareAckMode.EXPLICIT);
+			containerProps.setShareAutoRenewLocks(true);
+			// Aligned with the 3 second record lock of the share group
+			containerProps.setShareAcknowledgmentTimeout(Duration.ofSeconds(3));
+			containerProps.setAcknowledgementCommitCallback((offsets, exception) -> {
+				if (exception != null) {
+					this.commitErrors.add(exception);
+					return;
+				}
+				long now = System.nanoTime();
+				offsets.forEach((topicIdPartition, committedOffsets) -> {
+					if (this.topic.equals(topicIdPartition.topic())) {
+						committedOffsets.forEach(offset -> this.lastCommittedAt.put(offset, now));
+					}
+				});
+			});
+			containerProps.setMessageListener((MessageListener<String, String>) record -> {
+				this.processed.add(record.value() + "/" + record.deliveryCount().orElse((short) 0));
+				try {
+					Thread.sleep(this.processingMillis.applyAsLong(record.value()));
+				}
+				catch (InterruptedException ex) {
+					Thread.currentThread().interrupt();
+				}
+				this.completedAt.put(record.offset(), System.nanoTime());
+			});
+			DefaultShareConsumerFactory<String, String> factory =
+					spy(new DefaultShareConsumerFactory<>(createConsumerProps(bootstrapServers, groupId, true)));
+			willAnswer(invocation -> {
+				ShareConsumer<String, String> consumer = spy((ShareConsumer<String, String>) invocation.callRealMethod());
+				willAnswer(acknowledge -> {
+					Object result = acknowledge.callRealMethod();
+					if (acknowledge.getArgument(1) == AcknowledgeType.ACCEPT) {
+						long offset = acknowledge.<ConsumerRecord<String, String>>getArgument(0).offset();
+						this.acceptedAt.put(offset, System.nanoTime());
+						this.accepts.merge(offset, 1, Integer::sum);
+					}
+					return result;
+				}).given(consumer).acknowledge(ArgumentMatchers.<ConsumerRecord<String, String>>any(),
+						ArgumentMatchers.any(AcknowledgeType.class));
+				return consumer;
+			}).given(factory).createShareConsumer(ArgumentMatchers.any(), ArgumentMatchers.any(),
+					ArgumentMatchers.any());
+			ShareKafkaMessageListenerContainer<String, String> container =
+					new ShareKafkaMessageListenerContainer<>(factory, containerProps);
+			container.setBeanName(beanName);
+			return container;
+		}
+
+		void awaitAccepted(long offset, int timeoutSeconds) {
+			Awaitility.await().atMost(timeoutSeconds, TimeUnit.SECONDS).untilAsserted(() -> {
+				Long completed = this.completedAt.get(offset);
+				assertThat(completed).as("offset %d processed", offset).isNotNull();
+				Long accepted = this.acceptedAt.get(offset);
+				assertThat(accepted).as("offset %d accepted after processing", offset).isNotNull()
+						.isGreaterThan(completed);
+				assertThat(this.lastCommittedAt.get(offset)).as("ACCEPT of offset %d committed", offset)
+						.isNotNull()
+						.isGreaterThan(accepted);
+			});
+		}
+
+		void assertEachRecordAcceptedOnceWithoutErrors(ShareKafkaMessageListenerContainer<String, String> container) {
+			assertThat(this.accepts.values()).allMatch(count -> count == 1);
+			assertThat(this.commitErrors).isEmpty();
+			assertThat(container.isInExpectedState()).isTrue();
+		}
+
+	}
+
 }

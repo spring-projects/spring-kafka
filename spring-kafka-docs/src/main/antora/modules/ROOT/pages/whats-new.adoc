@@ -109,6 +109,14 @@ They ship in **4.2** only (they cannot be backported to 4.1).
 This lets client-reported metrics be correlated with broker-side telemetry.
 See xref:kafka/kafka-queues.adoc#share-container-client-instance-ids[Client Instance IDs (Telemetry)].
 
+[[x42-share-explicit-auto-renew]]
+=== Automatic Lock Renewal for Share Consumers in EXPLICIT Mode
+
+The share container can now automatically renew the acquisition locks of records that are still being processed in `ShareAckMode.EXPLICIT`, so that a record whose processing outlasts the broker's lock duration is not redelivered to another consumer in the meantime.
+Enable it with `ContainerProperties.setShareAutoRenewLocks(true)`; when enabled, the listener is invoked on a separate dispatch thread.
+
+See xref:kafka/kafka-queues.adoc#share-ack-mode-explicit-auto-renew[Automatic Lock Renewal in EXPLICIT Mode].
+
 [[x42-share-record-message-converter]]
 === Record Message Converter for Share Consumer Listeners
 

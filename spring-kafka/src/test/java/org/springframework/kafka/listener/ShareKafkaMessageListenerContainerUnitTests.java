@@ -8,10 +8,16 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -25,12 +31,17 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.ShareConsumer;
+import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.TopicIdPartition;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.Uuid;
+import org.apache.kafka.common.errors.RecordDeserializationException;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.record.TimestampType;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -63,6 +74,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -1209,6 +1221,421 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 	}
 
 	@Test
+	void explicitModeAutoRenewIsDisabledByDefault() {
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		assertThat(containerProperties.isShareAutoRenewLocks()).isFalse();
+	}
+
+	@Test
+	void explicitModeRenewsLockWhileRecordIsBeingProcessed() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock();
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+		ShareConsumer<String, String> mockConsumer = mock();
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("test-topic", 0, 0L, "key", "value");
+		ExplicitModeShareConsumer client = new ExplicitModeShareConsumer(mockConsumer, List.of(record));
+
+		CountDownLatch listenerEntered = new CountDownLatch(1);
+		CountDownLatch releaseListener = new CountDownLatch(1);
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.EXPLICIT);
+		containerProperties.setShareAutoRenewLocks(true);
+		// Renewal interval is half the acknowledgment timeout: 200 ms
+		containerProperties.setShareAcknowledgmentTimeout(Duration.ofMillis(400));
+		containerProperties.setMessageListener((MessageListener<String, String>) rec -> {
+			listenerEntered.countDown();
+			try {
+				releaseListener.await(10, TimeUnit.SECONDS);
+			}
+			catch (InterruptedException ex) {
+				Thread.currentThread().interrupt();
+			}
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("autoRenewContainer");
+		container.start();
+		try {
+			assertThat(listenerEntered.await(10, TimeUnit.SECONDS)).isTrue();
+			// The record stays in flight well beyond the renewal interval, so the container
+			// must renew its acquisition lock while processing is still in flight.
+			await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+					verify(mockConsumer, atLeastOnce()).acknowledge(record, AcknowledgeType.RENEW));
+			releaseListener.countDown();
+			await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+					verify(mockConsumer).acknowledge(record, AcknowledgeType.ACCEPT));
+			InOrder inOrder = inOrder(mockConsumer);
+			inOrder.verify(mockConsumer).acknowledge(record, AcknowledgeType.RENEW);
+			inOrder.verify(mockConsumer).acknowledge(record, AcknowledgeType.ACCEPT);
+			assertThat(client.violations).isEmpty();
+		}
+		finally {
+			releaseListener.countDown();
+			container.stop();
+		}
+	}
+
+	@Test
+	void explicitModeDoesNotRenewLockByDefault() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock();
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+		ShareConsumer<String, String> mockConsumer = mock();
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("test-topic", 0, 0L, "key", "value");
+		ConsumerRecords<String, String> records = new ConsumerRecords<>(
+				Map.of(new TopicPartition("test-topic", 0), List.of(record)), Map.of());
+		AtomicBoolean firstPoll = new AtomicBoolean(true);
+		given(mockConsumer.poll(any())).willAnswer(invocation -> {
+			if (firstPoll.compareAndSet(true, false)) {
+				return records;
+			}
+			Thread.sleep(50);
+			return ConsumerRecords.empty();
+		});
+
+		CountDownLatch listenerEntered = new CountDownLatch(1);
+		CountDownLatch releaseListener = new CountDownLatch(1);
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.EXPLICIT);
+		containerProperties.setShareAcknowledgmentTimeout(Duration.ofMillis(400));
+		containerProperties.setMessageListener((MessageListener<String, String>) rec -> {
+			listenerEntered.countDown();
+			try {
+				releaseListener.await(10, TimeUnit.SECONDS);
+			}
+			catch (InterruptedException ex) {
+				Thread.currentThread().interrupt();
+			}
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("noAutoRenewContainer");
+		container.start();
+		try {
+			assertThat(listenerEntered.await(10, TimeUnit.SECONDS)).isTrue();
+			// Processing stays in flight for several renewal intervals; without the opt-in
+			// the container must not send any RENEW (synchronous dispatch is unchanged).
+			Thread.sleep(900);
+			verify(mockConsumer, never()).acknowledge(record, AcknowledgeType.RENEW);
+			releaseListener.countDown();
+			await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+					verify(mockConsumer).acknowledge(record, AcknowledgeType.ACCEPT));
+		}
+		finally {
+			releaseListener.countDown();
+			container.stop();
+		}
+	}
+
+	@Test
+	void explicitModeAutoRenewAbandonsRecordWhoseRenewalFailedAndProcessesItsRedelivery() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock();
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+		ShareConsumer<String, String> mockConsumer = mock();
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		ConsumerRecord<String, String> slow = shareRecord(0, 0L, (short) 1, "slow");
+		ConsumerRecord<String, String> lost = shareRecord(1, 0L, (short) 1, "lost");
+		ExplicitModeShareConsumer client = new ExplicitModeShareConsumer(mockConsumer, List.of(slow, lost));
+		// The renewal of the record on partition 1 fails, as when its lock already expired
+		client.failingPartitions = Set.of(1);
+
+		List<String> processed = Collections.synchronizedList(new ArrayList<>());
+		CountDownLatch releaseSlow = new CountDownLatch(1);
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.EXPLICIT);
+		containerProperties.setShareAutoRenewLocks(true);
+		containerProperties.setShareAcknowledgmentTimeout(Duration.ofMillis(400));
+		containerProperties.setMessageListener((MessageListener<String, String>) rec -> {
+			processed.add(rec.value() + "/" + rec.deliveryCount().orElse((short) 0));
+			if ("slow".equals(rec.value())) {
+				try {
+					releaseSlow.await(10, TimeUnit.SECONDS);
+				}
+				catch (InterruptedException ex) {
+					Thread.currentThread().interrupt();
+				}
+			}
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("failedRenewalContainer");
+		container.start();
+		try {
+			await().atMost(Duration.ofSeconds(10)).until(() -> client.acknowledgments.contains("RENEW@1:0"));
+			await().atMost(Duration.ofSeconds(10)).until(() ->
+					Collections.frequency(client.acknowledgments, "RENEW@0:0") >= 2);
+			client.fetchable.add(shareRecord(1, 0L, (short) 2, "lost"));
+			releaseSlow.countDown();
+
+			await().atMost(Duration.ofSeconds(10)).until(() -> client.acknowledgments.contains("ACCEPT@1:0"));
+			assertThat(processed).containsExactly("slow/1", "lost/2");
+			assertThat(client.acknowledgments).contains("ACCEPT@0:0");
+			assertThat(client.violations).isEmpty();
+		}
+		finally {
+			releaseSlow.countDown();
+			container.stop();
+		}
+	}
+
+	@Test
+	void explicitModeAutoRenewRejectsUndeserializableRecordPolledAfterRenewal() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock();
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+		ShareConsumer<String, String> mockConsumer = mock();
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		ConsumerRecord<String, String> record = shareRecord(0L, (short) 1, "payload");
+		ExplicitModeShareConsumer client = new ExplicitModeShareConsumer(mockConsumer, List.of(record));
+		client.pollErrorAfterCommit = new RecordDeserializationException(
+				RecordDeserializationException.DeserializationExceptionOrigin.VALUE,
+				new TopicPartition("test-topic", 0), 5L, ConsumerRecord.NO_TIMESTAMP, TimestampType.NO_TIMESTAMP_TYPE,
+				null, null, new RecordHeaders(), "cannot deserialize", new IllegalArgumentException("bad payload"));
+
+		CountDownLatch releaseListener = new CountDownLatch(1);
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.EXPLICIT);
+		containerProperties.setShareAutoRenewLocks(true);
+		containerProperties.setShareAcknowledgmentTimeout(Duration.ofMillis(400));
+		containerProperties.setMessageListener((MessageListener<String, String>) rec -> {
+			try {
+				releaseListener.await(10, TimeUnit.SECONDS);
+			}
+			catch (InterruptedException ex) {
+				Thread.currentThread().interrupt();
+			}
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("undeserializableAfterRenewalContainer");
+		container.start();
+		try {
+			await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+					verify(mockConsumer).acknowledge("test-topic", 0, 5L, AcknowledgeType.REJECT));
+			releaseListener.countDown();
+			await().atMost(Duration.ofSeconds(10)).until(() -> client.acknowledgments.contains("ACCEPT@0:0"));
+			assertThat(client.violations).isEmpty();
+		}
+		finally {
+			releaseListener.countDown();
+			container.stop();
+		}
+	}
+
+	@Test
+	void explicitModeAutoRenewDoesNotPollOrAcknowledgeWhileRenewalsCannotBeSent() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock();
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+		ShareConsumer<String, String> mockConsumer = mock();
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		ConsumerRecord<String, String> record = shareRecord(0L, (short) 1, "payload");
+		ExplicitModeShareConsumer client = new ExplicitModeShareConsumer(mockConsumer, List.of(record));
+		// Sending the first renewal times out, so the lock of the record cannot be trusted anymore
+		client.commitsToFail.set(1);
+
+		AtomicInteger invocations = new AtomicInteger();
+		CountDownLatch releaseFirstDelivery = new CountDownLatch(1);
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.EXPLICIT);
+		containerProperties.setShareAutoRenewLocks(true);
+		containerProperties.setShareAcknowledgmentTimeout(Duration.ofMillis(400));
+		containerProperties.setMessageListener((MessageListener<String, String>) rec -> {
+			if (invocations.incrementAndGet() == 1) {
+				try {
+					releaseFirstDelivery.await(10, TimeUnit.SECONDS);
+				}
+				catch (InterruptedException ex) {
+					Thread.currentThread().interrupt();
+				}
+			}
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("unconfirmedRenewalContainer");
+		container.start();
+		try {
+			await().atMost(Duration.ofSeconds(10)).until(() -> client.acknowledgments.contains("RENEW@0:0"));
+			releaseFirstDelivery.countDown();
+			// The first delivery is abandoned; the record returned later is processed as a new delivery
+			await().atMost(Duration.ofSeconds(10)).until(() -> client.acknowledgments.contains("ACCEPT@0:0"));
+			assertThat(invocations.get()).isEqualTo(2);
+			assertThat(Collections.frequency(client.acknowledgments, "ACCEPT@0:0")).isEqualTo(1);
+			assertThat(client.violations).isEmpty();
+		}
+		finally {
+			releaseFirstDelivery.countDown();
+			container.stop();
+		}
+	}
+
+	@Test
+	void explicitModeAutoRenewDelegatesToRecovererOnError() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock();
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+		ShareConsumer<String, String> mockConsumer = mock();
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("test-topic", 0, 0L, "key", "value");
+		ConsumerRecords<String, String> records = new ConsumerRecords<>(
+				Map.of(new TopicPartition("test-topic", 0), List.of(record)), Map.of());
+		AtomicBoolean firstPoll = new AtomicBoolean(true);
+		given(mockConsumer.poll(any())).willAnswer(invocation -> {
+			if (firstPoll.compareAndSet(true, false)) {
+				return records;
+			}
+			Thread.sleep(50);
+			return ConsumerRecords.empty();
+		});
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.EXPLICIT);
+		containerProperties.setShareAutoRenewLocks(true);
+		containerProperties.setMessageListener((MessageListener<String, String>) rec -> {
+			throw new IllegalStateException("boom");
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("autoRenewErrorContainer");
+		container.start();
+		try {
+			// The default recoverer rejects the record, as in the synchronous dispatch
+			await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+					verify(mockConsumer).acknowledge(record, AcknowledgeType.REJECT));
+			verify(mockConsumer, never()).acknowledge(record, AcknowledgeType.ACCEPT);
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	void explicitModeAutoRenewDispatchesInOrderAndRenewsQueuedRecords() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock();
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+		ShareConsumer<String, String> mockConsumer = mock();
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		ConsumerRecord<String, String> first = new ConsumerRecord<>("test-topic", 0, 0L, "key", "first");
+		ConsumerRecord<String, String> second = new ConsumerRecord<>("test-topic", 0, 1L, "key", "second");
+		ExplicitModeShareConsumer client = new ExplicitModeShareConsumer(mockConsumer, List.of(first, second));
+
+		List<String> processed = Collections.synchronizedList(new ArrayList<>());
+		CountDownLatch releaseFirst = new CountDownLatch(1);
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.EXPLICIT);
+		containerProperties.setShareAutoRenewLocks(true);
+		containerProperties.setShareAcknowledgmentTimeout(Duration.ofMillis(400));
+		containerProperties.setMessageListener((MessageListener<String, String>) rec -> {
+			processed.add(rec.value());
+			if ("first".equals(rec.value())) {
+				try {
+					releaseFirst.await(10, TimeUnit.SECONDS);
+				}
+				catch (InterruptedException ex) {
+					Thread.currentThread().interrupt();
+				}
+			}
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("autoRenewOrderContainer");
+		container.start();
+		try {
+			// The second record waits in the queue while the first is processed, so its lock is renewed too
+			await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+					verify(mockConsumer, atLeastOnce()).acknowledge(second, AcknowledgeType.RENEW));
+			assertThat(processed).containsExactly("first");
+			releaseFirst.countDown();
+			await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+					verify(mockConsumer).acknowledge(second, AcknowledgeType.ACCEPT));
+			assertThat(processed).containsExactly("first", "second");
+			InOrder inOrder = inOrder(mockConsumer);
+			inOrder.verify(mockConsumer).acknowledge(first, AcknowledgeType.ACCEPT);
+			inOrder.verify(mockConsumer).acknowledge(second, AcknowledgeType.ACCEPT);
+			assertThat(client.violations).isEmpty();
+		}
+		finally {
+			releaseFirst.countDown();
+			container.stop();
+		}
+	}
+
+	@Test
+	void explicitModeAutoRenewCompletesInFlightRecordOnStop() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock();
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+		ShareConsumer<String, String> mockConsumer = mock();
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		ConsumerRecord<String, String> inFlight = new ConsumerRecord<>("test-topic", 0, 0L, "key", "in-flight");
+		ConsumerRecord<String, String> queued = new ConsumerRecord<>("test-topic", 0, 1L, "key", "queued");
+		ConsumerRecords<String, String> records = new ConsumerRecords<>(
+				Map.of(new TopicPartition("test-topic", 0), List.of(inFlight, queued)), Map.of());
+		AtomicBoolean firstPoll = new AtomicBoolean(true);
+		given(mockConsumer.poll(any())).willAnswer(invocation -> {
+			if (firstPoll.compareAndSet(true, false)) {
+				return records;
+			}
+			Thread.sleep(50);
+			return ConsumerRecords.empty();
+		});
+
+		CountDownLatch listenerEntered = new CountDownLatch(1);
+		CountDownLatch releaseListener = new CountDownLatch(1);
+		List<String> processed = Collections.synchronizedList(new ArrayList<>());
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.EXPLICIT);
+		containerProperties.setShareAutoRenewLocks(true);
+		containerProperties.setMessageListener((MessageListener<String, String>) rec -> {
+			processed.add(rec.value());
+			listenerEntered.countDown();
+			try {
+				releaseListener.await(10, TimeUnit.SECONDS);
+			}
+			catch (InterruptedException ex) {
+				Thread.currentThread().interrupt();
+			}
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("autoRenewStopContainer");
+		container.start();
+		CompletableFuture<Void> stopFuture = null;
+		try {
+			assertThat(listenerEntered.await(10, TimeUnit.SECONDS)).isTrue();
+			stopFuture = CompletableFuture.runAsync(container::stop);
+			await().atMost(Duration.ofSeconds(10)).until(() -> !container.isRunning());
+			releaseListener.countDown();
+			stopFuture.get(10, TimeUnit.SECONDS);
+
+			assertThat(processed).containsExactly("in-flight");
+			InOrder inOrder = inOrder(mockConsumer);
+			inOrder.verify(mockConsumer).acknowledge(inFlight, AcknowledgeType.ACCEPT);
+			inOrder.verify(mockConsumer).acknowledge(queued, AcknowledgeType.RELEASE);
+			inOrder.verify(mockConsumer).close();
+			verify(mockConsumer, never()).acknowledge(queued, AcknowledgeType.ACCEPT);
+		}
+		finally {
+			releaseListener.countDown();
+			if (stopFuture == null) {
+				container.stop();
+			}
+		}
+	}
+
+	@Test
 	@SuppressWarnings("unchecked")
 	void renewRestartsTheAcknowledgmentTimeout() throws Exception {
 		ShareConsumerFactory<String, String> mockFactory = mock();
@@ -1453,6 +1880,18 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		}
 	}
 
+	private static ConsumerRecord<String, String> shareRecord(long offset, short deliveryCount, String value) {
+		return shareRecord(0, offset, deliveryCount, value);
+	}
+
+	private static ConsumerRecord<String, String> shareRecord(int partition, long offset, short deliveryCount,
+			String value) {
+
+		return new ConsumerRecord<>("test-topic", partition, offset, ConsumerRecord.NO_TIMESTAMP,
+				TimestampType.NO_TIMESTAMP_TYPE, ConsumerRecord.NULL_SIZE, ConsumerRecord.NULL_SIZE, "key", value,
+				new RecordHeaders(), Optional.empty(), Optional.of(deliveryCount));
+	}
+
 	private static ConsumerRecord<String, String> deliveredRecord(short deliveryCount) {
 		return new ConsumerRecord<>("test-topic", 0, 0L, ConsumerRecord.NO_TIMESTAMP, TimestampType.NO_TIMESTAMP_TYPE,
 				ConsumerRecord.NULL_SIZE, ConsumerRecord.NULL_SIZE, "key", "value", new RecordHeaders(),
@@ -1576,6 +2015,186 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		ShareAcknowledgment ack = captured.get();
 		assertThat(ack).isNotNull();
 		return ack;
+	}
+
+	/**
+	 * Answers a mock share consumer the way the client behaves in explicit acknowledgement mode.
+	 * Acknowledgments are sent on poll(), commitSync() or commitAsync(). A record with a RENEW
+	 * sent cannot be acknowledged until poll() returns it; the renewal completes when sent by
+	 * commitSync(), otherwise on the next poll(), and a completed renewal is returned by the
+	 * next poll() without new records being fetched. A failed renewal is reported by
+	 * commitSync() for the partition and the record is no longer acquired. A commitSync() that
+	 * fails leaves its renewals in progress for a while. Rule violations are recorded, including a
+	 * poll() that sends renewals or is called while renewals are in progress: the client then
+	 * acquires new records that it does not return until the renewals complete.
+	 */
+	private static final class ExplicitModeShareConsumer {
+
+		private final List<ConsumerRecord<String, String>> batch;
+
+		private final Map<String, ConsumerRecord<String, String>> acquired = new LinkedHashMap<>();
+
+		private final Map<String, AcknowledgeType> unsent = new LinkedHashMap<>();
+
+		private final Map<String, ConsumerRecord<String, String>> renewalsInProgress = new LinkedHashMap<>();
+
+		private final Map<String, ConsumerRecord<String, String>> renewalsOfFailedCommit = new LinkedHashMap<>();
+
+		private long failedCommitRenewalsCompleteAt;
+
+		private final Map<String, ConsumerRecord<String, String>> renewed = new LinkedHashMap<>();
+
+		private final Queue<ConsumerRecord<String, String>> fetchable = new ConcurrentLinkedQueue<>();
+
+		private final List<String> acknowledgments = Collections.synchronizedList(new ArrayList<>());
+
+		private final List<String> violations = Collections.synchronizedList(new ArrayList<>());
+
+		private volatile Set<Integer> failingPartitions = Set.of();
+
+		private final AtomicInteger commitsToFail = new AtomicInteger();
+
+		// Thrown by the first poll() after the next successful commitSync()
+		private volatile @Nullable RuntimeException pollErrorAfterCommit;
+
+		private @Nullable RuntimeException armedPollError;
+
+		private boolean polled;
+
+		ExplicitModeShareConsumer(ShareConsumer<String, String> consumer, List<ConsumerRecord<String, String>> batch) {
+			this.batch = batch;
+			given(consumer.poll(any())).willAnswer(invocation -> poll());
+			willAnswer(invocation -> {
+				acknowledge(invocation.getArgument(0), invocation.getArgument(1));
+				return null;
+			}).given(consumer).acknowledge(ArgumentMatchers.<ConsumerRecord<String, String>>any(),
+					any(AcknowledgeType.class));
+			lenient().doAnswer(invocation -> commitSync()).when(consumer).commitSync();
+			lenient().doAnswer(invocation -> {
+				send(false);
+				return null;
+			}).when(consumer).commitAsync();
+		}
+
+		private static String key(ConsumerRecord<String, String> record) {
+			return record.partition() + ":" + record.offset();
+		}
+
+		private synchronized void acknowledge(ConsumerRecord<String, String> record, AcknowledgeType type) {
+			String key = key(record);
+			if (!this.acquired.containsKey(key)) {
+				this.violations.add(type.name() + " for " + key + ", which cannot be acknowledged");
+				throw new IllegalStateException("The record cannot be acknowledged.");
+			}
+			this.unsent.put(key, type);
+			this.acknowledgments.add(type.name() + "@" + key);
+		}
+
+		private synchronized Set<Integer> send(boolean synchronous) {
+			Set<Integer> failed = new HashSet<>();
+			this.unsent.forEach((key, type) -> {
+				ConsumerRecord<String, String> record = this.acquired.remove(key);
+				if (type == AcknowledgeType.RENEW) {
+					if (this.failingPartitions.contains(record.partition())) {
+						failed.add(record.partition());
+					}
+					else if (synchronous) {
+						this.renewed.put(key, record);
+					}
+					else {
+						this.renewalsInProgress.put(key, record);
+					}
+				}
+			});
+			this.unsent.clear();
+			return failed;
+		}
+
+		private synchronized Map<TopicIdPartition, Optional<KafkaException>> commitSync() {
+			if (this.commitsToFail.getAndUpdate(count -> Math.max(0, count - 1)) > 0) {
+				send(false);
+				this.renewalsOfFailedCommit.putAll(this.renewalsInProgress);
+				this.renewalsInProgress.clear();
+				this.failedCommitRenewalsCompleteAt = System.currentTimeMillis() + 1000;
+				throw new org.apache.kafka.common.errors.TimeoutException("Timeout waiting for acknowledgements");
+			}
+			this.armedPollError = this.pollErrorAfterCommit;
+			this.pollErrorAfterCommit = null;
+			Map<TopicIdPartition, Optional<KafkaException>> result = new HashMap<>();
+			send(true).forEach(partition -> result.put(new TopicIdPartition(Uuid.ZERO_UUID, partition, "test-topic"),
+					Optional.of(new KafkaException("renewal failed"))));
+			return result;
+		}
+
+		private ConsumerRecords<String, String> poll() throws InterruptedException {
+			RuntimeException error;
+			synchronized (this) {
+				error = this.armedPollError;
+				this.armedPollError = null;
+			}
+			if (error != null) {
+				throw error;
+			}
+			ConsumerRecords<String, String> records = fetch();
+			if (records.isEmpty()) {
+				Thread.sleep(20);
+			}
+			return records;
+		}
+
+		private synchronized ConsumerRecords<String, String> fetch() {
+			if (!this.polled) {
+				this.polled = true;
+				return acquire(this.batch);
+			}
+			for (String key : this.acquired.keySet()) {
+				if (!this.unsent.containsKey(key)) {
+					this.violations.add("poll() with unacknowledged " + key);
+					throw new IllegalStateException("All records must be acknowledged in explicit acknowledgement mode.");
+				}
+			}
+			if (!this.renewalsOfFailedCommit.isEmpty()) {
+				if (System.currentTimeMillis() < this.failedCommitRenewalsCompleteAt) {
+					this.violations.add("poll() while renewals " + this.renewalsOfFailedCommit.keySet()
+							+ " are in progress acquires new records");
+				}
+				this.renewed.putAll(this.renewalsOfFailedCommit);
+				this.renewalsOfFailedCommit.clear();
+			}
+			// Renewals sent by the previous poll() complete now
+			this.renewed.putAll(this.renewalsInProgress);
+			this.renewalsInProgress.clear();
+			send(false);
+			if (!this.renewalsInProgress.isEmpty()) {
+				this.violations.add("poll() sent renewals " + this.renewalsInProgress.keySet()
+						+ " and acquires new records while they are in progress");
+			}
+			if (!this.renewed.isEmpty()) {
+				List<ConsumerRecord<String, String>> returned = new ArrayList<>(this.renewed.values());
+				this.renewed.clear();
+				return acquire(returned);
+			}
+			if (this.renewalsInProgress.isEmpty() && this.acquired.isEmpty() && !this.fetchable.isEmpty()) {
+				List<ConsumerRecord<String, String>> fetched = new ArrayList<>(this.fetchable);
+				this.fetchable.clear();
+				return acquire(fetched);
+			}
+			return ConsumerRecords.empty();
+		}
+
+		private ConsumerRecords<String, String> acquire(List<ConsumerRecord<String, String>> records) {
+			if (records.isEmpty()) {
+				return ConsumerRecords.empty();
+			}
+			Map<TopicPartition, List<ConsumerRecord<String, String>>> byPartition = new LinkedHashMap<>();
+			records.forEach(record -> {
+				this.acquired.put(key(record), record);
+				byPartition.computeIfAbsent(new TopicPartition(record.topic(), record.partition()),
+						partition -> new ArrayList<>()).add(record);
+			});
+			return new ConsumerRecords<>(byPartition, Map.of());
+		}
+
 	}
 
 }
