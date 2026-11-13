@@ -106,6 +106,8 @@ They have no effect if you have provided `Serializer` and `Deserializer` instanc
 
 * `JacksonJsonSerializer.ADD_TYPE_INFO_HEADERS` (default `true`): You can set it to `false` to disable this feature on the `JacksonJsonSerializer` (sets the `addTypeInfo` property).
 * `JacksonJsonSerializer.TYPE_MAPPINGS` (default `empty`): See xref:kafka/serdes.adoc#serdes-mapping-types[Mapping Types].
+* `JacksonJsonSerializer.SERIALIZATION_FEATURES_ENABLE` (default `empty`): Comma-separated Jackson 3 `SerializationFeature` names to enable (`spring.json.serialization.features.enable`).
+* `JacksonJsonSerializer.SERIALIZATION_FEATURES_DISABLE` (default `empty`): Comma-separated Jackson 3 `SerializationFeature` names to disable (`spring.json.serialization.features.disable`).
 * `JacksonJsonDeserializer.USE_TYPE_INFO_HEADERS` (default `true`): You can set it to `false` to ignore headers set by the serializer.
 * `JacksonJsonDeserializer.REMOVE_TYPE_INFO_HEADERS` (default `true`): You can set it to `false` to retain headers set by the serializer.
 * `JacksonJsonDeserializer.KEY_DEFAULT_TYPE`: Fallback type for deserialization of keys if no header information is present.
@@ -113,6 +115,8 @@ They have no effect if you have provided `Serializer` and `Deserializer` instanc
 * `JacksonJsonDeserializer.TRUSTED_PACKAGES` (default `java.util`, `java.lang`): Comma-delimited list of package patterns allowed for deserialization.
 `*` means deserializing all.
 * `JacksonJsonDeserializer.TYPE_MAPPINGS` (default `empty`): See xref:kafka/serdes.adoc#serdes-mapping-types[Mapping Types].
+* `JacksonJsonDeserializer.DESERIALIZATION_FEATURES_ENABLE` (default `empty`): Comma-separated Jackson 3 `DeserializationFeature` names to enable (`spring.json.deserialization.features.enable`).
+* `JacksonJsonDeserializer.DESERIALIZATION_FEATURES_DISABLE` (default `empty`): Comma-separated Jackson 3 `DeserializationFeature` names to disable (`spring.json.deserialization.features.disable`).
 * `JacksonJsonDeserializer.KEY_TYPE_METHOD` (default `empty`): See xref:kafka/serdes.adoc#serdes-type-methods[Using Methods to Determine Types].
 * `JacksonJsonDeserializer.VALUE_TYPE_METHOD` (default `empty`): See xref:kafka/serdes.adoc#serdes-type-methods[Using Methods to Determine Types].
 
@@ -120,6 +124,27 @@ Starting with version 2.2, the type information headers (if added by the seriali
 You can revert to the previous behavior by setting the `removeTypeHeaders` property to `false`, either directly on the deserializer or with the configuration property described earlier.
 
 See also xref:tips.adoc#tip-json[Customizing the JacksonJsonSerializer and JacksonJsonDeserializer].
+
+Starting with version 4.2, Jackson 3 serialization and deserialization features can be configured through Kafka properties, for example:
+
+[source,yaml]
+----
+spring:
+  kafka:
+    consumer:
+      properties:
+        spring.json.deserialization.features.disable: FAIL_ON_NULL_FOR_PRIMITIVES,FAIL_ON_UNKNOWN_PROPERTIES
+    producer:
+      properties:
+        spring.json.serialization.features.enable: INDENT_OUTPUT
+----
+
+Use case-sensitive enum names, separated by commas; surrounding whitespace is ignored.
+An unknown name, a non-string value, or the same feature in both lists fails configuration.
+Empty lists preserve the mapper's defaults.
+These options customize immutable readers and writers; they do not mutate a supplied `JsonMapper`.
+They apply to default types, header-selected types, type resolvers, and `copyWithType()` copies.
+Only the Jackson 3 serializers support these properties; Jackson 2 serializers are unchanged.
 
 IMPORTANT: Starting with version 2.8, if you construct the serializer or deserializer programmatically as shown in xref:kafka/serdes.adoc#prog-json[Programmatic Construction], the above properties will be applied by the factories, as long as you have not set any properties explicitly (using `set*()` methods or using the fluent API).
 Previously, when creating programmatically, the configuration properties were never applied; this is still the case if you explicitly set properties on the object directly.
