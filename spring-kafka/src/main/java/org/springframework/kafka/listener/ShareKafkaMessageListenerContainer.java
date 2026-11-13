@@ -9,9 +9,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -434,6 +437,10 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		// Queue for acknowledgments submitted from listener threads to be applied on the consumer thread
 		private final ConcurrentLinkedQueue<PendingAcknowledgment<K, V>> acknowledgmentQueue = new ConcurrentLinkedQueue<>();
 
+		// Acknowledgments the client rejected while a renewal of their record was in progress, retried
+		// in order before newer acknowledgments. Only accessed on the consumer thread.
+		private final List<PendingAcknowledgment<K, V>> deferredAcknowledgments = new ArrayList<>();
+
 		private final boolean isManualAckMode;
 
 		private final boolean syncShareCommits;
@@ -606,6 +613,11 @@ public class ShareKafkaMessageListenerContainer<K, V>
 
 		private void processRecords(ConsumerRecords<K, V> records) {
 			for (var record : records) {
+				if (this.isManualAckMode && isRenewedRecordReturned(record)) {
+					// After a RENEW is sent, poll() returns the record again; it is still being
+					// processed by the listener, so it must not be dispatched a second time.
+					continue;
+				}
 				ShareConsumerAcknowledgment acknowledgment = null;
 
 				try {
@@ -640,6 +652,48 @@ public class ShareKafkaMessageListenerContainer<K, V>
 				}
 			}
 			commitAcknowledgments();
+		}
+
+		/**
+		 * Determine whether a polled record is a record still pending acknowledgment that poll()
+		 * returned after a renewal. A pending record returned with a higher delivery count was
+		 * acquired again (for example, because its lock expired before it was renewed); the
+		 * previous attempt is retired so that the record is dispatched as a new delivery.
+		 * @param record the polled record.
+		 * @return true if the record is a renewal return and must not be dispatched.
+		 */
+		private boolean isRenewedRecordReturned(ConsumerRecord<K, V> record) {
+			for (ConsumerRecord<K, V> pending : this.pendingAcknowledgments.keySet()) {
+				if (pending.offset() == record.offset() && pending.partition() == record.partition()
+						&& pending.topic().equals(record.topic())) {
+					if (isRedelivery(pending, record)) {
+						retire(pending);
+						return false;
+					}
+					return true;
+				}
+			}
+			return false;
+		}
+
+		private static boolean isRedelivery(ConsumerRecord<?, ?> pending, ConsumerRecord<?, ?> polled) {
+			Optional<Short> pendingCount = pending.deliveryCount();
+			Optional<Short> polledCount = polled.deliveryCount();
+			return pendingCount.isPresent() && polledCount.isPresent() && polledCount.get() > pendingCount.get();
+		}
+
+		private void retire(ConsumerRecord<K, V> record) {
+			this.logger.warn(() -> "Record was redelivered while still pending acknowledgment, probably because its "
+					+ "acquisition lock expired; acknowledgments for the previous delivery will be discarded: " + record);
+			ShareConsumerAcknowledgment acknowledgment = this.pendingAcknowledgments.remove(record);
+			this.acknowledgmentTimestamps.remove(record);
+			if (acknowledgment != null) {
+				// After this, the acknowledgment no longer queues anything, so removing what it
+				// queued so far discards every acknowledgment for the previous delivery.
+				acknowledgment.retire();
+			}
+			this.deferredAcknowledgments.removeIf(ack -> ack.record() == record);
+			this.acknowledgmentQueue.removeIf(ack -> ack.record() == record);
 		}
 
 		private void handleProcessingError(ConsumerRecord<K, V> record,
@@ -719,11 +773,42 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		 * This ensures all consumer access happens on the consumer thread.
 		 */
 		private void processQueuedAcknowledgments() {
-			PendingAcknowledgment<K, V> pendingAck;
-			while ((pendingAck = this.acknowledgmentQueue.poll()) != null) {
-				final PendingAcknowledgment<K, V> ack = pendingAck;
+			// Deferred acknowledgments go first so that, per record, acknowledgments are applied in the
+			// order they were made; while one is deferred, later ones for the same record wait behind it.
+			List<PendingAcknowledgment<K, V>> toProcess = new ArrayList<>(this.deferredAcknowledgments);
+			this.deferredAcknowledgments.clear();
+			PendingAcknowledgment<K, V> queued;
+			while ((queued = this.acknowledgmentQueue.poll()) != null) {
+				toProcess.add(queued);
+			}
+			Set<ConsumerRecord<K, V>> deferredRecords = Collections.newSetFromMap(new IdentityHashMap<>());
+			for (PendingAcknowledgment<K, V> ack : toProcess) {
+				if (deferredRecords.contains(ack.record())) {
+					this.deferredAcknowledgments.add(ack);
+					continue;
+				}
+				if (ack.type() == AcknowledgeType.RENEW && !this.pendingAcknowledgments.containsKey(ack.record())) {
+					// The record was already acknowledged terminally; a late RENEW must not replace that
+					// acknowledgment in the client, which keeps the last type set for a record.
+					this.logger.debug(() -> "Discarding RENEW for a record that is no longer pending: " + ack.record());
+					continue;
+				}
 				try {
-					this.consumer.acknowledge(ack.record(), ack.type());
+					try {
+						this.consumer.acknowledge(ack.record(), ack.type());
+					}
+					catch (IllegalStateException ex) {
+						if (!this.pendingAcknowledgments.containsKey(ack.record())) {
+							throw ex;
+						}
+						// Typically a RENEW for this record has been sent and poll() has not returned the
+						// record yet, so the client does not accept another acknowledgment for it.
+						this.logger.debug(() -> "Record could not be acknowledged with " + ack.type()
+								+ "; retrying after poll: " + ack.record());
+						this.deferredAcknowledgments.add(ack);
+						deferredRecords.add(ack.record());
+						continue;
+					}
 					ShareConsumerAcknowledgment acknowledgment = this.pendingAcknowledgments.get(ack.record());
 					if (acknowledgment != null) {
 						acknowledgment.notifyAcknowledged(ack.type());
@@ -774,12 +859,16 @@ public class ShareKafkaMessageListenerContainer<K, V>
 
 		private void wrapUp(@Nullable Throwable throwable) {
 			publishConsumerStoppingEvent(this.consumer);
-			if (!this.acknowledgmentQueue.isEmpty()) {
+			if (!this.acknowledgmentQueue.isEmpty() || !this.deferredAcknowledgments.isEmpty()) {
 				// Acknowledgments queued after the last drain - the listener acknowledged during the
 				// final batch, or from another thread - would otherwise be discarded with the consumer
 				// and their records redelivered.
 				processQueuedAcknowledgments();
 				commitAcknowledgments();
+			}
+			if (!this.deferredAcknowledgments.isEmpty()) {
+				this.logger.warn(() -> "Discarding " + this.deferredAcknowledgments.size() + " acknowledgment(s) "
+						+ "that could not be applied before the consumer closed; the records will be redelivered");
 			}
 			this.consumer.close();
 			this.logger.info(() -> this.consumerGroupId + ": Consumer stopped");
@@ -799,6 +888,9 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			private final ConsumerRecord<K, V> record;
 
 			private final AtomicReference<@Nullable AcknowledgeType> acknowledgmentType = new AtomicReference<>();
+
+			// Set when the record was redelivered while this delivery was pending; guarded by this
+			private boolean retired;
 
 			ShareConsumerAcknowledgment(ConsumerRecord<K, V> record) {
 				this.record = record;
@@ -855,8 +947,19 @@ public class ShareKafkaMessageListenerContainer<K, V>
 				}
 
 				// Queue the acknowledgment to be processed on the consumer thread
-				ShareListenerConsumer.this.acknowledgmentQueue.offer(
-						new PendingAcknowledgment<>(this.record, type));
+				synchronized (this) {
+					if (this.retired) {
+						ShareListenerConsumer.this.logger.debug(() -> "Discarding " + type
+								+ " for a delivery superseded by a redelivery: " + this.record);
+						return;
+					}
+					ShareListenerConsumer.this.acknowledgmentQueue.offer(
+							new PendingAcknowledgment<>(this.record, type));
+				}
+			}
+
+			synchronized void retire() {
+				this.retired = true;
 			}
 
 			void notifyAcknowledged(AcknowledgeType type) {
