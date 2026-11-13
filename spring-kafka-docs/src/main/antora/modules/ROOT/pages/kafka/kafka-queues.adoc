@@ -714,6 +714,10 @@ In `ShareAckMode.MANUAL`, the container enforces the following constraints:
 * **Poll Blocking**: Subsequent polls are blocked until all records from the previous poll are acknowledged.
 * **Terminal Acknowledgment**: Each record must receive exactly one terminal acknowledgment (`acknowledge()`, `release()`, or `reject()`).
 You may call `renew()` zero or more times before that to extend the acquisition lock.
+* **Renewal in Progress**: Once a renewal has been sent to the broker, the Kafka client does not accept another acknowledgment for the record until the next poll returns it again.
+The container does not dispatch that returned record to the listener a second time, and it applies acknowledgments made in the meantime after the poll.
+If the lock expired before the renewal reached the broker, the record may instead be delivered again with a higher delivery count; the container then dispatches it to the listener as a new delivery and discards any later acknowledgments for the previous delivery.
+If the record is never returned, the container keeps retrying the acknowledgment and the <<share-acknowledgment-timeout,acknowledgment timeout>> warning is logged once per timeout interval.
 * **Error Handling**: If processing throws an exception, the outcome is determined by the <<share-error-handling,ShareConsumerRecordRecoverer>> (default: `REJECT`).
 
 [WARNING]

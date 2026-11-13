@@ -10,10 +10,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
@@ -24,6 +26,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.ShareConsumer;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.record.TimestampType;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
@@ -1148,6 +1152,275 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 			captured.get().acknowledge();
 
 			await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(timestamps).isEmpty());
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	void renewedRecordReturnedByPollIsNotDispatchedAgain() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock();
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+		ShareConsumer<String, String> mockConsumer = mock();
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("test-topic", 0, 0L, "key", "value");
+		ConsumerRecord<String, String> renewed = new ConsumerRecord<>("test-topic", 0, 0L, "key", "value");
+		TopicPartition partition = new TopicPartition("test-topic", 0);
+		AtomicInteger polls = new AtomicInteger();
+		CountDownLatch renewedReturned = new CountDownLatch(1);
+		given(mockConsumer.poll(any())).willAnswer(invocation -> {
+			int poll = polls.incrementAndGet();
+			if (poll == 1) {
+				return new ConsumerRecords<>(Map.of(partition, List.of(record)), Map.of());
+			}
+			if (poll == 2) {
+				renewedReturned.countDown();
+				return new ConsumerRecords<>(Map.of(partition, List.of(renewed)), Map.of());
+			}
+			Thread.sleep(50);
+			return ConsumerRecords.empty();
+		});
+
+		AtomicInteger invocations = new AtomicInteger();
+		AtomicReference<ShareAcknowledgment> captured = new AtomicReference<>();
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.MANUAL);
+		containerProperties.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>)
+				(rec, acknowledgment, consumer) -> {
+					invocations.incrementAndGet();
+					captured.set(acknowledgment);
+				});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("renewedRecordContainer");
+		container.start();
+		try {
+			assertThat(renewedReturned.await(10, TimeUnit.SECONDS)).isTrue();
+			await().atMost(Duration.ofSeconds(10)).until(() -> polls.get() > 2);
+			assertThat(invocations.get()).isEqualTo(1);
+
+			captured.get().acknowledge();
+
+			await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+					verify(mockConsumer).acknowledge(record, AcknowledgeType.ACCEPT));
+			assertThat(invocations.get()).isEqualTo(1);
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	void deferredRenewIsNotAppliedAfterLaterTerminalAcknowledgment() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock();
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+		ShareConsumer<String, String> mockConsumer = mock();
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("test-topic", 0, 0L, "key", "value");
+		ConsumerRecords<String, String> records = new ConsumerRecords<>(
+				Map.of(new TopicPartition("test-topic", 0), List.of(record)), Map.of());
+		AtomicBoolean firstPoll = new AtomicBoolean(true);
+		given(mockConsumer.poll(any())).willAnswer(invocation -> {
+			if (firstPoll.compareAndSet(true, false)) {
+				return records;
+			}
+			Thread.sleep(50);
+			return ConsumerRecords.empty();
+		});
+
+		AtomicReference<ShareAcknowledgment> captured = new AtomicReference<>();
+		List<AcknowledgeType> applied = Collections.synchronizedList(new ArrayList<>());
+		AtomicBoolean rejectRenew = new AtomicBoolean(true);
+		willAnswer(invocation -> {
+			AcknowledgeType type = invocation.getArgument(1);
+			if (type == AcknowledgeType.RENEW && rejectRenew.compareAndSet(true, false)) {
+				// The listener completes processing while the consumer thread is applying the renewal
+				captured.get().acknowledge();
+				throw new IllegalStateException("The record cannot be acknowledged.");
+			}
+			applied.add(type);
+			return null;
+		}).given(mockConsumer).acknowledge(eq(record), any(AcknowledgeType.class));
+
+		CountDownLatch latch = new CountDownLatch(1);
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.MANUAL);
+		containerProperties.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>)
+				(rec, acknowledgment, consumer) -> {
+					captured.set(acknowledgment);
+					latch.countDown();
+				});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("deferredRenewContainer");
+		container.start();
+		try {
+			assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+			Object listenerConsumer = KafkaTestUtils.getPropertyValue(container, "consumers", List.class).get(0);
+			Map<ConsumerRecord<?, ?>, ?> pending =
+					KafkaTestUtils.getPropertyValue(listenerConsumer, "pendingAcknowledgments", Map.class);
+
+			captured.get().renew();
+
+			await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(pending).isEmpty());
+			Thread.sleep(200);
+			assertThat(applied).containsExactly(AcknowledgeType.RENEW, AcknowledgeType.ACCEPT);
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	void pendingRecordRedeliveredWithHigherDeliveryCountIsDispatchedAsNewDelivery() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock();
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+		ShareConsumer<String, String> mockConsumer = mock();
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		ConsumerRecord<String, String> firstDelivery = deliveredRecord((short) 1);
+		ConsumerRecord<String, String> redelivery = deliveredRecord((short) 2);
+		TopicPartition partition = new TopicPartition("test-topic", 0);
+		AtomicBoolean firstPoll = new AtomicBoolean(true);
+		CountDownLatch releaseRedelivery = new CountDownLatch(1);
+		AtomicBoolean redelivered = new AtomicBoolean();
+		given(mockConsumer.poll(any())).willAnswer(invocation -> {
+			if (firstPoll.compareAndSet(true, false)) {
+				return new ConsumerRecords<>(Map.of(partition, List.of(firstDelivery)), Map.of());
+			}
+			if (releaseRedelivery.getCount() == 0 && redelivered.compareAndSet(false, true)) {
+				return new ConsumerRecords<>(Map.of(partition, List.of(redelivery)), Map.of());
+			}
+			Thread.sleep(50);
+			return ConsumerRecords.empty();
+		});
+		// The lock of the first delivery expired, so the client rejects its acknowledgment
+		AtomicInteger firstDeliveryAttempts = new AtomicInteger();
+		willAnswer(invocation -> {
+			firstDeliveryAttempts.incrementAndGet();
+			throw new IllegalStateException("The record cannot be acknowledged.");
+		}).given(mockConsumer).acknowledge(firstDelivery, AcknowledgeType.ACCEPT);
+
+		List<ShareAcknowledgment> acknowledgments = Collections.synchronizedList(new ArrayList<>());
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.MANUAL);
+		containerProperties.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>)
+				(rec, acknowledgment, consumer) -> acknowledgments.add(acknowledgment));
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("redeliveryContainer");
+		container.start();
+		try {
+			await().atMost(Duration.ofSeconds(10)).until(() -> acknowledgments.size() == 1);
+			acknowledgments.get(0).acknowledge();
+			await().atMost(Duration.ofSeconds(10)).until(() -> firstDeliveryAttempts.get() > 0);
+
+			releaseRedelivery.countDown();
+
+			await().atMost(Duration.ofSeconds(10)).until(() -> acknowledgments.size() == 2);
+			Object listenerConsumer = KafkaTestUtils.getPropertyValue(container, "consumers", List.class).get(0);
+			Map<ConsumerRecord<?, ?>, ?> pending =
+					KafkaTestUtils.getPropertyValue(listenerConsumer, "pendingAcknowledgments", Map.class);
+			assertThat(pending.keySet()).containsExactly(redelivery);
+			assertThat(KafkaTestUtils.getPropertyValue(listenerConsumer, "deferredAcknowledgments", List.class))
+					.isEmpty();
+			int attemptsAfterRetirement = firstDeliveryAttempts.get();
+
+			acknowledgments.get(1).acknowledge();
+
+			await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+					verify(mockConsumer).acknowledge(redelivery, AcknowledgeType.ACCEPT));
+			await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(pending).isEmpty());
+			assertThat(firstDeliveryAttempts.get()).isEqualTo(attemptsAfterRetirement);
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	private static ConsumerRecord<String, String> deliveredRecord(short deliveryCount) {
+		return new ConsumerRecord<>("test-topic", 0, 0L, ConsumerRecord.NO_TIMESTAMP, TimestampType.NO_TIMESTAMP_TYPE,
+				ConsumerRecord.NULL_SIZE, ConsumerRecord.NULL_SIZE, "key", "value", new RecordHeaders(),
+				Optional.empty(), Optional.of(deliveryCount));
+	}
+
+	@Test
+	void acknowledgmentRejectedDuringRenewalIsRetriedAfterPoll() throws Exception {
+		ShareConsumerFactory<String, String> mockFactory = mock();
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+		ShareConsumer<String, String> mockConsumer = mock();
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		ConsumerRecord<String, String> record = new ConsumerRecord<>("test-topic", 0, 0L, "key", "value");
+		ConsumerRecords<String, String> records = new ConsumerRecords<>(
+				Map.of(new TopicPartition("test-topic", 0), List.of(record)), Map.of());
+		List<String> events = Collections.synchronizedList(new ArrayList<>());
+		AtomicBoolean firstPoll = new AtomicBoolean(true);
+		given(mockConsumer.poll(any())).willAnswer(invocation -> {
+			events.add("poll");
+			if (firstPoll.compareAndSet(true, false)) {
+				return records;
+			}
+			Thread.sleep(50);
+			return ConsumerRecords.empty();
+		});
+		AtomicBoolean rejectAccept = new AtomicBoolean(true);
+		willAnswer(invocation -> {
+			if (rejectAccept.compareAndSet(true, false)) {
+				events.add("accept-rejected");
+				throw new IllegalStateException("The record cannot be acknowledged.");
+			}
+			events.add("accept");
+			return null;
+		}).given(mockConsumer).acknowledge(record, AcknowledgeType.ACCEPT);
+
+		AtomicInteger invocations = new AtomicInteger();
+		AtomicReference<ShareAcknowledgment> captured = new AtomicReference<>();
+		CountDownLatch latch = new CountDownLatch(1);
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setShareAckMode(ShareAckMode.MANUAL);
+		containerProperties.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>)
+				(rec, acknowledgment, consumer) -> {
+					invocations.incrementAndGet();
+					captured.set(acknowledgment);
+					latch.countDown();
+				});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("deferredAckContainer");
+		container.start();
+		try {
+			assertThat(latch.await(10, TimeUnit.SECONDS)).isTrue();
+			Object listenerConsumer = KafkaTestUtils.getPropertyValue(container, "consumers", List.class).get(0);
+			Map<ConsumerRecord<?, ?>, ?> pending =
+					KafkaTestUtils.getPropertyValue(listenerConsumer, "pendingAcknowledgments", Map.class);
+
+			captured.get().acknowledge();
+
+			await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(pending).isEmpty());
+			List<String> snapshot;
+			synchronized (events) {
+				snapshot = new ArrayList<>(events);
+			}
+			int rejected = snapshot.indexOf("accept-rejected");
+			int accepted = snapshot.indexOf("accept");
+			assertThat(rejected).isNotNegative();
+			assertThat(accepted).isGreaterThan(rejected);
+			assertThat(snapshot.subList(rejected, accepted)).contains("poll");
+			await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+				synchronized (events) {
+					assertThat(events.subList(events.indexOf("accept"), events.size())).contains("poll");
+				}
+			});
+			assertThat(Collections.frequency(snapshot, "accept")).isEqualTo(1);
+			assertThat(invocations.get()).isEqualTo(1);
 		}
 		finally {
 			container.stop();

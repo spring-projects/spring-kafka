@@ -801,6 +801,132 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 	}
 
 	@Test
+	void shouldNotRedispatchRenewedRecordAndCommitTerminalAcknowledgment(EmbeddedKafkaBroker broker) throws Exception {
+		String topic = "share-container-renew-sent-test";
+		String groupId = "share-container-renew-sent-group";
+		String bootstrapServers = broker.getBrokersAsString();
+
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
+		produceTestRecords(bootstrapServers, topic, 1);
+
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
+
+		ContainerProperties containerProps = new ContainerProperties(topic);
+		containerProps.setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
+
+		// The callback reports offsets but not acknowledgment types, so count successful
+		// commits of the record: one per RENEW and one for the terminal acknowledgment.
+		AtomicInteger committed = new AtomicInteger();
+		List<Exception> commitErrors = Collections.synchronizedList(new ArrayList<>());
+		containerProps.setAcknowledgementCommitCallback((offsets, exception) -> {
+			if (exception != null) {
+				commitErrors.add(exception);
+				return;
+			}
+			offsets.forEach((topicIdPartition, committedOffsets) -> {
+				if (topic.equals(topicIdPartition.topic()) && topicIdPartition.partition() == 0
+						&& committedOffsets.contains(0L)) {
+					committed.incrementAndGet();
+				}
+			});
+		});
+
+		AtomicInteger invocations = new AtomicInteger();
+		AtomicReference<ShareAcknowledgment> ackRef = new AtomicReference<>();
+		CountDownLatch received = new CountDownLatch(1);
+		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
+				record, acknowledgment, consumer) -> {
+			invocations.incrementAndGet();
+			ackRef.set(acknowledgment);
+			received.countDown();
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(factory, containerProps);
+		container.setBeanName("renewSentTestContainer");
+		container.start();
+		try {
+			assertThat(received.await(10, TimeUnit.SECONDS)).isTrue();
+			ShareAcknowledgment ack = ackRef.get();
+
+			ack.renew();
+			Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> committed.get() == 1);
+			ack.renew();
+			Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> committed.get() == 2);
+			ack.acknowledge();
+			Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> committed.get() == 3);
+
+			assertThat(commitErrors).isEmpty();
+			assertThat(invocations.get()).isEqualTo(1);
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
+	void shouldDispatchRedeliveryAfterRenewalOfExpiredLockFails(EmbeddedKafkaBroker broker) throws Exception {
+		String topic = "share-container-expired-renew-test";
+		String groupId = "share-container-expired-renew-group";
+		String bootstrapServers = broker.getBrokersAsString();
+
+		setShareAutoOffsetResetEarliest(bootstrapServers, groupId);
+		setShareGroupConfig(bootstrapServers, groupId, "share.record.lock.duration.ms", "15000");
+		produceTestRecords(bootstrapServers, topic, 1);
+
+		Map<String, Object> consumerProps = createConsumerProps(bootstrapServers, groupId, true);
+		DefaultShareConsumerFactory<String, String> factory = new DefaultShareConsumerFactory<>(consumerProps);
+
+		ContainerProperties containerProps = new ContainerProperties(topic);
+		containerProps.setShareAckMode(ContainerProperties.ShareAckMode.MANUAL);
+
+		AtomicInteger committed = new AtomicInteger();
+		AtomicInteger commitErrors = new AtomicInteger();
+		containerProps.setAcknowledgementCommitCallback((offsets, exception) -> {
+			if (exception != null) {
+				commitErrors.incrementAndGet();
+			}
+			else {
+				committed.incrementAndGet();
+			}
+		});
+
+		List<Short> deliveryCounts = Collections.synchronizedList(new ArrayList<>());
+		List<ShareAcknowledgment> acknowledgments = Collections.synchronizedList(new ArrayList<>());
+		containerProps.setMessageListener((AcknowledgingShareConsumerAwareMessageListener<String, String>) (
+				record, acknowledgment, consumer) -> {
+			deliveryCounts.add(record.deliveryCount().orElse((short) 0));
+			acknowledgments.add(acknowledgment);
+		});
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(factory, containerProps);
+		container.setBeanName("expiredRenewTestContainer");
+		container.start();
+		try {
+			Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> acknowledgments.size() == 1);
+			// Let the acquisition lock expire before renewing
+			Thread.sleep(17000);
+			acknowledgments.get(0).renew();
+			Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> commitErrors.get() > 0);
+
+			Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> acknowledgments.size() == 2);
+			assertThat(deliveryCounts.get(1)).isGreaterThan(deliveryCounts.get(0));
+
+			// A late acknowledgment for the expired delivery is discarded; the new delivery is acknowledged
+			acknowledgments.get(0).acknowledge();
+			int committedBefore = committed.get();
+			acknowledgments.get(1).acknowledge();
+			Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> committed.get() > committedBefore);
+			assertThat(acknowledgments).hasSize(2);
+		}
+		finally {
+			container.stop();
+		}
+	}
+
+	@Test
 	void shouldThrowWhenTerminalAcknowledgmentCalledTwice(EmbeddedKafkaBroker broker) throws Exception {
 		String topic = "share-container-double-terminal-test";
 		String groupId = "share-container-double-terminal-group";
@@ -969,6 +1095,19 @@ class ShareKafkaMessageListenerContainerIntegrationTests {
 		producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 		producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 		return new KafkaProducer<>(producerProps);
+	}
+
+	private static void setShareGroupConfig(String bootstrapServers, String groupId, String name, String value)
+			throws Exception {
+
+		Map<String, Object> adminProperties = new HashMap<>();
+		adminProperties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+		AlterConfigOp op = new AlterConfigOp(new ConfigEntry(name, value), AlterConfigOp.OpType.SET);
+		Map<ConfigResource, Collection<AlterConfigOp>> configs = Map.of(
+				new ConfigResource(ConfigResource.Type.GROUP, groupId), List.of(op));
+		try (Admin admin = Admin.create(adminProperties)) {
+			admin.incrementalAlterConfigs(configs).all().get();
+		}
 	}
 
 	private static void setShareAutoOffsetResetEarliest(String bootstrapServers, String groupId) throws Exception {
