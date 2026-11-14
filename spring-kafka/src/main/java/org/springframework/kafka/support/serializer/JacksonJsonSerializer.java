@@ -4,8 +4,11 @@
 
 package org.springframework.kafka.support.serializer;
 
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -16,6 +19,7 @@ import org.jspecify.annotations.Nullable;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.JavaType;
 import tools.jackson.databind.ObjectWriter;
+import tools.jackson.databind.SerializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 import org.springframework.kafka.support.JacksonMapperUtils;
@@ -59,6 +63,18 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 	 * 'foo:com.Foo,bar:com.Bar'.
 	 */
 	public static final String TYPE_MAPPINGS = "spring.json.type.mapping";
+
+	/**
+	 * Comma-separated Jackson serialization feature names to enable.
+	 * @since 4.2
+	 */
+	public static final String SERIALIZATION_FEATURES_ENABLE = "spring.json.serialization.features.enable";
+
+	/**
+	 * Comma-separated Jackson serialization feature names to disable.
+	 * @since 4.2
+	 */
+	public static final String SERIALIZATION_FEATURES_DISABLE = "spring.json.serialization.features.disable";
 
 	protected final JsonMapper jsonMapper; // NOSONAR
 
@@ -149,8 +165,21 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 				return;
 			}
 			Assert.state(!this.setterCalled
-							|| (!configs.containsKey(ADD_TYPE_INFO_HEADERS) && !configs.containsKey(TYPE_MAPPINGS)),
+							|| (!configs.containsKey(ADD_TYPE_INFO_HEADERS) && !configs.containsKey(TYPE_MAPPINGS)
+									&& !configs.containsKey(SERIALIZATION_FEATURES_ENABLE)
+									&& !configs.containsKey(SERIALIZATION_FEATURES_DISABLE)),
 					"JsonSerializer must be configured with property setters, or via configuration properties; not both");
+			Set<SerializationFeature> enabled = parseFeatures(configs,
+					SERIALIZATION_FEATURES_ENABLE, SerializationFeature.class);
+			Set<SerializationFeature> disabled = parseFeatures(configs,
+					SERIALIZATION_FEATURES_DISABLE, SerializationFeature.class);
+			Assert.isTrue(Collections.disjoint(enabled, disabled), "A Jackson feature cannot be both enabled and disabled");
+			for (SerializationFeature feature : enabled) {
+				this.writer = this.writer.with(feature);
+			}
+			for (SerializationFeature feature : disabled) {
+				this.writer = this.writer.without(feature);
+			}
 			setUseTypeMapperForKey(isKey);
 			if (configs.containsKey(ADD_TYPE_INFO_HEADERS)) {
 				Object config = configs.get(ADD_TYPE_INFO_HEADERS);
@@ -173,6 +202,23 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 		finally {
 			this.globalLock.unlock();
 		}
+	}
+
+	static <F extends Enum<F>> Set<F> parseFeatures(Map<String, ?> configs, String key, Class<F> featureType) {
+		Set<F> features = EnumSet.noneOf(featureType);
+		if (configs.containsKey(key)) {
+			Object value = configs.get(key);
+			Assert.isInstanceOf(String.class, value, key + " must be a comma-separated String");
+			for (String name : StringUtils.commaDelimitedListToStringArray((String) value)) {
+				try {
+					features.add(Enum.valueOf(featureType, name.trim()));
+				}
+				catch (IllegalArgumentException ex) {
+					throw new IllegalArgumentException("Unknown Jackson feature '" + name.trim() + "' for " + key, ex);
+				}
+			}
+		}
+		return features;
 	}
 
 	protected static Map<String, Class<?>> createMappings(String mappings) {
@@ -253,6 +299,7 @@ public class JacksonJsonSerializer<T> implements Serializer<T> {
 	public <X> JacksonJsonSerializer<X> copyWithType(JavaType newTargetType) {
 		JacksonJsonSerializer<X> result = new JacksonJsonSerializer<>(newTargetType, this.jsonMapper);
 		result.addTypeInfo = this.addTypeInfo;
+		result.writer = this.writer.forType(newTargetType);
 		result.typeMapper = this.typeMapper;
 		result.typeMapperExplicitlySet = this.typeMapperExplicitlySet;
 		return result;
