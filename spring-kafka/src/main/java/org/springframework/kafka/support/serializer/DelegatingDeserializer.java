@@ -14,6 +14,7 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.common.utils.Utils;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.Assert;
@@ -168,7 +169,7 @@ public class DelegatingDeserializer implements Deserializer<Object> {
 	@Override
 	public @Nullable Object deserialize(String topic, Headers headers, @Nullable ByteBuffer data) {
 		Deserializer<?> deserializer = getDeserializerByHeaders(headers);
-		return deserializer == null ? data : deserializer.deserialize(topic, headers, data);
+		return deserializer == null ? Utils.toNullableArray(data) : deserializer.deserialize(topic, headers, data);
 	}
 
 	private @Nullable Deserializer<?> getDeserializerByHeaders(Headers headers) {
