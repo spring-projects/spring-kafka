@@ -45,6 +45,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -97,6 +98,7 @@ import static org.mockito.Mockito.verify;
  * @author Ngoc Nhan
  * @author OhKyu Chan
  * @author Minju Kim
+ * @author Mohit Gupta
  *
  * @since 2.1.3
  *
@@ -976,6 +978,117 @@ public class ReplyingKafkaTemplateTests {
 
 		assertThat(ReflectionTestUtils.getField(template, ReplyingKafkaTemplate.class, "replyTopic")).isNull();
 		assertThat(ReflectionTestUtils.getField(template, ReplyingKafkaTemplate.class, "replyPartition")).isNull();
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void pendingReplyFuturesCompleteExceptionallyOnStop() throws Exception {
+		ProducerFactory<Integer, String> pf = mock();
+		Producer<Integer, String> producer = mock();
+		given(producer.send(any(), any())).willReturn(new CompletableFuture<>());
+		given(pf.createProducer()).willReturn(producer);
+		GenericMessageListenerContainer<Integer, String> container = mock();
+		given(container.getContainerProperties()).willReturn(new ContainerProperties("replies"));
+		ReplyingKafkaTemplate<Integer, String, String> template = new ReplyingKafkaTemplate<>(pf, container);
+		template.setDefaultReplyTimeout(Duration.ofSeconds(30));
+		template.start();
+		try {
+			RequestReplyFuture<Integer, String, String> recordFuture =
+					template.sendAndReceive(new ProducerRecord<>("requests", 0, 1, "request"));
+			Message<?> message = MessageBuilder.withPayload("request")
+					.setHeader(KafkaHeaders.TOPIC, "requests")
+					.build();
+			RequestReplyTypedMessageFuture<Integer, String, String> messageFuture =
+					template.sendAndReceive(message, new ParameterizedTypeReference<String>() {
+					});
+			template.stop();
+
+			assertThatExceptionOfType(ExecutionException.class)
+					.isThrownBy(() -> recordFuture.get(10, TimeUnit.SECONDS))
+					.withCauseInstanceOf(KafkaException.class);
+			assertThatExceptionOfType(ExecutionException.class)
+					.isThrownBy(() -> messageFuture.get(10, TimeUnit.SECONDS))
+					.withCauseInstanceOf(KafkaException.class);
+			assertThat(KafkaTestUtils.getPropertyValue(template, "futures", Map.class)).isEmpty();
+		}
+		finally {
+			template.stop();
+			template.destroy();
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	@Test
+	void aggregatingTemplateClearsPendingAndCommitsAfterStopAndRestart() throws Exception {
+		GenericMessageListenerContainer<Integer, Collection<ConsumerRecord<Integer, String>>> container = mock();
+		ContainerProperties properties = new ContainerProperties("replies");
+		properties.setAckMode(AckMode.MANUAL);
+		given(container.getContainerProperties()).willReturn(properties);
+		ProducerFactory<Integer, String> pf = mock();
+		Producer<Integer, String> producer = mock();
+		given(pf.createProducer()).willReturn(producer);
+		List<byte[]> correlations = new ArrayList<>();
+		willAnswer(invocation -> {
+			ProducerRecord<Integer, String> rec = invocation.getArgument(0);
+			correlations.add(rec.headers().lastHeader(KafkaHeaders.CORRELATION_ID).value());
+			return new CompletableFuture<>();
+		}).given(producer).send(any(), any());
+		AggregatingReplyingKafkaTemplate<Integer, String, String> template = new AggregatingReplyingKafkaTemplate<>(
+				pf, container, (list, timeout) -> list.size() == 2);
+		template.setDefaultReplyTimeout(Duration.ofSeconds(30));
+		template.start();
+		try {
+			RequestReplyFuture<Integer, String, Collection<ConsumerRecord<Integer, String>>> pendingFuture1 =
+					template.sendAndReceive(new ProducerRecord<>("requests", null, "req1"));
+			RequestReplyFuture<Integer, String, Collection<ConsumerRecord<Integer, String>>> completedFuture =
+					template.sendAndReceive(new ProducerRecord<>("requests", null, "req2"));
+
+			ConsumerRecord<Integer, Collection<ConsumerRecord<Integer, String>>> partialForReq1 =
+					new ConsumerRecord<>("replies", 0, 0L, null, Collections.emptyList());
+			partialForReq1.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlations.get(0)));
+			ConsumerRecord<Integer, Collection<ConsumerRecord<Integer, String>>> completeForReq2a =
+					new ConsumerRecord<>("replies", 0, 1L, null, Collections.emptyList());
+			completeForReq2a.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlations.get(1)));
+			ConsumerRecord<Integer, Collection<ConsumerRecord<Integer, String>>> completeForReq2b =
+					new ConsumerRecord<>("replies", 0, 2L, null, Collections.emptyList());
+			completeForReq2b.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlations.get(1)));
+
+			Consumer<?, ?> consumer = mock();
+			template.onMessage(List.of(partialForReq1, completeForReq2a, completeForReq2b), consumer);
+			assertThat(completedFuture.get(10, TimeUnit.SECONDS)).isNotNull();
+			assertThat(KafkaTestUtils.getPropertyValue(template, "pending", Map.class)).hasSize(1);
+			assertThat(KafkaTestUtils.getPropertyValue(template, "offsets", Map.class)).hasSize(1);
+
+			template.stop();
+			assertThatExceptionOfType(ExecutionException.class)
+					.isThrownBy(() -> pendingFuture1.get(10, TimeUnit.SECONDS))
+					.withCauseInstanceOf(KafkaException.class);
+			assertThat(KafkaTestUtils.getPropertyValue(template, "futures", Map.class)).isEmpty();
+			assertThat(KafkaTestUtils.getPropertyValue(template, "pending", Map.class)).isEmpty();
+			assertThat(KafkaTestUtils.getPropertyValue(template, "offsets", Map.class)).isEmpty();
+
+			template.start();
+			RequestReplyFuture<Integer, String, Collection<ConsumerRecord<Integer, String>>> restartedFuture =
+					template.sendAndReceive(new ProducerRecord<>("requests", null, "req3"));
+			ConsumerRecord<Integer, Collection<ConsumerRecord<Integer, String>>> reply3a =
+					new ConsumerRecord<>("replies", 1, 5L, null, Collections.emptyList());
+			reply3a.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlations.get(2)));
+			ConsumerRecord<Integer, Collection<ConsumerRecord<Integer, String>>> reply3b =
+					new ConsumerRecord<>("replies", 1, 6L, null, Collections.emptyList());
+			reply3b.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlations.get(2)));
+
+			Consumer<?, ?> restartedConsumer = mock();
+			template.onMessage(List.of(reply3a, reply3b), restartedConsumer);
+			assertThat(restartedFuture.get(10, TimeUnit.SECONDS)).isNotNull();
+			assertThat(KafkaTestUtils.getPropertyValue(template, "pending", Map.class)).isEmpty();
+			verify(restartedConsumer).commitSync(
+					Map.of(new TopicPartition("replies", 1), new OffsetAndMetadata(7L)),
+					Duration.ofSeconds(30));
+		}
+		finally {
+			template.stop();
+			template.destroy();
+		}
 	}
 
 	@Configuration
