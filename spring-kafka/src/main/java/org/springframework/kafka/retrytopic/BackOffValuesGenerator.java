@@ -11,6 +11,7 @@ import org.jspecify.annotations.Nullable;
 
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.BackOffExecution;
+import org.springframework.util.backoff.ExponentialBackOff;
 import org.springframework.util.backoff.FixedBackOff;
 
 /**
@@ -22,6 +23,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * @author Artem Bilan
  * @author Borahm Lee
  * @author Yingzi Zhang
+ * @author Tanishq Choudhary
  *
  * @since 2.7
  *
@@ -51,7 +53,30 @@ public class BackOffValuesGenerator {
 	 * @return the back off values.
 	 */
 	public List<Long> generateValues() {
-		BackOffExecution backOffExecution = this.backOff.start();
+		return generateValues(this.backOff);
+	}
+
+	/**
+	 * Generate the back off values without the jitter of an {@link ExponentialBackOff}.
+	 * These values do not change between application starts, so they can be used to
+	 * derive the retry topic names.
+	 * @return the back off values without jitter.
+	 * @since 4.2
+	 */
+	public List<Long> generateValuesWithoutJitter() {
+		if (this.backOff instanceof ExponentialBackOff exponentialBackOff && exponentialBackOff.getJitter() > 0) {
+			ExponentialBackOff backOffWithoutJitter =
+					new ExponentialBackOff(exponentialBackOff.getInitialInterval(), exponentialBackOff.getMultiplier());
+			backOffWithoutJitter.setMaxInterval(exponentialBackOff.getMaxInterval());
+			backOffWithoutJitter.setMaxElapsedTime(exponentialBackOff.getMaxElapsedTime());
+			backOffWithoutJitter.setMaxAttempts(exponentialBackOff.getMaxAttempts());
+			return generateValues(backOffWithoutJitter);
+		}
+		return generateValues();
+	}
+
+	private List<Long> generateValues(BackOff backOffToUse) {
+		BackOffExecution backOffExecution = backOffToUse.start();
 		return Stream.generate(backOffExecution::nextBackOff)
 				.takeWhile(value -> value != BackOffExecution.STOP)
 				.limit(this.numberOfValuesToCreate)

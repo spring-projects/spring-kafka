@@ -34,6 +34,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * @author Wang Zhiyang
  * @author Stephane Nicoll
  * @author Heejin Jeon
+ * @author Tanishq Choudhary
  *
  * @since 2.7
  *
@@ -575,7 +576,9 @@ public class RetryTopicConfigurationBuilder {
 		AllowDenyCollectionManager<String> allowListManager =
 				new AllowDenyCollectionManager<>(this.includeTopicNames, this.excludeTopicNames);
 
-		List<Long> backOffValues = new BackOffValuesGenerator(this.maxAttempts, this.backOff).generateValues();
+		BackOffValuesGenerator backOffValuesGenerator = new BackOffValuesGenerator(this.maxAttempts, this.backOff);
+		// The topic names are derived from the values without jitter, so they are the same on every start.
+		List<Long> backOffValues = backOffValuesGenerator.generateValuesWithoutJitter();
 
 		List<DestinationTopic.Properties> destinationTopicProperties =
 				new DestinationTopicPropertiesFactory(this.retryTopicSuffix, this.dltSuffix, backOffValues,
@@ -583,6 +586,7 @@ public class RetryTopicConfigurationBuilder {
 						sendToTopicKafkaTemplate, this.dltStrategy,
 					this.topicSuffixingStrategy, this.sameIntervalTopicReuseStrategy, this.timeout, this.dltRoutingRules)
 								.autoStartDltHandler(this.autoStartDltHandler)
+								.retryTopicDelays(backOffValuesGenerator.generateValues())
 								.createProperties();
 		return new RetryTopicConfiguration(destinationTopicProperties,
 				this.dltHandlerMethod, this.topicCreationConfiguration, allowListManager,
