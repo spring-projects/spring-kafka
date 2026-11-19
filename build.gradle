@@ -155,10 +155,11 @@ configure(javaProjects) { subproject ->
 
 	test {
 		// Default timeout for every testable method (unless @Timeout). Stops hung tests instead of wedging CI.
-		// Override: ./gradlew test -Djunit.jupiter.execution.timeout.default=PT20M  or  -PjunitTimeoutDefault=PT20M
+		// Override: ./gradlew test -Djunit.jupiter.execution.timeout.default=20m  or  -PjunitTimeoutDefault=20m
+		// JUnit expects a value such as 10m or 600s, and ignores an ISO-8601 value such as PT10M.
 		def junitTimeoutDefault = System.getProperty('junit.jupiter.execution.timeout.default')
 				?: findProperty('junitTimeoutDefault')
-				?: 'PT10M'
+				?: '10m'
 		systemProperty 'junit.jupiter.execution.timeout.default', junitTimeoutDefault
 
 		def failedTestsByClass = new ConcurrentHashMap<String, CopyOnWriteArrayList<String>>()
