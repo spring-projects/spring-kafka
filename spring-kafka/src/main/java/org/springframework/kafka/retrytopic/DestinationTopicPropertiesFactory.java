@@ -30,6 +30,7 @@ import org.springframework.util.StringUtils;
  * @author João Lima
  * @author Wang Zhiyang
  * @author Adrian Chlebosz
+ * @author Tanishq Choudhary
  * @since 2.7
  *
  */
@@ -40,6 +41,8 @@ public class DestinationTopicPropertiesFactory {
 	private final DestinationTopicSuffixes destinationTopicSuffixes;
 
 	private final List<Long> backOffValues;
+
+	private List<Long> retryTopicDelays;
 
 	private final int numPartitions;
 
@@ -121,6 +124,7 @@ public class DestinationTopicPropertiesFactory {
 		this.destinationTopicSuffixes = new DestinationTopicSuffixes(retryTopicSuffix, dltSuffix);
 		this.dltRoutingRules = copyDltRoutingRules(dltRoutingRules);
 		this.backOffValues = backOffValues;
+		this.retryTopicDelays = backOffValues;
 		int backOffValuesSize = this.backOffValues.size();
 		this.isSameIntervalReuse = SameIntervalTopicReuseStrategy.SINGLE_TOPIC.equals(sameIntervalTopicReuseStrategy);
 		this.isFixedDelay = TopicSuffixingStrategy.SUFFIX_WITH_INDEX_VALUE.equals(topicSuffixingStrategy)
@@ -146,6 +150,20 @@ public class DestinationTopicPropertiesFactory {
 	 */
 	public DestinationTopicPropertiesFactory autoStartDltHandler(@Nullable Boolean autoStart) {
 		this.autoStartDltHandler = autoStart;
+		return this;
+	}
+
+	/**
+	 * Set the delays of the retry topics, when they differ from the back off values the
+	 * topic names and the number of retry topics are derived from. For example, the
+	 * back off values without jitter keep the topic names the same between application
+	 * starts, while the delays keep the jitter.
+	 * @param retryTopicDelays the retry topic delays, in the order of the back off values.
+	 * @return this factory.
+	 * @since 4.2
+	 */
+	public DestinationTopicPropertiesFactory retryTopicDelays(List<Long> retryTopicDelays) {
+		this.retryTopicDelays = retryTopicDelays;
 		return this;
 	}
 
@@ -183,7 +201,12 @@ public class DestinationTopicPropertiesFactory {
 
 	private DestinationTopic.Properties createRetryProperties(int backOffIndex) {
 		long thisBackOffValue = this.backOffValues.get(backOffIndex);
-		return createProperties(thisBackOffValue, getTopicSuffix(backOffIndex, thisBackOffValue));
+		long delayMs = (backOffIndex < this.retryTopicDelays.size())
+				? this.retryTopicDelays.get(backOffIndex)
+				: thisBackOffValue;
+		return new DestinationTopic.Properties(delayMs, getTopicSuffix(backOffIndex, thisBackOffValue),
+				getDestinationTopicType(thisBackOffValue), this.maxAttempts, this.numPartitions, this.dltStrategy,
+				this.kafkaOperations, this.shouldRetryOn, this.timeout);
 	}
 
 	private String getTopicSuffix(int backOffIndex, long thisBackOffValue) {
@@ -224,11 +247,6 @@ public class DestinationTopicPropertiesFactory {
 				.filter(thisBackOffValue::equals)
 				.count())
 				.intValue();
-	}
-
-	private DestinationTopic.Properties createProperties(long delayMs, String suffix) {
-		return new DestinationTopic.Properties(delayMs, suffix, getDestinationTopicType(delayMs), this.maxAttempts,
-				this.numPartitions, this.dltStrategy, this.kafkaOperations, this.shouldRetryOn, this.timeout);
 	}
 
 	private String joinWithRetrySuffix(long parameter) {
