@@ -22,6 +22,7 @@ import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.TimestampedException;
 import org.springframework.kafka.retrytopic.RetryTopicHeaders;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.util.Assert;
 
 /**
  *
@@ -33,6 +34,7 @@ import org.springframework.kafka.support.Acknowledgment;
  * @param <V> the record value type.
  * @author Tomaz Fernandes
  * @author Soby Chacko
+ * @author Manoel Angelo
  * @since 2.7
  *
  */
@@ -40,7 +42,11 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 		extends AbstractDelegatingMessageListenerAdapter<MessageListener<K, V>>
 		implements AcknowledgingConsumerAwareMessageListener<K, V> {
 
-	private static final long MAX_BACKOFF_MS = Duration.ofDays(1).toMillis();
+	private static final long DEFAULT_MAX_BACKOFF_MS = Duration.ofDays(1).toMillis();
+
+	private static final long CLOCK_SKEW_TOLERANCE_MS = Duration.ofMinutes(1).toMillis();
+
+	private long maxBackoffMs = DEFAULT_MAX_BACKOFF_MS;
 
 	private final String listenerId;
 
@@ -77,6 +83,24 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 	public KafkaBackoffAwareMessageListenerAdapter(MessageListener<K, V> adapter,
 			KafkaConsumerBackoffManager kafkaConsumerBackoffManager, String listenerId, Clock clock) throws KafkaBackoffException {
 		this(adapter, kafkaConsumerBackoffManager, listenerId, RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP, clock);
+	}
+
+	/**
+	 * Set the longest back off configured for the topics this adapter consumes from.
+	 * A back off timestamp header further in the future than one day is honored only
+	 * when it is within this back off, plus a small tolerance for clock skew; otherwise
+	 * the header is ignored and the record is processed immediately. Back offs of one
+	 * day or less do not change the default limit of one day.
+	 * @param maxConfiguredBackOff the longest configured back off.
+	 * @since 4.2.1
+	 */
+	public void setMaxConfiguredBackOff(Duration maxConfiguredBackOff) {
+		Assert.notNull(maxConfiguredBackOff, "'maxConfiguredBackOff' cannot be null");
+		Assert.isTrue(!maxConfiguredBackOff.isNegative(), "'maxConfiguredBackOff' cannot be negative");
+		long backOffMs = maxConfiguredBackOff.compareTo(Duration.ofMillis(Long.MAX_VALUE - CLOCK_SKEW_TOLERANCE_MS)) > 0
+				? Long.MAX_VALUE
+				: maxConfiguredBackOff.toMillis() + CLOCK_SKEW_TOLERANCE_MS;
+		this.maxBackoffMs = Math.max(DEFAULT_MAX_BACKOFF_MS, backOffMs);
 	}
 
 	@Override
@@ -119,7 +143,18 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 							&& value.length <= Long.BYTES;
 				})
 				.map(timestampHeader -> new BigInteger(timestampHeader.value()).longValue())
-				.filter(ts -> ts - Instant.now(this.clock).toEpochMilli() <= MAX_BACKOFF_MS);
+				.filter(ts -> isWithinMaxBackoff(data, ts));
+	}
+
+	private boolean isWithinMaxBackoff(ConsumerRecord<K, V> data, long backoffTimestamp) {
+		long pauseMs = backoffTimestamp - Instant.now(this.clock).toEpochMilli();
+		if (pauseMs <= this.maxBackoffMs) {
+			return true;
+		}
+		this.logger.warn(() -> String.format("Ignoring the %s header of the record from %s-%d@%d: it requests a pause "
+						+ "of %d ms, which exceeds the maximum of %d ms; the record is processed immediately",
+				this.backoffTimestampHeader, data.topic(), data.partition(), data.offset(), pauseMs, this.maxBackoffMs));
+		return false;
 	}
 
 	/*
