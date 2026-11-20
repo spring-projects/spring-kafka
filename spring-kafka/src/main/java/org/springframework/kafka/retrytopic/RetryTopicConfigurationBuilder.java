@@ -34,6 +34,7 @@ import org.springframework.util.backoff.FixedBackOff;
  * @author Wang Zhiyang
  * @author Stephane Nicoll
  * @author Heejin Jeon
+ * @author Manoel Angelo
  *
  * @since 2.7
  *
@@ -79,6 +80,8 @@ public class RetryTopicConfigurationBuilder {
 	private DltStrategy dltStrategy = DltStrategy.ALWAYS_RETRY_ON_ERROR;
 
 	private long timeout = RetryTopicConstants.NOT_SET;
+
+	private long mainTopicDelay;
 
 	private TopicSuffixingStrategy topicSuffixingStrategy = TopicSuffixingStrategy.SUFFIX_WITH_DELAY_VALUE;
 
@@ -301,6 +304,22 @@ public class RetryTopicConfigurationBuilder {
 	 */
 	public RetryTopicConfigurationBuilder timeoutAfter(long timeout) {
 		this.timeout = timeout;
+		return this;
+	}
+
+	/**
+	 * Configure a delay, in milliseconds, to wait after a record is published to the main
+	 * topic before its first processing attempt, for example when the data the listener
+	 * needs is only available some time after the record is sent. The delay is counted
+	 * from the record timestamp. While a record waits, consumption from its partition is
+	 * paused, in the same way as for the retry topics. Default no delay.
+	 * @param mainTopicDelay the delay.
+	 * @return the builder.
+	 * @since 4.3
+	 */
+	public RetryTopicConfigurationBuilder mainTopicDelay(long mainTopicDelay) {
+		Assert.isTrue(mainTopicDelay >= 0, "'mainTopicDelay' cannot be negative");
+		this.mainTopicDelay = mainTopicDelay;
 		return this;
 	}
 
@@ -583,6 +602,7 @@ public class RetryTopicConfigurationBuilder {
 						sendToTopicKafkaTemplate, this.dltStrategy,
 					this.topicSuffixingStrategy, this.sameIntervalTopicReuseStrategy, this.timeout, this.dltRoutingRules)
 								.autoStartDltHandler(this.autoStartDltHandler)
+								.mainTopicDelay(this.mainTopicDelay)
 								.createProperties();
 		return new RetryTopicConfiguration(destinationTopicProperties,
 				this.dltHandlerMethod, this.topicCreationConfiguration, allowListManager,

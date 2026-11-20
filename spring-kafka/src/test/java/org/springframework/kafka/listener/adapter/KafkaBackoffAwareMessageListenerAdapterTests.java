@@ -6,6 +6,7 @@ package org.springframework.kafka.listener.adapter;
 
 import java.math.BigInteger;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 
@@ -42,6 +43,7 @@ import static org.mockito.Mockito.times;
 /**
  * @author Tomaz Fernandes
  * @author Soby Chacko
+ * @author Manoel Angelo
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
@@ -260,6 +262,68 @@ class KafkaBackoffAwareMessageListenerAdapterTests {
 		// then - backoff manager is never consulted, delegate still gets the record
 		then(kafkaConsumerBackoffManager).shouldHaveNoInteractions();
 		then(delegate).should(times(1)).onMessage(data, ack, consumer);
+	}
+
+	@Test
+	void shouldBackOffUntilInitialDelayElapsedWhenNoBackoffHeader() {
+		long recordTimestamp = originalTimestamp + 1000;
+		given(data.headers()).willReturn(headers);
+		given(headers.lastHeader(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP)).willReturn(null);
+		given(data.timestamp()).willReturn(recordTimestamp);
+		given(data.topic()).willReturn(testTopic);
+		given(data.partition()).willReturn(testPartition);
+		given(kafkaConsumerBackoffManager.createContext(recordTimestamp + 60_000, listenerId, topicPartition,
+				consumer)).willReturn(context);
+
+		KafkaBackoffAwareMessageListenerAdapter<Object, Object> adapter =
+				new KafkaBackoffAwareMessageListenerAdapter<>(delegate, kafkaConsumerBackoffManager, listenerId, clock);
+		adapter.setInitialDelay(Duration.ofMinutes(1));
+
+		adapter.onMessage(data, ack, consumer);
+
+		then(kafkaConsumerBackoffManager).should(times(1)).backOffIfNecessary(context);
+		then(delegate).should(times(1)).onMessage(data, ack, consumer);
+	}
+
+	@Test
+	void shouldPreferBackoffHeaderOverInitialDelay() {
+		setupCallBackOffManager();
+		given(kafkaConsumerBackoffManager.createContext(originalTimestamp, listenerId, topicPartition, consumer))
+				.willReturn(context);
+
+		KafkaBackoffAwareMessageListenerAdapter<Object, Object> adapter =
+				new KafkaBackoffAwareMessageListenerAdapter<>(delegate, kafkaConsumerBackoffManager, listenerId, clock);
+		adapter.setInitialDelay(Duration.ofMinutes(1));
+
+		adapter.onMessage(data, ack, consumer);
+
+		then(kafkaConsumerBackoffManager).should(times(1)).backOffIfNecessary(context);
+		then(delegate).should(times(1)).onMessage(data, ack, consumer);
+	}
+
+	@Test
+	void shouldNotApplyInitialDelayWhenRecordHasNoTimestamp() {
+		given(data.headers()).willReturn(headers);
+		given(headers.lastHeader(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP)).willReturn(null);
+		given(data.timestamp()).willReturn(ConsumerRecord.NO_TIMESTAMP);
+
+		KafkaBackoffAwareMessageListenerAdapter<Object, Object> adapter =
+				new KafkaBackoffAwareMessageListenerAdapter<>(delegate, kafkaConsumerBackoffManager, listenerId, clock);
+		adapter.setInitialDelay(Duration.ofMinutes(1));
+
+		adapter.onMessage(data, ack, consumer);
+
+		then(kafkaConsumerBackoffManager).shouldHaveNoInteractions();
+		then(delegate).should(times(1)).onMessage(data, ack, consumer);
+	}
+
+	@Test
+	void shouldRejectNegativeInitialDelay() {
+		KafkaBackoffAwareMessageListenerAdapter<Object, Object> adapter =
+				new KafkaBackoffAwareMessageListenerAdapter<>(delegate, kafkaConsumerBackoffManager, listenerId, clock);
+
+		assertThatThrownBy(() -> adapter.setInitialDelay(Duration.ofMillis(-1)))
+				.isInstanceOf(IllegalArgumentException.class);
 	}
 
 	@Test

@@ -18,6 +18,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.kafka.core.KafkaOperations;
 import org.springframework.kafka.retrytopic.DestinationTopic.Type;
 import org.springframework.kafka.support.ExceptionMatcher;
+import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 /**
@@ -30,6 +31,7 @@ import org.springframework.util.StringUtils;
  * @author João Lima
  * @author Wang Zhiyang
  * @author Adrian Chlebosz
+ * @author Manoel Angelo
  * @since 2.7
  *
  */
@@ -63,6 +65,8 @@ public class DestinationTopicPropertiesFactory {
 
 	@Nullable
 	private Boolean autoStartDltHandler;
+
+	private long mainTopicDelay;
 
 	/**
 	 * Construct an instance with the provided properties.
@@ -149,6 +153,19 @@ public class DestinationTopicPropertiesFactory {
 		return this;
 	}
 
+	/**
+	 * Set the delay, in milliseconds, to wait after a record is published to the main
+	 * topic before its first processing attempt. Defaults to zero (no delay).
+	 * @param mainTopicDelay the delay.
+	 * @return this factory.
+	 * @since 4.3
+	 */
+	public DestinationTopicPropertiesFactory mainTopicDelay(long mainTopicDelay) {
+		Assert.isTrue(mainTopicDelay >= 0, "'mainTopicDelay' cannot be negative");
+		this.mainTopicDelay = mainTopicDelay;
+		return this;
+	}
+
 	public List<DestinationTopic.Properties> createProperties() {
 		List<DestinationTopic.Properties> list = new ArrayList<>(this.retryTopicsAmount + 2);
 		list.add(createMainTopicProperties());
@@ -163,8 +180,8 @@ public class DestinationTopicPropertiesFactory {
 	}
 
 	private DestinationTopic.Properties createMainTopicProperties() {
-		return new DestinationTopic.Properties(0, MAIN_TOPIC_SUFFIX, DestinationTopic.Type.MAIN, this.maxAttempts,
-				this.numPartitions, this.dltStrategy, this.kafkaOperations, this.shouldRetryOn, this.timeout);
+		return new DestinationTopic.Properties(this.mainTopicDelay, MAIN_TOPIC_SUFFIX, DestinationTopic.Type.MAIN,
+				this.maxAttempts, this.numPartitions, this.dltStrategy, this.kafkaOperations, this.shouldRetryOn, this.timeout);
 	}
 
 	private DestinationTopic.Properties createDltProperties() {

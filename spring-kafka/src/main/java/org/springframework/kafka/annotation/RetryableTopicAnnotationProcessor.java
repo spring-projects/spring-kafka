@@ -49,6 +49,7 @@ import org.springframework.util.StringUtils;
  * @author Wang Zhiyang
  * @author Artem Bilan
  * @author Ngoc Nhan
+ * @author Manoel Angelo
  *
  * @since 2.7
  *
@@ -158,6 +159,10 @@ public class RetryableTopicAnnotationProcessor {
 		Integer attempts = resolveExpressionAsInteger(annotation.attempts(), "attempts", true);
 		if (attempts != null) {
 			builder.maxAttempts(attempts);
+		}
+		Long mainTopicDelay = resolveExpressionAsLong(annotation.mainTopicDelay(), "mainTopicDelay", false);
+		if (mainTopicDelay != null) {
+			builder.mainTopicDelay(mainTopicDelay);
 		}
 		Integer concurrency = resolveExpressionAsInteger(annotation.concurrency(), "concurrency", false);
 		if (concurrency != null) {
