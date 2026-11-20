@@ -45,6 +45,7 @@ import static org.mockito.Mockito.mock;
  * @author Gary Russell
  * @author Adrian Chlebosz
  * @author Wang Zhiyang
+ * @author Manoel Angelo
  *
  * @since 2.7
  */
@@ -369,10 +370,41 @@ class RetryableTopicAnnotationProcessorTests {
 		assertThat(destinationTopicProperties.get(2).suffix()).isEqualTo("-dlt");
 	}
 
+	@Test
+	void shouldSetMainTopicDelay() {
+
+		// setup
+		given(this.beanFactory.getBean(kafkaTemplateName, KafkaOperations.class))
+				.willReturn(kafkaOperationsFromTemplateName);
+		RetryableTopicAnnotationProcessor processor = new RetryableTopicAnnotationProcessor(beanFactory);
+		Method method = ReflectionUtils.findMethod(RetryableTopicAnnotationFactoryWithMainTopicDelay.class,
+				listenerMethodName);
+		RetryableTopic annotationWithMainTopicDelay = AnnotationUtils.findAnnotation(method, RetryableTopic.class);
+
+		// given
+		RetryTopicConfiguration configuration = processor.processAnnotation(topics, method,
+				annotationWithMainTopicDelay, bean);
+
+		// then
+		assertThat(configuration.getDestinationTopicProperties())
+				.extracting(DestinationTopic.Properties::delay)
+				.containsExactly(60000L, 1000L, 0L);
+	}
+
 	static class RetryableTopicAnnotationFactory {
 
 		@KafkaListener
 		@RetryableTopic(kafkaTemplate = RetryableTopicAnnotationProcessorTests.kafkaTemplateName)
+		void listenWithRetry() {
+			// NoOps
+		}
+	}
+
+	static class RetryableTopicAnnotationFactoryWithMainTopicDelay {
+
+		@KafkaListener
+		@RetryableTopic(kafkaTemplate = RetryableTopicAnnotationProcessorTests.kafkaTemplateName,
+				mainTopicDelay = "60000")
 		void listenWithRetry() {
 			// NoOps
 		}

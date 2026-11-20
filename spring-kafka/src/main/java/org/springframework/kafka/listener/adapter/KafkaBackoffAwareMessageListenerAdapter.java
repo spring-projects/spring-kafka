@@ -22,6 +22,7 @@ import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.listener.TimestampedException;
 import org.springframework.kafka.retrytopic.RetryTopicHeaders;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.util.Assert;
 
 /**
  *
@@ -33,6 +34,7 @@ import org.springframework.kafka.support.Acknowledgment;
  * @param <V> the record value type.
  * @author Tomaz Fernandes
  * @author Soby Chacko
+ * @author Manoel Angelo
  * @since 2.7
  *
  */
@@ -41,6 +43,8 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 		implements AcknowledgingConsumerAwareMessageListener<K, V> {
 
 	private static final long MAX_BACKOFF_MS = Duration.ofDays(1).toMillis();
+
+	private long initialDelayMs;
 
 	private final String listenerId;
 
@@ -79,10 +83,25 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 		this(adapter, kafkaConsumerBackoffManager, listenerId, RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP, clock);
 	}
 
+	/**
+	 * Set a delay to wait, counted from the record timestamp, before a record without a
+	 * back off timestamp header is processed. Used to delay the first processing attempt
+	 * of records consumed from the main topic of a retryable endpoint. Defaults to zero,
+	 * meaning such records are processed immediately.
+	 * @param initialDelay the delay.
+	 * @since 4.3
+	 */
+	public void setInitialDelay(Duration initialDelay) {
+		Assert.notNull(initialDelay, "'initialDelay' cannot be null");
+		Assert.isTrue(!initialDelay.isNegative(), "'initialDelay' cannot be negative");
+		this.initialDelayMs = initialDelay.toMillis();
+	}
+
 	@Override
 	public void onMessage(ConsumerRecord<K, V> consumerRecord, @Nullable Acknowledgment acknowledgment,
 								@Nullable Consumer<?, ?> consumer) {
 		maybeGetBackoffTimestamp(consumerRecord)
+				.or(() -> maybeGetInitialDelayTimestamp(consumerRecord))
 				.ifPresent(nextExecutionTimestamp -> this.kafkaConsumerBackoffManager
 						.backOffIfNecessary(createContext(consumerRecord, nextExecutionTimestamp, consumer)));
 		try {
@@ -120,6 +139,16 @@ public class KafkaBackoffAwareMessageListenerAdapter<K, V>
 				})
 				.map(timestampHeader -> new BigInteger(timestampHeader.value()).longValue())
 				.filter(ts -> ts - Instant.now(this.clock).toEpochMilli() <= MAX_BACKOFF_MS);
+	}
+
+	private Optional<Long> maybeGetInitialDelayTimestamp(ConsumerRecord<K, V> data) {
+		if (this.initialDelayMs == 0 || data.timestamp() < 0) {
+			return Optional.empty();
+		}
+		long recordTimestamp = data.timestamp();
+		return Optional.of(recordTimestamp > Long.MAX_VALUE - this.initialDelayMs
+				? Long.MAX_VALUE
+				: recordTimestamp + this.initialDelayMs);
 	}
 
 	/*

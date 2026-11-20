@@ -80,6 +80,10 @@ public class DeadLetterPublishingRecovererFactory {
 		this.destinationTopicResolver = destinationTopicResolver;
 	}
 
+	DestinationTopicResolver getDestinationTopicResolver() {
+		return this.destinationTopicResolver;
+	}
+
 	/**
 	 * Set a function that creates additional headers for the output record, in addition to the standard
 	 * retry headers added by this factory.
