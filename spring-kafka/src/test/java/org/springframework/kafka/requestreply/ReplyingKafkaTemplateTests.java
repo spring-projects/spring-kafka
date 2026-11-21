@@ -6,6 +6,7 @@ package org.springframework.kafka.requestreply;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -13,14 +14,19 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationHandler;
+import io.micrometer.observation.ObservationRegistry;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -66,6 +72,7 @@ import org.springframework.kafka.support.SimpleKafkaHeaderMapper;
 import org.springframework.kafka.support.TopicPartitionOffset;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;
 import org.springframework.kafka.support.converter.StringJacksonJsonMessageConverter;
+import org.springframework.kafka.support.micrometer.KafkaRecordReceiverContext;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
@@ -75,6 +82,7 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -82,10 +90,13 @@ import org.springframework.test.util.ReflectionTestUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -97,6 +108,7 @@ import static org.mockito.Mockito.verify;
  * @author Ngoc Nhan
  * @author OhKyu Chan
  * @author Minju Kim
+ * @author WooSeung Kim
  *
  * @since 2.1.3
  *
@@ -743,6 +755,259 @@ public class ReplyingKafkaTemplateTests {
 		assertThat(KafkaTestUtils.getPropertyValue(template, "pending", Map.class)).hasSize(0);
 		template.stop();
 		template.destroy();
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void aggregateExtraReplyInSameBatchDoesNotStopCommits() throws Exception {
+		AtomicReference<byte[]> correlation = new AtomicReference<>();
+		AggregatingReplyingKafkaTemplate template = mockAggregatingTemplate(correlation, new AtomicReference<>(), 2);
+		try {
+			RequestReplyFuture first = template.sendAndReceive(new ProducerRecord("requests", null, "first"));
+			List<ConsumerRecord> records = new ArrayList<>();
+			for (String value : List.of("a", "b", "c")) {
+				ConsumerRecord record = new ConsumerRecord("replies", 0, records.size(), null, value);
+				record.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlation.get()));
+				records.add(record);
+			}
+			Consumer consumer = mock();
+			template.onMessage(records, consumer);
+			ConsumerRecord<Integer, Collection<ConsumerRecord<Integer, String>>> result =
+					(ConsumerRecord) first.get(10, TimeUnit.SECONDS);
+			assertThat(result.value()).extracting(ConsumerRecord::value).containsExactly("a", "b");
+			RequestReplyFuture second = template.sendAndReceive(new ProducerRecord("requests", null, "second"));
+			records.clear();
+			for (String value : List.of("d", "e")) {
+				ConsumerRecord record = new ConsumerRecord("replies", 0, records.size() + 3L, null, value);
+				record.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlation.get()));
+				records.add(record);
+			}
+			template.onMessage(records, consumer);
+			assertThat(second.get(10, TimeUnit.SECONDS)).isNotNull();
+			assertThat(KafkaTestUtils.getPropertyValue(template, "pending", Map.class)).isEmpty();
+			verify(consumer).commitSync(Map.of(new TopicPartition("replies", 0), new OffsetAndMetadata(5)),
+					Duration.ofSeconds(30));
+		}
+		finally {
+			template.stop();
+			template.destroy();
+		}
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void aggregateReleasedRepliesAreNotLostToTimeoutDuringLaterCommit() throws Exception {
+		AtomicReference<byte[]> correlation = new AtomicReference<>();
+		AtomicReference<Runnable> timeout = new AtomicReference<>();
+		AggregatingReplyingKafkaTemplate template = mockAggregatingTemplate(correlation, timeout, 1);
+		try {
+			RequestReplyFuture first = template.sendAndReceive(new ProducerRecord("requests", null, "first"));
+			ConsumerRecord firstReply = new ConsumerRecord("replies", 0, 0L, null, "first reply");
+			firstReply.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlation.get()));
+			Runnable firstTimeout = timeout.get();
+			template.sendAndReceive(new ProducerRecord("requests", null, "second"));
+			ConsumerRecord secondReply = new ConsumerRecord("replies", 0, 1L, null, "second reply");
+			secondReply.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlation.get()));
+			Consumer consumer = mock();
+			AtomicInteger commits = new AtomicInteger();
+			willAnswer(invocation -> {
+				// the first request times out while the second release is committed
+				if (commits.incrementAndGet() == 2) {
+					firstTimeout.run();
+				}
+				return null;
+			}).given(consumer).commitSync(anyMap(), any(Duration.class));
+			template.onMessage(List.of(firstReply, secondReply), consumer);
+			ConsumerRecord<Integer, Collection<ConsumerRecord<Integer, String>>> result =
+					(ConsumerRecord) first.get(10, TimeUnit.SECONDS);
+			assertThat(result.value()).extracting(ConsumerRecord::value).containsExactly("first reply");
+		}
+		finally {
+			template.stop();
+			template.destroy();
+		}
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void aggregateReleasedFutureIsCompletedOutsideTheAggregationLock() throws Exception {
+		AtomicReference<byte[]> correlation = new AtomicReference<>();
+		AtomicReference<Runnable> timeout = new AtomicReference<>();
+		AggregatingReplyingKafkaTemplate template = mockAggregatingTemplate(correlation, timeout, 1);
+		try {
+			RequestReplyFuture first = template.sendAndReceive(new ProducerRecord("requests", null, "first"));
+			byte[] firstCorrelation = correlation.get();
+			RequestReplyFuture second = template.sendAndReceive(new ProducerRecord("requests", null, "second"));
+			Runnable secondTimeout = timeout.get();
+			AtomicReference<Throwable> seenByCallback = new AtomicReference<>();
+			first.whenComplete((result, ex) -> {
+				// a callback on the listener thread that waits for another request to time out
+				new Thread(secondTimeout).start();
+				try {
+					second.get(10, TimeUnit.SECONDS);
+				}
+				catch (Exception e) {
+					seenByCallback.set(e instanceof ExecutionException ? e.getCause() : e);
+				}
+			});
+			ConsumerRecord record = new ConsumerRecord("replies", 0, 0L, null, "reply");
+			record.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, firstCorrelation));
+			Consumer consumer = mock();
+			template.onMessage(List.of(record), consumer);
+			assertThat(seenByCallback.get()).isInstanceOf(KafkaReplyTimeoutException.class);
+		}
+		finally {
+			template.stop();
+			template.destroy();
+		}
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void aggregateReleaseIsRetriedWhenTheCommitFails() throws Exception {
+		AtomicReference<byte[]> correlation = new AtomicReference<>();
+		AggregatingReplyingKafkaTemplate template = mockAggregatingTemplate(correlation, new AtomicReference<>(), 1);
+		try {
+			RequestReplyFuture future = template.sendAndReceive(new ProducerRecord("requests", null, "request"));
+			ConsumerRecord record = new ConsumerRecord("replies", 0, 0L, null, "reply");
+			record.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlation.get()));
+			Consumer consumer = mock();
+			willThrow(new IllegalStateException("commit failed")).willDoNothing().given(consumer)
+					.commitSync(anyMap(), any(Duration.class));
+			assertThatIllegalStateException().isThrownBy(() -> template.onMessage(List.of(record), consumer));
+			assertThat(future.isDone()).isFalse();
+			// the error handler redelivers the batch, which holds the whole group
+			template.onMessage(List.of(record), consumer);
+			ConsumerRecord<Integer, Collection<ConsumerRecord<Integer, String>>> result =
+					(ConsumerRecord) future.get(10, TimeUnit.SECONDS);
+			assertThat(result.value()).extracting(ConsumerRecord::value).containsExactly("reply");
+		}
+		finally {
+			template.stop();
+			template.destroy();
+		}
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void aggregateExtraReplyOnAnotherThreadDuringReleaseIsLate() throws Exception {
+		AtomicReference<byte[]> correlation = new AtomicReference<>();
+		AggregatingReplyingKafkaTemplate template = mockAggregatingTemplate(correlation, new AtomicReference<>(), 3);
+		try {
+			RequestReplyFuture future = template.sendAndReceive(new ProducerRecord("requests", null, "request"));
+			List<ConsumerRecord> records = new ArrayList<>();
+			for (String value : List.of("a", "b", "c", "d", "e")) {
+				int index = records.size();
+				ConsumerRecord record = new ConsumerRecord("replies", index / 3, index % 3, null, value);
+				record.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlation.get()));
+				records.add(record);
+			}
+			Consumer consumer = mock();
+			AtomicReference<Thread> other = new AtomicReference<>();
+			// another consumer thread gets two more replies before the released future is completed
+			onReplyDelivery(template, () -> {
+				if (other.get() == null) {
+					other.set(new Thread(() -> template.onMessage(records.subList(3, 5), consumer)));
+					other.get().start();
+					try {
+						other.get().join(10_000);
+					}
+					catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+					}
+				}
+			});
+			template.onMessage(records.subList(0, 3), consumer);
+			ConsumerRecord<Integer, Collection<ConsumerRecord<Integer, String>>> result =
+					(ConsumerRecord) future.get(10, TimeUnit.SECONDS);
+			assertThat(result.value()).extracting(ConsumerRecord::value).containsExactly("a", "b", "c");
+			assertThat(other.get().isAlive()).isFalse();
+			assertThat(KafkaTestUtils.getPropertyValue(template, "pending", Map.class)).isEmpty();
+			assertThat(KafkaTestUtils.getPropertyValue(template, "released", Set.class)).isEmpty();
+		}
+		finally {
+			template.stop();
+			template.destroy();
+		}
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void aggregateReleaseIsRetriedWhenTheDeliveryFails() throws Exception {
+		AtomicReference<byte[]> correlation = new AtomicReference<>();
+		AggregatingReplyingKafkaTemplate template = mockAggregatingTemplate(correlation, new AtomicReference<>(), 1);
+		try {
+			RequestReplyFuture future = template.sendAndReceive(new ProducerRecord("requests", null, "request"));
+			ConsumerRecord record = new ConsumerRecord("replies", 0, 0L, null, "reply");
+			record.headers().add(new RecordHeader(KafkaHeaders.CORRELATION_ID, correlation.get()));
+			Consumer consumer = mock();
+			AtomicInteger deliveries = new AtomicInteger();
+			onReplyDelivery(template, () -> {
+				if (deliveries.incrementAndGet() == 1) {
+					throw new IllegalStateException("delivery failed");
+				}
+			});
+			assertThatIllegalStateException().isThrownBy(() -> template.onMessage(List.of(record), consumer));
+			assertThat(future.isDone()).isFalse();
+			// the error handler redelivers the batch, which holds the whole group
+			template.onMessage(List.of(record), consumer);
+			ConsumerRecord<Integer, Collection<ConsumerRecord<Integer, String>>> result =
+					(ConsumerRecord) future.get(10, TimeUnit.SECONDS);
+			assertThat(result.value()).extracting(ConsumerRecord::value).containsExactly("reply");
+		}
+		finally {
+			template.stop();
+			template.destroy();
+		}
+	}
+
+	private static void onReplyDelivery(ReplyingKafkaTemplate<?, ?, ?> template, Runnable action) {
+		ObservationRegistry observationRegistry = ObservationRegistry.create();
+		observationRegistry.observationConfig().observationHandler(new ObservationHandler<Observation.Context>() {
+
+			@Override
+			public boolean supportsContext(Observation.Context context) {
+				return context instanceof KafkaRecordReceiverContext;
+			}
+
+			@Override
+			public void onStart(Observation.Context context) {
+				action.run();
+			}
+
+		});
+		template.setObservationRegistry(observationRegistry);
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private AggregatingReplyingKafkaTemplate mockAggregatingTemplate(AtomicReference<byte[]> correlation,
+			AtomicReference<Runnable> timeout, int releaseSize) {
+
+		GenericMessageListenerContainer container = mock();
+		ContainerProperties properties = new ContainerProperties("replies");
+		properties.setAckMode(AckMode.MANUAL);
+		given(container.getContainerProperties()).willReturn(properties);
+		given(container.getListenerId()).willReturn("replies");
+		ProducerFactory pf = mock();
+		Producer producer = mock();
+		given(pf.createProducer()).willReturn(producer);
+		willAnswer(invocation -> {
+			ProducerRecord rec = invocation.getArgument(0);
+			correlation.set(rec.headers().lastHeader(KafkaHeaders.CORRELATION_ID).value());
+			return new CompletableFuture<>();
+		}).given(producer).send(any(), any());
+		TaskScheduler scheduler = mock();
+		given(scheduler.schedule(any(Runnable.class), any(Instant.class))).willAnswer(invocation -> {
+			timeout.set(invocation.getArgument(0));
+			ScheduledFuture<?> scheduled = mock();
+			return scheduled;
+		});
+		AggregatingReplyingKafkaTemplate template = new AggregatingReplyingKafkaTemplate(pf, container,
+				(list, isTimeout) -> ((List) list).size() == releaseSize);
+		template.setTaskScheduler(scheduler);
+		template.setDefaultReplyTimeout(Duration.ofSeconds(30));
+		template.start();
+		return template;
 	}
 
 	public ReplyingKafkaTemplate<Integer, String, String> createTemplate(String topic) throws Exception {

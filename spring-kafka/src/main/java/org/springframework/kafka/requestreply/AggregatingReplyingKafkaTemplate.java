@@ -6,9 +6,9 @@ package org.springframework.kafka.requestreply;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +40,7 @@ import org.springframework.util.Assert;
  *
  * @author Gary Russell
  * @author Sanghyeok An
+ * @author WooSeung Kim
  * @since 2.3
  *
  */
@@ -66,6 +67,12 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 	private final Map<Object, Set<RecordHolder<K, R>>> pending = new HashMap<>();
 
 	private final Map<TopicPartition, Long> offsets = new HashMap<>();
+
+	/**
+	 * Correlation ids of released groups that are still being delivered; guarded by the
+	 * aggregation lock.
+	 */
+	private final Set<Object> released = new HashSet<>();
 
 	private final BiPredicate<List<ConsumerRecord<K, R>>, Boolean> releaseStrategy;
 
@@ -115,7 +122,6 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 
 	@Override
 	public void onMessage(List<ConsumerRecord<K, Collection<ConsumerRecord<K, R>>>> data, @Nullable Consumer<?, ?> consumer) {
-		List<ConsumerRecord<K, Collection<ConsumerRecord<K, R>>>> completed = new ArrayList<>();
 		String correlationHeaderName = getCorrelationHeaderName();
 		data.forEach(record -> {
 			Header correlation = record.headers().lastHeader(correlationHeaderName);
@@ -128,19 +134,19 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 				Object correlationId = isBinaryCorrelation()
 						? new CorrelationKey(correlation.value())
 						: new String(correlation.value(), StandardCharsets.UTF_8);
+				ConsumerRecord<K, Collection<ConsumerRecord<K, R>>> done = null;
 				this.aggregationLock.lock();
 				try {
-					if (isPending(correlationId)) {
+					if (!this.released.contains(correlationId) && isPending(correlationId)) {
 						List<ConsumerRecord<K, R>> list = addToCollection(record, correlationId).stream()
 								.map(RecordHolder::getRecord)
 								.collect(Collectors.toList());
 						if (this.releaseStrategy.test(list, false)) {
-							ConsumerRecord<K, Collection<ConsumerRecord<K, R>>> done =
-									new ConsumerRecord<>(AGGREGATED_RESULTS_TOPIC, 0, 0L, null, list);
+							done = new ConsumerRecord<>(AGGREGATED_RESULTS_TOPIC, 0, 0L, null, list);
 							done.headers().add(correlation);
 							this.pending.remove(correlationId);
 							checkOffsetsAndCommitIfNecessary(list, consumer);
-							completed.add(done);
+							this.released.add(correlationId);
 						}
 					}
 					else {
@@ -150,11 +156,22 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 				finally {
 					this.aggregationLock.unlock();
 				}
+				if (done != null) {
+					try {
+						super.onMessage(List.of(done));
+					}
+					finally {
+						this.aggregationLock.lock();
+						try {
+							this.released.remove(correlationId);
+						}
+						finally {
+							this.aggregationLock.unlock();
+						}
+					}
+				}
 			}
 		});
-		if (!completed.isEmpty()) {
-			super.onMessage(completed);
-		}
 	}
 
 	@Override
