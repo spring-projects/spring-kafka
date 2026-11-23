@@ -16,4 +16,3 @@ jobs:
     uses: spring-io/spring-github-workflows/.github/workflows/spring-post-release.yml@main
     secrets:
       GH_ACTIONS_REPO_TOKEN: ${{ secrets.GH_ACTIONS_REPO_TOKEN }}
-      SPRING_RELEASE_CHAT_WEBHOOK_URL: ${{ secrets.SPRING_RELEASE_GCHAT_WEBHOOK_URL }}
