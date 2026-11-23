@@ -3148,11 +3148,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (this.nackSleepDurationMillis > 0) {
 				this.nackWakeTimeMillis = System.currentTimeMillis() + this.nackSleepDurationMillis;
 				Set<TopicPartition> alreadyPaused = this.consumer.paused();
+				Set<TopicPartition> pausedForOtherReasons = new HashSet<>(alreadyPaused);
+				pausedForOtherReasons.removeAll(this.pausedForNack);
 				Collection<TopicPartition> assigned = getAssignedPartitions();
 				if (assigned != null) {
 					this.pausedForNack.addAll(assigned);
 				}
-				this.pausedForNack.removeAll(alreadyPaused);
+				this.pausedForNack.removeAll(pausedForOtherReasons);
 				this.logger.debug(() -> "Pausing for nack sleep: " + ListenerConsumer.this.pausedForNack);
 				try {
 					this.consumer.pause(this.pausedForNack);
@@ -4318,6 +4320,13 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.revoked.removeAll(toRepause);
 				ListenerConsumer.this.pausedPartitions.removeAll(this.revoked);
 				this.revoked.clear();
+				if (ListenerConsumer.this.nackWakeTimeMillis > 0) {
+					// A cooperative assignment may introduce new partitions during a nack
+					// sleep; include them in the same pause ownership scope.
+					Set<TopicPartition> newlyAssignedForNack = new HashSet<>(partitions);
+					newlyAssignedForNack.removeAll(ListenerConsumer.this.consumer.paused());
+					ListenerConsumer.this.pausedForNack.addAll(newlyAssignedForNack);
+				}
 				if (!ListenerConsumer.this.pausedForNack.isEmpty()) {
 					ListenerConsumer.this.consumer.pause(ListenerConsumer.this.pausedForNack);
 				}
