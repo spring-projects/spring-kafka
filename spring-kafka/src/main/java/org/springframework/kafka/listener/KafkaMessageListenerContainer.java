@@ -2079,7 +2079,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.logger.debug(() -> "Resuming consumption from: " + this.consumer.paused());
 				Collection<TopicPartition> paused = new LinkedList<>(this.consumer.paused());
 				paused.removeAll(this.pausedPartitions);
-				// a pause could be requested for a partition while the container is paused
 				paused.removeIf(KafkaMessageListenerContainer.this::isPartitionPauseRequested);
 				this.consumer.resume(paused);
 				this.consumerPaused = false;
@@ -2093,8 +2092,6 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			if (partitions != null) {
 				List<TopicPartition> partitionsToPause = partitions
 						.stream()
-						// the partition can already be paused on the consumer, e.g. when the container is paused;
-						// the request still has to be tracked to not resume the partition together with the container
 						.filter(tp -> isPartitionPauseRequested(tp)
 								&& (!pausedConsumerPartitions.contains(tp) || !this.pausedPartitions.contains(tp)))
 						.toList();

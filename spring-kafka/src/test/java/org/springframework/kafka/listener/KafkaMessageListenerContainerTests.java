@@ -3003,14 +3003,12 @@ public class KafkaMessageListenerContainerTests {
 		await().until(container::isContainerPaused);
 		assertThat(pausedParts).containsExactlyInAnyOrder(tp0, tp1);
 
-		// the partition is already paused on the consumer because the whole container is paused
 		container.pausePartition(tp1);
 		int pollsBeforePausePartition = polls.get();
 		await().until(() -> polls.get() > pollsBeforePausePartition + 2);
 		assertThat(container.isPartitionPauseRequested(tp1)).isTrue();
 		assertThat(container.isPartitionPaused(tp1)).isTrue();
 
-		// resuming the container must not resume the partition for which a pause was requested
 		container.resume();
 		assertThat(resumeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(resumed.get(0)).containsExactly(tp0);
@@ -3041,7 +3039,6 @@ public class KafkaMessageListenerContainerTests {
 		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
 			Thread.sleep(50);
 			if (requestInPoll.compareAndSet(true, false)) {
-				// both requests arrive after the partitions pause check and before the consumer resume check
 				containerRef.get().pausePartition(tp1);
 				containerRef.get().resume();
 			}
