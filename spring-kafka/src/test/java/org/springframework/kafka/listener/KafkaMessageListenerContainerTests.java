@@ -21,6 +21,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -108,6 +109,7 @@ import org.springframework.util.backoff.FixedBackOff;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
@@ -138,6 +140,7 @@ import static org.mockito.Mockito.verify;
  * @author Borahm Lee
  * @author Sanghyeok An
  * @author WooSeung Kim
+ * @author Seongyun Hwang
  */
 @EmbeddedKafka(topics = { KafkaMessageListenerContainerTests.topic1, KafkaMessageListenerContainerTests.topic2,
 		KafkaMessageListenerContainerTests.topic3, KafkaMessageListenerContainerTests.topic4,
@@ -2946,6 +2949,132 @@ public class KafkaMessageListenerContainerTests {
 		container.resume();
 		assertThat(resumeLatch.await(10, TimeUnit.SECONDS)).isTrue();
 		assertThat(pausedParts).hasSize(1);
+		container.stop();
+	}
+
+	@SuppressWarnings({ "unchecked" })
+	@Test
+	public void pausePartitionWhileContainerPaused() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
+		TopicPartition tp0 = new TopicPartition("foo", 0);
+		TopicPartition tp1 = new TopicPartition("foo", 1);
+		given(consumer.assignment()).willReturn(Set.of(tp0, tp1));
+		Set<TopicPartition> pausedParts = ConcurrentHashMap.newKeySet();
+		willAnswer(i -> {
+			pausedParts.addAll(i.getArgument(0));
+			return null;
+		}).given(consumer).pause(any());
+		given(consumer.paused()).willReturn(pausedParts);
+		AtomicInteger polls = new AtomicInteger();
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			polls.incrementAndGet();
+			return emptyRecords;
+		});
+		List<Collection<TopicPartition>> resumed = new CopyOnWriteArrayList<>();
+		final CountDownLatch resumeLatch = new CountDownLatch(1);
+		willAnswer(i -> {
+			Collection<TopicPartition> partitions = new ArrayList<>(i.getArgument(0));
+			pausedParts.removeAll(partitions);
+			resumed.add(partitions);
+			resumeLatch.countDown();
+			return null;
+		}).given(consumer).resume(any());
+		ContainerProperties containerProps = new ContainerProperties(new TopicPartitionOffset("foo", 0),
+				new TopicPartitionOffset("foo", 1));
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.RECORD);
+		containerProps.setClientId("clientId");
+		containerProps.setMessageListener((MessageListener<?, ?>) rec -> { });
+		containerProps.setMissingTopicsFatal(false);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		List<ConsumerResumedEvent> resumedEvents = new CopyOnWriteArrayList<>();
+		container.setApplicationEventPublisher(e -> {
+			if (e instanceof ConsumerResumedEvent event) {
+				resumedEvents.add(event);
+			}
+		});
+		container.start();
+		container.pause();
+		await().until(container::isContainerPaused);
+		assertThat(pausedParts).containsExactlyInAnyOrder(tp0, tp1);
+
+		// the partition is already paused on the consumer because the whole container is paused
+		container.pausePartition(tp1);
+		int pollsBeforePausePartition = polls.get();
+		await().until(() -> polls.get() > pollsBeforePausePartition + 2);
+		assertThat(container.isPartitionPauseRequested(tp1)).isTrue();
+		assertThat(container.isPartitionPaused(tp1)).isTrue();
+
+		// resuming the container must not resume the partition for which a pause was requested
+		container.resume();
+		assertThat(resumeLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(resumed.get(0)).containsExactly(tp0);
+		assertThat(resumedEvents.get(0).getPartitions()).containsExactly(tp0);
+		assertThat(pausedParts).containsExactly(tp1);
+		assertThat(container.isPartitionPaused(tp1)).isTrue();
+		container.stop();
+	}
+
+	@SuppressWarnings({ "unchecked" })
+	@Test
+	public void pausePartitionAndResumeContainerInSamePoll() throws Exception {
+		ConsumerFactory<Integer, String> cf = mock(ConsumerFactory.class);
+		Consumer<Integer, String> consumer = mock(Consumer.class);
+		given(cf.createConsumer(eq("grp"), eq("clientId"), isNull(), any())).willReturn(consumer);
+		ConsumerRecords<Integer, String> emptyRecords = new ConsumerRecords<>(Collections.emptyMap(), Map.of());
+		TopicPartition tp0 = new TopicPartition("foo", 0);
+		TopicPartition tp1 = new TopicPartition("foo", 1);
+		given(consumer.assignment()).willReturn(Set.of(tp0, tp1));
+		Set<TopicPartition> pausedParts = ConcurrentHashMap.newKeySet();
+		willAnswer(i -> {
+			pausedParts.addAll(i.getArgument(0));
+			return null;
+		}).given(consumer).pause(any());
+		given(consumer.paused()).willReturn(pausedParts);
+		AtomicReference<KafkaMessageListenerContainer<Integer, String>> containerRef = new AtomicReference<>();
+		AtomicBoolean requestInPoll = new AtomicBoolean();
+		given(consumer.poll(any(Duration.class))).willAnswer(i -> {
+			Thread.sleep(50);
+			if (requestInPoll.compareAndSet(true, false)) {
+				// both requests arrive after the partitions pause check and before the consumer resume check
+				containerRef.get().pausePartition(tp1);
+				containerRef.get().resume();
+			}
+			return emptyRecords;
+		});
+		List<Collection<TopicPartition>> resumed = new CopyOnWriteArrayList<>();
+		final CountDownLatch resumeLatch = new CountDownLatch(1);
+		willAnswer(i -> {
+			Collection<TopicPartition> partitions = new ArrayList<>(i.getArgument(0));
+			pausedParts.removeAll(partitions);
+			resumed.add(partitions);
+			resumeLatch.countDown();
+			return null;
+		}).given(consumer).resume(any());
+		ContainerProperties containerProps = new ContainerProperties(new TopicPartitionOffset("foo", 0),
+				new TopicPartitionOffset("foo", 1));
+		containerProps.setGroupId("grp");
+		containerProps.setAckMode(AckMode.RECORD);
+		containerProps.setClientId("clientId");
+		containerProps.setMessageListener((MessageListener<?, ?>) rec -> { });
+		containerProps.setMissingTopicsFatal(false);
+		KafkaMessageListenerContainer<Integer, String> container =
+				new KafkaMessageListenerContainer<>(cf, containerProps);
+		containerRef.set(container);
+		container.start();
+		container.pause();
+		await().until(container::isContainerPaused);
+
+		requestInPoll.set(true);
+		assertThat(resumeLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(resumed.get(0)).containsExactly(tp0);
+		await().until(() -> container.isPartitionPaused(tp1));
+		assertThat(pausedParts).containsExactly(tp1);
 		container.stop();
 	}
 
