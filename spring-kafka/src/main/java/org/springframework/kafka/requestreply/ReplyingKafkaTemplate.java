@@ -67,6 +67,7 @@ import org.springframework.util.Assert;
  * @author OhKyu Chan
  * @author Ngoc Nhan
  * @author Minju Kim
+ * @author Mohit Gupta
  *
  * @since 2.1.3
  *
@@ -336,7 +337,11 @@ public class ReplyingKafkaTemplate<K, V, R> extends KafkaTemplate<K, V> implemen
 		if (this.running) {
 			this.running = false;
 			this.replyContainer.stop();
-			this.futures.clear();
+			this.futures.forEach((correlationId, future) -> {
+				if (this.futures.remove(correlationId, future)) {
+					future.completeExceptionally(new KafkaException("Template stopped"));
+				}
+			});
 		}
 	}
 
