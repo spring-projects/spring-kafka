@@ -40,6 +40,7 @@ import org.springframework.util.Assert;
  *
  * @author Gary Russell
  * @author Sanghyeok An
+ * @author Mohit Gupta
  * @since 2.3
  *
  */
@@ -111,6 +112,19 @@ public class AggregatingReplyingKafkaTemplate<K, V, R>
 	 */
 	public synchronized void setReturnPartialOnTimeout(boolean returnPartialOnTimeout) {
 		this.returnPartialOnTimeout = returnPartialOnTimeout;
+	}
+
+	@Override
+	public synchronized void stop() {
+		super.stop();
+		this.aggregationLock.lock();
+		try {
+			this.pending.clear();
+			this.offsets.clear();
+		}
+		finally {
+			this.aggregationLock.unlock();
+		}
 	}
 
 	@Override
