@@ -234,7 +234,19 @@ public class DelegatingSerializationTests {
 		Object deserialized1 = deserializer.deserialize("topic", headers, data);
 		assertThat(deserialized1).isSameAs(data);
 		Object deserialized2 = deserializer.deserialize("topic", headers, buffer);
-		assertThat(deserialized2).isEqualTo(buffer);
+		assertThat(deserialized2).isInstanceOf(byte[].class).isEqualTo(data);
+	}
+
+	@Test
+	void testBadIncomingInBufferSliceFallsBackToRawBytesOfRecord() {
+		try (DelegatingDeserializer deserializer = new DelegatingDeserializer()) {
+			Headers headers = new RecordHeaders();
+			headers.add(new RecordHeader(DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR, "junk".getBytes()));
+			// The consumer passes a slice of the fetched records
+			ByteBuffer buffer = ByteBuffer.wrap("firstpayloadlast".getBytes(), 5, 7).slice();
+			Object deserialized = deserializer.deserialize("topic", headers, buffer);
+			assertThat(deserialized).isInstanceOf(byte[].class).isEqualTo("payload".getBytes());
+		}
 	}
 
 	@Test
@@ -252,7 +264,7 @@ public class DelegatingSerializationTests {
 						type.getName().getBytes()));
 				assertThat(deserializer.deserialize("topic", headers, data)).isSameAs(data);
 				assertThat(deserializer.deserialize("topic", headers, ByteBuffer.wrap(data)))
-						.isEqualTo(ByteBuffer.wrap(data));
+						.isEqualTo(data);
 			}
 			assertThat(delegates).isEmpty();
 		}

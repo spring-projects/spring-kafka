@@ -303,6 +303,10 @@ Producers must set a header `DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR` 
 
 For incoming records, the deserializer uses the same headers to select the deserializer to use; if a match is not found, the raw `byte[]` is returned; if the header is not present, an `IllegalStateException` is thrown.
 
+NOTE: The `KafkaConsumer` passes the record data to the deserializer as a `ByteBuffer`.
+Previously, when no delegate matched, the `DelegatingDeserializer` returned that `ByteBuffer` (a view over the fetched records) instead of the raw `byte[]`, unless it was wrapped in an `ErrorHandlingDeserializer`.
+If you relied on receiving a `ByteBuffer` in that case, handle a `byte[]` instead.
+
 You can configure the map of selector to `Serializer` / `Deserializer` via a constructor, or you can configure it via Kafka producer/consumer properties with the keys `DelegatingSerializer.VALUE_SERIALIZATION_SELECTOR_CONFIG` and `DelegatingSerializer.KEY_SERIALIZATION_SELECTOR_CONFIG`.
 For the serializer, the producer property can be a `Map<String, Object>` where the key is the selector and the value is a `Serializer` instance, a serializer `Class` or the class name.
 The property can also be a String of comma-delimited map entries, as shown below.
