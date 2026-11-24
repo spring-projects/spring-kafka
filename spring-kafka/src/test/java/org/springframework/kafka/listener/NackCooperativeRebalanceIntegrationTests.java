@@ -47,152 +47,153 @@ import static org.awaitility.Awaitility.await;
  * @author Jiwon Lee
  */
 @EmbeddedKafka(partitions = 1, topics = { NackCooperativeRebalanceIntegrationTests.TOPIC_A,
-        NackCooperativeRebalanceIntegrationTests.TOPIC_B })
+		NackCooperativeRebalanceIntegrationTests.TOPIC_B })
 class NackCooperativeRebalanceIntegrationTests {
 
-    static final String TOPIC_A = "nack-cooperative-a";
+	static final String TOPIC_A = "nack-cooperative-a";
 
-    static final String TOPIC_B = "nack-cooperative-b";
+	static final String TOPIC_B = "nack-cooperative-b";
 
-    private static final Duration NACK_SLEEP = Duration.ofSeconds(20);
+	private static final Duration NACK_SLEEP = Duration.ofSeconds(20);
 
-    @Test
-    void newPartitionMustNotDeliverRecordsDuringExistingNackSleep() throws Exception {
-        EmbeddedKafkaBroker broker = EmbeddedKafkaCondition.getBroker();
-        String group = "nack-cooperative-" + System.nanoTime();
-        Map<String, Object> consumerProperties = new HashMap<>();
-        consumerProperties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString());
-        consumerProperties.put(ConsumerConfig.GROUP_ID_CONFIG, group);
-        consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        consumerProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        consumerProperties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        consumerProperties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        consumerProperties.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG,
-                CooperativeStickyAssignor.class.getName());
+	@Test
+	void newPartitionMustNotDeliverRecordsDuringExistingNackSleep() throws Exception {
+		EmbeddedKafkaBroker broker = EmbeddedKafkaCondition.getBroker();
+		String group = "nack-cooperative-" + System.nanoTime();
+		Map<String, Object> consumerProperties = new HashMap<>();
+		consumerProperties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString());
+		consumerProperties.put(ConsumerConfig.GROUP_ID_CONFIG, group);
+		consumerProperties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+		consumerProperties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+		consumerProperties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+		consumerProperties.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+		consumerProperties.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG,
+				CooperativeStickyAssignor.class.getName());
 
-        Map<String, Object> producerProperties = new HashMap<>();
-        producerProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString());
-        producerProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        producerProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+		Map<String, Object> producerProperties = new HashMap<>();
+		producerProperties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString());
+		producerProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+		producerProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
 
-        DefaultKafkaProducerFactory<String, String> producerFactory =
-                new DefaultKafkaProducerFactory<>(producerProperties);
-        KafkaTemplate<String, String> template = new KafkaTemplate<>(producerFactory);
-        Set<TopicPartition> c1Assignment = ConcurrentHashMap.newKeySet();
-        Set<TopicPartition> c2Assignment = ConcurrentHashMap.newKeySet();
-        Set<TopicPartition> c1RevokedDuringNack = ConcurrentHashMap.newKeySet();
-        AtomicReference<TopicPartition> original = new AtomicReference<>();
-        AtomicReference<TopicPartition> added = new AtomicReference<>();
-        AtomicLong firstNackNanos = new AtomicLong();
-        AtomicInteger originalDeliveries = new AtomicInteger();
-        CountDownLatch firstNack = new CountDownLatch(1);
-        CountDownLatch originalRedelivered = new CountDownLatch(1);
-        CountDownLatch addedDelivered = new CountDownLatch(1);
+		DefaultKafkaProducerFactory<String, String> producerFactory =
+				new DefaultKafkaProducerFactory<>(producerProperties);
+		KafkaTemplate<String, String> template = new KafkaTemplate<>(producerFactory);
+		Set<TopicPartition> c1Assignment = ConcurrentHashMap.newKeySet();
+		Set<TopicPartition> c2Assignment = ConcurrentHashMap.newKeySet();
+		Set<TopicPartition> c1RevokedDuringNack = ConcurrentHashMap.newKeySet();
+		AtomicReference<TopicPartition> original = new AtomicReference<>();
+		AtomicReference<TopicPartition> added = new AtomicReference<>();
+		AtomicLong firstNackNanos = new AtomicLong();
+		AtomicInteger originalDeliveries = new AtomicInteger();
+		CountDownLatch firstNack = new CountDownLatch(1);
+		CountDownLatch originalRedelivered = new CountDownLatch(1);
+		CountDownLatch addedDelivered = new CountDownLatch(1);
 
-        KafkaMessageListenerContainer<String, String> c1 = container(
-                consumerProperties, group, "c1", c1Assignment, c1RevokedDuringNack,
-                () -> firstNack.getCount() == 0);
-        KafkaMessageListenerContainer<String, String> c2 = container(
-                consumerProperties, group, "c2", c2Assignment, ConcurrentHashMap.newKeySet(), () -> false);
+		KafkaMessageListenerContainer<String, String> c1 = container(
+				consumerProperties, group, "c1", c1Assignment, c1RevokedDuringNack,
+				() -> firstNack.getCount() == 0);
+		KafkaMessageListenerContainer<String, String> c2 = container(
+				consumerProperties, group, "c2", c2Assignment, ConcurrentHashMap.newKeySet(), () -> false);
 
-        c1.getContainerProperties().setMessageListener(
-                (BatchAcknowledgingMessageListener<String, String>) (records, ack) -> {
-                    for (ConsumerRecord<String, String> record : records) {
-                        TopicPartition partition = new TopicPartition(record.topic(), record.partition());
-                        if (partition.equals(original.get()) && "first-failure".equals(record.value())) {
-                            if (originalDeliveries.incrementAndGet() == 1) {
-                                firstNackNanos.set(System.nanoTime());
-                                ack.nack(0, NACK_SLEEP);
-                                firstNack.countDown();
-                                return;
-                            }
-                            originalRedelivered.countDown();
-                        }
-                        if (partition.equals(added.get()) && "new-partition-record".equals(record.value())) {
-                            addedDelivered.countDown();
-                        }
-                    }
-                    ack.acknowledge();
-                });
-        c2.getContainerProperties().setMessageListener(
-                (BatchAcknowledgingMessageListener<String, String>) (records, ack) -> ack.acknowledge());
+		c1.getContainerProperties().setMessageListener(
+				(BatchAcknowledgingMessageListener<String, String>) (records, ack) -> {
+					for (ConsumerRecord<String, String> record : records) {
+						TopicPartition partition = new TopicPartition(record.topic(), record.partition());
+						if (partition.equals(original.get()) && "first-failure".equals(record.value())) {
+							if (originalDeliveries.incrementAndGet() == 1) {
+								firstNackNanos.set(System.nanoTime());
+								ack.nack(0, NACK_SLEEP);
+								firstNack.countDown();
+								return;
+							}
+							originalRedelivered.countDown();
+						}
+						if (partition.equals(added.get()) && "new-partition-record".equals(record.value())) {
+							addedDelivered.countDown();
+						}
+					}
+					ack.acknowledge();
+				});
+		c2.getContainerProperties().setMessageListener(
+				(BatchAcknowledgingMessageListener<String, String>) (records, ack) -> ack.acknowledge());
 
-        try {
-            c1.start();
-            await().atMost(Duration.ofSeconds(20))
-                    .untilAsserted(() -> assertThat(c1Assignment).hasSize(2));
-            c2.start();
-            await().atMost(Duration.ofSeconds(25)).untilAsserted(() -> {
-                assertThat(c1Assignment).hasSize(1);
-                assertThat(c2Assignment).hasSize(1);
-            });
-            original.set(c1Assignment.iterator().next());
-            added.set(c2Assignment.iterator().next());
+		try {
+			c1.start();
+			await().atMost(Duration.ofSeconds(20))
+					.untilAsserted(() -> assertThat(c1Assignment).hasSize(2));
+			c2.start();
+			await().atMost(Duration.ofSeconds(25)).untilAsserted(() -> {
+				assertThat(c1Assignment).hasSize(1);
+				assertThat(c2Assignment).hasSize(1);
+			});
+			original.set(c1Assignment.iterator().next());
+			added.set(c2Assignment.iterator().next());
 
-            template.send(original.get().topic(), "first-failure").get(10, TimeUnit.SECONDS);
-            assertThat(firstNack.await(15, TimeUnit.SECONDS)).isTrue();
+			template.send(original.get().topic(), "first-failure").get(10, TimeUnit.SECONDS);
+			assertThat(firstNack.await(15, TimeUnit.SECONDS)).isTrue();
 
-            c2.stop();
-            await().atMost(Duration.ofSeconds(12))
-                    .untilAsserted(() -> assertThat(c1Assignment).containsExactlyInAnyOrder(original.get(), added.get()));
-            assertThat(c1RevokedDuringNack)
-                    .as("The original partition must be retained during cooperative assignment")
-                    .doesNotContain(original.get());
+			c2.stop();
+			await().atMost(Duration.ofSeconds(12))
+					.untilAsserted(() -> assertThat(c1Assignment)
+							.containsExactlyInAnyOrder(original.get(), added.get()));
+			assertThat(c1RevokedDuringNack)
+					.as("The original partition must be retained during cooperative assignment")
+					.doesNotContain(original.get());
 
-            assertThat(System.nanoTime())
-                    .as("The added partition must be assigned before the first nack expires")
-                    .isLessThan(firstNackNanos.get() + NACK_SLEEP.toNanos() - Duration.ofSeconds(2).toNanos());
+			assertThat(System.nanoTime())
+					.as("The added partition must be assigned before the first nack expires")
+					.isLessThan(firstNackNanos.get() + NACK_SLEEP.toNanos() - Duration.ofSeconds(2).toNanos());
 
-            template.send(added.get().topic(), "new-partition-record").get(10, TimeUnit.SECONDS);
-            assertThat(addedDelivered.await(1, TimeUnit.SECONDS))
-                    .as("A cooperative addition must not bypass an active nack pause")
-                    .isFalse();
+			template.send(added.get().topic(), "new-partition-record").get(10, TimeUnit.SECONDS);
+			assertThat(addedDelivered.await(1, TimeUnit.SECONDS))
+					.as("A cooperative addition must not bypass an active nack pause")
+					.isFalse();
 
-            assertThat(originalRedelivered.await(30, TimeUnit.SECONDS))
-                    .as("The original nack-paused partition must resume")
-                    .isTrue();
-            assertThat(addedDelivered.await(10, TimeUnit.SECONDS))
-                    .as("The newly assigned partition must resume after the nack sleep")
-                    .isTrue();
-        }
-        finally {
-            c1.stop();
-            c2.stop();
-            template.destroy();
-            producerFactory.destroy();
-        }
-    }
+			assertThat(originalRedelivered.await(30, TimeUnit.SECONDS))
+					.as("The original nack-paused partition must resume")
+					.isTrue();
+			assertThat(addedDelivered.await(10, TimeUnit.SECONDS))
+					.as("The newly assigned partition must resume after the nack sleep")
+					.isTrue();
+		}
+		finally {
+			c1.stop();
+			c2.stop();
+			template.destroy();
+			producerFactory.destroy();
+		}
+	}
 
-    private static KafkaMessageListenerContainer<String, String> container(
-            Map<String, Object> properties, String group, String id, Set<TopicPartition> assignment,
-            Set<TopicPartition> revokedDuringNack, java.util.function.BooleanSupplier nackStarted) {
+	private static KafkaMessageListenerContainer<String, String> container(
+			Map<String, Object> properties, String group, String id, Set<TopicPartition> assignment,
+			Set<TopicPartition> revokedDuringNack, java.util.function.BooleanSupplier nackStarted) {
 
-        ContainerProperties containerProperties = new ContainerProperties(TOPIC_A, TOPIC_B);
-        containerProperties.setGroupId(group);
-        containerProperties.setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
-        containerProperties.setPollTimeout(250);
-        containerProperties.setConsumerRebalanceListener(new ConsumerAwareRebalanceListener() {
+		ContainerProperties containerProperties = new ContainerProperties(TOPIC_A, TOPIC_B);
+		containerProperties.setGroupId(group);
+		containerProperties.setAckMode(ContainerProperties.AckMode.MANUAL_IMMEDIATE);
+		containerProperties.setPollTimeout(250);
+		containerProperties.setConsumerRebalanceListener(new ConsumerAwareRebalanceListener() {
 
-            @Override
-            public void onPartitionsRevokedBeforeCommit(Consumer<?, ?> consumer,
-                    Collection<TopicPartition> revoked) {
-                assignment.removeAll(revoked);
-                if (nackStarted.getAsBoolean()) {
-                    revokedDuringNack.addAll(revoked);
-                }
-            }
+			@Override
+			public void onPartitionsRevokedBeforeCommit(Consumer<?, ?> consumer,
+					Collection<TopicPartition> revoked) {
+				assignment.removeAll(revoked);
+				if (nackStarted.getAsBoolean()) {
+					revokedDuringNack.addAll(revoked);
+				}
+			}
 
-            @Override
-            public void onPartitionsAssigned(Consumer<?, ?> consumer,
-                    Collection<TopicPartition> partitions) {
-                assignment.addAll(partitions);
-            }
+			@Override
+			public void onPartitionsAssigned(Consumer<?, ?> consumer,
+					Collection<TopicPartition> partitions) {
+				assignment.addAll(partitions);
+			}
 
-        });
-        KafkaMessageListenerContainer<String, String> container = new KafkaMessageListenerContainer<>(
-                new DefaultKafkaConsumerFactory<>(properties), containerProperties);
-        container.setBeanName(id);
-        return container;
-    }
+		});
+		KafkaMessageListenerContainer<String, String> container = new KafkaMessageListenerContainer<>(
+				new DefaultKafkaConsumerFactory<>(properties), containerProperties);
+		container.setBeanName(id);
+		return container;
+	}
 
 }
