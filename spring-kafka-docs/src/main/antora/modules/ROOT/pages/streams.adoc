@@ -157,20 +157,19 @@ In the following example, we use the `JacksonJsonSerde` to serialize and deseria
 
 [source,java]
 ----
-stream.through(Serdes.Integer(), new JacksonJsonSerde<>(Cat.class), "cats");
+stream.repartition(Repartitioned.with(Serdes.Integer(), new JacksonJsonSerde<>(Cat.class)));
 ----
 
 When constructing the serializer/deserializer programmatically for use in the producer/consumer factory, since version 2.3, you can use the fluent API, which simplifies configuration.
 
 [source, java]
 ----
-stream.through(
+stream.repartition(Repartitioned.with(
     new JacksonJsonSerde<>(MyKeyType.class)
         .forKeys()
         .noTypeInfo(),
     new JacksonJsonSerde<>(MyValueType.class)
-        .noTypeInfo(),
-    "myTypes");
+        .noTypeInfo()));
 ----
 
 [[using-kafkastreambrancher]]
@@ -182,14 +181,14 @@ Consider the following example that does not use `KafkaStreamBrancher`:
 
 [source,java]
 ----
-KStream<String, String>[] branches = builder.stream("source").branch(
-        (key, value) -> value.contains("A"),
-        (key, value) -> value.contains("B"),
-        (key, value) -> true
-);
-branches[0].to("A");
-branches[1].to("B");
-branches[2].to("C");
+Map<String, KStream<String, String>> branches = builder.<String, String>stream("source")
+        .split(Named.as("branch-"))
+        .branch((key, value) -> value.contains("A"), Branched.as("A"))
+        .branch((key, value) -> value.contains("B"), Branched.as("B"))
+        .defaultBranch(Branched.as("C"));
+branches.get("branch-A").to("A");
+branches.get("branch-B").to("B");
+branches.get("branch-C").to("C");
 ----
 
 The following example uses `KafkaStreamBrancher`:
@@ -236,7 +235,7 @@ Starting with version 2.7, the default is to never clean up local state.
 == Header Enricher
 
 Version 3.0 added the `HeaderEnricherProcessor` extension of `ContextualProcessor`; providing the same functionality as the deprecated `HeaderEnricher` which implemented the deprecated `Transformer` interface.
-This can be used to add headers within the stream processing; the header values are SpEL expressions; the root object of the expression evaluation has 3 properties:
+This can be used to add headers within the stream processing; the header values are SpEL expressions; the root object of the expression evaluation has 4 properties:
 
 * `record` - the `org.apache.kafka.streams.processor.api.Record` (`key`, `value`, `timestamp`, `headers`)
 * `key` - the key of the current record
@@ -268,11 +267,10 @@ Here is a simple example, adding one literal header and one variable:
 Map<String, Expression> headers = new HashMap<>();
 headers.put("header1", new LiteralExpression("value1"));
 SpelExpressionParser parser = new SpelExpressionParser();
-headers.put("header2", parser.parseExpression("record.timestamp() + ' @' + record.offset()"));
-ProcessorSupplier supplier = () -> new HeaderEnricher<String, String>(headers);
+headers.put("header2", parser.parseExpression("record.timestamp() + ' @' + context.recordMetadata().get().offset()"));
 KStream<String, String> stream = builder.stream(INPUT);
 stream
-        .process(() -> supplier)
+        .process(() -> new HeaderEnricherProcessor<String, String>(headers))
         .to(OUTPUT);
 ----
 
