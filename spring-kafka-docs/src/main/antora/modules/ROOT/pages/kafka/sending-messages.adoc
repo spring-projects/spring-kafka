@@ -509,7 +509,7 @@ public class KReplyingApplication {
 The `@KafkaListener` infrastructure echoes the correlation ID and determines the reply topic.
 
 See xref:kafka/receiving-messages/annotation-send-to.adoc[Forwarding Listener Results using `@SendTo`] for more information about sending replies.
-The template uses the default header `KafKaHeaders.REPLY_TOPIC` to indicate the topic to which the reply goes.
+The template uses the default header `KafkaHeaders.REPLY_TOPIC` to indicate the topic to which the reply goes.
 
 Starting with version 2.2, the template tries to detect the reply topic or partition from the configured reply container.
 If the container is configured to listen to a single topic or a single `TopicPartitionOffset`, it is used to set the reply headers.

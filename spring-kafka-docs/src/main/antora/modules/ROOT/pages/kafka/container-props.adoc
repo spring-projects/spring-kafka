@@ -122,7 +122,7 @@ Also see `idleBeforeDataMultiplier`.
 
 |[[idlePartitionEventInterval]]<<idlePartitionEventInterval,`idlePartitionEventInterval`>>
 |`null`
-|When set, enables publication of ``ListenerContainerIdlePartitionEvent``s, see xref:kafka/events.adoc[Application Events] and xref:kafka/events.adoc#idle-containers[Detecting Idle and Non-Responsive Consumers].
+|When set, enables publication of ``ListenerContainerPartitionIdleEvent``s, see xref:kafka/events.adoc[Application Events] and xref:kafka/events.adoc#idle-containers[Detecting Idle and Non-Responsive Consumers].
 
 |[[kafkaConsumerProperties]]<<kafkaConsumerProperties,`kafkaConsumerProperties`>>
 |None
