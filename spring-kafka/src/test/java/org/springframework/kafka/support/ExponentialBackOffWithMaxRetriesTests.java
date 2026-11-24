@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -23,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
  * @author Gary Russell
  * @author Jialin Chen
  * @author Yingzi Zhang
+ * @author Mohit Gupta
  * @since 2.7.3
  *
  */
@@ -119,6 +121,71 @@ public class ExponentialBackOffWithMaxRetriesTests {
 		IntStream.range(0, 11).forEach(i -> delays.add(boEx.nextBackOff()));
 		assertThat(delays).containsExactly(2_000L, 3_000L, 4_500L, 6_750L, 10_125L, 15_187L, 22_780L, 30_000L, 30_000L,
 				30_000L, -1L);
+	}
+
+	@Test
+	@Timeout(1)
+	void largeMaxRetriesIsFast() {
+		ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(Integer.MAX_VALUE - 1);
+		backOff.setInitialInterval(1_000L);
+		backOff.setMaxInterval(10_000L);
+		backOff.setMultiplier(2.0);
+		assertThat(backOff.getMaxElapsedTime()).isEqualTo(21_474_836_435_000L);
+	}
+
+	@Test
+	@Timeout(1)
+	void largeMaxRetriesWithMultiplierOneIsFast() {
+		ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(Integer.MAX_VALUE);
+		backOff.setInitialInterval(1_000L);
+		backOff.setMaxInterval(10_000L);
+		backOff.setMultiplier(1.0);
+		assertThat(backOff.getMaxElapsedTime()).isEqualTo(Integer.MAX_VALUE * 1_000L);
+	}
+
+	@Test
+	@Timeout(1)
+	void largeMaxRetriesWithZeroInitialIntervalIsFast() {
+		ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(Integer.MAX_VALUE - 1);
+		backOff.setInitialInterval(0L);
+		backOff.setMaxInterval(10_000L);
+		backOff.setMultiplier(2.0);
+		assertThat(backOff.getMaxElapsedTime()).isZero();
+	}
+
+	@Test
+	@Timeout(1)
+	void largeMaxRetriesWithInitialGreaterThanMaxIntervalIsFast() {
+		ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(Integer.MAX_VALUE - 1);
+		backOff.setInitialInterval(20_000L);
+		backOff.setMaxInterval(10_000L);
+		backOff.setMultiplier(2.0);
+		assertThat(backOff.getMaxElapsedTime()).isEqualTo((Integer.MAX_VALUE - 1L) * 10_000L);
+	}
+
+	@ParameterizedTest
+	@CsvSource({
+			"1, 1000, 2.0, 10000",
+			"5, 1000, 2.0, 10000",
+			"10, 1000, 1.5, 30000",
+			"20, 10, 1.05, 10000",
+			"20, 1000, 1.0, 10000",
+			"15, 20000, 2.0, 10000",
+			"100, 100000000000000000, 2.0, 9223372036854775807"
+	})
+	void earlyTerminationMatchesNaiveLoop(int maxRetries, long initialInterval, double multiplier, long maxInterval) {
+		ExponentialBackOffWithMaxRetries backOff = new ExponentialBackOffWithMaxRetries(maxRetries);
+		backOff.setInitialInterval(initialInterval);
+		backOff.setMultiplier(multiplier);
+		backOff.setMaxInterval(maxInterval);
+
+		long expected = Math.min(initialInterval, maxInterval);
+		long current = expected;
+		for (int i = 1; i < maxRetries; i++) {
+			current = Math.min((long) (current * multiplier), maxInterval);
+			expected += current;
+		}
+		assertThat(backOff.getMaxElapsedTime()).isEqualTo(expected);
 	}
 
 }
