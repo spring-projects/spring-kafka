@@ -15,6 +15,7 @@ import org.springframework.util.backoff.ExponentialBackOff;
  * @author Gary Russell
  * @author Jialin Chen
  * @author Yingzi Zhang
+ * @author Mohit Gupta
  * @since 2.7.3
  *
  */
@@ -85,8 +86,14 @@ public class ExponentialBackOffWithMaxRetries extends ExponentialBackOff {
 		long maxInterval = getMaxInterval();
 		long maxElapsed = Math.min(getInitialInterval(), maxInterval);
 		long current = maxElapsed;
+		double multiplier = getMultiplier();
 		for (int i = 1; i < this.maxRetries; i++) {
-			long next = Math.min((long) (current * getMultiplier()), maxInterval);
+			long next = Math.min((long) (current * multiplier), maxInterval);
+			if (next == current) {
+				// The interval no longer changes, so all remaining intervals are equal.
+				maxElapsed += (this.maxRetries - i) * current;
+				break;
+			}
 			current = next;
 			maxElapsed += current;
 		}
