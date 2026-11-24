@@ -38,7 +38,8 @@ import static org.mockito.Mockito.mock;
 /**
  * Deterministic consumer-rebalance simulation for overlapping batch nack sleeps.
  * Uses a Mockito Consumer so no external broker or wall-clock rebalance races.
-  * @author Jiwon Lee
+ *
+ * @author Jiwon Lee
  */
 class NackRebalanceOwnershipTests {
 
