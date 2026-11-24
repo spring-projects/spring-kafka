@@ -43,7 +43,8 @@ import static org.awaitility.Awaitility.await;
  * <p>Unlike the mock-consumer test, this checks the actual group assignment,
  * fetch behaviour and redelivery. The test deliberately uses a long nack
  * window because broker-driven cooperative rebalances are asynchronous.
-  * @author Jiwon Lee
+ *
+ * @author Jiwon Lee
  */
 @EmbeddedKafka(partitions = 1, topics = { NackCooperativeRebalanceIntegrationTests.TOPIC_A,
         NackCooperativeRebalanceIntegrationTests.TOPIC_B })
