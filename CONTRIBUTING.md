@@ -199,7 +199,7 @@ Checkstyle is enforced at build time using the configuration in `src/checkstyle/
 
 ## Add the copyright header to all new classes
 
-The Apache License text lives only in `LICENSE.txt` (packaged into every jar); source files carry just the copyright line:
+The Apache License text lives only in `LICENSE` (packaged into every jar); source files carry just the copyright line:
 
 ```java
 /*

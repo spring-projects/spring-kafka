@@ -267,26 +267,21 @@ configure(javaProjects) { subproject ->
 		}
 	}
 
-	jar {
+	tasks.withType(Jar).configureEach {
 		manifest {
 			attributes(
 					'Implementation-Version': archiveVersion,
-					'Build-Jdk-Spec': "${System.getProperty("java.specification.version")}",
+					'Build-Jdk-Spec': System.getProperty('java.specification.version'),
 					'Implementation-Title': subproject.name,
 					'Implementation-Vendor-Id': subproject.group,
 					'Implementation-Vendor': 'Broadcom Inc.',
 					'Implementation-URL': linkHomepage,
-					'Automatic-Module-Name': subproject.name.replace('-', '.')  // for Jigsaw
+					'Automatic-Module-Name': subproject.name.replace('-', '.')
 			)
 		}
-
-		from("${rootProject.projectDir}/src/dist") {
-			include 'notice.txt'
-			into 'META-INF'
-			expand(copyright: new Date().format('yyyy'), version: project.version)
-		}
-		from("${rootProject.projectDir}") {
-			include 'LICENSE.txt'
+		from(rootProject.projectDir) {
+			include 'LICENSE'
+			include 'NOTICE'
 			into 'META-INF'
 		}
 	}
@@ -477,12 +472,12 @@ tasks.register('distZip', Zip) {
 
 	from('src/dist') {
 		include 'readme.txt'
-		include 'notice.txt'
 		into baseDir
 	}
 
 	from("$project.rootDir") {
-		include 'LICENSE.txt'
+		include 'LICENSE'
+		include 'NOTICE'
 		into baseDir
 	}
 
