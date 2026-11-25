@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -112,6 +113,7 @@ import org.springframework.util.StringUtils;
  * @author Jiyeon Kim
  * @author Ngoc Nhan
  * @author Minju Kim
+ * @author João Guilherme Andrade Santos Jacinto
  *
  * @since 4.0
  *
@@ -342,6 +344,26 @@ public class ShareKafkaMessageListenerContainer<K, V>
 		}
 	}
 
+	/**
+	 * Return the {@link ContainerProperties#getKafkaConsumerProperties() consumer property
+	 * overrides} as a map, including any properties provided as defaults.
+	 * @param containerProperties the container properties.
+	 * @return the overrides.
+	 */
+	private static Map<String, Object> consumerPropertyOverrides(ContainerProperties containerProperties) {
+		Properties propertyOverrides = containerProperties.getKafkaConsumerProperties();
+		Map<String, Object> overrides = new HashMap<>();
+		propertyOverrides.forEach((key, value) -> {
+			if (key instanceof String name) {
+				overrides.put(name, value);
+			}
+		});
+		// User might have provided properties as defaults
+		propertyOverrides.stringPropertyNames()
+				.forEach(name -> overrides.putIfAbsent(name, propertyOverrides.getProperty(name)));
+		return overrides;
+	}
+
 	private String determineClientId(int index) {
 		String baseClientId = this.clientId;
 		if (baseClientId == null) {
@@ -496,6 +518,7 @@ public class ShareKafkaMessageListenerContainer<K, V>
 			this.clientId = consumerClientId;
 			ContainerProperties containerProperties = getContainerProperties();
 			String groupId = ShareKafkaMessageListenerContainer.this.getGroupId();
+			Map<String, Object> consumerProperties = consumerPropertyOverrides(containerProperties);
 
 			ContainerProperties.ShareAckMode shareAckMode = containerProperties.getShareAckMode();
 			this.isManualAckMode = ContainerProperties.ShareAckMode.MANUAL.equals(shareAckMode);
@@ -514,8 +537,11 @@ public class ShareKafkaMessageListenerContainer<K, V>
 							+ "decision will be ignored in ShareAckMode.IMPLICIT — all records are always "
 							+ "ACCEPTed by the broker regardless of processing outcome.");
 				}
-				this.consumer = ShareKafkaMessageListenerContainer.this.shareConsumerFactory.createShareConsumer(
-						groupId, consumerClientId);
+				this.consumer = consumerProperties.isEmpty()
+						? ShareKafkaMessageListenerContainer.this.shareConsumerFactory.createShareConsumer(
+								groupId, consumerClientId)
+						: ShareKafkaMessageListenerContainer.this.shareConsumerFactory.createShareConsumer(
+								groupId, consumerClientId, consumerProperties);
 			}
 			else {
 				// EXPLICIT and MANUAL both use Kafka client explicit mode so the container
@@ -529,9 +555,10 @@ public class ShareKafkaMessageListenerContainer<K, V>
 							+ "override it with explicit mode. To use implicit mode, set "
 							+ "ShareAckMode.IMPLICIT on the container properties instead.");
 				}
+				consumerProperties.put(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG,
+						ShareAcknowledgementMode.EXPLICIT.name());
 				this.consumer = ShareKafkaMessageListenerContainer.this.shareConsumerFactory.createShareConsumer(
-						groupId, consumerClientId,
-						Map.of(ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG, ShareAcknowledgementMode.EXPLICIT.name()));
+						groupId, consumerClientId, consumerProperties);
 			}
 
 			// Register acknowledgement commit callback

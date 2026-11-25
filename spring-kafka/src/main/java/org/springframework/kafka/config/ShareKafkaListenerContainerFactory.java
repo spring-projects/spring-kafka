@@ -43,6 +43,7 @@ import org.springframework.util.Assert;
  * @author Soby Chacko
  * @author Kumar Gaurav
  * @author Sudhanshu Ratna Thakur
+ * @author João Guilherme Andrade Santos Jacinto
  *
  * @since 4.0
  */
@@ -201,7 +202,8 @@ public class ShareKafkaListenerContainerFactory<K, V>
 		JavaUtils.INSTANCE
 				.acceptIfNotNull(this.recordRecoverer, instance::setShareConsumerRecordRecoverer)
 				.acceptIfNotNull(endpoint.getGroupId(), properties::setGroupId)
-				.acceptIfNotNull(endpoint.getClientIdPrefix(), properties::setClientId);
+				.acceptIfNotNull(endpoint.getClientIdPrefix(), properties::setClientId)
+				.acceptIfNotNull(endpoint.getConsumerProperties(), properties::setKafkaConsumerProperties);
 	}
 
 	private static void validateShareConfiguration(KafkaListenerEndpoint endpoint) {
