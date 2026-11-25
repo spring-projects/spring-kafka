@@ -1,5 +1,6 @@
 ^\Q/*\E$
-^\Q * Copyright \E20\d\d-present\Q the original author or authors.\E$
+^\Q * Copyright and licensing information for this source code can be found in\E$
+^\Q * the NOTICE and LICENSE files distributed with this project.\E$
 ^\Q */\E$
 ^$
 ^.*$
