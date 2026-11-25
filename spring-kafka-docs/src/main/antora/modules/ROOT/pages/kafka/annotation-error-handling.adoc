@@ -624,10 +624,10 @@ If you wish to use a different error handling strategy for record and batch list
 |`CommonLoggingErrorHandler`
 
 |`ConditionalDelegatingErrorHandler`
-|`DelegatingErrorHandler`
+|`CommonDelegatingErrorHandler`
 
 |`ConditionalDelegatingBatchErrorHandler`
-|`DelegatingErrorHandler`
+|`CommonDelegatingErrorHandler`
 
 |`ContainerStoppingErrorHandler`
 |`CommonContainerStoppingErrorHandler`

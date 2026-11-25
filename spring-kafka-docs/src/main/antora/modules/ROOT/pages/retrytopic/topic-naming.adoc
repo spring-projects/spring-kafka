@@ -75,7 +75,7 @@ NOTE: The default behavior is to suffix with the delay values, except for fixed 
 If you're using a fixed delay, such as with a `FixedBackOff` or `noBackoff()`, you can use a single topic to accomplish the non-blocking retries.
 This topic will be suffixed with the provided or default suffix, and will not have either the index or the delay values appended.
 
-NOTE: The previous `FixedDelayStrategy` is now deprecated, and can be replaced by `SameIntervalTopicReuseStrategy`.
+NOTE: The previous `FixedDelayStrategy` has been removed, use `SameIntervalTopicReuseStrategy` instead.
 
 [source, java]
 ----

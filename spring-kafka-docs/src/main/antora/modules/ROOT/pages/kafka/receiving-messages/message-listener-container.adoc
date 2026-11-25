@@ -13,7 +13,7 @@ Starting with version 2.2.7, you can add a `RecordInterceptor` to the listener c
 If the interceptor returns null, the listener is not called.
 Starting with version 2.7, it has additional methods which are called after the listener exits (normally, or by throwing an exception).
 Also, starting with version 2.7, there is now a `BatchInterceptor`, providing similar functionality for xref:kafka/receiving-messages/listener-annotation.adoc#batch-listeners[Batch Listeners].
-In addition, the `ConsumerAwareRecordInterceptor` (and `BatchInterceptor`) provide access to the `Consumer<?, ?>`.
+In addition, the `RecordInterceptor` (and `BatchInterceptor`) provide access to the `Consumer<?, ?>`.
 This might be used, for example, to access the consumer metrics in the interceptor.
 
 IMPORTANT: You should not execute any methods that affect the consumer's positions and/or committed offsets in these interceptors; the container needs to manage such information.
@@ -92,7 +92,7 @@ The offsets are applied when the container is started.
 The second takes an array of topics, and Kafka allocates the partitions based on the `group.id` property -- distributing partitions across the group.
 The third uses a regex `Pattern` to select the topics.
 
-To assign a `MessageListener` to a container, you can use the `ContainerProps.setMessageListener` method when creating the Container.
+To assign a `MessageListener` to a container, you can use the `ContainerProperties.setMessageListener` method when creating the Container.
 The following example shows how to do so:
 
 [source, java]
@@ -149,7 +149,7 @@ Starting with version 2.8, when creating the consumer factory, if you provide de
 [[using-ConcurrentMessageListenerContainer]]
 == Using `ConcurrentMessageListenerContainer`
 
-The single constructor is similar to the `KafkaListenerContainer` constructor.
+The single constructor is similar to the `KafkaMessageListenerContainer` constructor.
 The following listing shows the constructor's signature:
 
 [source, java]

@@ -5,7 +5,7 @@
 == Monitoring Listener Performance
 
 Starting with version 2.3, the listener container will automatically create and update Micrometer ``Timer``s for the listener, if `Micrometer` is detected on the classpath, and a single `MeterRegistry` is present in the application context.
-The timers can be disabled by setting the ``ContainerProperty``'s `micrometerEnabled` to `false`.
+The timers can be disabled by setting the `micrometerEnabled` property of `ContainerProperties` to `false`.
 
 Two timers are maintained - one for successful calls to the listener and one for failures.
 
