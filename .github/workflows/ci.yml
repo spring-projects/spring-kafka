@@ -19,9 +19,9 @@ jobs:
       fail-fast: false
       matrix:
         testJavaVersion: [ 17, 21, 25, 26 ]
-        os: ${{ fromJSON(vars.COMMERCIAL && '["ubuntu22-2-8"]' || '["ubuntu-latest", "macos-latest"]') }}
+        os: ${{ fromJSON(vars.COMMERCIAL && '["ubuntu-latest-2-8-usw1"]' || '["ubuntu-latest", "macos-latest"]') }}
         exclude:
-          - os: ${{ vars.COMMERCIAL && 'ubuntu22-2-8' || 'ubuntu-latest' }}
+          - os: ${{ vars.COMMERCIAL && 'ubuntu-latest-2-8-usw1' || 'ubuntu-latest' }}
             testJavaVersion: 25
 
     uses: spring-io/spring-github-workflows/.github/workflows/spring-gradle-ci.yml@main
