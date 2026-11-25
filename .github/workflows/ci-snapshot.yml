@@ -25,7 +25,7 @@ jobs:
       artifactoryUrl: ${{ vars.COMMERCIAL && 'https://usw1.packages.broadcom.com' }}
       targetRepository: ${{ vars.COMMERCIAL && 'spring-enterprise-maven-dev-local' }}
       artifactoryProjectKey: ${{ vars.COMMERCIAL && 'spring' }}
-      runner: ${{ vars.COMMERCIAL && 'ubuntu22-2-8' || 'ubuntu-latest' }}
+      runner: ${{ vars.COMMERCIAL && 'ubuntu-latest-2-8-usw1' || 'ubuntu-latest' }}
     secrets:
       DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
       ARTIFACTORY_USERNAME: ${{ secrets.COMMERCIAL_ARTIFACTORY_USERNAME || secrets.ARTIFACTORY_USERNAME }}
