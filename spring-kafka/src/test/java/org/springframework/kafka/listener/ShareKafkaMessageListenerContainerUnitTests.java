@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -96,6 +97,7 @@ import static org.mockito.Mockito.verify;
  * @author Jiyeon Kim
  * @author Ngoc Nhan
  * @author Minju Kim
+ * @author João Guilherme Andrade Santos Jacinto
  *
  * @since 4.0
  */
@@ -453,6 +455,48 @@ public class ShareKafkaMessageListenerContainerUnitTests {
 		container.stop();
 
 		verify(mockFactory).createShareConsumer(any(), eq("beanNameFallbackContainer"), any());
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void shouldPassKafkaConsumerPropertiesToTheConsumer() {
+		ShareConsumerFactory<String, String> mockFactory = mock(ShareConsumerFactory.class);
+		given(mockFactory.getConfigurationProperties()).willReturn(Map.of());
+		ShareConsumer<String, String> mockConsumer = mock(ShareConsumer.class);
+		given(mockFactory.createShareConsumer(any(), any(), any())).willReturn(mockConsumer);
+
+		ContainerProperties containerProperties = new ContainerProperties("test-topic");
+		containerProperties.setMessageListener(messageListener);
+		Properties consumerProperties = new Properties();
+		consumerProperties.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "42");
+		containerProperties.setKafkaConsumerProperties(consumerProperties);
+
+		ShareKafkaMessageListenerContainer<String, String> container =
+				new ShareKafkaMessageListenerContainer<>(mockFactory, containerProperties);
+		container.setBeanName("consumerPropertiesContainer");
+		container.start();
+		container.stop();
+
+		verify(mockFactory).createShareConsumer(any(), any(),
+				eq(Map.of(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "42",
+						ConsumerConfig.SHARE_ACKNOWLEDGEMENT_MODE_CONFIG, "explicit")));
+	}
+
+	@Test
+	void factoryShouldApplyEndpointConsumerPropertiesToContainer() {
+		ShareKafkaListenerContainerFactory<String, String> factory =
+				new ShareKafkaListenerContainerFactory<>(shareConsumerFactory);
+		Properties consumerProperties = new Properties();
+		consumerProperties.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "42");
+		KafkaListenerEndpoint endpoint = mock(KafkaListenerEndpoint.class);
+		given(endpoint.getTopics()).willReturn(List.of("test-topic"));
+		given(endpoint.getConcurrency()).willReturn(null);
+		given(endpoint.getConsumerProperties()).willReturn(consumerProperties);
+
+		ShareKafkaMessageListenerContainer<String, String> container = factory.createListenerContainer(endpoint);
+
+		assertThat(container.getContainerProperties().getKafkaConsumerProperties())
+				.containsEntry(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "42");
 	}
 
 	@Test
