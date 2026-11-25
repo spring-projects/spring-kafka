@@ -22,6 +22,7 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.JavaType;
 import tools.jackson.databind.ObjectReader;
 import tools.jackson.databind.json.JsonMapper;
@@ -106,6 +107,18 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 	 */
 	public static final String VALUE_TYPE_METHOD = "spring.json.value.type.method";
 
+	/**
+	 * Comma-separated Jackson deserialization feature names to enable.
+	 * @since 4.2
+	 */
+	public static final String DESERIALIZATION_FEATURES_ENABLE = "spring.json.deserialization.features.enable";
+
+	/**
+	 * Comma-separated Jackson deserialization feature names to disable.
+	 * @since 4.2
+	 */
+	public static final String DESERIALIZATION_FEATURES_DISABLE = "spring.json.deserialization.features.disable";
+
 	private static final Set<String> OUR_KEYS = new HashSet<>();
 
 	static {
@@ -117,6 +130,8 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 		OUR_KEYS.add(USE_TYPE_INFO_HEADERS);
 		OUR_KEYS.add(KEY_TYPE_METHOD);
 		OUR_KEYS.add(VALUE_TYPE_METHOD);
+		OUR_KEYS.add(DESERIALIZATION_FEATURES_ENABLE);
+		OUR_KEYS.add(DESERIALIZATION_FEATURES_DISABLE);
 	}
 
 	protected final JsonMapper jsonMapper; // NOSONAR
@@ -126,6 +141,8 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 	protected JacksonJavaTypeMapper typeMapper = new DefaultJacksonJavaTypeMapper(); // NOSONAR
 
 	private @Nullable ObjectReader reader;
+
+	private @Nullable ObjectReader configuredReader;
 
 	private boolean typeMapperExplicitlySet = false;
 
@@ -390,6 +407,22 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 			}
 			Assert.state(!this.setterCalled || !configsHasOurKeys(configs),
 					"JsonDeserializer must be configured with property setters, or via configuration properties; not both");
+			Set<DeserializationFeature> enabled = JacksonJsonSerializer.parseFeatures(configs,
+					DESERIALIZATION_FEATURES_ENABLE, DeserializationFeature.class);
+			Set<DeserializationFeature> disabled = JacksonJsonSerializer.parseFeatures(configs,
+					DESERIALIZATION_FEATURES_DISABLE, DeserializationFeature.class);
+			Assert.isTrue(Collections.disjoint(enabled, disabled), "A Jackson feature cannot be both enabled and disabled");
+			ObjectReader featureReader = this.configuredReader == null ? this.jsonMapper.reader() : this.configuredReader;
+			for (DeserializationFeature feature : enabled) {
+				featureReader = featureReader.with(feature);
+			}
+			for (DeserializationFeature feature : disabled) {
+				featureReader = featureReader.without(feature);
+			}
+			this.configuredReader = featureReader;
+			if (this.targetType != null) {
+				this.reader = createReader(this.targetType);
+			}
 			doSetUseTypeMapperForKey(isKey);
 			setUpTypePrecedence(configs);
 			setupTarget(configs, isKey);
@@ -491,7 +524,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 				"'targetType' cannot be null if 'useHeadersIfPresent' is false");
 
 		if (this.targetType != null) {
-			this.reader = this.jsonMapper.readerFor(this.targetType);
+			this.reader = createReader(this.targetType);
 		}
 
 		addTargetPackageToTrusted();
@@ -570,7 +603,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 			javaType = this.typeMapper.toJavaType(headers);
 		}
 		if (javaType != null) {
-			deserReader = this.jsonMapper.readerFor(javaType);
+			deserReader = createReader(javaType);
 		}
 		if (this.removeTypeHeaders) {
 			this.typeMapper.removeHeaders(headers);
@@ -596,7 +629,7 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 		if (this.typeResolver != null) {
 			JavaType javaType = this.typeResolver.resolveType(topic, data, null);
 			if (javaType != null) {
-				localReader = this.jsonMapper.readerFor(javaType);
+				localReader = createReader(javaType);
 			}
 		}
 		Assert.state(localReader != null, "No headers available and no default type provided");
@@ -612,6 +645,11 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 	@Override
 	public void close() {
 		// No-op
+	}
+
+	private ObjectReader createReader(JavaType javaType) {
+		return this.configuredReader == null ? this.jsonMapper.readerFor(javaType)
+				: this.configuredReader.forType(javaType);
 	}
 
 	/**
@@ -646,6 +684,8 @@ public class JacksonJsonDeserializer<T> implements Deserializer<T> {
 		result.typeMapper = this.typeMapper;
 		result.typeMapperExplicitlySet = this.typeMapperExplicitlySet;
 		result.typeResolver = this.typeResolver;
+		result.configuredReader = this.configuredReader;
+		result.reader = result.createReader(newTargetType);
 		return result;
 	}
 
