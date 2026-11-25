@@ -181,6 +181,7 @@ import org.springframework.util.StringUtils;
  * @author Jiyeon Kim
  * @author Minju Kim
  * @author WooSeung Kim
+ * @author Seongyun Hwang
  */
 public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		extends AbstractMessageListenerContainer<K, V> implements ConsumerPauseResumeEventPublisher {
@@ -2078,6 +2079,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				this.logger.debug(() -> "Resuming consumption from: " + this.consumer.paused());
 				Collection<TopicPartition> paused = new LinkedList<>(this.consumer.paused());
 				paused.removeAll(this.pausedPartitions);
+				paused.removeIf(KafkaMessageListenerContainer.this::isPartitionPauseRequested);
 				this.consumer.resume(paused);
 				this.consumerPaused = false;
 				publishConsumerResumedEvent(paused);
@@ -2091,7 +2093,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 				List<TopicPartition> partitionsToPause = partitions
 						.stream()
 						.filter(tp -> isPartitionPauseRequested(tp)
-								&& !pausedConsumerPartitions.contains(tp))
+								&& (!pausedConsumerPartitions.contains(tp) || !this.pausedPartitions.contains(tp)))
 						.toList();
 				if (!partitionsToPause.isEmpty()) {
 					this.consumer.pause(partitionsToPause);
