@@ -482,10 +482,10 @@ For convenience, starting with version 2.3, the framework also provides a `Strin
 
 Starting with version 2.7.1, message payload conversion can be delegated to a `spring-messaging` `SmartMessageConverter`; this enables conversion, for example, to be based on the `MessageHeaders.CONTENT_TYPE` header.
 
-IMPORTANT:    The `KafkaMessageConverter.fromMessage()` method is called for outbound conversion to a `ProducerRecord` with the message payload in the `ProducerRecord.value()` property.
-The `KafkaMessageConverter.toMessage()` method is called for inbound conversion from `ConsumerRecord` with the payload being the `ConsumerRecord.value()` property.
+IMPORTANT:    The `MessagingMessageConverter.fromMessage()` method is called for outbound conversion to a `ProducerRecord` with the message payload in the `ProducerRecord.value()` property.
+The `MessagingMessageConverter.toMessage()` method is called for inbound conversion from `ConsumerRecord` with the payload being the `ConsumerRecord.value()` property.
 The `SmartMessageConverter.toMessage()` method is called to create a new outbound `Message<?>` from the `Message` passed to `fromMessage()` (usually by `KafkaTemplate.send(Message<?> msg)`).
-Similarly, in the `KafkaMessageConverter.toMessage()` method, after the converter has created a new `Message<?>` from the `ConsumerRecord`, the `SmartMessageConverter.fromMessage()` method is called and then the final inbound message is created with the newly converted payload.
+Similarly, in the `MessagingMessageConverter.toMessage()` method, after the converter has created a new `Message<?>` from the `ConsumerRecord`, the `SmartMessageConverter.fromMessage()` method is called and then the final inbound message is created with the newly converted payload.
 In either case, if the `SmartMessageConverter` returns `null`, the original message is used.
 
 When the default converter is used in the `KafkaTemplate` and listener container factory, you configure the `SmartMessageConverter` by calling `setMessagingConverter()` on the template and via the `contentTypeConverter` property on `@KafkaListener` methods.
@@ -633,7 +633,7 @@ public KafkaTemplate<String, Object> kafkaTemplate() {
 }
 ----
 When using an `ErrorHandlingDeserializer` with a batch listener, you must check for the deserialization exceptions in message headers.
-When used with a `DefaultBatchErrorHandler`, you can use that header to determine which record the exception failed on and communicate to the error handler via a `BatchListenerFailedException`.
+When used with a `DefaultErrorHandler`, you can use that header to determine which record the exception failed on and communicate to the error handler via a `BatchListenerFailedException`.
 
 [source, java]
 ----
@@ -699,7 +699,7 @@ You can also use a `JacksonJsonMessageConverter` within a `BatchMessagingMessage
 See xref:kafka/serdes.adoc[Serialization, Deserialization, and Message Conversion] and xref:kafka/serdes.adoc#messaging-message-conversion[Spring Messaging Message Conversion] for more information.
 
 By default, the type for the conversion is inferred from the listener argument.
-If you configure the `JacksonJsonMessageConverter` with a `DefaultJackson2TypeMapper` that has its `TypePrecedence` set to `TYPE_ID` (instead of the default `INFERRED`), the converter uses the type information in headers (if present) instead.
+If you configure the `JacksonJsonMessageConverter` with a `DefaultJacksonJavaTypeMapper` that has its `TypePrecedence` set to `TYPE_ID` (instead of the default `INFERRED`), the converter uses the type information in headers (if present) instead.
 This allows, for example, listener methods to be declared with interfaces instead of concrete classes.
 Also, the type converter supports mapping, so the deserialization can be to a different type than the source (as long as the data is compatible).
 This is also useful when you use xref:kafka/receiving-messages/class-level-kafkalistener.adoc[class-level `@KafkaListener` instances] where the payload must have already been converted to determine which method to invoke.
