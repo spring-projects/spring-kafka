@@ -502,7 +502,7 @@ public KafkaStreamsInteractiveQueryService kafkaStreamsInteractiveQueryService(S
 }
 ----
 
-Assuming that a Kafka Streams application has a state store called `app-store`, then that store can be retrieved via the `KafkaStreamsInteractiveQuery` API as shown below.
+Assuming that a Kafka Streams application has a state store called `app-store`, then that store can be retrieved via the `KafkaStreamsInteractiveQueryService` API as shown below.
 
 [source, java]
 ----
