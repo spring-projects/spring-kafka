@@ -48,6 +48,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.listener.KafkaListenerErrorHandler;
 import org.springframework.kafka.listener.ListenerExecutionFailedException;
+import org.springframework.kafka.listener.ManualAckListenerErrorHandler;
 import org.springframework.kafka.listener.MessageListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.kafka.support.KafkaHeaders;
@@ -92,6 +93,7 @@ import org.springframework.util.TypeUtils;
  * @author Abhishek Moondra
  * @author Kumar Gaurav
  * @author Nikita Kibitkin
+ * @author WooSeung Kim
  */
 public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerSeekAware, AsyncRepliesAware {
 
@@ -871,6 +873,12 @@ public abstract class MessagingMessageListenerAdapter<K, V> implements ConsumerS
 					Object result = this.handlerMethod.getInvocationResultFor(errorResult, message.getPayload());
 					handleResult(Objects.requireNonNullElse(result, errorResult),
 							records, acknowledgment, consumer, message);
+				}
+				else if (errorResult == null && isAsyncReplies()
+						&& !(this.errorHandler instanceof ManualAckListenerErrorHandler)) {
+
+					// A null result does not reach handleResult(), which acknowledges async results.
+					acknowledge(acknowledgment);
 				}
 			}
 			catch (Exception ex) {
