@@ -6,6 +6,7 @@
 package org.springframework.kafka.retrytopic;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
@@ -42,6 +43,7 @@ import org.springframework.util.backoff.BackOff;
  * @author Tomaz Fernandes
  * @author Gary Russell
  * @author Wang Zhiyang
+ * @author Manoel Angelo
  *
  * @since 2.7
  *
@@ -189,10 +191,35 @@ public class ListenerContainerFactoryConfigurer {
 		MessageListener<?, ?> listener = checkAndCast(container.getContainerProperties()
 				.getMessageListener(), MessageListener.class);
 
-		container.setupMessageListener(new KafkaBackoffAwareMessageListenerAdapter<>(listener,
-				this.kafkaConsumerBackoffManager, container.getListenerId(), this.clock)); // NOSONAR
+		KafkaBackoffAwareMessageListenerAdapter<?, ?> adapter = new KafkaBackoffAwareMessageListenerAdapter<>(listener,
+				this.kafkaConsumerBackoffManager, container.getListenerId(), this.clock); // NOSONAR
+		adapter.setMaxConfiguredBackOff(maxConfiguredBackOff(container));
+		container.setupMessageListener(adapter);
 
 		this.containerCustomizer.accept(container);
+	}
+
+	private Duration maxConfiguredBackOff(ConcurrentMessageListenerContainer<?, ?> container) {
+		String[] topics = container.getContainerProperties().getTopics();
+		if (topics == null) {
+			return Duration.ZERO;
+		}
+		String mainListenerId = container.getMainListenerId();
+		if (mainListenerId == null) {
+			mainListenerId = container.getListenerId();
+		}
+		DestinationTopicResolver resolver = this.deadLetterPublishingRecovererFactory.getDestinationTopicResolver();
+		long maxDelay = 0;
+		for (String topic : topics) {
+			try {
+				maxDelay = Math.max(maxDelay, resolver.getDestinationTopicByName(mainListenerId, topic)
+						.getDestinationDelay());
+			}
+			catch (RuntimeException ex) {
+				// No destination registered for this topic; keep the default limit
+			}
+		}
+		return Duration.ofMillis(maxDelay);
 	}
 
 	@SuppressWarnings("unchecked")

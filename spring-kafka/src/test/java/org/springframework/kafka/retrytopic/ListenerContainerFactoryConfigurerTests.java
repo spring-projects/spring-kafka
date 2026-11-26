@@ -7,6 +7,7 @@ package org.springframework.kafka.retrytopic;
 
 import java.math.BigInteger;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
@@ -58,6 +59,7 @@ import static org.mockito.Mockito.times;
  * @author Tomaz Fernandes
  * @author Gary Russell
  * @author Wang Zhiyang
+ * @author Manoel Angelo
  *
  * @since 2.7
  */
@@ -196,6 +198,89 @@ class ListenerContainerFactoryConfigurerTests {
 		then(listener).should(times(1)).onMessage(data, ack, consumer);
 
 		then(this.configurerContainerCustomizer).should(times(1)).accept(container);
+	}
+
+	@Test
+	void shouldHonorBackOffLongerThanOneDayConfiguredForTheTopic() {
+
+		// given
+		String testListenerId = "testListenerId";
+		String retryTopic = "test-topic-retry";
+		long twoDays = Duration.ofDays(2).toMillis();
+		DestinationTopicResolver destinationTopicResolver = mock(DestinationTopicResolver.class);
+		DestinationTopic destinationTopic = mock(DestinationTopic.class);
+		given(destinationTopic.getDestinationDelay()).willReturn(twoDays);
+		given(destinationTopicResolver.getDestinationTopicByName(testListenerId, retryTopic))
+				.willReturn(destinationTopic);
+		given(deadLetterPublishingRecovererFactory.getDestinationTopicResolver()).willReturn(destinationTopicResolver);
+		given(deadLetterPublishingRecovererFactory.create(testListenerId)).willReturn(recoverer);
+		given(container.getContainerProperties()).willReturn(containerProperties);
+		given(containerProperties.getMessageListener()).willReturn(listener);
+		given(containerProperties.getTopics()).willReturn(new String[] {retryTopic});
+		given(container.getListenerId()).willReturn(testListenerId);
+		willReturn(container).given(containerFactory).createListenerContainer(endpoint);
+		long dueTimestamp = originalTimestamp + twoDays;
+		RecordHeaders headers = new RecordHeaders();
+		headers.add(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP,
+				BigInteger.valueOf(dueTimestamp).toByteArray());
+		given(data.headers()).willReturn(headers);
+
+		// when
+		ListenerContainerFactoryConfigurer configurer =
+				new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager,
+						deadLetterPublishingRecovererFactory, clock);
+		KafkaListenerContainerFactory<?> factory = configurer.decorateFactory(containerFactory);
+		factory.createListenerContainer(endpoint);
+
+		// then
+		then(container).should(times(1)).setupMessageListener(listenerAdapterCaptor.capture());
+		KafkaBackoffAwareMessageListenerAdapter<?, ?> listenerAdapter =
+				(KafkaBackoffAwareMessageListenerAdapter<?, ?>) listenerAdapterCaptor.getValue();
+		listenerAdapter.onMessage(data, ack, consumer);
+
+		then(this.kafkaConsumerBackoffManager).should(times(1))
+				.createContext(eq(dueTimestamp), eq(testListenerId), any(), eq(consumer));
+	}
+
+	@Test
+	void shouldIgnoreBackOffHeaderBeyondTheBackOffConfiguredForTheTopic() {
+
+		// given
+		String testListenerId = "testListenerId";
+		String retryTopic = "test-topic-retry";
+		long twoDays = Duration.ofDays(2).toMillis();
+		DestinationTopicResolver destinationTopicResolver = mock(DestinationTopicResolver.class);
+		DestinationTopic destinationTopic = mock(DestinationTopic.class);
+		given(destinationTopic.getDestinationDelay()).willReturn(twoDays);
+		given(destinationTopicResolver.getDestinationTopicByName(testListenerId, retryTopic))
+				.willReturn(destinationTopic);
+		given(deadLetterPublishingRecovererFactory.getDestinationTopicResolver()).willReturn(destinationTopicResolver);
+		given(deadLetterPublishingRecovererFactory.create(testListenerId)).willReturn(recoverer);
+		given(container.getContainerProperties()).willReturn(containerProperties);
+		given(containerProperties.getMessageListener()).willReturn(listener);
+		given(containerProperties.getTopics()).willReturn(new String[] {retryTopic});
+		given(container.getListenerId()).willReturn(testListenerId);
+		willReturn(container).given(containerFactory).createListenerContainer(endpoint);
+		RecordHeaders headers = new RecordHeaders();
+		headers.add(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP,
+				BigInteger.valueOf(originalTimestamp + Duration.ofDays(3).toMillis()).toByteArray());
+		given(data.headers()).willReturn(headers);
+
+		// when
+		ListenerContainerFactoryConfigurer configurer =
+				new ListenerContainerFactoryConfigurer(kafkaConsumerBackoffManager,
+						deadLetterPublishingRecovererFactory, clock);
+		KafkaListenerContainerFactory<?> factory = configurer.decorateFactory(containerFactory);
+		factory.createListenerContainer(endpoint);
+
+		// then
+		then(container).should(times(1)).setupMessageListener(listenerAdapterCaptor.capture());
+		KafkaBackoffAwareMessageListenerAdapter<?, ?> listenerAdapter =
+				(KafkaBackoffAwareMessageListenerAdapter<?, ?>) listenerAdapterCaptor.getValue();
+		listenerAdapter.onMessage(data, ack, consumer);
+
+		then(this.kafkaConsumerBackoffManager).shouldHaveNoInteractions();
+		then(listener).should(times(1)).onMessage(data, ack, consumer);
 	}
 
 	@Test

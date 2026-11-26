@@ -7,6 +7,7 @@ package org.springframework.kafka.listener.adapter;
 
 import java.math.BigInteger;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 
@@ -43,6 +44,7 @@ import static org.mockito.Mockito.times;
 /**
  * @author Tomaz Fernandes
  * @author Soby Chacko
+ * @author Manoel Angelo
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
@@ -261,6 +263,90 @@ class KafkaBackoffAwareMessageListenerAdapterTests {
 		// then - backoff manager is never consulted, delegate still gets the record
 		then(kafkaConsumerBackoffManager).shouldHaveNoInteractions();
 		then(delegate).should(times(1)).onMessage(data, ack, consumer);
+	}
+
+	@Test
+	void shouldIgnoreBackoffHeaderLongerThanOneDayByDefault() {
+		given(data.headers()).willReturn(headers);
+		given(headers.lastHeader(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP)).willReturn(header);
+		given(header.value()).willReturn(timestampBytes(Duration.ofDays(2)));
+
+		KafkaBackoffAwareMessageListenerAdapter<Object, Object> adapter =
+				new KafkaBackoffAwareMessageListenerAdapter<>(delegate, kafkaConsumerBackoffManager, listenerId, clock);
+
+		adapter.onMessage(data, ack, consumer);
+
+		then(kafkaConsumerBackoffManager).shouldHaveNoInteractions();
+		then(delegate).should(times(1)).onMessage(data, ack, consumer);
+	}
+
+	@Test
+	void shouldHonorBackoffHeaderWithinMaxConfiguredBackOff() {
+		byte[] twoDaysAhead = timestampBytes(Duration.ofDays(2));
+		given(data.headers()).willReturn(headers);
+		given(headers.lastHeader(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP)).willReturn(header);
+		given(header.value()).willReturn(twoDaysAhead);
+		given(data.topic()).willReturn(testTopic);
+		given(data.partition()).willReturn(testPartition);
+		long dueTimestamp = new BigInteger(twoDaysAhead).longValue();
+		given(kafkaConsumerBackoffManager.createContext(dueTimestamp, listenerId, topicPartition, consumer))
+				.willReturn(context);
+
+		KafkaBackoffAwareMessageListenerAdapter<Object, Object> adapter =
+				new KafkaBackoffAwareMessageListenerAdapter<>(delegate, kafkaConsumerBackoffManager, listenerId, clock);
+		adapter.setMaxConfiguredBackOff(Duration.ofDays(2));
+
+		adapter.onMessage(data, ack, consumer);
+
+		then(kafkaConsumerBackoffManager).should(times(1)).backOffIfNecessary(context);
+		then(delegate).should(times(1)).onMessage(data, ack, consumer);
+	}
+
+	@Test
+	void shouldIgnoreBackoffHeaderBeyondMaxConfiguredBackOff() {
+		given(data.headers()).willReturn(headers);
+		given(headers.lastHeader(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP)).willReturn(header);
+		given(header.value()).willReturn(timestampBytes(Duration.ofDays(2).plusMinutes(2)));
+
+		KafkaBackoffAwareMessageListenerAdapter<Object, Object> adapter =
+				new KafkaBackoffAwareMessageListenerAdapter<>(delegate, kafkaConsumerBackoffManager, listenerId, clock);
+		adapter.setMaxConfiguredBackOff(Duration.ofDays(2));
+
+		adapter.onMessage(data, ack, consumer);
+
+		then(kafkaConsumerBackoffManager).shouldHaveNoInteractions();
+		then(delegate).should(times(1)).onMessage(data, ack, consumer);
+	}
+
+	@Test
+	void shouldKeepDefaultLimitWhenMaxConfiguredBackOffIsShorter() {
+		given(data.headers()).willReturn(headers);
+		given(headers.lastHeader(RetryTopicHeaders.DEFAULT_HEADER_BACKOFF_TIMESTAMP)).willReturn(header);
+		given(header.value()).willReturn(timestampBytes(Duration.ofDays(2)));
+
+		KafkaBackoffAwareMessageListenerAdapter<Object, Object> adapter =
+				new KafkaBackoffAwareMessageListenerAdapter<>(delegate, kafkaConsumerBackoffManager, listenerId, clock);
+		adapter.setMaxConfiguredBackOff(Duration.ofMinutes(5));
+
+		adapter.onMessage(data, ack, consumer);
+
+		then(kafkaConsumerBackoffManager).shouldHaveNoInteractions();
+		then(delegate).should(times(1)).onMessage(data, ack, consumer);
+	}
+
+	@Test
+	void shouldHandleVeryLargeMaxConfiguredBackOff() {
+		KafkaBackoffAwareMessageListenerAdapter<Object, Object> adapter =
+				new KafkaBackoffAwareMessageListenerAdapter<>(delegate, kafkaConsumerBackoffManager, listenerId, clock);
+
+		adapter.setMaxConfiguredBackOff(Duration.ofMillis(Long.MAX_VALUE));
+
+		assertThatThrownBy(() -> adapter.setMaxConfiguredBackOff(Duration.ofMillis(-1)))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	private byte[] timestampBytes(Duration fromNow) {
+		return BigInteger.valueOf(originalTimestamp + fromNow.toMillis()).toByteArray();
 	}
 
 	@Test
