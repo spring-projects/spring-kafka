@@ -92,6 +92,38 @@ public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> templa
 
 NOTE: The default is having no timeout set, which can also be achieved by providing -1 as the timeout value.
 
+[[main-topic-delay]]
+== Delaying the First Processing Attempt
+
+Starting with version 4.3, you can delay the first processing attempt of the records published to the main topic.
+This is useful when the data the listener needs is only available some time after the record is sent, for example when an external system processes a request asynchronously.
+
+[source, java]
+----
+@RetryableTopic(mainTopicDelay = "60000")
+@KafkaListener(topics = "my-annotated-topic")
+public void processMessage(MyPojo message) {
+    // ... message processing
+}
+----
+
+[source, java]
+----
+@Bean
+public RetryTopicConfiguration myRetryTopic(KafkaTemplate<String, MyPojo> template) {
+    return RetryTopicConfigurationBuilder
+            .newInstance()
+            .mainTopicDelay(60_000)
+            .create(template);
+}
+----
+
+The delay is counted from the record timestamp.
+While a record waits, consumption from its partition of the main topic is paused, in the same way as for the retry topics (see xref:retrytopic/how-the-pattern-works.adoc[How the Pattern Works]), so the records that follow it on that partition also wait.
+The retry topics keep their own back off delays.
+
+NOTE: The default is no delay.
+
 [[retry-topic-ex-classifier]]
 == Exception Classifier
 

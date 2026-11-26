@@ -23,11 +23,13 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.util.backoff.FixedBackOff;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
 /**
  * @author Tomaz Fernandes
  * @author Adrian Chlebosz
  * @author Heejin Jeon
+ * @author Manoel Angelo
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
@@ -228,6 +230,28 @@ class RetryTopicConfigurationBuilderTests {
 		assertThat(configuration.getDestinationTopicProperties())
 				.extracting(DestinationTopic.Properties::suffix)
 				.containsExactly("", "-dlt");
+	}
+
+	@Test
+	void shouldSetMainTopicDelay() {
+		RetryTopicConfigurationBuilder builder = new RetryTopicConfigurationBuilder();
+		builder.fixedBackOff(1000)
+				.maxAttempts(2)
+				.mainTopicDelay(60_000);
+		RetryTopicConfiguration configuration = builder.create(kafkaOperations);
+
+		List<DestinationTopic.Properties> destinationTopicProperties = configuration.getDestinationTopicProperties();
+		assertThat(destinationTopicProperties).extracting(DestinationTopic.Properties::suffix)
+				.containsExactly("", "-retry", "-dlt");
+		assertThat(destinationTopicProperties).extracting(DestinationTopic.Properties::delay)
+				.containsExactly(60_000L, 1000L, 0L);
+		assertThat(destinationTopicProperties.get(0).isMainEndpoint()).isTrue();
+	}
+
+	@Test
+	void shouldRejectNegativeMainTopicDelay() {
+		assertThatIllegalArgumentException()
+				.isThrownBy(() -> new RetryTopicConfigurationBuilder().mainTopicDelay(-1));
 	}
 
 }

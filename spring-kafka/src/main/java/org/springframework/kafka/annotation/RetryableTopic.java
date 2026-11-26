@@ -30,6 +30,7 @@ import org.springframework.kafka.retrytopic.TopicSuffixingStrategy;
  * @author João Lima
  * @author Adrian Chlebosz
  * @author Wang Zhiyang
+ * @author Manoel Angelo
  *
  * @since 2.7
  *
@@ -64,6 +65,18 @@ public @interface RetryableTopic {
 	 *
 	 */
 	String timeout() default "";
+
+	/**
+	 * The amount of time in milliseconds to wait after a record is published to the main
+	 * topic before its first processing attempt, for example when the data the listener
+	 * needs is only available some time after the record is sent. The delay is counted
+	 * from the record timestamp, and consumption from the partition is paused while a
+	 * record waits, in the same way as for the retry topics. Expressions must resolve to
+	 * a long or a String that can be parsed as such. Default no delay.
+	 * @return the main topic delay.
+	 * @since 4.3
+	 */
+	String mainTopicDelay() default "";
 
 	/**
 	 *
