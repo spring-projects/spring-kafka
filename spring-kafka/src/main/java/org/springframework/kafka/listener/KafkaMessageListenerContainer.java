@@ -598,7 +598,9 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			}
 			publisher.publishEvent(new ConsumerStoppedEvent(this, this.thisOrParentContainer,
 					reason));
-			this.thisOrParentContainer.childStopped(this, reason);
+			if (this.listenerConsumer.childStarted) {
+				this.thisOrParentContainer.childStopped(this, reason);
+			}
 		}
 	}
 
@@ -933,6 +935,8 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 		private boolean seenMultiAttemptRetry;
 
 		private boolean isListenerAdapterObservationAware = false;
+
+		private volatile boolean childStarted;
 
 		@SuppressWarnings(UNCHECKED)
 		ListenerConsumer(GenericMessageListener<?> listener, ListenerType listenerType,
@@ -1430,7 +1434,23 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 
 		@Override // NOSONAR complexity
 		public void run() {
-			initialize();
+			try {
+				initialize();
+			}
+			catch (Error e) { // NOSONAR - rethrown
+				this.logger.error(e, "Stopping container due to an Error");
+				this.fatalError = true;
+				KafkaMessageListenerContainer.this.startLatch.countDown();
+				wrapUp(e);
+				throw e;
+			}
+			catch (Exception e) {
+				this.logger.error(e, "Stopping container due to an exception during initialization");
+				this.fatalError = true;
+				KafkaMessageListenerContainer.this.startLatch.countDown();
+				wrapUp(e);
+				return;
+			}
 			Throwable exitThrowable = null;
 			boolean failedAuthRetry = false;
 			this.lastReceive = System.currentTimeMillis();
@@ -1527,6 +1547,7 @@ public class KafkaMessageListenerContainer<K, V> // NOSONAR line count
 			this.last = System.currentTimeMillis();
 			initAssignedPartitions();
 			KafkaMessageListenerContainer.this.thisOrParentContainer.childStarted(KafkaMessageListenerContainer.this);
+			this.childStarted = true;
 			publishConsumerStartedEvent();
 		}
 
