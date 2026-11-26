@@ -21,6 +21,7 @@ import org.apache.kafka.clients.consumer.AcknowledgementCommitCallback;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.aop.Advisor;
 import org.springframework.aop.framework.Advised;
 import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.aop.support.AopUtils;
@@ -1097,8 +1098,10 @@ public class ContainerProperties extends ConsumerProperties {
 
 	private void adviseListenerIfNeeded() {
 		if (!CollectionUtils.isEmpty(this.adviceChain)) {
-			if (AopUtils.isAopProxy(this.messageListener)) {
-				Advised advised = (Advised) this.messageListener;
+			if (AopUtils.isAopProxy(this.messageListener) && this.messageListener instanceof Advised advised) {
+				if (hasAdviceChain(advised)) {
+					return;
+				}
 				this.adviceChain.forEach(advised::removeAdvice);
 				this.adviceChain.forEach(advised::addAdvice);
 			}
@@ -1110,6 +1113,27 @@ public class ContainerProperties extends ConsumerProperties {
 				}
 			}
 		}
+	}
+
+	private boolean hasAdviceChain(Advised advised) {
+		Advisor[] advisors = advised.getAdvisors();
+		int chainSize = this.adviceChain.size();
+		if (advisors.length < chainSize) {
+			return false;
+		}
+		for (int i = 0; i <= advisors.length - chainSize; i++) {
+			boolean match = true;
+			for (int j = 0; j < chainSize; j++) {
+				if (advisors[i + j].getAdvice() != this.adviceChain.get(j)) {
+					match = false;
+					break;
+				}
+			}
+			if (match) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public @Nullable KafkaListenerObservationConvention getObservationConvention() {

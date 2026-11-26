@@ -29,6 +29,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import io.micrometer.observation.Observation;
+import org.aopalliance.intercept.MethodInterceptor;
+import org.aopalliance.intercept.MethodInvocation;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
@@ -50,6 +52,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
+import org.springframework.aop.Advisor;
+import org.springframework.aop.framework.Advised;
+import org.springframework.aop.framework.ProxyFactory;
+import org.springframework.beans.BeanUtils;
 import org.springframework.kafka.annotation.KafkaListenerAnnotationBeanPostProcessor;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.KafkaResourceHolder;
@@ -57,6 +63,8 @@ import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.event.ConsumerFailedToStartEvent;
 import org.springframework.kafka.event.ConsumerStartedEvent;
 import org.springframework.kafka.event.ConsumerStartingEvent;
+import org.springframework.kafka.event.ConsumerStoppedEvent;
+import org.springframework.kafka.event.ConsumerStoppedEvent.Reason;
 import org.springframework.kafka.event.ListenerContainerIdleEvent;
 import org.springframework.kafka.listener.ContainerProperties.AckMode;
 import org.springframework.kafka.listener.ContainerProperties.AssignmentCommitOption;
@@ -71,6 +79,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.util.CollectionUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -2523,6 +2532,156 @@ public class ConcurrentMessageListenerContainerMockTests {
 		finally {
 			container.stop();
 		}
+	}
+
+	@Test
+	void copyContainerPropertiesWithSameAdviceChainDoesNotModifyAdvisedProxy() {
+		MethodInterceptor existingAdvice = MethodInvocation::proceed;
+		MethodInterceptor advice1 = MethodInvocation::proceed;
+		MethodInterceptor advice2 = MethodInvocation::proceed;
+
+		MessageListener<String, String> target = record -> { };
+		ProxyFactory pf = new ProxyFactory(target);
+		pf.addAdvice(existingAdvice);
+		pf.addAdvice(advice1);
+		pf.addAdvice(advice2);
+		pf.setFrozen(true);
+
+		ContainerProperties source = new ContainerProperties("foo");
+		source.setMessageListener(pf.getProxy());
+		source.setAdviceChain(advice1, advice2);
+
+		ContainerProperties copy = new ContainerProperties("foo");
+		BeanUtils.copyProperties(source, copy, "topics", "topicPartitions", "topicPattern");
+
+		Advised advised = (Advised) copy.getMessageListener();
+		assertThat(advised).isNotNull();
+		assertThat(advised.getAdvisors())
+				.extracting(Advisor::getAdvice)
+				.containsExactly(existingAdvice, advice1, advice2);
+
+		ContainerProperties mutableProps = new ContainerProperties("foo");
+		mutableProps.setMessageListener(target);
+		mutableProps.setAdviceChain(advice1, advice2);
+		mutableProps.setAdviceChain(advice2, advice1);
+
+		Advised updated = (Advised) mutableProps.getMessageListener();
+		assertThat(updated).isNotNull();
+		assertThat(updated.getAdvisors())
+				.extracting(Advisor::getAdvice)
+				.containsExactly(advice2, advice1);
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void concurrentStartupWithAdviceChainAndConsumerSeekAware() throws InterruptedException {
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		given(consumerFactory.createConsumer(anyString(), anyString(), anyString(),
+				eq(KafkaTestUtils.defaultPropertyOverrides()))).willAnswer(inv -> {
+					Consumer consumer = mock(Consumer.class);
+					given(consumer.poll(any())).willAnswer(pollInv -> {
+						Thread.sleep(10);
+						return new ConsumerRecords<>(Collections.emptyMap(), Map.of());
+					});
+					return consumer;
+				});
+
+		class SeekAwareListener implements MessageListener<String, String>, ConsumerSeekAware {
+
+			@Override
+			public void onMessage(ConsumerRecord<String, String> record) {
+			}
+
+		}
+
+		for (int i = 0; i < 30; i++) {
+			AtomicInteger seekRegistrations = new AtomicInteger();
+			ContainerProperties props = new ContainerProperties("foo");
+			props.setGroupId("grp");
+			props.setMissingTopicsFatal(false);
+			props.setMessageListener(new SeekAwareListener() {
+
+				@Override
+				public void registerSeekCallback(ConsumerSeekCallback callback) {
+					seekRegistrations.incrementAndGet();
+				}
+
+			});
+			props.setAdviceChain((MethodInterceptor) MethodInvocation::proceed);
+
+			ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer<>(consumerFactory,
+					props);
+			container.setConcurrency(3);
+			CountDownLatch startedLatch = new CountDownLatch(3);
+			List<Reason> stoppedReasons = Collections.synchronizedList(new ArrayList<>());
+			container.setApplicationEventPublisher(event -> {
+				if (event instanceof ConsumerStartingEvent) {
+					long deadline = System.nanoTime() + 50_000;
+					while (System.nanoTime() < deadline) {
+						Thread.onSpinWait();
+					}
+				}
+				else if (event instanceof ConsumerStartedEvent) {
+					startedLatch.countDown();
+				}
+				else if (event instanceof ConsumerStoppedEvent stopped) {
+					stoppedReasons.add(stopped.getReason());
+				}
+			});
+			container.start();
+			try {
+				assertThat(startedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+			}
+			finally {
+				container.stop();
+			}
+			assertThat(seekRegistrations.get()).isEqualTo(3);
+			assertThat(stoppedReasons).hasSize(3).containsOnly(Reason.NORMAL);
+		}
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Test
+	void initializationFailureStopsContainerAndPublishesAbnormalStoppedEvent() throws InterruptedException {
+		ConsumerFactory consumerFactory = mock(ConsumerFactory.class);
+		Consumer consumer = mock(Consumer.class);
+		given(consumerFactory.createConsumer(anyString(), anyString(), anyString(),
+				eq(KafkaTestUtils.defaultPropertyOverrides()))).willReturn(consumer);
+
+		class FailingSeekAwareListener implements MessageListener<String, String>, ConsumerSeekAware {
+
+			@Override
+			public void onMessage(ConsumerRecord<String, String> record) {
+			}
+
+			@Override
+			public void registerSeekCallback(ConsumerSeekCallback callback) {
+				throw new IllegalStateException("seek setup failed");
+			}
+
+		}
+
+		ContainerProperties props = new ContainerProperties("foo");
+		props.setGroupId("grp");
+		props.setMissingTopicsFatal(false);
+		props.setMessageListener(new FailingSeekAwareListener());
+
+		ConcurrentMessageListenerContainer container = new ConcurrentMessageListenerContainer<>(consumerFactory, props);
+		CountDownLatch stoppedLatch = new CountDownLatch(1);
+		AtomicReference<Reason> stopReason = new AtomicReference<>();
+		container.setApplicationEventPublisher(event -> {
+			if (event instanceof ConsumerStoppedEvent stopped) {
+				stopReason.set(stopped.getReason());
+				stoppedLatch.countDown();
+			}
+		});
+
+		container.start();
+		assertThat(stoppedLatch.await(10, TimeUnit.SECONDS)).isTrue();
+		assertThat(stopReason.get()).isEqualTo(Reason.ABNORMAL);
+		verify(consumer, timeout(10000)).close();
+		await().until(() -> !container.isRunning());
+		container.stop();
 	}
 
 	public static class TestMessageListener1 implements MessageListener<String, String>, ConsumerSeekAware {
