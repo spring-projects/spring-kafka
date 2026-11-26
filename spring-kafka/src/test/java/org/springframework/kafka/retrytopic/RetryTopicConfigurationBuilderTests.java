@@ -28,6 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Tomaz Fernandes
  * @author Adrian Chlebosz
  * @author Heejin Jeon
+ * @author Tanishq Choudhary
  * @since 2.7
  */
 @ExtendWith(MockitoExtension.class)
@@ -228,6 +229,50 @@ class RetryTopicConfigurationBuilderTests {
 		assertThat(configuration.getDestinationTopicProperties())
 				.extracting(DestinationTopic.Properties::suffix)
 				.containsExactly("", "-dlt");
+	}
+
+	@Test
+	void shouldDeriveTopicSuffixesFromBackOffWithoutJitter() {
+		for (int i = 0; i < 10; i++) {
+			RetryTopicConfiguration configuration = new RetryTopicConfigurationBuilder()
+					.exponentialBackoff(1000, 2, 10000, 500)
+					.maxAttempts(4)
+					.create(kafkaOperations);
+
+			assertThat(configuration.getDestinationTopicProperties())
+					.extracting(DestinationTopic.Properties::suffix)
+					.containsExactly("", "-retry-1000", "-retry-2000", "-retry-4000", "-dlt");
+		}
+	}
+
+	@Test
+	void shouldCreateSameNumberOfReusableRetryTopicsWhenBackOffHasJitter() {
+		for (int i = 0; i < 10; i++) {
+			RetryTopicConfiguration configuration = new RetryTopicConfigurationBuilder()
+					.exponentialBackoff(1000, 2, 4000, 500)
+					.maxAttempts(6)
+					.create(kafkaOperations);
+
+			assertThat(configuration.getDestinationTopicProperties())
+					.extracting(DestinationTopic.Properties::suffix)
+					.containsExactly("", "-retry-1000", "-retry-2000", "-retry-4000", "-dlt");
+			DestinationTopic reusableRetryTopic =
+					new DestinationTopic("topic-retry", configuration.getDestinationTopicProperties().get(3));
+			assertThat(reusableRetryTopic.isReusableRetryTopic()).isTrue();
+		}
+	}
+
+	@Test
+	void shouldKeepJitterInRetryTopicDelays() {
+		RetryTopicConfiguration configuration = new RetryTopicConfigurationBuilder()
+				.exponentialBackoff(1000, 2, 10000, 500)
+				.maxAttempts(4)
+				.create(kafkaOperations);
+
+		List<DestinationTopic.Properties> retryTopics = configuration.getDestinationTopicProperties().subList(1, 4);
+		assertThat(retryTopics.get(0).delay()).isBetween(1000L, 1500L);
+		assertThat(retryTopics.get(1).delay()).isBetween(1000L, 3000L);
+		assertThat(retryTopics.get(2).delay()).isBetween(2000L, 6000L);
 	}
 
 }

@@ -5,11 +5,13 @@
 
 package org.springframework.kafka.retrytopic;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import org.springframework.core.retry.RetryPolicy;
 import org.springframework.util.backoff.BackOff;
 import org.springframework.util.backoff.ExponentialBackOff;
 import org.springframework.util.backoff.FixedBackOff;
@@ -19,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * @author Tomaz Fernandes
  * @author Yingzi Zhang
+ * @author Tanishq Choudhary
  * @since 2.7
  */
 class BackOffValuesGeneratorTests {
@@ -86,6 +89,28 @@ class BackOffValuesGeneratorTests {
 		List<Long> backOffValues = backOffValuesGenerator.generateValues();
 
 		assertThat(backOffValues).containsExactly(1000L, 2000L);
+	}
+
+	@Test
+	void shouldGenerateValuesWithoutJitter() {
+		ExponentialBackOff backOff = new ExponentialBackOff(1000, 2);
+		backOff.setJitter(500);
+		BackOffValuesGenerator backOffValuesGenerator = new BackOffValuesGenerator(4, backOff);
+
+		assertThat(backOffValuesGenerator.generateValuesWithoutJitter()).containsExactly(1000L, 2000L, 4000L);
+	}
+
+	@Test
+	void shouldGenerateValuesWithoutJitterForRetryPolicyBackOff() {
+		BackOff backOff = RetryPolicy.builder()
+				.delay(Duration.ofSeconds(1))
+				.multiplier(2)
+				.jitter(Duration.ofMillis(500))
+				.build()
+				.getBackOff();
+		BackOffValuesGenerator backOffValuesGenerator = new BackOffValuesGenerator(4, backOff);
+
+		assertThat(backOffValuesGenerator.generateValuesWithoutJitter()).containsExactly(1000L, 2000L, 4000L);
 	}
 
 }
