@@ -26,9 +26,12 @@ public Mono<Void> listen(String data) {
 
 IMPORTANT: The `AckMode` will be automatically set the `MANUAL` and enable out-of-order commits when async return types are detected; instead, the asynchronous completion will ack when the async operation completes.
 When the async result is completed with an error, whether the message is recover or not depends on the container error handler.
-If some exception occurs within the listener method that prevents creation of the async result object, you MUST catch that exception and return an appropriate return object that will cause the message to be ack or recover.
+If some exception occurs within the listener method that prevents creation of the async result object, you MUST catch that exception and return an appropriate return object that will cause the message to be ack or recover, unless a `KafkaListenerErrorHandler` handles it, as described below.
 
 If a `KafkaListenerErrorHandler` is configured on a listener with an async return type (including Kotlin suspend functions), the error handler is invoked after a failure.
+When that error handler returns `null`, the record (or the batch, for a batch listener) is acknowledged, unless the error handler is a `ManualAckListenerErrorHandler`.
+Previously, it was not acknowledged, and the consumer paused.
+If your error handler acknowledges the record later, for example with the `Acknowledgment` from the four-argument `handleError()` or from the `KafkaHeaders.ACKNOWLEDGMENT` header, implement `ManualAckListenerErrorHandler` and return `null`; the record is then not acknowledged for you.
 See xref:kafka/annotation-error-handling.adoc[Handling Exceptions] for more information about this error handler and its purpose.
 
 [[async-returns-stop]]

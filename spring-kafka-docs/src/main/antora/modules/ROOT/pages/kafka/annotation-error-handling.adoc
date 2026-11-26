@@ -51,6 +51,7 @@ Object handleError(Message<?> message, ListenerExecutionFailedException exceptio
 ----
 
 Another sub-interface (`ManualAckListenerErrorHandler`) provides access to the `Acknowledgment` object when using manual ``AckMode``s.
+Listeners with async return types use a manual `AckMode` too; see xref:kafka/receiving-messages/async-returns.adoc[Async Returns].
 
 [source, java]
 ----

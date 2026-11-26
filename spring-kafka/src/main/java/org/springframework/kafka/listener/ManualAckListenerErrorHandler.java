@@ -13,8 +13,11 @@ import org.springframework.messaging.Message;
 
 /**
  * A {@link KafkaListenerErrorHandler} that supports manual acks.
+ * On a listener with an async return type, a {@code null} result from this error
+ * handler does not acknowledge the record; the error handler is responsible for that.
  *
  * @author Gary Russell
+ * @author WooSeung Kim
  * @since 2.9
  *
  */
