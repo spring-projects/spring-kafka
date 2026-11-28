@@ -51,6 +51,7 @@ import java.util.concurrent.atomic.AtomicInteger
  * @author Artem Bilan
  * @author Youngjoo Kim
  * @author Nikita Kibitkin
+ * @author OhKyu Chan
  *
  * @since 3.1
  */
@@ -60,7 +61,8 @@ import java.util.concurrent.atomic.AtomicInteger
 		"kotlinAsyncBatchTestTopic1", "kotlinAsyncBatchTestTopic2", "kotlinReplyTopic1",
 		"kotlinAsyncTestTopicCommonHandler", "kotlinAsyncTestTopicBoundedRetry",
 		"kotlinAsyncTestTopicTwoRecordRetry", "kotlinAsyncTestTopicBurstRetry",
-		"kotlinAsyncTestTopicAwaitOnStop", "kotlinAsyncTestTopicCancelOnStop"], partitions = 1)
+		"kotlinAsyncTestTopicAwaitOnStop", "kotlinAsyncTestTopicCancelOnStop",
+		"kotlinAsyncTestTopicClassLevel"], partitions = 1)
 class EnableKafkaKotlinCoroutinesTests {
 
 	@Autowired
@@ -113,6 +115,21 @@ class EnableKafkaKotlinCoroutinesTests {
 		this.template.send("kotlinAsyncTestTopic3", "foo")
 		val cr = this.template.receive("kotlinReplyTopic1", 0, 0, Duration.ofSeconds(30))
 		assertThat(cr?.value() ?: "null").isEqualTo("FOO")
+	}
+
+	@Test
+	fun `test class level suspend handler is acknowledged`() {
+		this.template.send("kotlinAsyncTestTopicClassLevel", "foo")
+		assertThat(this.config.classLevelLatch.await(10, TimeUnit.SECONDS)).isTrue()
+		assertThat(this.config.classLevelAcknowledgment.isOutOfOrderCommit).isTrue()
+		await()
+			.untilAsserted {
+				assertThat(KafkaTestUtils.getPropertyValue(this.config.classLevelAcknowledgment, "acked"))
+					.isEqualTo(java.lang.Boolean.TRUE)
+			}
+		await().untilAsserted {
+			assertThat(committedOffset("kotlin-class-level", "kotlinAsyncTestTopicClassLevel")).isEqualTo(1L)
+		}
 	}
 
 	@Test
@@ -235,6 +252,18 @@ class EnableKafkaKotlinCoroutinesTests {
 
 	}
 
+	@KafkaListener(id = "kotlin-class-level", topics = ["kotlinAsyncTestTopicClassLevel"],
+			containerFactory = "kafkaListenerContainerFactory")
+	class ClassLevelListener(private val config: Config) {
+
+		@KafkaHandler
+		suspend fun handler(value: String, acknowledgment: Acknowledgment) {
+			this.config.classLevelAcknowledgment = acknowledgment
+			this.config.classLevelLatch.countDown()
+		}
+
+	}
+
 	@Configuration
 	@EnableKafka
 	class Config {
@@ -243,6 +272,11 @@ class EnableKafkaKotlinCoroutinesTests {
 		lateinit var received: String
 
 		lateinit var acknowledgment: Acknowledgment
+
+		@Volatile
+		lateinit var classLevelAcknowledgment: Acknowledgment
+
+		val classLevelLatch = CountDownLatch(1)
 
 		@Volatile
 		lateinit var batchReceived: String
@@ -300,6 +334,11 @@ class EnableKafkaKotlinCoroutinesTests {
 		@Bean
 		fun listener() : Listener {
 			return Listener()
+		}
+
+		@Bean
+		fun classLevelListener() : ClassLevelListener {
+			return ClassLevelListener(this)
 		}
 
 		@Bean

@@ -21,6 +21,7 @@ import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.config.BeanExpressionContext;
 import org.springframework.beans.factory.config.BeanExpressionResolver;
 import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.core.KotlinDetector;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 import org.springframework.expression.Expression;
@@ -46,6 +47,7 @@ import org.springframework.validation.Validator;
  * @author Gary Russell
  * @author Wang Zhiyang
  * @author Ivan Malutin
+ * @author OhKyu Chan
  *
  */
 public class DelegatingInvocableHandler {
@@ -117,7 +119,9 @@ public class DelegatingInvocableHandler {
 	}
 
 	private boolean isAsyncReply(InvocableHandlerMethod method) {
-		return AdapterUtils.isAsyncReply(method.getMethod().getReturnType());
+		Method handlerMethod = method.getMethod();
+		return AdapterUtils.isAsyncReply(handlerMethod.getReturnType())
+				|| KotlinDetector.isSuspendingFunction(handlerMethod);
 	}
 
 	private void checkSpecial(@Nullable InvocableHandlerMethod handler) {
